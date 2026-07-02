@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
-import { Plus, Trash2 } from 'lucide-vue-next'
+import { Lock, Plus, Trash2, Users } from 'lucide-vue-next'
 import type { StagePermission, WorkflowStage, WorkflowVersion } from '@/types/models'
 import ScreenGuard from '@/components/security/ScreenGuard.vue'
 import {
@@ -24,7 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -42,6 +42,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useGovernanceRoles } from '@/composables/useGovernanceRoles'
 import { useOrganizations } from '@/composables/useOrganizations'
 import { useStagePermissions } from '@/composables/useStagePermissions'
@@ -141,49 +142,74 @@ onMounted(() => {
 
     <p v-if="error" class="text-xs text-[var(--severity-red)]" role="alert">{{ error }}</p>
 
-    <Empty v-else-if="permissions.length === 0">
+    <Empty v-else-if="permissions.length === 0" class="py-6">
+      <EmptyMedia variant="icon">
+        <Users />
+      </EmptyMedia>
       <EmptyHeader>
         <EmptyTitle>لا توجد صلاحيات</EmptyTitle>
         <EmptyDescription>امنح صلاحيات الوصول لتظهر هذه المرحلة في الدوري.</EmptyDescription>
       </EmptyHeader>
     </Empty>
 
-    <Table v-else>
-      <TableHeader>
-        <TableRow>
-          <TableHead class="text-right">التسمية</TableHead>
-          <TableHead class="text-right">الجهة</TableHead>
-          <TableHead class="text-right">الدور</TableHead>
-          <TableHead class="text-right">المستوى</TableHead>
-          <TableHead class="text-right">إجراء</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        <TableRow v-for="permission in permissions" :key="permission.id">
-          <TableCell>{{ permission.display_label }}</TableCell>
-          <TableCell>{{ orgName(permission.organization_id) }}</TableCell>
-          <TableCell>{{ roleName(permission.role_id) }}</TableCell>
-          <TableCell>
-            <Badge variant="secondary">
-              {{ permission.access_level === 'EXECUTE' ? 'تنفيذ' : 'عرض' }}
-            </Badge>
-          </TableCell>
-          <TableCell @click.stop>
-            <ScreenGuard v-if="editable" screen="workflow_designer" capability="DELETE">
-              <Button
-                size="sm"
-                variant="ghost"
-                aria-label="حذف الصلاحية"
-                @click="deleting = permission"
+    <div v-else class="border-border overflow-hidden rounded-md border">
+      <Table
+        class="[&_td]:py-3.5 [&_td:first-child]:ps-4 [&_td:last-child]:pe-4 [&_th:first-child]:ps-4 [&_th:last-child]:pe-4"
+      >
+        <TableHeader>
+          <TableRow class="bg-muted/50 hover:bg-muted/50">
+            <TableHead class="text-right">التسمية</TableHead>
+            <TableHead class="text-right">الجهة</TableHead>
+            <TableHead class="text-right">الدور</TableHead>
+            <TableHead class="text-right">المستوى</TableHead>
+            <TableHead class="text-left">إجراء</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow v-for="permission in permissions" :key="permission.id" class="even:bg-muted/30">
+            <TableCell class="font-medium">{{ permission.display_label }}</TableCell>
+            <TableCell class="text-muted-foreground">{{
+              orgName(permission.organization_id)
+            }}</TableCell>
+            <TableCell class="text-muted-foreground">{{ roleName(permission.role_id) }}</TableCell>
+            <TableCell>
+              <Badge
+                v-if="permission.access_level === 'EXECUTE'"
+                class="border border-[var(--brand-color)]/30 bg-[var(--brand-color)]/10 text-[var(--brand-color)]"
               >
-                <Trash2 class="h-3.5 w-3.5 text-[var(--severity-red)]" />
-              </Button>
-            </ScreenGuard>
-            <span v-if="!editable" class="text-muted-foreground text-xs">مقفلة</span>
-          </TableCell>
-        </TableRow>
-      </TableBody>
-    </Table>
+                تنفيذ
+              </Badge>
+              <Badge v-else variant="secondary">عرض</Badge>
+            </TableCell>
+            <TableCell class="text-left" @click.stop>
+              <div class="flex items-center justify-end gap-0.5">
+                <ScreenGuard v-if="editable" screen="workflow_designer" capability="DELETE">
+                  <Tooltip>
+                    <TooltipTrigger as-child>
+                      <Button
+                        size="icon-sm"
+                        variant="ghost"
+                        aria-label="حذف الصلاحية"
+                        @click="deleting = permission"
+                      >
+                        <Trash2 class="h-3.5 w-3.5 text-[var(--severity-red)]" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>حذف الصلاحية</TooltipContent>
+                  </Tooltip>
+                </ScreenGuard>
+                <span
+                  v-if="!editable"
+                  class="inline-flex items-center gap-1 text-xs text-[var(--locked)]"
+                >
+                  <Lock class="h-3 w-3" />مقفلة
+                </span>
+              </div>
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </div>
 
     <Dialog v-model:open="dialogOpen">
       <DialogContent class="max-w-lg">

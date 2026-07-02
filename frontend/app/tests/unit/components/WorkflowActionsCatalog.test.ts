@@ -49,7 +49,18 @@ async function mountCatalog(
   auth.screenPermissions = { workflow_designer: capabilities }
 
   const wrapper = mount(WorkflowActionsCatalog, {
-    global: { plugins: [pinia], stubs: { Teleport: true, NuxtLink: true } },
+    global: {
+      plugins: [pinia],
+      stubs: {
+        Teleport: true,
+        NuxtLink: true,
+        // Tooltip needs a TooltipProvider ancestor (supplied at app root); render
+        // the trigger slot transparently in isolated mounts.
+        Tooltip: { template: '<div><slot /></div>' },
+        TooltipTrigger: { template: '<div><slot /></div>' },
+        TooltipContent: { template: '<div><slot /></div>' },
+      },
+    },
   })
   await flushPromises()
 

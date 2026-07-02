@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { toast } from 'vue-sonner'
-import { AlertCircle, CheckCircle2 } from 'lucide-vue-next'
+import { AlertCircle, CheckCircle2, ShieldCheck } from 'lucide-vue-next'
 import type { WorkflowValidationError, WorkflowVersion } from '@/types/models'
 import ScreenGuard from '@/components/security/ScreenGuard.vue'
 import {
@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { Spinner } from '@/components/ui/spinner'
 import { useWorkflows } from '@/composables/useWorkflows'
 
 const props = defineProps<{ version: WorkflowVersion }>()
@@ -60,35 +61,59 @@ async function confirmPublish() {
 </script>
 
 <template>
-  <div v-if="isDraft" class="space-y-3">
-    <div class="flex items-center gap-2">
-      <Button variant="outline" size="sm" :disabled="validating" @click="runValidate">
-        التحقق من الصحة
-      </Button>
-      <ScreenGuard screen="workflow_designer" capability="UPDATE">
-        <Button
-          size="sm"
-          :disabled="errors === null || errors.length > 0 || publishing"
-          @click="confirmOpen = true"
-        >
-          نشر النسخة
+  <div v-if="isDraft" class="border-border bg-muted/30 space-y-3 rounded-lg border p-3">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-2">
+        <ShieldCheck class="text-muted-foreground h-4 w-4" aria-hidden="true" />
+        <span class="text-sm font-medium">جاهزية النشر</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <Button variant="outline" size="sm" :disabled="validating" @click="runValidate">
+          <Spinner v-if="validating" class="h-3.5 w-3.5" />
+          التحقق من الصحة
         </Button>
-      </ScreenGuard>
+        <ScreenGuard screen="workflow_designer" capability="UPDATE">
+          <Button
+            size="sm"
+            :disabled="errors === null || errors.length > 0 || publishing"
+            @click="confirmOpen = true"
+          >
+            نشر النسخة
+          </Button>
+        </ScreenGuard>
+      </div>
     </div>
 
-    <Alert v-if="errors !== null && errors.length === 0">
+    <p v-if="errors === null" class="text-muted-foreground text-xs">
+      شغّل «التحقق من الصحة» للتأكد من اكتمال المراحل والانتقالات قبل نشر النسخة.
+    </p>
+
+    <Alert v-else-if="errors.length === 0" class="border-0 bg-[var(--severity-green)]/5">
       <CheckCircle2 class="h-4 w-4 text-[var(--severity-green)]" />
-      <AlertTitle>النسخة صالحة</AlertTitle>
-      <AlertDescription>لا توجد أخطاء؛ يمكنك نشر النسخة.</AlertDescription>
+      <AlertTitle>النسخة جاهزة للنشر</AlertTitle>
+      <AlertDescription
+        >اجتازت النسخة جميع الفحوصات ولا توجد أخطاء. يمكنك نشرها الآن.</AlertDescription
+      >
     </Alert>
 
-    <Alert v-else-if="errors !== null && errors.length > 0" variant="destructive" role="alert">
+    <Alert v-else variant="destructive" role="alert" class="border-0">
       <AlertCircle class="h-4 w-4" />
-      <AlertTitle>{{ errors.length }} أخطاء يجب إصلاحها قبل النشر</AlertTitle>
+      <AlertTitle>
+        {{ errors.length === 1 ? 'خطأ واحد يمنع النشر' : `${errors.length} أخطاء تمنع النشر` }}
+      </AlertTitle>
       <AlertDescription>
-        <ul class="mt-1 list-disc space-y-0.5 ps-4">
-          <li v-for="(item, index) in errors" :key="`${item.code}-${index}`">
-            {{ item.message }}
+        <p class="mb-1.5">صحّح المشكلات التالية ثم أعد التحقق من الصحة:</p>
+        <ul class="space-y-1">
+          <li
+            v-for="(item, index) in errors"
+            :key="`${item.code}-${index}`"
+            class="flex items-start gap-2"
+          >
+            <span
+              class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--severity-red)]"
+              aria-hidden="true"
+            />
+            <span class="min-w-0">{{ item.message }}</span>
           </li>
         </ul>
       </AlertDescription>

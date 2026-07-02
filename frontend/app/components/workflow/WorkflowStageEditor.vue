@@ -4,10 +4,9 @@ import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 import { z } from 'zod'
-import { Pencil, Plus, Shield, Trash2 } from 'lucide-vue-next'
+import { Layers, Lock, Pencil, Plus, SlidersHorizontal, Trash2 } from 'lucide-vue-next'
 import type { WorkflowStage, WorkflowVersion } from '@/types/models'
 import ScreenGuard from '@/components/security/ScreenGuard.vue'
-import StagePermissionEditor from '@/components/workflow/StagePermissionEditor.vue'
 import StageFieldRuleMatrix from '@/components/workflow/StageFieldRuleMatrix.vue'
 import {
   AlertDialog,
@@ -21,8 +20,17 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Switch } from '@/components/ui/switch'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   Dialog,
   DialogContent,
@@ -31,7 +39,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty'
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -57,11 +72,8 @@ const deleting = ref<WorkflowStage | null>(null)
 const isInitial = ref(false)
 const isFinal = ref(false)
 const requiresClaim = ref(false)
-const permissionsStageId = ref<number | null>(null)
-
-function togglePermissions(stageId: number) {
-  permissionsStageId.value = permissionsStageId.value === stageId ? null : stageId
-}
+// Stage whose field-rule matrix is open in a dialog (null = closed).
+const fieldRulesStage = ref<WorkflowStage | null>(null)
 
 const stageSchema = toTypedSchema(
   z.object({
@@ -139,152 +151,236 @@ onMounted(() => fetchStages(props.version.id))
 </script>
 
 <template>
-  <div class="space-y-3">
-    <div class="flex items-center justify-between">
-      <h3 class="font-section text-sm font-semibold">المراحل</h3>
-      <ScreenGuard v-if="editable" screen="workflow_designer" capability="CREATE">
-        <Button size="sm" @click="openCreate"><Plus class="h-3.5 w-3.5" />إضافة مرحلة</Button>
-      </ScreenGuard>
-    </div>
+  <Card class="border-0 shadow">
+    <CardHeader class="pb-3">
+      <CardTitle class="font-section text-sm font-semibold">المراحل</CardTitle>
+      <CardDescription class="text-xs">
+        رتّب مراحل سير العمل، وحدّد مرحلة البداية والنهاية، واضبط صلاحيات كل مرحلة.
+      </CardDescription>
+      <CardAction>
+        <ScreenGuard v-if="editable" screen="workflow_designer" capability="CREATE">
+          <Button size="sm" @click="openCreate"><Plus class="h-3.5 w-3.5" />إضافة مرحلة</Button>
+        </ScreenGuard>
+      </CardAction>
+    </CardHeader>
+    <CardContent class="px-4 pb-4">
+      <p v-if="error" class="pb-2 text-xs text-[var(--severity-red)]" role="alert">
+        {{ error }}
+      </p>
 
-    <p v-if="error" class="text-xs text-[var(--severity-red)]" role="alert">{{ error }}</p>
+      <Empty v-else-if="!loading && stages.length === 0" class="py-10">
+        <EmptyMedia variant="icon">
+          <Layers />
+        </EmptyMedia>
+        <EmptyHeader>
+          <EmptyTitle>لا توجد مراحل</EmptyTitle>
+          <EmptyDescription>أضف مراحل لتعريف خطوات سير العمل.</EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent v-if="editable">
+          <ScreenGuard screen="workflow_designer" capability="CREATE">
+            <Button size="sm" @click="openCreate"><Plus class="h-3.5 w-3.5" />إضافة مرحلة</Button>
+          </ScreenGuard>
+        </EmptyContent>
+      </Empty>
 
-    <Empty v-else-if="!loading && stages.length === 0">
-      <EmptyHeader>
-        <EmptyTitle>لا توجد مراحل</EmptyTitle>
-        <EmptyDescription>أضف مراحل لتعريف خطوات سير العمل.</EmptyDescription>
-      </EmptyHeader>
-    </Empty>
-
-    <Table v-else>
-      <TableHeader>
-        <TableRow>
-          <TableHead class="text-right">الترتيب</TableHead>
-          <TableHead class="text-right">الرمز</TableHead>
-          <TableHead class="text-right">الاسم</TableHead>
-          <TableHead class="text-right">النوع</TableHead>
-          <TableHead class="text-right">إجراء</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        <TableRow v-for="stage in stages" :key="stage.id">
-          <TableCell class="font-mono">{{ stage.sort_order }}</TableCell>
-          <TableCell class="font-mono">{{ stage.code }}</TableCell>
-          <TableCell>{{ stage.name }}</TableCell>
-          <TableCell>
-            <Badge v-if="stage.is_initial" variant="secondary">بداية</Badge>
-            <Badge v-if="stage.is_final" variant="secondary">نهاية</Badge>
-          </TableCell>
-          <TableCell @click.stop>
-            <Button
-              size="sm"
-              variant="ghost"
-              aria-label="صلاحيات المرحلة"
-              @click="togglePermissions(stage.id)"
-            >
-              <Shield class="h-3.5 w-3.5" />
-            </Button>
-            <ScreenGuard v-if="editable" screen="workflow_designer" capability="UPDATE">
-              <Button size="sm" variant="ghost" aria-label="تعديل المرحلة" @click="openEdit(stage)">
-                <Pencil class="h-3.5 w-3.5" />
-              </Button>
-            </ScreenGuard>
-            <ScreenGuard v-if="editable" screen="workflow_designer" capability="DELETE">
-              <Button size="sm" variant="ghost" aria-label="حذف المرحلة" @click="deleting = stage">
-                <Trash2 class="h-3.5 w-3.5 text-[var(--severity-red)]" />
-              </Button>
-            </ScreenGuard>
-            <span v-if="!editable" class="text-muted-foreground text-xs">مقفلة</span>
-          </TableCell>
-        </TableRow>
-      </TableBody>
-    </Table>
-
-    <template v-for="stage in stages" :key="`perms-${stage.id}`">
-      <div
-        v-if="permissionsStageId === stage.id"
-        class="border-border bg-muted/30 mt-2 space-y-4 rounded-md border p-3"
-      >
-        <StagePermissionEditor :stage="stage" :version="version" />
-        <StageFieldRuleMatrix :stage="stage" :version="version" />
+      <div v-else class="border-border overflow-hidden rounded-md border">
+        <Table
+          class="[&_td]:py-3.5 [&_td:first-child]:ps-4 [&_td:last-child]:pe-4 [&_th:first-child]:ps-4 [&_th:last-child]:pe-4"
+        >
+          <TableHeader>
+            <TableRow class="bg-muted/50 hover:bg-muted/50">
+              <TableHead class="text-right">الترتيب</TableHead>
+              <TableHead class="text-right">الرمز</TableHead>
+              <TableHead class="text-right">الاسم</TableHead>
+              <TableHead class="text-right">النوع</TableHead>
+              <TableHead class="text-left">إجراء</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow v-for="stage in stages" :key="stage.id" class="even:bg-muted/30">
+              <TableCell class="text-muted-foreground font-mono text-xs">
+                {{ stage.sort_order }}
+              </TableCell>
+              <TableCell class="text-muted-foreground font-mono text-xs">{{
+                stage.code
+              }}</TableCell>
+              <TableCell class="font-medium">{{ stage.name }}</TableCell>
+              <TableCell>
+                <div class="flex flex-wrap items-center gap-1">
+                  <Badge
+                    v-if="stage.is_initial"
+                    variant="outline"
+                    class="border-[var(--severity-green)]/40 text-[var(--severity-green)]"
+                  >
+                    بداية
+                  </Badge>
+                  <Badge
+                    v-if="stage.is_final"
+                    variant="outline"
+                    class="border-[var(--brand-color)]/40 text-[var(--brand-color)]"
+                  >
+                    نهاية
+                  </Badge>
+                  <Badge v-if="stage.requires_claim" variant="secondary">مطالبة</Badge>
+                  <span
+                    v-if="!stage.is_initial && !stage.is_final && !stage.requires_claim"
+                    class="text-muted-foreground text-xs"
+                    >—</span
+                  >
+                </div>
+              </TableCell>
+              <TableCell class="text-left" @click.stop>
+                <div class="flex items-center justify-end gap-0.5">
+                  <Tooltip>
+                    <TooltipTrigger as-child>
+                      <Button
+                        size="icon-sm"
+                        variant="ghost"
+                        aria-label="قواعد الحقول لهذه المرحلة"
+                        @click="fieldRulesStage = stage"
+                      >
+                        <SlidersHorizontal class="h-3.5 w-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>قواعد الحقول</TooltipContent>
+                  </Tooltip>
+                  <ScreenGuard v-if="editable" screen="workflow_designer" capability="UPDATE">
+                    <Tooltip>
+                      <TooltipTrigger as-child>
+                        <Button
+                          size="icon-sm"
+                          variant="ghost"
+                          aria-label="تعديل المرحلة"
+                          @click="openEdit(stage)"
+                        >
+                          <Pencil class="h-3.5 w-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>تعديل المرحلة</TooltipContent>
+                    </Tooltip>
+                  </ScreenGuard>
+                  <ScreenGuard v-if="editable" screen="workflow_designer" capability="DELETE">
+                    <Tooltip>
+                      <TooltipTrigger as-child>
+                        <Button
+                          size="icon-sm"
+                          variant="ghost"
+                          aria-label="حذف المرحلة"
+                          @click="deleting = stage"
+                        >
+                          <Trash2 class="h-3.5 w-3.5 text-[var(--severity-red)]" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>حذف المرحلة</TooltipContent>
+                    </Tooltip>
+                  </ScreenGuard>
+                  <span
+                    v-if="!editable"
+                    class="inline-flex items-center gap-1 text-xs text-[var(--locked)]"
+                  >
+                    <Lock class="h-3 w-3" />مقفلة
+                  </span>
+                </div>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
       </div>
-    </template>
+    </CardContent>
+  </Card>
 
-    <Dialog v-model:open="dialogOpen">
-      <DialogContent class="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{{ editing ? 'تعديل المرحلة' : 'إضافة مرحلة' }}</DialogTitle>
-          <DialogDescription>عرّف بيانات المرحلة ضمن النسخة المسودة.</DialogDescription>
-        </DialogHeader>
+  <!-- Field rules for a single stage (opened from row action) -->
+  <Dialog
+    :open="fieldRulesStage !== null"
+    @update:open="(open) => !open && (fieldRulesStage = null)"
+  >
+    <DialogContent class="!max-w-3xl">
+      <DialogHeader>
+        <DialogTitle>قواعد الحقول — {{ fieldRulesStage?.name }}</DialogTitle>
+        <DialogDescription>
+          حدّد ظهور كل حقل وقابليته للتعديل وإلزاميته في هذه المرحلة.
+        </DialogDescription>
+      </DialogHeader>
+      <div class="-mx-1 max-h-[70vh] overflow-y-auto px-1">
+        <StageFieldRuleMatrix v-if="fieldRulesStage" :stage="fieldRulesStage" :version="version" />
+      </div>
+    </DialogContent>
+  </Dialog>
 
-        <form class="flex flex-col gap-4" @submit="onSubmit">
-          <FormField v-slot="{ componentField }" name="code">
-            <FormItem>
-              <FormLabel>الرمز</FormLabel>
-              <FormControl>
-                <Input v-bind="componentField" placeholder="intake" dir="ltr" />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          </FormField>
+  <Dialog v-model:open="dialogOpen">
+    <DialogContent class="max-w-lg">
+      <DialogHeader>
+        <DialogTitle>{{ editing ? 'تعديل المرحلة' : 'إضافة مرحلة' }}</DialogTitle>
+        <DialogDescription>عرّف بيانات المرحلة ضمن النسخة المسودة.</DialogDescription>
+      </DialogHeader>
 
-          <FormField v-slot="{ componentField }" name="name">
-            <FormItem>
-              <FormLabel>الاسم</FormLabel>
-              <FormControl>
-                <Input v-bind="componentField" placeholder="الاستلام" />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          </FormField>
+      <form class="flex flex-col gap-4" @submit="onSubmit">
+        <FormField v-slot="{ componentField }" name="code">
+          <FormItem>
+            <FormLabel>الرمز</FormLabel>
+            <FormControl>
+              <Input v-bind="componentField" placeholder="intake" dir="ltr" />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        </FormField>
 
-          <FormField v-slot="{ componentField }" name="sla_duration_minutes">
-            <FormItem>
-              <FormLabel>مدة الإنجاز (دقائق)</FormLabel>
-              <FormControl>
-                <Input v-bind="componentField" type="number" min="1" placeholder="120" />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          </FormField>
+        <FormField v-slot="{ componentField }" name="name">
+          <FormItem>
+            <FormLabel>الاسم</FormLabel>
+            <FormControl>
+              <Input v-bind="componentField" placeholder="الاستلام" />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        </FormField>
 
-          <div class="flex items-center gap-6">
-            <div class="flex items-center gap-2">
-              <Checkbox id="stage-initial" v-model:checked="isInitial" />
-              <Label for="stage-initial">مرحلة البداية</Label>
-            </div>
-            <div class="flex items-center gap-2">
-              <Checkbox id="stage-final" v-model:checked="isFinal" />
-              <Label for="stage-final">مرحلة النهاية</Label>
-            </div>
+        <FormField v-slot="{ componentField }" name="sla_duration_minutes">
+          <FormItem>
+            <FormLabel>مدة الإنجاز (دقائق)</FormLabel>
+            <FormControl>
+              <Input v-bind="componentField" type="number" min="1" placeholder="120" />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        </FormField>
+
+        <div class="flex items-center gap-6">
+          <div class="flex items-center gap-2">
+            <Checkbox id="stage-initial" v-model:checked="isInitial" />
+            <Label for="stage-initial">مرحلة البداية</Label>
           </div>
-
-          <div class="flex items-center gap-3">
-            <Switch id="stage-requires-claim" v-model:checked="requiresClaim" />
-            <Label for="stage-requires-claim">يتطلب مطالبة (قفل مرن)</Label>
+          <div class="flex items-center gap-2">
+            <Checkbox id="stage-final" v-model:checked="isFinal" />
+            <Label for="stage-final">مرحلة النهاية</Label>
           </div>
+        </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" @click="dialogOpen = false">إلغاء</Button>
-            <Button type="submit" :disabled="form.isSubmitting.value">حفظ</Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+        <div class="flex items-center gap-3">
+          <Switch id="stage-requires-claim" v-model:checked="requiresClaim" />
+          <Label for="stage-requires-claim">يتطلب مطالبة (قفل مرن)</Label>
+        </div>
 
-    <AlertDialog :open="deleting !== null" @update:open="(open) => !open && (deleting = null)">
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>تأكيد حذف المرحلة</AlertDialogTitle>
-          <AlertDialogDescription>
-            سيتم حذف المرحلة «{{ deleting?.name }}» نهائياً.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel @click="deleting = null">إلغاء</AlertDialogCancel>
-          <AlertDialogAction @click="confirmDelete">تأكيد الحذف</AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" @click="dialogOpen = false">إلغاء</Button>
+          <Button type="submit" :disabled="form.isSubmitting.value">حفظ</Button>
+        </DialogFooter>
+      </form>
+    </DialogContent>
+  </Dialog>
+
+  <AlertDialog :open="deleting !== null" @update:open="(open) => !open && (deleting = null)">
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>تأكيد حذف المرحلة</AlertDialogTitle>
+        <AlertDialogDescription>
+          سيتم حذف المرحلة «{{ deleting?.name }}» نهائياً.
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancel @click="deleting = null">إلغاء</AlertDialogCancel>
+        <AlertDialogAction @click="confirmDelete">تأكيد الحذف</AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
 </template>

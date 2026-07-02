@@ -5,7 +5,19 @@ import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 import { z } from 'zod'
-import { AlertCircle, Copy, Eye, GitBranch, Plus, Workflow } from 'lucide-vue-next'
+import {
+  AlertCircle,
+  Copy,
+  Eye,
+  GitBranch,
+  Layers,
+  ListTree,
+  Plus,
+  Tag,
+  TextCursorInput,
+  Users,
+  Workflow,
+} from 'lucide-vue-next'
 import type { WorkflowVersion } from '@/types/models'
 import ScreenGuard from '@/components/security/ScreenGuard.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
@@ -13,13 +25,13 @@ import WorkflowCanvas from '@/components/workflow/WorkflowCanvas.vue'
 import WorkflowStageEditor from '@/components/workflow/WorkflowStageEditor.vue'
 import WorkflowTransitionEditor from '@/components/workflow/WorkflowTransitionEditor.vue'
 import WorkflowFieldDesigner from '@/components/workflow/WorkflowFieldDesigner.vue'
-import WorkflowProcessGraph from '@/components/workflow/WorkflowProcessGraph.vue'
 import WorkflowPublishPanel from '@/components/workflow/WorkflowPublishPanel.vue'
 import StageRoutingEditor from '@/components/workflow/StageRoutingEditor.vue'
 import WorkflowActionsCatalog from '@/components/workflow/WorkflowActionsCatalog.vue'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { ButtonGroup } from '@/components/ui/button-group'
 import { Card, CardContent } from '@/components/ui/card'
 import {
   Dialog,
@@ -132,6 +144,15 @@ const stateLabels: Record<WorkflowVersion['state'], string> = {
   ARCHIVED: 'مؤرشفة',
 }
 
+// Designer tab definitions (label + icon), matching the settings-page nav style.
+const designerTabs = [
+  { value: 'stages', label: 'المراحل', icon: Layers },
+  { value: 'routing', label: 'سير العملية', icon: Users },
+  { value: 'transitions', label: 'الانتقالات', icon: GitBranch },
+  { value: 'fields', label: 'الحقول', icon: TextCursorInput },
+  { value: 'actions', label: 'الإجراءات', icon: Tag },
+] as const
+
 // ── Create-definition dialog ────────────────────────────────────────────
 const createDialogOpen = ref(false)
 
@@ -220,18 +241,20 @@ onMounted(reload)
       </Empty>
 
       <template v-else>
-        <!-- Version picker card -->
-        <Card class="border-0 shadow">
-          <CardContent class="flex flex-wrap items-end gap-4 p-4">
-            <div class="flex min-w-[220px] flex-1 flex-col gap-1.5">
-              <label class="text-muted-foreground text-xs font-medium" for="def-select">
+        <!-- Version picker + action toolbar (flat, no card) -->
+        <div class="border-border flex flex-wrap items-center gap-x-4 gap-y-3 border-b pb-4">
+          <!-- Pickers group -->
+          <div class="flex flex-1 flex-wrap items-center gap-x-4 gap-y-2">
+            <!-- Workflow picker -->
+            <div class="flex min-w-[220px] flex-1 items-center gap-2">
+              <label class="text-muted-foreground shrink-0 text-xs font-medium" for="def-select">
                 مسار العمل
               </label>
               <Select
                 :model-value="String(selectedDefinitionId ?? '')"
                 @update:model-value="onDefinitionChange"
               >
-                <SelectTrigger id="def-select">
+                <SelectTrigger id="def-select" size="sm" class="flex-1">
                   <SelectValue placeholder="اختر مسار العمل" />
                 </SelectTrigger>
                 <SelectContent>
@@ -242,8 +265,9 @@ onMounted(reload)
               </Select>
             </div>
 
-            <div class="flex min-w-[160px] flex-1 flex-col gap-1.5">
-              <label class="text-muted-foreground text-xs font-medium" for="ver-select">
+            <!-- Version picker + state badge -->
+            <div class="flex items-center gap-2">
+              <label class="text-muted-foreground shrink-0 text-xs font-medium" for="ver-select">
                 النسخة
               </label>
               <Select
@@ -251,8 +275,8 @@ onMounted(reload)
                 :disabled="!selectedDefinition"
                 @update:model-value="onVersionChange"
               >
-                <SelectTrigger id="ver-select">
-                  <SelectValue placeholder="اختر النسخة" />
+                <SelectTrigger id="ver-select" size="sm" class="w-24">
+                  <SelectValue placeholder="—" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem
@@ -264,31 +288,56 @@ onMounted(reload)
                   </SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-
-            <div class="flex flex-col gap-1.5">
-              <span class="text-muted-foreground text-xs font-medium">الحالة</span>
-              <Badge v-if="selectedVersion" :class="stateBadgeClass(selectedVersion.state)">
+              <Badge
+                v-if="selectedVersion"
+                :class="stateBadgeClass(selectedVersion.state)"
+                class="shrink-0"
+              >
                 {{ stateLabels[selectedVersion.state] }}
               </Badge>
-              <Badge v-else variant="secondary">—</Badge>
             </div>
+          </div>
 
-            <div class="ms-auto flex items-center gap-2">
-              <ScreenGuard screen="workflow_designer" capability="CREATE">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  :disabled="!selectedVersion || selectedVersion.state !== 'PUBLISHED'"
-                  @click="clone"
-                >
-                  <Copy class="h-3.5 w-3.5" />
-                  استنساخ
-                </Button>
-              </ScreenGuard>
-            </div>
-          </CardContent>
-        </Card>
+          <!-- Action toolbar (view switch + clone) -->
+          <div v-if="selectedVersion" class="flex flex-wrap items-center gap-2">
+            <ButtonGroup>
+              <Button
+                :variant="designerView === 'normal' ? 'default' : 'outline'"
+                size="sm"
+                @click="designerView = 'normal'"
+              >
+                <ListTree class="h-3.5 w-3.5" />
+                تفصيلي
+              </Button>
+              <Button
+                :variant="designerView === 'canvas' ? 'default' : 'outline'"
+                size="sm"
+                @click="designerView = 'canvas'"
+              >
+                <GitBranch class="h-3.5 w-3.5" />
+                لوحة
+              </Button>
+            </ButtonGroup>
+            <ScreenGuard screen="workflow_designer" capability="CREATE">
+              <Button
+                variant="outline"
+                size="sm"
+                :disabled="selectedVersion.state !== 'PUBLISHED'"
+                @click="clone"
+              >
+                <Copy class="h-3.5 w-3.5" />
+                استنساخ
+              </Button>
+            </ScreenGuard>
+          </div>
+        </div>
+
+        <!-- Validate + publish panel (full width, own row) -->
+        <WorkflowPublishPanel
+          v-if="selectedVersion"
+          :version="selectedVersion"
+          @published="reload"
+        />
 
         <div v-if="!selectedVersion" class="py-12">
           <Empty>
@@ -300,68 +349,66 @@ onMounted(reload)
         <!-- View switch: normal (detailed) vs canvas -->
         <template v-if="selectedVersion">
           <!-- Read-only notice for non-editable (published/archived) versions -->
-          <Alert v-if="!selectedVersionEditable" class="border-muted bg-muted/30">
-            <Eye class="h-4 w-4" />
+          <Alert
+            v-if="!selectedVersionEditable"
+            class="border-0 border-s-4 border-s-[var(--locked)] bg-[var(--locked)]/5"
+          >
+            <Eye class="h-4 w-4 text-[var(--locked)]" />
             <AlertTitle>نسخة للعرض فقط</AlertTitle>
             <AlertDescription>
               هذه النسخة منشورة أو مؤرشفة، لذلك يمكن عرضها فقط. استنسخ نسخة مسودة لإجراء تعديلات.
             </AlertDescription>
           </Alert>
-          <div class="flex gap-1">
-            <Button
-              :variant="designerView === 'normal' ? 'default' : 'outline'"
-              size="sm"
-              @click="designerView = 'normal'"
-            >
-              تفصيلي
-            </Button>
-            <Button
-              :variant="designerView === 'canvas' ? 'default' : 'outline'"
-              size="sm"
-              @click="designerView = 'canvas'"
-            >
-              <GitBranch class="h-3.5 w-3.5" />
-              لوحة
-            </Button>
-          </div>
 
           <template v-if="designerView === 'normal'">
-            <Tabs default-value="stages" dir="rtl">
-              <TabsList class="flex w-full flex-wrap">
-                <TabsTrigger value="stages">المراحل</TabsTrigger>
-                <TabsTrigger value="routing">سير العملية</TabsTrigger>
-                <TabsTrigger value="transitions">الانتقالات</TabsTrigger>
-                <TabsTrigger value="fields">الحقول</TabsTrigger>
-                <TabsTrigger value="actions">الإجراءات</TabsTrigger>
+            <!-- Two-column layout: right sidebar nav + left content (settings style) -->
+            <Tabs
+              default-value="stages"
+              dir="rtl"
+              orientation="vertical"
+              class="flex flex-col gap-6 lg:flex-row"
+            >
+              <TabsList
+                class="h-auto w-full shrink-0 flex-row flex-wrap justify-start gap-1 bg-transparent p-0 lg:w-52 lg:flex-col lg:justify-start"
+              >
+                <TabsTrigger
+                  v-for="tab in designerTabs"
+                  :key="tab.value"
+                  :value="tab.value"
+                  class="text-muted-foreground hover:bg-muted/50 hover:text-foreground data-[state=active]:bg-muted data-[state=active]:text-foreground flex w-auto items-center justify-start gap-2.5 rounded-lg border-0 px-3 py-2.5 text-sm font-medium shadow-none transition-colors data-[state=active]:shadow-none lg:w-full"
+                >
+                  <component :is="tab.icon" class="size-4 shrink-0" />
+                  {{ tab.label }}
+                </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="stages" class="mt-4 space-y-6">
-                <WorkflowPublishPanel :version="selectedVersion" @published="reload" />
-                <WorkflowStageEditor :version="selectedVersion" />
-              </TabsContent>
+              <div class="min-w-0 flex-1">
+                <TabsContent value="stages" class="mt-0 space-y-6">
+                  <WorkflowStageEditor :version="selectedVersion" />
+                </TabsContent>
 
-              <TabsContent value="routing" class="mt-4 space-y-6">
-                <StageRoutingEditor :version="selectedVersion" />
-                <WorkflowProcessGraph :version="selectedVersion" />
-              </TabsContent>
+                <TabsContent value="routing" class="mt-0 space-y-6">
+                  <StageRoutingEditor :version="selectedVersion" />
+                </TabsContent>
 
-              <TabsContent value="transitions" class="mt-4">
-                <WorkflowTransitionEditor :version="selectedVersion" />
-              </TabsContent>
+                <TabsContent value="transitions" class="mt-0">
+                  <WorkflowTransitionEditor :version="selectedVersion" />
+                </TabsContent>
 
-              <TabsContent value="fields" class="mt-4">
-                <WorkflowFieldDesigner :version="selectedVersion" />
-              </TabsContent>
+                <TabsContent value="fields" class="mt-0">
+                  <WorkflowFieldDesigner :version="selectedVersion" />
+                </TabsContent>
 
-              <TabsContent value="actions" class="mt-4">
-                <WorkflowActionsCatalog />
-              </TabsContent>
+                <TabsContent value="actions" class="mt-0">
+                  <WorkflowActionsCatalog />
+                </TabsContent>
+              </div>
             </Tabs>
           </template>
 
           <template v-else>
             <Card class="border-0 shadow">
-              <CardContent class="p-4">
+              <CardContent>
                 <WorkflowCanvas :version="selectedVersion" />
               </CardContent>
             </Card>

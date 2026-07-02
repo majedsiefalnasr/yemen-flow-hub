@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { toast } from 'vue-sonner'
-import { ChevronDown, ChevronUp, FolderTree, Plus, Trash2 } from 'lucide-vue-next'
+import { ChevronDown, ChevronUp, FolderTree, ListChecks, Lock, Plus, Trash2 } from 'lucide-vue-next'
 import type {
   DynamicFieldSource,
   FieldDefinition,
@@ -32,7 +32,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -52,6 +59,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useReferenceData } from '@/composables/useReferenceData'
 import { useWorkflowFields } from '@/composables/useWorkflowFields'
 
@@ -287,18 +295,28 @@ onMounted(async () => {
 
         <p v-if="error" class="text-xs text-[var(--severity-red)]" role="alert">{{ error }}</p>
 
-        <Empty v-else-if="groups.length === 0">
+        <Empty v-else-if="groups.length === 0" class="py-8">
+          <EmptyMedia variant="icon">
+            <FolderTree />
+          </EmptyMedia>
           <EmptyHeader>
             <EmptyTitle>لا توجد مجموعات حقول</EmptyTitle>
             <EmptyDescription>أضف مجموعة (تبويب) لتعريف حقول النموذج.</EmptyDescription>
           </EmptyHeader>
+          <EmptyContent v-if="editable">
+            <ScreenGuard screen="workflow_designer" capability="CREATE">
+              <Button size="sm" variant="outline" @click="openGroupDialog">
+                <Plus class="h-3.5 w-3.5" />إضافة مجموعة
+              </Button>
+            </ScreenGuard>
+          </EmptyContent>
         </Empty>
 
         <div v-else class="space-y-2">
           <div
             v-for="(group, index) in groups"
             :key="group.id"
-            class="border-border flex items-center gap-2 rounded-lg border px-3 py-2"
+            class="border-border hover:bg-muted/30 flex items-center gap-2 rounded-lg border px-3 py-2 transition-colors"
           >
             <Badge variant="secondary" class="font-mono text-xs">{{ index + 1 }}</Badge>
             <span class="flex-1 text-sm font-medium">{{ group.label }}</span>
@@ -360,74 +378,110 @@ onMounted(async () => {
         </p>
 
         <div v-else-if="flatFields.length === 0">
-          <Empty>
+          <Empty class="py-8">
+            <EmptyMedia variant="icon">
+              <ListChecks />
+            </EmptyMedia>
             <EmptyHeader>
               <EmptyTitle>لا توجد حقول</EmptyTitle>
               <EmptyDescription>أضف الحقول ثم أسند كل حقل إلى مجموعته.</EmptyDescription>
             </EmptyHeader>
+            <EmptyContent v-if="editable && groups.length > 0">
+              <ScreenGuard screen="workflow_designer" capability="CREATE">
+                <Button size="sm" @click="openFieldDialog(groups[0]?.id ?? null)">
+                  <Plus class="h-3.5 w-3.5" />إضافة حقل
+                </Button>
+              </ScreenGuard>
+            </EmptyContent>
           </Empty>
         </div>
 
-        <Table v-else>
-          <TableHeader>
-            <TableRow>
-              <TableHead class="text-right">الرمز</TableHead>
-              <TableHead class="text-right">الاسم</TableHead>
-              <TableHead class="text-right">النوع</TableHead>
-              <TableHead class="text-right">المجموعة</TableHead>
-              <TableHead class="text-right">إجراء</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow v-for="{ field } in flatFields" :key="field.id">
-              <TableCell class="font-mono text-xs">{{ field.key }}</TableCell>
-              <TableCell>
-                <div class="flex items-center gap-2">
-                  <span>{{ field.label }}</span>
-                  <Badge v-if="field.is_required" variant="secondary">مطلوب</Badge>
-                  <Badge v-if="field.is_system" variant="outline">نظامي</Badge>
-                </div>
-              </TableCell>
-              <TableCell>
-                <Badge variant="outline">{{ typeLabels[field.type] }}</Badge>
-              </TableCell>
-              <TableCell>
-                <Select
-                  :model-value="String(field.field_group_id)"
-                  :disabled="!editable"
-                  @update:model-value="(v) => changeFieldGroup(field, Number(v))"
-                >
-                  <SelectTrigger class="h-8 w-44 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem v-for="group in groups" :key="group.id" :value="String(group.id)">
-                      {{ group.label }}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </TableCell>
-              <TableCell @click.stop>
-                <ScreenGuard
-                  v-if="editable && !field.is_system"
-                  screen="workflow_designer"
-                  capability="DELETE"
-                >
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    aria-label="حذف الحقل"
-                    @click="deletingField = field"
+        <div v-else class="border-border overflow-hidden rounded-md border">
+          <Table
+            class="[&_td]:py-3.5 [&_td:first-child]:ps-4 [&_td:last-child]:pe-4 [&_th:first-child]:ps-4 [&_th:last-child]:pe-4"
+          >
+            <TableHeader>
+              <TableRow class="bg-muted/50 hover:bg-muted/50">
+                <TableHead class="text-right">الرمز</TableHead>
+                <TableHead class="text-right">الاسم</TableHead>
+                <TableHead class="text-right">النوع</TableHead>
+                <TableHead class="text-right">المجموعة</TableHead>
+                <TableHead class="text-left">إجراء</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow v-for="{ field } in flatFields" :key="field.id" class="even:bg-muted/30">
+                <TableCell class="text-muted-foreground font-mono text-xs">{{
+                  field.key
+                }}</TableCell>
+                <TableCell>
+                  <div class="flex flex-wrap items-center gap-1.5">
+                    <span class="font-medium">{{ field.label }}</span>
+                    <Badge
+                      v-if="field.is_required"
+                      variant="outline"
+                      class="border-[var(--severity-amber)]/40 text-[var(--severity-amber)]"
+                    >
+                      مطلوب
+                    </Badge>
+                    <Badge v-if="field.is_system" variant="outline">نظامي</Badge>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="secondary">{{ typeLabels[field.type] }}</Badge>
+                </TableCell>
+                <TableCell>
+                  <Select
+                    :model-value="String(field.field_group_id)"
+                    :disabled="!editable"
+                    @update:model-value="(v) => changeFieldGroup(field, Number(v))"
                   >
-                    <Trash2 class="h-3.5 w-3.5 text-[var(--severity-red)]" />
-                  </Button>
-                </ScreenGuard>
-                <span v-else-if="!editable" class="text-muted-foreground text-xs">مقفلة</span>
-              </TableCell>
-            </TableRow>
-            <TableEmpty v-if="flatFields.length === 0" :columns="5"> لا توجد حقول بعد. </TableEmpty>
-          </TableBody>
-        </Table>
+                    <SelectTrigger class="h-8 w-44 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem v-for="group in groups" :key="group.id" :value="String(group.id)">
+                        {{ group.label }}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </TableCell>
+                <TableCell class="text-left" @click.stop>
+                  <div class="flex items-center justify-end gap-0.5">
+                    <ScreenGuard
+                      v-if="editable && !field.is_system"
+                      screen="workflow_designer"
+                      capability="DELETE"
+                    >
+                      <Tooltip>
+                        <TooltipTrigger as-child>
+                          <Button
+                            size="icon-sm"
+                            variant="ghost"
+                            aria-label="حذف الحقل"
+                            @click="deletingField = field"
+                          >
+                            <Trash2 class="h-3.5 w-3.5 text-[var(--severity-red)]" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>حذف الحقل</TooltipContent>
+                      </Tooltip>
+                    </ScreenGuard>
+                    <span
+                      v-else-if="!editable"
+                      class="inline-flex items-center gap-1 text-xs text-[var(--locked)]"
+                    >
+                      <Lock class="h-3 w-3" />مقفلة
+                    </span>
+                  </div>
+                </TableCell>
+              </TableRow>
+              <TableEmpty v-if="flatFields.length === 0" :columns="5">
+                لا توجد حقول بعد.
+              </TableEmpty>
+            </TableBody>
+          </Table>
+        </div>
       </CardContent>
     </Card>
 

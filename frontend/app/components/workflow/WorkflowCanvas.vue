@@ -68,7 +68,8 @@ const props = defineProps<{ version: WorkflowVersion }>()
 
 const { graph, loading, error, fetchGraph } = useWorkflowGraph()
 const { stages, fetchStages, createStage, updateStage } = useWorkflowStages()
-const { createTransition, updateTransition, deleteTransition, transitions, fetchTransitions } = useWorkflowTransitions()
+const { createTransition, updateTransition, deleteTransition, transitions, fetchTransitions } =
+  useWorkflowTransitions()
 const { actions, fetchActions } = useWorkflowActions()
 
 const { zoomIn: flowZoomIn, zoomOut: flowZoomOut, fitView } = useVueFlow()
@@ -91,19 +92,25 @@ const edgeHandleOverrides = ref(new Map<string, { sourceHandle: string; targetHa
 
 function computeAutoPositions(
   graphNodes: WorkflowGraphNode[],
-  graphEdges: { from_stage_id: number; to_stage_id: number }[],
+  graphEdges: { from_stage_id: number; to_stage_id: number; is_return?: boolean }[],
 ): Map<number, { x: number; y: number }> {
   const SLOT_W = STAGE_W + H_GAP
   const SLOT_H = STAGE_H + V_GAP
   const PAD_X = 40
   const PAD_Y = 40
 
-  // Build adjacency for BFS
+  // Build adjacency for BFS. Only forward edges drive the depth/topology —
+  // return/reject edges flow backwards and would corrupt the longest-path depth
+  // (collapsing a linear flow into one row), so they are excluded here.
   const outEdges = new Map<number, number[]>()
   const inDegree = new Map<number, number>()
-  for (const n of graphNodes) { outEdges.set(n.id, []); inDegree.set(n.id, 0) }
+  for (const n of graphNodes) {
+    outEdges.set(n.id, [])
+    inDegree.set(n.id, 0)
+  }
   for (const e of graphEdges) {
     if (e.from_stage_id === e.to_stage_id) continue // skip self-loops
+    if (e.is_return) continue // skip backward/return edges
     outEdges.get(e.from_stage_id)?.push(e.to_stage_id)
     inDegree.set(e.to_stage_id, (inDegree.get(e.to_stage_id) ?? 0) + 1)
   }
@@ -118,8 +125,8 @@ function computeAutoPositions(
   }
   // BFS order respects sort_order for tie-breaking
   queue.sort((a, b) => {
-    const na = graphNodes.find(n => n.id === a)!
-    const nb = graphNodes.find(n => n.id === b)!
+    const na = graphNodes.find((n) => n.id === a)!
+    const nb = graphNodes.find((n) => n.id === b)!
     return na.sort_order - nb.sort_order
   })
   while (queue.length) {
@@ -149,14 +156,14 @@ function computeAutoPositions(
   // Sort each row by sort_order for consistent column positions
   for (const [, ids] of rows) {
     ids.sort((a, b) => {
-      const na = graphNodes.find(n => n.id === a)!
-      const nb = graphNodes.find(n => n.id === b)!
+      const na = graphNodes.find((n) => n.id === a)!
+      const nb = graphNodes.find((n) => n.id === b)!
       return na.sort_order - nb.sort_order
     })
   }
 
   // Determine canvas width based on max row width
-  const maxRowSize = Math.max(...[...rows.values()].map(r => r.length))
+  const maxRowSize = Math.max(...[...rows.values()].map((r) => r.length))
   const totalW = maxRowSize * SLOT_W
 
   // Position each node: centred within its row
@@ -172,9 +179,8 @@ function computeAutoPositions(
 }
 
 const autoPositions = computed(() =>
-  computeAutoPositions(graph.value?.nodes ?? [], graph.value?.edges ?? [])
+  computeAutoPositions(graph.value?.nodes ?? [], graph.value?.edges ?? []),
 )
-
 
 // ── Parallel edge helpers ─────────────────────────────────────────────────────
 // Multiple transitions between the same (from, to) pair get spread handle positions
@@ -224,51 +230,96 @@ const nodeHandles = computed(() => {
 const StageNode = {
   name: 'StageNode',
   props: ['data'],
-  setup(p: { data: {
-    label: string; code: string; isInitial: boolean; isFinal: boolean
-    stageId: number; editable: boolean
-    srcHandles: HandleDesc[]; tgtHandles: HandleDesc[]
-  }}) {
+  setup(p: {
+    data: {
+      label: string
+      code: string
+      isInitial: boolean
+      isFinal: boolean
+      stageId: number
+      editable: boolean
+      srcHandles: HandleDesc[]
+      tgtHandles: HandleDesc[]
+    }
+  }) {
     return () => {
-      const { label, code, isInitial, isFinal, stageId, editable: isEditable, srcHandles, tgtHandles } = p.data
+      const {
+        label,
+        code,
+        isInitial,
+        isFinal,
+        stageId,
+        editable: isEditable,
+        srcHandles,
+        tgtHandles,
+      } = p.data
       const hcBase = isEditable ? 'fh' : 'fh fh-ro'
       const nodeCls = ['sn', isInitial ? 'node-initial' : isFinal ? 'node-final' : '']
-      const icoCls = isInitial ? 'sn-icon sn-icon--start' : isFinal ? 'sn-icon sn-icon--end' : 'sn-icon'
+      const icoCls = isInitial
+        ? 'sn-icon sn-icon--start'
+        : isFinal
+          ? 'sn-icon sn-icon--end'
+          : 'sn-icon'
       const IcoComponent = isInitial ? Play : isFinal ? Square : GitBranch
 
       // Fall back to single centred handle when node has no edges yet
-      const tHandles: HandleDesc[] = (tgtHandles?.length ? tgtHandles : [{ id: `${stageId}-t`, offsetPct: 50 }])
-      const bHandles: HandleDesc[] = (srcHandles?.length ? srcHandles : [{ id: `${stageId}-b`, offsetPct: 50 }])
+      const tHandles: HandleDesc[] = tgtHandles?.length
+        ? tgtHandles
+        : [{ id: `${stageId}-t`, offsetPct: 50 }]
+      const bHandles: HandleDesc[] = srcHandles?.length
+        ? srcHandles
+        : [{ id: `${stageId}-b`, offsetPct: 50 }]
 
       return h('div', { class: 'snw' }, [
         // Target handles on top — non-initial nodes
-        !isInitial && tHandles.map((hd) =>
-          h(Handle, {
-            id: hd.id, type: 'target', position: Position.Top, class: hcBase,
-            style: { left: `${hd.offsetPct}%`, transform: 'translateX(-50%)' },
-            connectable: isEditable,
-          })
-        ),
-        h('div', { class: nodeCls, style: { width: `${STAGE_W}px` }, 'data-testid': `workflow-canvas-node-${stageId}` }, [
-          h('div', { class: 'sn-row' }, [
-            h('div', { class: icoCls }, [h(IcoComponent, { class: 'sn-ico' })]),
-            h('div', { class: 'sn-body' }, [
-              h('div', { class: 'sn-name' }, label),
-              h('div', { class: 'sn-code' }, code),
+        !isInitial &&
+          tHandles.map((hd) =>
+            h(Handle, {
+              id: hd.id,
+              type: 'target',
+              position: Position.Top,
+              class: hcBase,
+              style: { left: `${hd.offsetPct}%`, transform: 'translateX(-50%)' },
+              connectable: isEditable,
+            }),
+          ),
+        h(
+          'div',
+          {
+            class: nodeCls,
+            style: { width: `${STAGE_W}px` },
+            'data-testid': `workflow-canvas-node-${stageId}`,
+          },
+          [
+            h('div', { class: 'sn-row' }, [
+              h('div', { class: icoCls }, [h(IcoComponent, { class: 'sn-ico' })]),
+              h('div', { class: 'sn-body' }, [
+                h('div', { class: 'sn-name' }, label),
+                h('div', { class: 'sn-code' }, code),
+              ]),
+              (isInitial || isFinal) &&
+                h(
+                  'span',
+                  {
+                    class: isInitial ? 'sn-tag sn-tag--start' : 'sn-tag sn-tag--end',
+                  },
+                  isInitial ? 'بداية' : 'نهاية',
+                ),
             ]),
-            (isInitial || isFinal) && h('span', {
-              class: isInitial ? 'sn-tag sn-tag--start' : 'sn-tag sn-tag--end',
-            }, isInitial ? 'بداية' : 'نهاية'),
-          ]),
-        ]),
-        // Source handles on bottom — non-final nodes
-        !isFinal && bHandles.map((hd) =>
-          h(Handle, {
-            id: hd.id, type: 'source', position: Position.Bottom, class: hcBase,
-            style: { left: `${hd.offsetPct}%`, transform: 'translateX(-50%)' },
-            connectable: isEditable,
-          })
+          ],
         ),
+        // Source handles on bottom — non-final nodes
+        !isFinal &&
+          bHandles.map((hd) =>
+            h(Handle, {
+              id: hd.id,
+              type: 'source',
+              position: Position.Bottom,
+              class: hcBase,
+              style: { left: `${hd.offsetPct}%`, transform: 'translateX(-50%)' },
+              connectable: isEditable,
+            }),
+          ),
       ])
     }
   },
@@ -281,7 +332,8 @@ const nodes = computed<Node[]>(() =>
   (graph.value?.nodes ?? []).map((n) => ({
     id: `stage-${n.id}`,
     type: 'stage',
-    position: nodePositions.value.get(`stage-${n.id}`) ?? autoPositions.value.get(n.id) ?? { x: 0, y: 0 },
+    position: nodePositions.value.get(`stage-${n.id}`) ??
+      autoPositions.value.get(n.id) ?? { x: 0, y: 0 },
     data: {
       label: n.display_label || n.name,
       code: n.code,
@@ -295,7 +347,7 @@ const nodes = computed<Node[]>(() =>
     draggable: true,
     selectable: true,
     connectable: editable.value,
-  }))
+  })),
 )
 
 // ── Edges: stage→stage with action label ─────────────────────────────────────
@@ -306,7 +358,11 @@ const edges = computed<Edge[]>(() =>
     const edgeId = `e${e.id}`
     const override = edgeHandleOverrides.value.get(edgeId)
     const color = e.is_return ? 'var(--color-edge-return)' : 'var(--color-edge-fwd)'
-    const style = { stroke: color, strokeWidth: 1.5, strokeDasharray: e.is_return ? '6 3' : undefined }
+    const style = {
+      stroke: color,
+      strokeWidth: 1.5,
+      strokeDasharray: e.is_return ? '6 3' : undefined,
+    }
     const marker = { type: MarkerType.Arrow, color, width: 18, height: 18 }
     const label = e.action_name || e.action_code || `#${e.action_id}`
     return {
@@ -327,7 +383,7 @@ const edges = computed<Edge[]>(() =>
       selectable: editable.value,
       data: { transitionId: e.id },
     }
-  })
+  }),
 )
 
 // ── Drag position tracking ────────────────────────────────────────────────────
@@ -348,10 +404,15 @@ const editingStage = ref<WorkflowStage | null>(null)
 const stageIsInitial = ref(false)
 const stageIsFinal = ref(false)
 
-const stageSchema = toTypedSchema(z.object({
-  code: z.string().min(1, 'الرمز مطلوب').regex(/^[A-Za-z0-9_-]+$/, 'يسمح بالحروف والأرقام والشرطات فقط'),
-  name: z.string().min(1, 'الاسم مطلوب'),
-}))
+const stageSchema = toTypedSchema(
+  z.object({
+    code: z
+      .string()
+      .min(1, 'الرمز مطلوب')
+      .regex(/^[A-Za-z0-9_-]+$/, 'يسمح بالحروف والأرقام والشرطات فقط'),
+    name: z.string().min(1, 'الاسم مطلوب'),
+  }),
+)
 const stageForm = useForm({ validationSchema: stageSchema })
 
 function openAddStage() {
@@ -374,7 +435,12 @@ function openEditStage(stage: WorkflowStage) {
 
 const onStageSubmit = stageForm.handleSubmit(async (values) => {
   try {
-    const payload: WorkflowStagePayload = { code: values.code, name: values.name, is_initial: stageIsInitial.value, is_final: stageIsFinal.value }
+    const payload: WorkflowStagePayload = {
+      code: values.code,
+      name: values.name,
+      is_initial: stageIsInitial.value,
+      is_final: stageIsFinal.value,
+    }
     if (stageDialogMode.value === 'edit' && editingStage.value) {
       await updateStage(editingStage.value, payload)
       toast.success('تم تحديث المرحلة')
@@ -472,7 +538,10 @@ async function onEdgeUpdate({ edge, connection }: EdgeUpdateEvent) {
       // Move override from old edge id to new edge id before fetchGraph re-renders
       const overrides = new Map(edgeHandleOverrides.value)
       overrides.delete(edge.id)
-      overrides.set(`e${created.id}`, { sourceHandle: newSourceHandle, targetHandle: newTargetHandle })
+      overrides.set(`e${created.id}`, {
+        sourceHandle: newSourceHandle,
+        targetHandle: newTargetHandle,
+      })
       edgeHandleOverrides.value = overrides
     }
     await fetchGraph(props.version.id)
@@ -541,44 +610,59 @@ function onNodeDblClick({ node }: NodeMouseEvent) {
 
 // ── Load / refresh ────────────────────────────────────────────────────────────
 async function load(versionId: number) {
-  await Promise.all([fetchGraph(versionId), fetchStages(versionId), fetchActions(), fetchTransitions(versionId)])
+  await Promise.all([
+    fetchGraph(versionId),
+    fetchStages(versionId),
+    fetchActions(),
+    fetchTransitions(versionId),
+  ])
 }
 
-watch(() => props.version.id, (id) => void load(id), { immediate: true })
+watch(
+  () => props.version.id,
+  (id) => void load(id),
+  { immediate: true },
+)
 
-function handleZoomIn() { void flowZoomIn({ duration: 180 }) }
-function handleZoomOut() { void flowZoomOut({ duration: 180 }) }
-function handleFit() { void fitView({ duration: 300, padding: 0.12 }) }
+function handleZoomIn() {
+  void flowZoomIn({ duration: 180 })
+}
+function handleZoomOut() {
+  void flowZoomOut({ duration: 180 })
+}
+function handleFit() {
+  void fitView({ duration: 300, padding: 0.12 })
+}
 </script>
 
 <template>
   <section class="cs" aria-label="لوحة مسار العمل">
-
     <!-- Toolbar -->
     <div class="ctb">
       <div class="ctb-l">
-        <h3 class="ctb-title">لوحة مسار العمل</h3>
+        <div class="ctb-title-row">
+          <h3 class="ctb-title">لوحة مسار العمل</h3>
+          <Badge v-if="editable" class="bdg-e"> <span class="bdg-dot" />قابلة للتعديل </Badge>
+          <Badge v-else data-testid="workflow-canvas-readonly" variant="outline" class="gap-1">
+            <Lock class="h-3 w-3" />للعرض فقط
+          </Badge>
+        </div>
         <p class="ctb-sub">
-          <span v-if="editable">السحب متاح للجميع · اسحب من المقبض لربط المراحل · انقر مرتين للتعديل</span>
-          <span v-else>للعرض فقط</span>
+          <span v-if="editable"
+            >عرض بصري تفاعلي للمراحل وانتقالاتها · اسحب من المقبض لربط المراحل · انقر مرتين
+            للتعديل</span
+          >
+          <span v-else>للعرض فقط — استنسخ نسخة مسودة لإجراء تعديلات</span>
         </p>
       </div>
-      <div class="ctb-r">
-        <Badge v-if="editable" class="bdg-e">
-          <span class="bdg-dot" />قابلة للتعديل
-        </Badge>
-        <Badge v-else data-testid="workflow-canvas-readonly" variant="outline" class="gap-1">
-          <Lock class="h-3 w-3" />للعرض فقط
-        </Badge>
-        <Button v-if="editable" size="sm" variant="outline" @click="autoArrange">
+      <div v-if="editable" class="ctb-r">
+        <Button size="sm" variant="outline" @click="autoArrange">
           <LayoutGrid class="h-3.5 w-3.5" />ترتيب تلقائي
         </Button>
-        <Button v-if="editable" size="sm" variant="outline" @click="openAddStage">
+        <Button size="sm" variant="outline" @click="openAddStage">
           <Plus class="h-3.5 w-3.5" />مرحلة
         </Button>
-        <Button v-if="editable" size="sm" @click="openAddTransition()">
-          <Plus class="h-3.5 w-3.5" />انتقال
-        </Button>
+        <Button size="sm" @click="openAddTransition()"> <Plus class="h-3.5 w-3.5" />انتقال </Button>
       </div>
     </div>
 
@@ -629,9 +713,15 @@ function handleFit() { void fitView({ duration: 300, padding: 0.12 }) }
         <Background :variant="BackgroundVariant.Dots" :size="1.5" :gap="24" />
 
         <Panel position="bottom-left" class="ccp">
-          <button type="button" class="ccb" aria-label="تكبير" @click="handleZoomIn"><ZoomIn class="h-4 w-4" /></button>
-          <button type="button" class="ccb" aria-label="تصغير" @click="handleZoomOut"><ZoomOut class="h-4 w-4" /></button>
-          <button type="button" class="ccb" aria-label="ملاءمة" @click="handleFit"><Expand class="h-4 w-4" /></button>
+          <button type="button" class="ccb" aria-label="تكبير" @click="handleZoomIn">
+            <ZoomIn class="h-4 w-4" />
+          </button>
+          <button type="button" class="ccb" aria-label="تصغير" @click="handleZoomOut">
+            <ZoomOut class="h-4 w-4" />
+          </button>
+          <button type="button" class="ccb" aria-label="ملاءمة" @click="handleFit">
+            <Expand class="h-4 w-4" />
+          </button>
         </Panel>
       </VueFlow>
     </div>
@@ -640,21 +730,27 @@ function handleFit() { void fitView({ duration: 300, padding: 0.12 }) }
     <Dialog v-model:open="stageDialogOpen">
       <DialogContent class="max-w-md">
         <DialogHeader>
-          <DialogTitle>{{ stageDialogMode === 'edit' ? 'تعديل المرحلة' : 'إضافة مرحلة' }}</DialogTitle>
+          <DialogTitle>{{
+            stageDialogMode === 'edit' ? 'تعديل المرحلة' : 'إضافة مرحلة'
+          }}</DialogTitle>
           <DialogDescription>عرّف بيانات المرحلة ضمن النسخة المسودة.</DialogDescription>
         </DialogHeader>
         <form class="flex flex-col gap-4" @submit="onStageSubmit">
           <FormField v-slot="{ componentField }" name="code">
             <FormItem>
               <FormLabel>الرمز</FormLabel>
-              <FormControl><Input v-bind="componentField" placeholder="INTAKE" dir="ltr" /></FormControl>
+              <FormControl
+                ><Input v-bind="componentField" placeholder="INTAKE" dir="ltr"
+              /></FormControl>
               <FormMessage />
             </FormItem>
           </FormField>
           <FormField v-slot="{ componentField }" name="name">
             <FormItem>
               <FormLabel>الاسم</FormLabel>
-              <FormControl><Input v-bind="componentField" placeholder="استلام الطلب" /></FormControl>
+              <FormControl
+                ><Input v-bind="componentField" placeholder="استلام الطلب"
+              /></FormControl>
               <FormMessage />
             </FormItem>
           </FormField>
@@ -689,7 +785,9 @@ function handleFit() { void fitView({ duration: 300, padding: 0.12 }) }
             <Select v-model="transFromId">
               <SelectTrigger><SelectValue placeholder="اختر المرحلة" /></SelectTrigger>
               <SelectContent>
-                <SelectItem v-for="s in stages" :key="s.id" :value="String(s.id)">{{ s.name }}</SelectItem>
+                <SelectItem v-for="s in stages" :key="s.id" :value="String(s.id)">{{
+                  s.name
+                }}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -698,7 +796,9 @@ function handleFit() { void fitView({ duration: 300, padding: 0.12 }) }
             <Select v-model="transActionId">
               <SelectTrigger><SelectValue placeholder="اختر الإجراء" /></SelectTrigger>
               <SelectContent>
-                <SelectItem v-for="a in actions" :key="a.id" :value="String(a.id)">{{ a.name }}</SelectItem>
+                <SelectItem v-for="a in actions" :key="a.id" :value="String(a.id)">{{
+                  a.name
+                }}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -707,7 +807,9 @@ function handleFit() { void fitView({ duration: 300, padding: 0.12 }) }
             <Select v-model="transToId">
               <SelectTrigger><SelectValue placeholder="اختر المرحلة" /></SelectTrigger>
               <SelectContent>
-                <SelectItem v-for="s in stages" :key="s.id" :value="String(s.id)">{{ s.name }}</SelectItem>
+                <SelectItem v-for="s in stages" :key="s.id" :value="String(s.id)">{{
+                  s.name
+                }}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -715,7 +817,9 @@ function handleFit() { void fitView({ duration: 300, padding: 0.12 }) }
             <Checkbox id="t-cmt" v-model:checked="transRequiresComment" />
             <Label for="t-cmt">يتطلب تعليق</Label>
           </div>
-          <p v-if="transError" class="text-xs text-[var(--severity-red)]" role="alert">{{ transError }}</p>
+          <p v-if="transError" class="text-xs text-[var(--severity-red)]" role="alert">
+            {{ transError }}
+          </p>
         </div>
         <DialogFooter>
           <Button variant="outline" @click="transDialogOpen = false">إلغاء</Button>
@@ -723,62 +827,102 @@ function handleFit() { void fitView({ duration: 300, padding: 0.12 }) }
         </DialogFooter>
       </DialogContent>
     </Dialog>
-
   </section>
 </template>
 
 <style>
 /* ── Theme tokens: canvas + nodes ─────────────────────────────────────────── */
 :root {
-  --cv-bg:       oklch(0.976 0 0);
-  --cv-dot:      oklch(0.84 0 0);
-  --nd-bg:       #ffffff;
-  --nd-brd:      #e2e5ea;
-  --nd-brd-h:    #b8bec9;
-  --nd-shd:      0 1px 3px rgb(0 0 0/.08), 0 0 0 1px rgb(0 0 0/.04);
-  --nd-shd-h:    0 4px 14px rgb(0 0 0/.12), 0 0 0 1px rgb(0 0 0/.06);
-  --nd-txt:      #1c222b;
-  --nd-sub:      #6c757d;
-  --nd-ico-bg:   #f1f3f6;
-  --color-edge-fwd:    #9ba4b1;
+  --cv-bg: oklch(0.976 0 0);
+  --cv-dot: oklch(0.84 0 0);
+  --nd-bg: #ffffff;
+  --nd-brd: #e2e5ea;
+  --nd-brd-h: #b8bec9;
+  --nd-shd: 0 1px 3px rgb(0 0 0/0.08), 0 0 0 1px rgb(0 0 0/0.04);
+  --nd-shd-h: 0 4px 14px rgb(0 0 0/0.12), 0 0 0 1px rgb(0 0 0/0.06);
+  --nd-txt: #1c222b;
+  --nd-sub: #6c757d;
+  --nd-ico-bg: #f1f3f6;
+  --color-edge-fwd: #9ba4b1;
   --color-edge-return: var(--severity-amber);
-  --hd-bg:       #9ba4b1;
-  --hd-brd:      #ffffff;
+  --hd-bg: #9ba4b1;
+  --hd-brd: #ffffff;
 }
 .dark {
-  --cv-bg:       oklch(0.145 0.004 265);
-  --cv-dot:      oklch(0.25 0.005 265);
-  --nd-bg:       oklch(0.205 0.005 265);
-  --nd-brd:      oklch(0.30 0.006 265);
-  --nd-brd-h:    oklch(0.40 0.006 265);
-  --nd-shd:      0 1px 4px rgb(0 0 0/.45), 0 0 0 1px rgb(255 255 255/.05);
-  --nd-shd-h:    0 4px 16px rgb(0 0 0/.55), 0 0 0 1px rgb(255 255 255/.08);
-  --nd-txt:      oklch(0.92 0 0);
-  --nd-sub:      oklch(0.60 0 0);
-  --nd-ico-bg:   oklch(0.26 0.005 265);
-  --color-edge-fwd:    oklch(0.48 0.005 265);
-  --hd-bg:       oklch(0.48 0.005 265);
-  --hd-brd:      oklch(0.205 0.005 265);
+  --cv-bg: oklch(0.145 0.004 265);
+  --cv-dot: oklch(0.25 0.005 265);
+  --nd-bg: oklch(0.205 0.005 265);
+  --nd-brd: oklch(0.3 0.006 265);
+  --nd-brd-h: oklch(0.4 0.006 265);
+  --nd-shd: 0 1px 4px rgb(0 0 0/0.45), 0 0 0 1px rgb(255 255 255/0.05);
+  --nd-shd-h: 0 4px 16px rgb(0 0 0/0.55), 0 0 0 1px rgb(255 255 255/0.08);
+  --nd-txt: oklch(0.92 0 0);
+  --nd-sub: oklch(0.6 0 0);
+  --nd-ico-bg: oklch(0.26 0.005 265);
+  --color-edge-fwd: oklch(0.48 0.005 265);
+  --hd-bg: oklch(0.48 0.005 265);
+  --hd-brd: oklch(0.205 0.005 265);
 }
 </style>
 
 <style scoped>
 /* ── Section ─────────────────────────────────────────────────────────────── */
-.cs { display: flex; flex-direction: column; gap: 12px; }
+.cs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 
 /* ── Toolbar ─────────────────────────────────────────────────────────────── */
-.ctb { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
-.ctb-l { display: flex; flex-direction: column; gap: 2px; }
-.ctb-title { font-size: 13px; font-weight: 600; color: var(--foreground); }
-.ctb-sub   { font-size: 11px; color: var(--muted-foreground); }
-.ctb-r { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ctb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 4px;
+}
+.ctb-l {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ctb-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.ctb-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--foreground);
+  font-family: var(--font-section, inherit);
+}
+.ctb-sub {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.ctb-r {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 .bdg-e {
-  display: inline-flex; align-items: center; gap: 5px;
-  border: 1px solid color-mix(in srgb,var(--severity-green) 30%,transparent);
-  background: color-mix(in srgb,var(--severity-green) 10%,transparent);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid color-mix(in srgb, var(--severity-green) 30%, transparent);
+  background: color-mix(in srgb, var(--severity-green) 10%, transparent);
   color: var(--severity-green);
 }
-.bdg-dot { width: 6px; height: 6px; border-radius: 9999px; background: var(--severity-green); }
+.bdg-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--severity-green);
+}
 
 /* ── Canvas frame ─────────────────────────────────────────────────────────── */
 .cf {
@@ -789,85 +933,207 @@ function handleFit() { void fitView({ duration: 300, padding: 0.12 }) }
   overflow: hidden;
   background: var(--cv-bg);
 }
-.cv { width: 100%; height: 100%; background: transparent !important; }
+.cv {
+  width: 100%;
+  height: 100%;
+  background: transparent !important;
+}
 
 /* Background dot colour via CSS var */
-:deep(.vue-flow__background) { background: var(--cv-bg); }
-:deep(.vue-flow__background pattern circle) { fill: var(--cv-dot); }
-:deep(.vue-flow__attribution) { display: none; }
+:deep(.vue-flow__background) {
+  background: var(--cv-bg);
+}
+:deep(.vue-flow__background pattern circle) {
+  fill: var(--cv-dot);
+}
+:deep(.vue-flow__attribution) {
+  display: none;
+}
 
 /* ── Stage node ─────────────────────────────────────────────────────────── */
-:deep(.snw) { position: relative; }
+:deep(.snw) {
+  position: relative;
+}
 :deep(.sn) {
-  display: flex; flex-direction: column;
-  border-radius: 12px; border: 1.5px solid var(--nd-brd);
-  background: var(--nd-bg); padding: 10px 12px;
-  box-shadow: var(--nd-shd); cursor: grab;
-  transition: border-color .15s, box-shadow .15s;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  border: 1.5px solid var(--nd-brd);
+  background: var(--nd-bg);
+  padding: 10px 12px;
+  box-shadow: var(--nd-shd);
+  cursor: grab;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
-:deep(.sn:hover)                              { border-color: var(--nd-brd-h); box-shadow: var(--nd-shd-h); }
-:deep(.vue-flow__node.selected .sn)           { border-color: #0066cc; box-shadow: 0 0 0 3px color-mix(in srgb,#0066cc 20%,transparent),var(--nd-shd-h); }
-:deep(.node-initial)                          { border-color: color-mix(in srgb,var(--severity-green) 60%,var(--nd-brd)); border-top: 3px solid var(--severity-green); }
-:deep(.node-final)                            { border-color: color-mix(in srgb,var(--severity-amber) 60%,var(--nd-brd)); border-bottom: 3px solid var(--severity-amber); }
+:deep(.sn:hover) {
+  border-color: var(--nd-brd-h);
+  box-shadow: var(--nd-shd-h);
+}
+:deep(.vue-flow__node.selected .sn) {
+  border-color: #0066cc;
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, #0066cc 20%, transparent),
+    var(--nd-shd-h);
+}
+:deep(.node-initial) {
+  border-color: color-mix(in srgb, var(--severity-green) 60%, var(--nd-brd));
+  border-top: 3px solid var(--severity-green);
+}
+:deep(.node-final) {
+  border-color: color-mix(in srgb, var(--severity-amber) 60%, var(--nd-brd));
+  border-bottom: 3px solid var(--severity-amber);
+}
 
-:deep(.sn-row)  { display: flex; align-items: center; gap: 10px; }
-:deep(.sn-icon) {
-  display: flex; align-items: center; justify-content: center;
-  width: 32px; height: 32px; border-radius: 8px;
-  background: var(--nd-ico-bg); flex-shrink: 0;
+:deep(.sn-row) {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
-:deep(.sn-icon--start) { background: color-mix(in srgb,var(--severity-green) 14%,transparent); }
-:deep(.sn-icon--end)   { background: color-mix(in srgb,var(--severity-amber) 14%,transparent); }
-:deep(.sn-ico)  { width: 14px; height: 14px; color: var(--nd-sub); }
-:deep(.sn-icon--start .sn-ico) { color: var(--severity-green); }
-:deep(.sn-icon--end   .sn-ico) { color: var(--severity-amber); }
-:deep(.sn-body) { flex: 1; min-width: 0; }
-:deep(.sn-name) { font-size: 12px; font-weight: 600; color: var(--nd-txt); line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-:deep(.sn-code) { font-size: 10px; font-family: monospace; color: var(--nd-sub); margin-top: 2px; letter-spacing: .02em; }
+:deep(.sn-icon) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--nd-ico-bg);
+  flex-shrink: 0;
+}
+:deep(.sn-icon--start) {
+  background: color-mix(in srgb, var(--severity-green) 14%, transparent);
+}
+:deep(.sn-icon--end) {
+  background: color-mix(in srgb, var(--severity-amber) 14%, transparent);
+}
+:deep(.sn-ico) {
+  width: 14px;
+  height: 14px;
+  color: var(--nd-sub);
+}
+:deep(.sn-icon--start .sn-ico) {
+  color: var(--severity-green);
+}
+:deep(.sn-icon--end .sn-ico) {
+  color: var(--severity-amber);
+}
+:deep(.sn-body) {
+  flex: 1;
+  min-width: 0;
+}
+:deep(.sn-name) {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--nd-txt);
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+:deep(.sn-code) {
+  font-size: 10px;
+  font-family: monospace;
+  color: var(--nd-sub);
+  margin-top: 2px;
+  letter-spacing: 0.02em;
+}
 
 /* Inline role tag (replaces old badge row) */
 :deep(.sn-tag) {
-  flex-shrink: 0; font-size: 9px; font-weight: 700; letter-spacing: .04em;
-  padding: 2px 7px; border-radius: 9999px; line-height: 1.5;
+  flex-shrink: 0;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  line-height: 1.5;
 }
 :deep(.sn-tag--start) {
-  background: color-mix(in srgb,var(--severity-green) 12%,transparent);
+  background: color-mix(in srgb, var(--severity-green) 12%, transparent);
   color: var(--severity-green);
-  border: 1px solid color-mix(in srgb,var(--severity-green) 28%,transparent);
+  border: 1px solid color-mix(in srgb, var(--severity-green) 28%, transparent);
 }
 :deep(.sn-tag--end) {
-  background: color-mix(in srgb,var(--severity-amber) 12%,transparent);
+  background: color-mix(in srgb, var(--severity-amber) 12%, transparent);
   color: var(--severity-amber);
-  border: 1px solid color-mix(in srgb,var(--severity-amber) 28%,transparent);
+  border: 1px solid color-mix(in srgb, var(--severity-amber) 28%, transparent);
 }
 
 /* ── Handles: hidden by default, visible on node hover or connecting ─────── */
 :deep(.fh) {
-  width: 10px !important; height: 10px !important;
-  background: var(--hd-bg) !important; border: 2px solid var(--hd-brd) !important;
-  border-radius: 9999px; opacity: 0;
-  transition: background .1s, transform .1s, opacity .1s;
+  width: 10px !important;
+  height: 10px !important;
+  background: var(--hd-bg) !important;
+  border: 2px solid var(--hd-brd) !important;
+  border-radius: 9999px;
+  opacity: 0;
+  transition:
+    background 0.1s,
+    transform 0.1s,
+    opacity 0.1s;
 }
-:deep(.vue-flow__node:hover .fh)            { opacity: 1; }
-:deep(.fh:hover),:deep(.fh.vue-flow__handle-connecting) { background: #0066cc !important; transform: scale(1.4); opacity: 1; }
-:deep(.fh.vue-flow__handle-valid)           { background: var(--severity-green) !important; opacity: 1; }
-:deep(.fh-ro)                               { cursor: default !important; pointer-events: none; }
+:deep(.vue-flow__node:hover .fh) {
+  opacity: 1;
+}
+:deep(.fh:hover),
+:deep(.fh.vue-flow__handle-connecting) {
+  background: #0066cc !important;
+  transform: scale(1.4);
+  opacity: 1;
+}
+:deep(.fh.vue-flow__handle-valid) {
+  background: var(--severity-green) !important;
+  opacity: 1;
+}
+:deep(.fh-ro) {
+  cursor: default !important;
+  pointer-events: none;
+}
 
 /* ── Edges ──────────────────────────────────────────────────────────────── */
-:deep(.vue-flow__edge-path) { stroke-linecap: round; stroke-linejoin: round; }
-:deep(.vue-flow__edge:hover .vue-flow__edge-path) { stroke-width: 2.5 !important; }
-:deep(.vue-flow__edge.selected .vue-flow__edge-path) { stroke-width: 2.5 !important; }
-:deep(.vue-flow__edge-label) { cursor: pointer; }
-:deep(.vue-flow__edgelabel-renderer) { pointer-events: all; }
+:deep(.vue-flow__edge-path) {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+:deep(.vue-flow__edge:hover .vue-flow__edge-path) {
+  stroke-width: 2.5 !important;
+}
+:deep(.vue-flow__edge.selected .vue-flow__edge-path) {
+  stroke-width: 2.5 !important;
+}
+:deep(.vue-flow__edge-label) {
+  cursor: pointer;
+}
+:deep(.vue-flow__edgelabel-renderer) {
+  pointer-events: all;
+}
 
 /* ── Controls panel ─────────────────────────────────────────────────────── */
-.ccp { display: flex; flex-direction: column; gap: 4px; padding: 6px; }
-.ccb {
-  display: flex; align-items: center; justify-content: center;
-  width: 32px; height: 32px; border-radius: 8px;
-  border: 1px solid var(--border); background: var(--card);
-  color: var(--muted-foreground); box-shadow: 0 1px 3px rgb(0 0 0/.08);
-  cursor: pointer; transition: background .12s,color .12s;
+.ccp {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
 }
-.ccb:hover { background: var(--muted); color: var(--foreground); }
+.ccb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--muted-foreground);
+  box-shadow: 0 1px 3px rgb(0 0 0/0.08);
+  cursor: pointer;
+  transition:
+    background 0.12s,
+    color 0.12s;
+}
+.ccb:hover {
+  background: var(--muted);
+  color: var(--foreground);
+}
 </style>

@@ -7,8 +7,9 @@ import type {
   WorkflowStage,
   WorkflowVersion,
 } from '@/types/models'
+import { SlidersHorizontal } from 'lucide-vue-next'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import {
   Table,
   TableBody,
@@ -75,58 +76,71 @@ onMounted(() => {
 
 <template>
   <div class="space-y-3">
-    <h4 class="font-section text-xs font-semibold">قواعد الحقول لهذه المرحلة</h4>
-
     <p v-if="error" class="text-xs text-[var(--severity-red)]" role="alert">{{ error }}</p>
 
-    <Empty v-else-if="fields.length === 0">
+    <Empty v-else-if="fields.length === 0" class="py-6">
+      <EmptyMedia variant="icon">
+        <SlidersHorizontal />
+      </EmptyMedia>
       <EmptyHeader>
         <EmptyTitle>لا توجد حقول</EmptyTitle>
         <EmptyDescription>عرّف الحقول أولاً لضبط قواعدها لكل مرحلة.</EmptyDescription>
       </EmptyHeader>
     </Empty>
 
-    <Table v-else>
-      <TableHeader>
-        <TableRow>
-          <TableHead class="text-right">الحقل</TableHead>
-          <TableHead class="text-right">ظاهر</TableHead>
-          <TableHead class="text-right">قابل للتعديل</TableHead>
-          <TableHead class="text-right">مطلوب</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        <TableRow v-for="field in fields" :key="field.id">
-          <TableCell>
-            <span class="font-mono text-xs">{{ field.key }}</span>
-            <span class="text-muted-foreground ms-1 text-xs">{{ field.label }}</span>
-          </TableCell>
-          <TableCell>
-            <Checkbox
-              :checked="flag(field.id, 'is_visible')"
-              :disabled="!editable || isPending(field.id)"
-              :aria-label="`ظاهر ${field.key}`"
-              @update:checked="(v: boolean) => toggle(field, 'is_visible', v)"
-            />
-          </TableCell>
-          <TableCell>
-            <Checkbox
-              :checked="flag(field.id, 'is_editable')"
-              :disabled="!editable || isPending(field.id)"
-              :aria-label="`قابل للتعديل ${field.key}`"
-              @update:checked="(v: boolean) => toggle(field, 'is_editable', v)"
-            />
-          </TableCell>
-          <TableCell>
-            <Checkbox
-              :checked="flag(field.id, 'is_required')"
-              :disabled="!editable || isPending(field.id)"
-              :aria-label="`مطلوب ${field.key}`"
-              @update:checked="(v: boolean) => toggle(field, 'is_required', v)"
-            />
-          </TableCell>
-        </TableRow>
-      </TableBody>
-    </Table>
+    <div v-else class="border-border overflow-hidden rounded-md border">
+      <Table
+        class="[&_td]:py-3.5 [&_td:first-child]:ps-4 [&_td:last-child]:pe-4 [&_th:first-child]:ps-4 [&_th:last-child]:pe-4"
+      >
+        <TableHeader>
+          <TableRow class="bg-muted/50 hover:bg-muted/50">
+            <TableHead class="text-right">الحقل</TableHead>
+            <TableHead class="text-center">ظاهر</TableHead>
+            <TableHead class="text-center">قابل للتعديل</TableHead>
+            <TableHead class="text-center">مطلوب</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow v-for="field in fields" :key="field.id" class="even:bg-muted/30">
+            <TableCell>
+              <div class="flex flex-col">
+                <span class="font-medium">{{ field.label }}</span>
+                <span class="text-muted-foreground font-mono text-xs">{{ field.key }}</span>
+              </div>
+            </TableCell>
+            <TableCell>
+              <div class="flex justify-center">
+                <Checkbox
+                  :checked="flag(field.id, 'is_visible')"
+                  :disabled="!editable || isPending(field.id)"
+                  :aria-label="`ظاهر ${field.key}`"
+                  @update:checked="(v: boolean) => toggle(field, 'is_visible', v)"
+                />
+              </div>
+            </TableCell>
+            <TableCell>
+              <div class="flex justify-center">
+                <Checkbox
+                  :checked="flag(field.id, 'is_editable')"
+                  :disabled="!editable || isPending(field.id)"
+                  :aria-label="`قابل للتعديل ${field.key}`"
+                  @update:checked="(v: boolean) => toggle(field, 'is_editable', v)"
+                />
+              </div>
+            </TableCell>
+            <TableCell>
+              <div class="flex justify-center">
+                <Checkbox
+                  :checked="flag(field.id, 'is_required')"
+                  :disabled="!editable || isPending(field.id)"
+                  :aria-label="`مطلوب ${field.key}`"
+                  @update:checked="(v: boolean) => toggle(field, 'is_required', v)"
+                />
+              </div>
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </div>
   </div>
 </template>

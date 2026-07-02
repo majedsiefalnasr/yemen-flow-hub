@@ -4,7 +4,7 @@ import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 import { z } from 'zod'
-import { AlertCircle, Pencil, Plus, Trash2 } from 'lucide-vue-next'
+import { AlertCircle, Pencil, Plus, Tag, Trash2 } from 'lucide-vue-next'
 import type { WorkflowAction, WorkflowActionKind } from '@/types/models'
 import ScreenGuard from '@/components/security/ScreenGuard.vue'
 import {
@@ -20,7 +20,23 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   Dialog,
   DialogContent,
@@ -151,16 +167,20 @@ onMounted(() => fetchActions())
 
 <template>
   <Card class="border-0 shadow">
-    <CardHeader class="pb-2">
-      <div class="flex items-center justify-between">
-        <CardTitle class="text-sm font-semibold">كتالوج الإجراءات</CardTitle>
+    <CardHeader class="pb-3">
+      <CardTitle class="font-section text-sm font-semibold">كتالوج الإجراءات</CardTitle>
+      <CardDescription class="text-xs">
+        عرّف الإجراءات التي يستخدمها المنفّذون على الطلبات (اعتماد، رفض، إعادة…). الرمز ثابت بعد
+        الإنشاء.
+      </CardDescription>
+      <CardAction>
         <ScreenGuard screen="workflow_designer" capability="CREATE">
           <Button size="sm" @click="openCreate"><Plus class="h-3.5 w-3.5" />إضافة إجراء</Button>
         </ScreenGuard>
-      </div>
+      </CardAction>
     </CardHeader>
-    <CardContent class="p-4 pt-0">
-      <Alert v-if="error" variant="destructive" role="alert">
+    <CardContent class="px-4 pb-4">
+      <Alert v-if="error" variant="destructive" role="alert" class="mb-2">
         <AlertCircle class="h-4 w-4" />
         <AlertTitle>تعذّر التحميل</AlertTitle>
         <AlertDescription>{{ error }}</AlertDescription>
@@ -170,60 +190,94 @@ onMounted(() => fetchActions())
         <Skeleton v-for="n in 3" :key="n" class="h-10 w-full rounded-md" />
       </div>
 
-      <Table v-else>
-        <TableHeader>
-          <TableRow>
-            <TableHead class="text-right">الرمز</TableHead>
-            <TableHead class="text-right">الاسم</TableHead>
-            <TableHead class="text-right">النوع</TableHead>
-            <TableHead class="text-right">نشط</TableHead>
-            <TableHead class="text-right">إجراء</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          <TableRow v-for="action in actions" :key="action.id">
-            <TableCell class="font-mono">{{ action.code }}</TableCell>
-            <TableCell>{{ action.name }}</TableCell>
-            <TableCell>
-              <Badge variant="secondary">{{ kindLabels[action.kind] }}</Badge>
-              <Badge v-if="action.is_system" variant="outline" class="ms-1">نظامي</Badge>
-            </TableCell>
-            <TableCell @click.stop>
-              <ScreenGuard screen="workflow_designer" capability="UPDATE">
-                <Switch
-                  :checked="action.is_active"
-                  :disabled="action.is_active && action.is_in_use"
-                  :aria-label="`تبديل حالة ${action.code}`"
-                  @update:checked="() => toggleActive(action)"
-                />
-              </ScreenGuard>
-            </TableCell>
-            <TableCell @click.stop>
-              <ScreenGuard screen="workflow_designer" capability="UPDATE">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  aria-label="تعديل الإجراء"
-                  @click="openEdit(action)"
-                >
-                  <Pencil class="h-3.5 w-3.5" />
-                </Button>
-              </ScreenGuard>
-              <ScreenGuard screen="workflow_designer" capability="DELETE">
-                <Button
-                  v-if="!action.is_system && !action.is_in_use"
-                  size="sm"
-                  variant="ghost"
-                  aria-label="حذف الإجراء"
-                  @click="deleting = action"
-                >
-                  <Trash2 class="h-3.5 w-3.5 text-[var(--severity-red)]" />
-                </Button>
-              </ScreenGuard>
-            </TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
+      <Empty v-else-if="actions.length === 0" class="py-10">
+        <EmptyMedia variant="icon">
+          <Tag />
+        </EmptyMedia>
+        <EmptyHeader>
+          <EmptyTitle>لا توجد إجراءات</EmptyTitle>
+          <EmptyDescription>أضف إجراءات لتتمكن من بناء الانتقالات بينها.</EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent>
+          <ScreenGuard screen="workflow_designer" capability="CREATE">
+            <Button size="sm" @click="openCreate"><Plus class="h-3.5 w-3.5" />إضافة إجراء</Button>
+          </ScreenGuard>
+        </EmptyContent>
+      </Empty>
+
+      <div v-else class="border-border overflow-hidden rounded-md border">
+        <Table
+          class="[&_td]:py-3.5 [&_td:first-child]:ps-4 [&_td:last-child]:pe-4 [&_th:first-child]:ps-4 [&_th:last-child]:pe-4"
+        >
+          <TableHeader>
+            <TableRow class="bg-muted/50 hover:bg-muted/50">
+              <TableHead class="text-right">الرمز</TableHead>
+              <TableHead class="text-right">الاسم</TableHead>
+              <TableHead class="text-right">النوع</TableHead>
+              <TableHead class="text-right">نشط</TableHead>
+              <TableHead class="text-left">إجراء</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow v-for="action in actions" :key="action.id" class="even:bg-muted/30">
+              <TableCell class="text-muted-foreground font-mono text-xs">{{
+                action.code
+              }}</TableCell>
+              <TableCell class="font-medium">{{ action.name }}</TableCell>
+              <TableCell>
+                <div class="flex flex-wrap items-center gap-1">
+                  <Badge variant="secondary">{{ kindLabels[action.kind] }}</Badge>
+                  <Badge v-if="action.is_system" variant="outline">نظامي</Badge>
+                </div>
+              </TableCell>
+              <TableCell @click.stop>
+                <ScreenGuard screen="workflow_designer" capability="UPDATE">
+                  <Switch
+                    :checked="action.is_active"
+                    :disabled="action.is_active && action.is_in_use"
+                    :aria-label="`تبديل حالة ${action.code}`"
+                    @update:checked="() => toggleActive(action)"
+                  />
+                </ScreenGuard>
+              </TableCell>
+              <TableCell class="text-left" @click.stop>
+                <div class="flex items-center justify-end gap-0.5">
+                  <ScreenGuard screen="workflow_designer" capability="UPDATE">
+                    <Tooltip>
+                      <TooltipTrigger as-child>
+                        <Button
+                          size="icon-sm"
+                          variant="ghost"
+                          aria-label="تعديل الإجراء"
+                          @click="openEdit(action)"
+                        >
+                          <Pencil class="h-3.5 w-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>تعديل الإجراء</TooltipContent>
+                    </Tooltip>
+                  </ScreenGuard>
+                  <ScreenGuard screen="workflow_designer" capability="DELETE">
+                    <Tooltip v-if="!action.is_system && !action.is_in_use">
+                      <TooltipTrigger as-child>
+                        <Button
+                          size="icon-sm"
+                          variant="ghost"
+                          aria-label="حذف الإجراء"
+                          @click="deleting = action"
+                        >
+                          <Trash2 class="h-3.5 w-3.5 text-[var(--severity-red)]" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>حذف الإجراء</TooltipContent>
+                    </Tooltip>
+                  </ScreenGuard>
+                </div>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </div>
     </CardContent>
 
     <Dialog v-model:open="dialogOpen">

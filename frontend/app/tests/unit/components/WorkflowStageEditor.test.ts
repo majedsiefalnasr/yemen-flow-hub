@@ -65,7 +65,18 @@ async function mountEditor(
 
   const wrapper = mount(WorkflowStageEditor, {
     props: { version: makeVersion(state) },
-    global: { plugins: [pinia], stubs: { Teleport: true, NuxtLink: true } },
+    global: {
+      plugins: [pinia],
+      stubs: {
+        Teleport: true,
+        NuxtLink: true,
+        // Tooltip requires a TooltipProvider ancestor supplied at the app root.
+        // In isolated mounts we render the trigger's default slot transparently.
+        Tooltip: { template: '<div><slot /></div>' },
+        TooltipTrigger: { template: '<div><slot /></div>' },
+        TooltipContent: { template: '<div><slot /></div>' },
+      },
+    },
   })
   await flushPromises()
 

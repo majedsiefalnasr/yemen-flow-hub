@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { Users } from 'lucide-vue-next'
 import type { WorkflowStage, WorkflowVersion } from '@/types/models'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useWorkflowStages } from '@/composables/useWorkflowStages'
 import StagePermissionEditor from '@/components/workflow/StagePermissionEditor.vue'
@@ -39,7 +40,10 @@ onMounted(load)
       <Skeleton v-for="n in 3" :key="n" class="h-32 w-full rounded-lg" />
     </div>
 
-    <Empty v-else-if="orderedStages.length === 0">
+    <Empty v-else-if="orderedStages.length === 0" class="py-10">
+      <EmptyMedia variant="icon">
+        <Users />
+      </EmptyMedia>
       <EmptyHeader>
         <EmptyTitle>لا توجد مراحل</EmptyTitle>
         <EmptyDescription>أضف المراحل في تبويب «المراحل» لضبط سير العملية.</EmptyDescription>
