@@ -76,12 +76,10 @@ const { zoomIn: flowZoomIn, zoomOut: flowZoomOut, fitView } = useVueFlow()
 // ── Layout constants ──────────────────────────────────────────────────────────
 const STAGE_W = 220
 const STAGE_H = 88
-// Gap between nodes horizontally (column gap)
+// Gap between nodes horizontally (within a row)
 const H_GAP = 160
-// Gap between nodes vertically (row gap)
+// Gap between rows (depth levels)
 const V_GAP = 120
-// Nodes per column before wrapping to next column
-const ROWS = 4
 
 const editable = computed(() => props.version.state === 'DRAFT' && props.version.is_editable)
 
@@ -91,21 +89,91 @@ const nodePositions = ref(new Map<string, { x: number; y: number }>())
 // ── Manual edge handle overrides (persists drag-reconnect until next graph load)
 const edgeHandleOverrides = ref(new Map<string, { sourceHandle: string; targetHandle: string }>())
 
-function computeAutoPositions(graphNodes: WorkflowGraphNode[]): Map<number, { x: number; y: number }> {
-  const sorted = [...graphNodes].sort((a, b) => a.sort_order - b.sort_order)
-  const map = new Map<number, { x: number; y: number }>()
+function computeAutoPositions(
+  graphNodes: WorkflowGraphNode[],
+  graphEdges: { from_stage_id: number; to_stage_id: number }[],
+): Map<number, { x: number; y: number }> {
   const SLOT_W = STAGE_W + H_GAP
   const SLOT_H = STAGE_H + V_GAP
-  sorted.forEach((n, i) => {
-    // Column-first layout: fill each column top-to-bottom, then move right
-    const row = i % ROWS
-    const col = Math.floor(i / ROWS)
-    map.set(n.id, { x: 40 + col * SLOT_W, y: 40 + row * SLOT_H })
+  const PAD_X = 40
+  const PAD_Y = 40
+
+  // Build adjacency for BFS
+  const outEdges = new Map<number, number[]>()
+  const inDegree = new Map<number, number>()
+  for (const n of graphNodes) { outEdges.set(n.id, []); inDegree.set(n.id, 0) }
+  for (const e of graphEdges) {
+    if (e.from_stage_id === e.to_stage_id) continue // skip self-loops
+    outEdges.get(e.from_stage_id)?.push(e.to_stage_id)
+    inDegree.set(e.to_stage_id, (inDegree.get(e.to_stage_id) ?? 0) + 1)
+  }
+
+  // Assign depth via longest-path BFS (Kahn's topological sort with max-depth tracking)
+  const depth = new Map<number, number>()
+  const queue: number[] = []
+  const inDegCopy = new Map(inDegree)
+  for (const n of graphNodes) {
+    depth.set(n.id, 0)
+    if ((inDegCopy.get(n.id) ?? 0) === 0) queue.push(n.id)
+  }
+  // BFS order respects sort_order for tie-breaking
+  queue.sort((a, b) => {
+    const na = graphNodes.find(n => n.id === a)!
+    const nb = graphNodes.find(n => n.id === b)!
+    return na.sort_order - nb.sort_order
   })
+  while (queue.length) {
+    const cur = queue.shift()!
+    for (const next of outEdges.get(cur) ?? []) {
+      const nd = (depth.get(cur) ?? 0) + 1
+      if (nd > (depth.get(next) ?? 0)) depth.set(next, nd)
+      const remaining = (inDegCopy.get(next) ?? 1) - 1
+      inDegCopy.set(next, remaining)
+      if (remaining === 0) queue.push(next)
+    }
+  }
+  // Nodes not reached (in a cycle) fall back to sort_order-based depth
+  for (const n of graphNodes) {
+    if (!depth.has(n.id)) depth.set(n.id, n.sort_order)
+  }
+
+  // Group nodes by depth (= row)
+  const rows = new Map<number, number[]>()
+  for (const n of graphNodes) {
+    const d = depth.get(n.id)!
+    const row = rows.get(d) ?? []
+    row.push(n.id)
+    rows.set(d, row)
+  }
+
+  // Sort each row by sort_order for consistent column positions
+  for (const [, ids] of rows) {
+    ids.sort((a, b) => {
+      const na = graphNodes.find(n => n.id === a)!
+      const nb = graphNodes.find(n => n.id === b)!
+      return na.sort_order - nb.sort_order
+    })
+  }
+
+  // Determine canvas width based on max row width
+  const maxRowSize = Math.max(...[...rows.values()].map(r => r.length))
+  const totalW = maxRowSize * SLOT_W
+
+  // Position each node: centred within its row
+  const map = new Map<number, { x: number; y: number }>()
+  for (const [d, ids] of rows) {
+    const rowW = ids.length * SLOT_W
+    const startX = PAD_X + (totalW - rowW) / 2
+    ids.forEach((id, i) => {
+      map.set(id, { x: startX + i * SLOT_W, y: PAD_Y + d * SLOT_H })
+    })
+  }
   return map
 }
 
-const autoPositions = computed(() => computeAutoPositions(graph.value?.nodes ?? []))
+const autoPositions = computed(() =>
+  computeAutoPositions(graph.value?.nodes ?? [], graph.value?.edges ?? [])
+)
 
 
 // ── Parallel edge helpers ─────────────────────────────────────────────────────
