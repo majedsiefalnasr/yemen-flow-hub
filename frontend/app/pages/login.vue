@@ -6,6 +6,8 @@ import {
   CheckCircle2,
   ChevronRight,
   Copy,
+  Eye,
+  EyeOff,
   KeyRound,
   Lock,
   Loader2,
@@ -21,7 +23,6 @@ import { useRouter, useRoute } from 'vue-router'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Progress } from '@/components/ui/progress'
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
@@ -77,18 +78,6 @@ const route = useRoute()
 const auth = useAuthStore()
 const pageDir = computed<'rtl' | 'ltr'>(() => (auth.preferredLanguage === 'en' ? 'ltr' : 'rtl'))
 
-const STEP_PROGRESS: Partial<Record<LoginStep, number>> = {
-  'account-select': 10,
-  pin: 65,
-  'pin-reset': 20,
-  password: 35,
-  authenticator: 75,
-  'authenticator-setup': 70,
-  'save-account': 88,
-  'create-pin': 94,
-}
-const loginProgress = computed(() => STEP_PROGRESS[step.value] ?? 0)
-
 const nextPath = computed(() => {
   const candidate = route.query.next
   if (typeof candidate !== 'string') return '/dashboard'
@@ -140,7 +129,7 @@ async function navigateAfterAuth() {
 }
 
 // ─── Saved accounts ───────────────────────────────────────────────────────────
-const { accounts, addAccount, removeAccount, setPINStatus } = useSavedAccounts()
+const { accounts, addAccount, removeAccount, getPINStatus, setPINStatus } = useSavedAccounts()
 const { setupTotp, verifyTotpSetup, setPin } = useProfile()
 
 const selectedAccountId = ref<string | null>(null)
@@ -154,9 +143,9 @@ function selectSavedAccount(id: string) {
   selectedAccountId.value = id
   pendingEmail.value = account.email
   serverError.value = null
-  // Always offer PIN first for saved accounts.
-  // If PIN is not configured for this account, backend response guides user to password/reset.
-  pushStep('pin')
+  // Offer PIN only when this device has a PIN configured for the account.
+  // Otherwise send the user straight to password entry — no empty PIN screen.
+  pushStep(getPINStatus(account.email) ? 'pin' : 'password')
 }
 
 function removeSavedAccount(id: string) {
@@ -524,11 +513,6 @@ watch(step, (newStep) => {
     <!-- ─── Form panel (right on desktop) ─────────────────────────────────── -->
     <div class="login-form-col">
       <div ref="formPanelRef" class="login-form-wrap">
-        <!-- Step progress — hidden on first step -->
-        <div v-if="step !== 'account-select'" class="mb-6">
-          <Progress :model-value="loginProgress" class="h-1" aria-label="تقدم تسجيل الدخول" />
-        </div>
-
         <!-- Inactivity banner -->
         <Alert
           v-if="showInactivityBanner && !inactivityBannerDismissed"
@@ -776,34 +760,8 @@ watch(step, (newStep) => {
                   :aria-label="showPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'"
                   @click="showPassword = !showPassword"
                 >
-                  <!-- Eye-off -->
-                  <svg
-                    v-if="showPassword"
-                    class="size-4"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
-                    />
-                    <line x1="1" y1="1" x2="23" y2="23" />
-                  </svg>
-                  <!-- Eye -->
-                  <svg
-                    v-else
-                    class="size-4"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    aria-hidden="true"
-                  >
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </svg>
+                  <EyeOff v-if="showPassword" class="size-4" aria-hidden="true" />
+                  <Eye v-else class="size-4" aria-hidden="true" />
                 </Button>
               </div>
               <p
