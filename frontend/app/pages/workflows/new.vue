@@ -1,30 +1,56 @@
+<!-- app/pages/workflows/new.vue -->
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useEngineRequestsStore } from '@/stores/engineRequests.store'
+import { useAuthStore } from '@/stores/auth.store'
+import { UserRole } from '@/types/enums'
+import PageHeader from '@/components/layout/PageHeader.vue'
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Empty, EmptyMedia, EmptyHeader, EmptyTitle, EmptyDescription } from '@/components/ui/empty'
-import { Inbox } from 'lucide-vue-next'
+import { Inbox, ShieldAlert } from 'lucide-vue-next'
 
 definePageMeta({ middleware: ['auth', 'screen'], requiredScreen: 'requests' })
 
 const store = useEngineRequestsStore()
+const auth = useAuthStore()
+
+const canCreate = computed(() => auth.currentRole === UserRole.DATA_ENTRY)
 
 onMounted(() => {
-  store.loadAvailableWorkflows()
+  if (canCreate.value) store.loadAvailableWorkflows()
 })
 
 async function startWorkflow(versionId: number) {
   const instance = await store.createInstance({ workflow_version_id: versionId, data: {} })
-  await navigateTo(`/workflows/instances/${instance.id}`)
+  await navigateTo(`/workflows/instances/${instance.id}?mode=wizard`)
 }
 </script>
 
 <template>
   <div class="flex flex-col gap-6 p-6" dir="rtl">
-    <h1 class="text-foreground text-lg font-semibold">إنشاء طلب جديد</h1>
+    <PageHeader
+      title="طلب تمويل جديد"
+      subtitle="اختر مسار العمل لبدء طلب تمويل جديد وإدخال بياناته خطوة بخطوة."
+      :breadcrumbs="[
+        { label: 'الرئيسية', to: '/dashboard' },
+        { label: 'طلبات التمويل', to: '/workflows' },
+        { label: 'طلب جديد' },
+      ]"
+    />
 
-    <div v-if="store.loading" class="grid grid-cols-2 gap-4">
+    <Empty v-if="!canCreate">
+      <EmptyMedia variant="icon"><ShieldAlert /></EmptyMedia>
+      <EmptyHeader>
+        <EmptyTitle>غير مصرح بإنشاء الطلبات</EmptyTitle>
+        <EmptyDescription>
+          إنشاء طلبات التمويل مقصور على موظفي الإدخال. دورك الحالي لا يسمح بذلك.
+        </EmptyDescription>
+      </EmptyHeader>
+    </Empty>
+
+    <div v-else-if="store.loading" class="grid gap-4 sm:grid-cols-2">
       <Skeleton v-for="n in 2" :key="n" class="h-32 w-full rounded-xl" />
     </div>
 
@@ -32,13 +58,11 @@ async function startWorkflow(versionId: number) {
       <EmptyMedia variant="icon"><Inbox /></EmptyMedia>
       <EmptyHeader>
         <EmptyTitle>لا توجد مسارات عمل متاحة</EmptyTitle>
-        <EmptyDescription>
-          لا يوجد مسار عمل منشور يمكنك بدء طلب جديد ضمنه حالياً.
-        </EmptyDescription>
+        <EmptyDescription>لا يوجد مسار عمل منشور يمكنك بدء طلب جديد ضمنه حالياً.</EmptyDescription>
       </EmptyHeader>
     </Empty>
 
-    <div v-else class="grid grid-cols-2 gap-4">
+    <div v-else class="grid gap-4 sm:grid-cols-2">
       <Card
         v-for="workflow in store.availableWorkflows"
         :key="workflow.version_id"
@@ -46,9 +70,9 @@ async function startWorkflow(versionId: number) {
       >
         <CardHeader>
           <CardTitle class="text-sm font-semibold">{{ workflow.name }}</CardTitle>
-          <CardDescription class="text-xs">
-            {{ workflow.code }} — الإصدار {{ workflow.version_number }}
-          </CardDescription>
+          <CardDescription class="text-xs"
+            >{{ workflow.code }} — الإصدار {{ workflow.version_number }}</CardDescription
+          >
         </CardHeader>
         <CardFooter>
           <Button
