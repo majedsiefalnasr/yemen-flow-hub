@@ -4,6 +4,9 @@ import { mount } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 import WorkflowsNewPage from '@/pages/workflows/new.vue'
 import { useEngineRequestsStore } from '@/stores/engineRequests.store'
+import { useAuthStore } from '@/stores/auth.store'
+import { UserRole } from '@/types/enums'
+import type { AuthUser } from '@/types/models'
 
 const mockNavigateTo = vi.fn()
 vi.stubGlobal('navigateTo', mockNavigateTo)
@@ -69,10 +72,23 @@ vi.mock('@/composables/useEngineRequestDocuments', () => ({
   }),
 }))
 
+const DATA_ENTRY_USER: AuthUser = {
+  id: 1,
+  name: 'موظف الإدخال',
+  email: 'data-entry@example.com',
+  role: UserRole.DATA_ENTRY,
+  bank_id: 1,
+  bank_name_ar: 'البنك اليمني الدولي',
+  bank_name_en: 'Yemen International Bank',
+  is_active: true,
+}
+
 describe('workflows/new.vue', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     mockNavigateTo.mockReset()
+    const auth = useAuthStore()
+    auth.user = DATA_ENTRY_USER
   })
 
   it('loads available workflows on mount', () => {
@@ -117,6 +133,6 @@ describe('workflows/new.vue', () => {
     await wrapper.vm.$nextTick()
 
     expect(store.createInstance).toHaveBeenCalledWith({ workflow_version_id: 10, data: {} })
-    expect(mockNavigateTo).toHaveBeenCalledWith('/workflows/instances/99')
+    expect(mockNavigateTo).toHaveBeenCalledWith('/workflows/instances/99?mode=wizard')
   })
 })

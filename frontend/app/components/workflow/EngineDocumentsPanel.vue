@@ -4,10 +4,11 @@ import type { EngineRequestDocument } from '@/types/models'
 import { useEngineRequestDocuments } from '@/composables/useEngineRequestDocuments'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Empty, EmptyMedia, EmptyHeader, EmptyTitle, EmptyDescription } from '@/components/ui/empty'
 import { FileText, Download, Trash2 } from 'lucide-vue-next'
 
-const props = defineProps<{
+defineProps<{
   documents: EngineRequestDocument[]
   requestId: number
   canManage: boolean
@@ -43,10 +44,14 @@ function onFileChange(event: Event) {
         <FileText class="text-muted-foreground h-5 w-5 shrink-0" />
         <div class="min-w-0 flex-1">
           <p class="truncate text-sm font-medium">{{ doc.original_name }}</p>
-          <p class="text-muted-foreground text-xs">{{ uploaderName(doc) }} · {{ formatDate(doc.created_at) }}</p>
+          <p class="text-muted-foreground text-xs">
+            {{ uploaderName(doc) }} · {{ formatDate(doc.created_at) }}
+          </p>
         </div>
         <a :href="downloadUrl(requestId, doc.id)" target="_blank" rel="noopener">
-          <Button variant="ghost" size="icon" aria-label="تنزيل"><Download class="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" aria-label="تنزيل"
+            ><Download class="h-4 w-4"
+          /></Button>
         </a>
         <Button
           v-if="canManage"
@@ -69,7 +74,7 @@ function onFileChange(event: Event) {
     </Empty>
 
     <div v-if="canManage" class="border-t pt-4">
-      <label class="text-muted-foreground mb-1 block text-xs">إرفاق مستند</label>
+      <Label class="text-muted-foreground mb-1 block text-xs">إرفاق مستند</Label>
       <Input type="file" accept="application/pdf" @change="onFileChange" />
     </div>
   </div>
