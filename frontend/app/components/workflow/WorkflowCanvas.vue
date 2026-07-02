@@ -76,12 +76,12 @@ const { zoomIn: flowZoomIn, zoomOut: flowZoomOut, fitView } = useVueFlow()
 // ── Layout constants ──────────────────────────────────────────────────────────
 const STAGE_W = 220
 const STAGE_H = 88
-// Gap between stage right edge and next stage left edge
-const H_GAP = 120
-// Gap between rows
-const V_GAP = 100
-// Stages per row before wrapping
-const COLS = 4
+// Gap between nodes horizontally (column gap)
+const H_GAP = 160
+// Gap between nodes vertically (row gap)
+const V_GAP = 120
+// Nodes per column before wrapping to next column
+const ROWS = 4
 
 const editable = computed(() => props.version.state === 'DRAFT' && props.version.is_editable)
 
@@ -97,8 +97,9 @@ function computeAutoPositions(graphNodes: WorkflowGraphNode[]): Map<number, { x:
   const SLOT_W = STAGE_W + H_GAP
   const SLOT_H = STAGE_H + V_GAP
   sorted.forEach((n, i) => {
-    const col = i % COLS
-    const row = Math.floor(i / COLS)
+    // Column-first layout: fill each column top-to-bottom, then move right
+    const row = i % ROWS
+    const col = Math.floor(i / ROWS)
     map.set(n.id, { x: 40 + col * SLOT_W, y: 40 + row * SLOT_H })
   })
   return map
@@ -106,44 +107,100 @@ function computeAutoPositions(graphNodes: WorkflowGraphNode[]): Map<number, { x:
 
 const autoPositions = computed(() => computeAutoPositions(graph.value?.nodes ?? []))
 
-function stagePos(stageId: number): { x: number; y: number } {
-  return nodePositions.value.get(`stage-${stageId}`) ?? autoPositions.value.get(stageId) ?? { x: 0, y: 0 }
+
+// ── Parallel edge helpers ─────────────────────────────────────────────────────
+// Multiple transitions between the same (from, to) pair get spread handle positions
+// so their bezier curves and labels separate visually.
+// Returns X% position along the node's top/bottom edge for a given slot.
+function parallelOffsetPct(slot: number, total: number): number {
+  if (total === 1) return 50
+  const spread = Math.min(64, total * 20)
+  return 50 - spread / 2 + slot * (spread / (total - 1))
 }
+
+type HandleDesc = { id: string; offsetPct: number }
+
+// Precompute per-node handle descriptors from the edge list so StageNode can
+// render exactly one VueFlow Handle per incoming/outgoing transition at the
+// right X offset.
+const nodeHandles = computed(() => {
+  const raw = graph.value?.edges ?? []
+  const pairCount = new Map<string, number>()
+  for (const e of raw) {
+    const k = `${e.from_stage_id}->${e.to_stage_id}`
+    pairCount.set(k, (pairCount.get(k) ?? 0) + 1)
+  }
+  const pairSlot = new Map<string, number>()
+  const srcHandles = new Map<number, HandleDesc[]>()
+  const tgtHandles = new Map<number, HandleDesc[]>()
+  for (const e of raw) {
+    const k = `${e.from_stage_id}->${e.to_stage_id}`
+    const slot = pairSlot.get(k) ?? 0
+    pairSlot.set(k, slot + 1)
+    const pct = parallelOffsetPct(slot, pairCount.get(k)!)
+    const src = srcHandles.get(e.from_stage_id) ?? []
+    src.push({ id: `${e.from_stage_id}-b-${e.id}`, offsetPct: pct })
+    srcHandles.set(e.from_stage_id, src)
+    const tgt = tgtHandles.get(e.to_stage_id) ?? []
+    tgt.push({ id: `${e.to_stage_id}-t-${e.id}`, offsetPct: pct })
+    tgtHandles.set(e.to_stage_id, tgt)
+  }
+  return { srcHandles, tgtHandles }
+})
 
 // ── Custom StageNode ──────────────────────────────────────────────────────────
 // Handle layout by node role (top-to-bottom canvas, direction-neutral):
-//   initial → bottom source only   (flow starts here, nothing enters)
-//   final   → top target only      (flow ends here, nothing leaves)
-//   default → top target + bottom source (passes flow through)
+//   initial → per-edge bottom source handles only
+//   final   → per-edge top target handles only
+//   default → per-edge top target + bottom source handles
 const StageNode = {
   name: 'StageNode',
   props: ['data'],
-  setup(p: { data: { label: string; code: string; isInitial: boolean; isFinal: boolean; stageId: number; editable: boolean } }) {
+  setup(p: { data: {
+    label: string; code: string; isInitial: boolean; isFinal: boolean
+    stageId: number; editable: boolean
+    srcHandles: HandleDesc[]; tgtHandles: HandleDesc[]
+  }}) {
     return () => {
-      const { label, code, isInitial, isFinal, stageId, editable: isEditable } = p.data
-      const hc = ['fh', isEditable ? '' : 'fh-ro']
+      const { label, code, isInitial, isFinal, stageId, editable: isEditable, srcHandles, tgtHandles } = p.data
+      const hcBase = isEditable ? 'fh' : 'fh fh-ro'
       const nodeCls = ['sn', isInitial ? 'node-initial' : isFinal ? 'node-final' : '']
       const icoCls = isInitial ? 'sn-icon sn-icon--start' : isFinal ? 'sn-icon sn-icon--end' : 'sn-icon'
       const IcoComponent = isInitial ? Play : isFinal ? Square : GitBranch
+
+      // Fall back to single centred handle when node has no edges yet
+      const tHandles: HandleDesc[] = (tgtHandles?.length ? tgtHandles : [{ id: `${stageId}-t`, offsetPct: 50 }])
+      const bHandles: HandleDesc[] = (srcHandles?.length ? srcHandles : [{ id: `${stageId}-b`, offsetPct: 50 }])
+
       return h('div', { class: 'snw' }, [
-        // Target handle on top — all non-initial nodes receive flow from above
-        !isInitial && h(Handle, { id: `${stageId}-t`, type: 'target', position: Position.Top, class: hc, connectable: isEditable }),
+        // Target handles on top — non-initial nodes
+        !isInitial && tHandles.map((hd) =>
+          h(Handle, {
+            id: hd.id, type: 'target', position: Position.Top, class: hcBase,
+            style: { left: `${hd.offsetPct}%`, transform: 'translateX(-50%)' },
+            connectable: isEditable,
+          })
+        ),
         h('div', { class: nodeCls, style: { width: `${STAGE_W}px` }, 'data-testid': `workflow-canvas-node-${stageId}` }, [
           h('div', { class: 'sn-row' }, [
-            h('div', { class: icoCls }, [
-              h(IcoComponent, { class: 'sn-ico' }),
-            ]),
+            h('div', { class: icoCls }, [h(IcoComponent, { class: 'sn-ico' })]),
             h('div', { class: 'sn-body' }, [
               h('div', { class: 'sn-name' }, label),
               h('div', { class: 'sn-code' }, code),
             ]),
-            (isInitial || isFinal) && h('span', { class: isInitial ? 'sn-tag sn-tag--start' : 'sn-tag sn-tag--end' },
-              isInitial ? 'بداية' : 'نهاية',
-            ),
+            (isInitial || isFinal) && h('span', {
+              class: isInitial ? 'sn-tag sn-tag--start' : 'sn-tag sn-tag--end',
+            }, isInitial ? 'بداية' : 'نهاية'),
           ]),
         ]),
-        // Source handle on bottom — all non-final nodes emit flow downward
-        !isFinal && h(Handle, { id: `${stageId}-b`, type: 'source', position: Position.Bottom, class: hc, connectable: isEditable }),
+        // Source handles on bottom — non-final nodes
+        !isFinal && bHandles.map((hd) =>
+          h(Handle, {
+            id: hd.id, type: 'source', position: Position.Bottom, class: hcBase,
+            style: { left: `${hd.offsetPct}%`, transform: 'translateX(-50%)' },
+            connectable: isEditable,
+          })
+        ),
       ])
     }
   },
@@ -157,7 +214,16 @@ const nodes = computed<Node[]>(() =>
     id: `stage-${n.id}`,
     type: 'stage',
     position: nodePositions.value.get(`stage-${n.id}`) ?? autoPositions.value.get(n.id) ?? { x: 0, y: 0 },
-    data: { label: n.display_label || n.name, code: n.code, isInitial: n.is_initial, isFinal: n.is_final, stageId: n.id, editable: editable.value },
+    data: {
+      label: n.display_label || n.name,
+      code: n.code,
+      isInitial: n.is_initial,
+      isFinal: n.is_final,
+      stageId: n.id,
+      editable: editable.value,
+      srcHandles: nodeHandles.value.srcHandles.get(n.id) ?? [],
+      tgtHandles: nodeHandles.value.tgtHandles.get(n.id) ?? [],
+    },
     draggable: true,
     selectable: true,
     connectable: editable.value,
@@ -165,7 +231,8 @@ const nodes = computed<Node[]>(() =>
 )
 
 // ── Edges: stage→stage with action label ─────────────────────────────────────
-// Canvas flows top-to-bottom: source always exits bottom, target always enters top.
+// Each edge uses its own unique handle id (includes edge DB id) so parallel
+// transitions between the same node pair exit/enter at different X positions.
 const edges = computed<Edge[]>(() =>
   (graph.value?.edges ?? []).map((e) => {
     const edgeId = `e${e.id}`
@@ -177,9 +244,9 @@ const edges = computed<Edge[]>(() =>
     return {
       id: edgeId,
       source: `stage-${e.from_stage_id}`,
-      sourceHandle: override?.sourceHandle ?? `${e.from_stage_id}-b`,
+      sourceHandle: override?.sourceHandle ?? `${e.from_stage_id}-b-${e.id}`,
       target: `stage-${e.to_stage_id}`,
-      targetHandle: override?.targetHandle ?? `${e.to_stage_id}-t`,
+      targetHandle: override?.targetHandle ?? `${e.to_stage_id}-t-${e.id}`,
       type: 'default',
       animated: e.is_return,
       label,
