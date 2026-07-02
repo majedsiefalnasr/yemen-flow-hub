@@ -15,7 +15,7 @@ const props = defineProps<{
 const steps = computed(() => buildStagePath(props.graph, props.currentStageId, props.history))
 const currentIndex = computed(() => {
   const i = steps.value.findIndex((s) => s.status === 'current')
-  return i === -1 ? 1 : i + 1
+  return i === -1 ? 0 : i + 1
 })
 </script>
 
@@ -27,6 +27,7 @@ const currentIndex = computed(() => {
         :key="step.id"
         :step="index + 1"
         :completed="step.status === 'visited'"
+        :disabled="true"
         class="flex-1"
       >
         <StepperTrigger class="pointer-events-none flex-col gap-1">
