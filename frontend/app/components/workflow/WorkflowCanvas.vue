@@ -74,8 +74,8 @@ const { actions, fetchActions } = useWorkflowActions()
 const { zoomIn: flowZoomIn, zoomOut: flowZoomOut, fitView } = useVueFlow()
 
 // ── Layout constants ──────────────────────────────────────────────────────────
-const STAGE_W = 200
-const STAGE_H = 80
+const STAGE_W = 220
+const STAGE_H = 88
 // Gap between stage right edge and next stage left edge
 const H_GAP = 120
 // Gap between rows
@@ -110,34 +110,40 @@ function stagePos(stageId: number): { x: number; y: number } {
   return nodePositions.value.get(`stage-${stageId}`) ?? autoPositions.value.get(stageId) ?? { x: 0, y: 0 }
 }
 
-// ── Custom StageNode (rectangle) ──────────────────────────────────────────────
+// ── Custom StageNode ──────────────────────────────────────────────────────────
+// Handle layout by node role (top-to-bottom canvas, direction-neutral):
+//   initial → bottom source only   (flow starts here, nothing enters)
+//   final   → top target only      (flow ends here, nothing leaves)
+//   default → top target + bottom source (passes flow through)
 const StageNode = {
   name: 'StageNode',
   props: ['data'],
   setup(p: { data: { label: string; code: string; isInitial: boolean; isFinal: boolean; stageId: number; editable: boolean } }) {
     return () => {
       const { label, code, isInitial, isFinal, stageId, editable: isEditable } = p.data
-      const borderCls = isInitial ? 'node-initial' : isFinal ? 'node-final' : ''
+      const hc = ['fh', isEditable ? '' : 'fh-ro']
+      const nodeCls = ['sn', isInitial ? 'node-initial' : isFinal ? 'node-final' : '']
+      const icoCls = isInitial ? 'sn-icon sn-icon--start' : isFinal ? 'sn-icon sn-icon--end' : 'sn-icon'
+      const IcoComponent = isInitial ? Play : isFinal ? Square : GitBranch
       return h('div', { class: 'snw' }, [
-        h(Handle, { id: `${stageId}-l`, type: 'target', position: Position.Left, class: ['fh', isEditable ? '' : 'fh-ro'], connectable: isEditable }),
-        h(Handle, { id: `${stageId}-t`, type: 'target', position: Position.Top, class: ['fh', isEditable ? '' : 'fh-ro'], connectable: isEditable }),
-        h('div', { class: ['sn', borderCls], style: { width: `${STAGE_W}px`, minHeight: `${STAGE_H}px` }, 'data-testid': `workflow-canvas-node-${stageId}` }, [
+        // Target handle on top — all non-initial nodes receive flow from above
+        !isInitial && h(Handle, { id: `${stageId}-t`, type: 'target', position: Position.Top, class: hc, connectable: isEditable }),
+        h('div', { class: nodeCls, style: { width: `${STAGE_W}px` }, 'data-testid': `workflow-canvas-node-${stageId}` }, [
           h('div', { class: 'sn-row' }, [
-            h('div', { class: 'sn-icon' }, [
-              h(isInitial ? Play : isFinal ? Square : GitBranch, { class: 'sn-ico' }),
+            h('div', { class: icoCls }, [
+              h(IcoComponent, { class: 'sn-ico' }),
             ]),
             h('div', { class: 'sn-body' }, [
               h('div', { class: 'sn-name' }, label),
               h('div', { class: 'sn-code' }, code),
             ]),
-          ]),
-          (isInitial || isFinal) && h('div', { class: 'sn-badges' }, [
-            isInitial && h('span', { class: 'sb sb-g' }, 'بداية'),
-            isFinal && h('span', { class: 'sb sb-a' }, 'نهاية'),
+            (isInitial || isFinal) && h('span', { class: isInitial ? 'sn-tag sn-tag--start' : 'sn-tag sn-tag--end' },
+              isInitial ? 'بداية' : 'نهاية',
+            ),
           ]),
         ]),
-        h(Handle, { id: `${stageId}-r`, type: 'source', position: Position.Right, class: ['fh', isEditable ? '' : 'fh-ro'], connectable: isEditable }),
-        h(Handle, { id: `${stageId}-b`, type: 'source', position: Position.Bottom, class: ['fh', isEditable ? '' : 'fh-ro'], connectable: isEditable }),
+        // Source handle on bottom — all non-final nodes emit flow downward
+        !isFinal && h(Handle, { id: `${stageId}-b`, type: 'source', position: Position.Bottom, class: hc, connectable: isEditable }),
       ])
     }
   },
@@ -159,13 +165,11 @@ const nodes = computed<Node[]>(() =>
 )
 
 // ── Edges: stage→stage with action label ─────────────────────────────────────
+// Canvas flows top-to-bottom: source always exits bottom, target always enters top.
 const edges = computed<Edge[]>(() =>
   (graph.value?.edges ?? []).map((e) => {
     const edgeId = `e${e.id}`
     const override = edgeHandleOverrides.value.get(edgeId)
-    const fp = stagePos(e.from_stage_id)
-    const tp = stagePos(e.to_stage_id)
-    const isBelow = tp.y > fp.y + STAGE_H / 2
     const color = e.is_return ? 'var(--color-edge-return)' : 'var(--color-edge-fwd)'
     const style = { stroke: color, strokeWidth: 1.5, strokeDasharray: e.is_return ? '6 3' : undefined }
     const marker = { type: MarkerType.Arrow, color, width: 18, height: 18 }
@@ -173,9 +177,9 @@ const edges = computed<Edge[]>(() =>
     return {
       id: edgeId,
       source: `stage-${e.from_stage_id}`,
-      sourceHandle: override?.sourceHandle ?? (isBelow ? `${e.from_stage_id}-b` : `${e.from_stage_id}-r`),
+      sourceHandle: override?.sourceHandle ?? `${e.from_stage_id}-b`,
       target: `stage-${e.to_stage_id}`,
-      targetHandle: override?.targetHandle ?? (isBelow ? `${e.to_stage_id}-t` : `${e.to_stage_id}-l`),
+      targetHandle: override?.targetHandle ?? `${e.to_stage_id}-t`,
       type: 'default',
       animated: e.is_return,
       label,
@@ -660,28 +664,47 @@ function handleFit() { void fitView({ duration: 300, padding: 0.12 }) }
 /* ── Stage node ─────────────────────────────────────────────────────────── */
 :deep(.snw) { position: relative; }
 :deep(.sn) {
-  display: flex; flex-direction: column; gap: 5px;
-  border-radius: 10px; border: 1.5px solid var(--nd-brd);
-  background: var(--nd-bg); padding: 9px 11px;
+  display: flex; flex-direction: column;
+  border-radius: 12px; border: 1.5px solid var(--nd-brd);
+  background: var(--nd-bg); padding: 10px 12px;
   box-shadow: var(--nd-shd); cursor: grab;
   transition: border-color .15s, box-shadow .15s;
 }
 :deep(.sn:hover)                              { border-color: var(--nd-brd-h); box-shadow: var(--nd-shd-h); }
 :deep(.vue-flow__node.selected .sn)           { border-color: #0066cc; box-shadow: 0 0 0 3px color-mix(in srgb,#0066cc 20%,transparent),var(--nd-shd-h); }
-:deep(.node-initial)                          { border-color: color-mix(in srgb,var(--severity-green) 55%,var(--nd-brd)); }
-:deep(.node-final)                            { border-color: color-mix(in srgb,var(--severity-amber) 55%,var(--nd-brd)); }
+:deep(.node-initial)                          { border-color: color-mix(in srgb,var(--severity-green) 60%,var(--nd-brd)); border-top: 3px solid var(--severity-green); }
+:deep(.node-final)                            { border-color: color-mix(in srgb,var(--severity-amber) 60%,var(--nd-brd)); border-bottom: 3px solid var(--severity-amber); }
 
-:deep(.sn-row) { display: flex; align-items: flex-start; gap: 8px; }
-:deep(.sn-icon) { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 7px; background: var(--nd-ico-bg); flex-shrink: 0; }
-:deep(.sn-ico)  { width: 13px; height: 13px; color: var(--nd-sub); }
+:deep(.sn-row)  { display: flex; align-items: center; gap: 10px; }
+:deep(.sn-icon) {
+  display: flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 8px;
+  background: var(--nd-ico-bg); flex-shrink: 0;
+}
+:deep(.sn-icon--start) { background: color-mix(in srgb,var(--severity-green) 14%,transparent); }
+:deep(.sn-icon--end)   { background: color-mix(in srgb,var(--severity-amber) 14%,transparent); }
+:deep(.sn-ico)  { width: 14px; height: 14px; color: var(--nd-sub); }
+:deep(.sn-icon--start .sn-ico) { color: var(--severity-green); }
+:deep(.sn-icon--end   .sn-ico) { color: var(--severity-amber); }
 :deep(.sn-body) { flex: 1; min-width: 0; }
 :deep(.sn-name) { font-size: 12px; font-weight: 600; color: var(--nd-txt); line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-:deep(.sn-code) { font-size: 10px; font-family: monospace; color: var(--nd-sub); margin-top: 1px; }
+:deep(.sn-code) { font-size: 10px; font-family: monospace; color: var(--nd-sub); margin-top: 2px; letter-spacing: .02em; }
 
-:deep(.sn-badges) { display: flex; gap: 4px; }
-:deep(.sb)   { font-size: 9px; font-weight: 600; padding: 1px 6px; border-radius: 9999px; }
-:deep(.sb-g) { background: color-mix(in srgb,var(--severity-green) 12%,transparent); color: var(--severity-green); border: 1px solid color-mix(in srgb,var(--severity-green) 25%,transparent); }
-:deep(.sb-a) { background: color-mix(in srgb,var(--severity-amber) 12%,transparent); color: var(--severity-amber); border: 1px solid color-mix(in srgb,var(--severity-amber) 25%,transparent); }
+/* Inline role tag (replaces old badge row) */
+:deep(.sn-tag) {
+  flex-shrink: 0; font-size: 9px; font-weight: 700; letter-spacing: .04em;
+  padding: 2px 7px; border-radius: 9999px; line-height: 1.5;
+}
+:deep(.sn-tag--start) {
+  background: color-mix(in srgb,var(--severity-green) 12%,transparent);
+  color: var(--severity-green);
+  border: 1px solid color-mix(in srgb,var(--severity-green) 28%,transparent);
+}
+:deep(.sn-tag--end) {
+  background: color-mix(in srgb,var(--severity-amber) 12%,transparent);
+  color: var(--severity-amber);
+  border: 1px solid color-mix(in srgb,var(--severity-amber) 28%,transparent);
+}
 
 /* ── Handles: hidden by default, visible on node hover or connecting ─────── */
 :deep(.fh) {
