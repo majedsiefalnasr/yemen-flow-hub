@@ -214,6 +214,19 @@ const statusOptions = [
   { label: 'غير نشط', value: 'false' },
 ]
 
+// Faceted filter options derived from the loaded users, so admins can narrow a
+// large committee/bank roster by role or team without leaving the toolbar row.
+const roleFilterOptions = computed(() => {
+  const names = new Set<string>()
+  for (const u of users.value) if (u.role?.name) names.add(u.role.name)
+  return [...names].sort().map((name) => ({ label: name, value: name }))
+})
+const teamFilterOptions = computed(() => {
+  const names = new Set<string>()
+  for (const u of users.value) if (u.team?.name) names.add(u.team.name)
+  return [...names].sort().map((name) => ({ label: name, value: name }))
+})
+
 const COLUMN_LABELS: Record<string, string> = {
   organization: 'المؤسسة',
   team: 'الفريق',
@@ -392,6 +405,7 @@ const columns: ColumnDef<GovernanceUser>[] = [
     id: 'team',
     header: ({ column }) => h(DataTableColumnHeader as any, { column, title: 'الفريق' }),
     accessorFn: (row) => row.team?.name ?? '—',
+    filterFn: (row, _id, value: string[]) => value.includes(row.original.team?.name ?? '—'),
     cell: ({ row }) =>
       h('span', { class: 'text-sm text-foreground' }, row.original.team?.name ?? '—'),
   },
@@ -399,6 +413,7 @@ const columns: ColumnDef<GovernanceUser>[] = [
     id: 'role',
     header: ({ column }) => h(DataTableColumnHeader as any, { column, title: 'الدور' }),
     accessorFn: (row) => row.role?.name ?? '—',
+    filterFn: (row, _id, value: string[]) => value.includes(row.original.role?.name ?? '—'),
     cell: ({ row }) =>
       h('span', { class: 'text-sm text-foreground' }, row.original.role?.name ?? '—'),
   },
@@ -679,6 +694,18 @@ onMounted(async () => {
                   :column="dataTable.getColumn('is_active')!"
                   title="الحالة"
                   :options="statusOptions"
+                />
+                <DataTableFacetedFilter
+                  v-if="dataTable.getColumn('role') && roleFilterOptions.length > 1"
+                  :column="dataTable.getColumn('role')!"
+                  title="الدور"
+                  :options="roleFilterOptions"
+                />
+                <DataTableFacetedFilter
+                  v-if="dataTable.getColumn('team') && teamFilterOptions.length > 1"
+                  :column="dataTable.getColumn('team')!"
+                  title="الفريق"
+                  :options="teamFilterOptions"
                 />
               </template>
               <template #actions>

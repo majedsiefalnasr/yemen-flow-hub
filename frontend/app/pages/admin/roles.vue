@@ -89,7 +89,6 @@ const columnFilters = ref<ColumnFiltersState>([])
 const rowSelection = ref<Record<string, boolean>>({})
 const deleteConfirmOpen = ref(false)
 const deletingRole = ref<GovernanceRole | null>(null)
-const selectedOrgFilter = ref<string>('all')
 
 const roleSchema = toTypedSchema(
   z.object({
@@ -106,14 +105,9 @@ onMounted(async () => {
 })
 
 const filtered = computed(() => {
-  let result = roles.value
-  const orgId = selectedOrgFilter.value
-  if (orgId && orgId !== 'all') {
-    result = result.filter((r) => r.organization_id === Number(orgId))
-  }
   const q = query.value.trim().toLowerCase()
-  if (!q) return result
-  return result.filter(
+  if (!q) return roles.value
+  return roles.value.filter(
     (r) =>
       r.name.toLowerCase().includes(q) ||
       r.code.toLowerCase().includes(q) ||
@@ -122,11 +116,16 @@ const filtered = computed(() => {
 })
 
 const hasActiveFilters = computed(
-  () =>
-    columnFilters.value.length > 0 ||
-    query.value.trim().length > 0 ||
-    selectedOrgFilter.value !== 'all',
+  () => columnFilters.value.length > 0 || query.value.trim().length > 0,
 )
+
+// Organization options for the faceted filter, matching the column's accessor
+// (the organization name), so it behaves like the status filter button.
+const orgFilterOptions = computed(() => {
+  const names = new Set<string>()
+  for (const r of roles.value) if (r.organization?.name) names.add(r.organization.name)
+  return [...names].sort().map((name) => ({ label: name, value: name }))
+})
 const selectedCount = computed(() => Object.values(rowSelection.value).filter(Boolean).length)
 
 const stats = computed(() => ({
@@ -349,6 +348,7 @@ const columns: ColumnDef<GovernanceRole>[] = [
     id: 'organization',
     header: ({ column }) => h(DataTableColumnHeader as any, { column, title: 'المؤسسة' }),
     accessorFn: (row) => row.organization?.name ?? '—',
+    filterFn: (row, _id, value: string[]) => value.includes(row.original.organization?.name ?? '—'),
     cell: ({ row }) =>
       h('span', { class: 'text-sm text-foreground' }, row.original.organization?.name ?? '—'),
   },
@@ -402,7 +402,6 @@ const noRoles = computed(() => !loading.value && roles.value.length === 0 && !er
 
 function handleReset() {
   query.value = ''
-  selectedOrgFilter.value = 'all'
   table.resetColumnFilters()
 }
 
@@ -545,20 +544,6 @@ const formOrgId = computed({
         </MetricGrid>
       </div>
 
-      <div class="mb-4">
-        <Select v-model="selectedOrgFilter">
-          <SelectTrigger class="w-64">
-            <SelectValue placeholder="تصفية حسب المؤسسة" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">الكل</SelectItem>
-            <SelectItem v-for="org in organizations" :key="org.id" :value="String(org.id)">
-              {{ org.name }}
-            </SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
       <div class="relative flex flex-col gap-4">
         <DataTable
           :data="filtered"
@@ -614,6 +599,12 @@ const formOrgId = computed({
                   :column="dataTable.getColumn('is_active')!"
                   title="الحالة"
                   :options="statusOptions"
+                />
+                <DataTableFacetedFilter
+                  v-if="dataTable.getColumn('organization') && orgFilterOptions.length > 1"
+                  :column="dataTable.getColumn('organization')!"
+                  title="المؤسسة"
+                  :options="orgFilterOptions"
                 />
               </template>
               <template #actions>

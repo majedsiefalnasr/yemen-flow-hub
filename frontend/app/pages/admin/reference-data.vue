@@ -5,7 +5,15 @@ import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 import { z } from 'zod'
-import { AlertCircle, Database, Plus, SearchX, Table2 } from 'lucide-vue-next'
+import {
+  AlertCircle,
+  Database,
+  MoreHorizontal,
+  Plus,
+  Search,
+  SearchX,
+  Table2,
+} from 'lucide-vue-next'
 import ScreenGuard from '@/components/security/ScreenGuard.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import type { ReferenceTable, ReferenceValue } from '@/types/models'
@@ -33,6 +41,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import {
@@ -119,11 +134,6 @@ const statusOptions = [
   { label: 'موقوف', value: 'false' },
 ]
 
-const TABLE_COLUMN_LABELS: Record<string, string> = {
-  key: 'الرمز',
-  is_active: 'الحالة',
-}
-
 const VALUE_COLUMN_LABELS: Record<string, string> = {
   key: 'الرمز',
   is_active: 'الحالة',
@@ -180,103 +190,6 @@ const filteredValues = computed(() => {
     (v) => v.key.toLowerCase().includes(q) || v.label.toLowerCase().includes(q),
   )
 })
-
-// ── Tables panel columns + actions ──────────────────────────────────────
-
-const tableActions: RowAction<ReferenceTable>[] = [
-  {
-    label: 'عرض القيم',
-    onClick: (row) => selectTable(row.original),
-  },
-  {
-    label: 'تعديل',
-    onClick: (row) => openEditTable(row.original),
-  },
-  {
-    label: 'إيقاف',
-    destructive: true,
-    hidden: (row) => !row.original.is_active,
-    onClick: (row) => toggleTable(row.original),
-  },
-  {
-    label: 'تفعيل',
-    hidden: (row) => row.original.is_active,
-    onClick: (row) => toggleTable(row.original),
-  },
-  {
-    label: 'حذف',
-    destructive: true,
-    hidden: (row) => row.original.is_system || row.original.is_in_use,
-    onClick: (row) => (deletingTable.value = row.original),
-  },
-]
-
-const tableColumns: ColumnDef<ReferenceTable>[] = [
-  {
-    id: 'select',
-    header: ({ table: t }) =>
-      h(Checkbox, {
-        modelValue:
-          t.getIsAllPageRowsSelected() || (t.getIsSomePageRowsSelected() ? 'indeterminate' : false),
-        'onUpdate:modelValue': (value: boolean | 'indeterminate') =>
-          t.toggleAllPageRowsSelected(!!value),
-        'aria-label': 'تحديد الكل',
-      }),
-    cell: ({ row }) =>
-      h(Checkbox, {
-        modelValue: row.getIsSelected(),
-        'onUpdate:modelValue': (value: boolean | 'indeterminate') => row.toggleSelected(!!value),
-        'aria-label': `تحديد ${row.original.label}`,
-      }),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    id: 'table_name',
-    header: 'الجدول المرجعي',
-    enableHiding: false,
-    cell: ({ row }) => {
-      const t = row.original
-      return h('div', { class: 'flex items-center gap-2' }, [
-        h(
-          'div',
-          {
-            class:
-              'grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary text-xs font-semibold leading-5',
-          },
-          t.label.trim().charAt(0),
-        ),
-        h('div', {}, [
-          h('div', { class: 'font-section text-sm font-semibold leading-5 text-foreground' }, [
-            t.label,
-            ...(t.is_system
-              ? [
-                  h(
-                    Badge,
-                    { variant: 'outline', class: 'ms-2 text-[10px] leading-tight' },
-                    () => 'نظامي',
-                  ),
-                ]
-              : []),
-          ]),
-          h('div', { class: 'text-xs leading-5 text-muted-foreground font-mono' }, t.key),
-        ]),
-      ])
-    },
-  },
-  {
-    accessorKey: 'is_active',
-    filterFn: (row, _id, value: string[]) => value.includes(String(row.original.is_active)),
-    header: ({ column }) => h(DataTableColumnHeader as any, { column, title: 'الحالة' }),
-    cell: ({ row }) => activeStatusCell(row.original.is_active),
-  },
-  {
-    id: 'actions',
-    header: 'إجراءات',
-    enableHiding: false,
-    cell: ({ row }) => h(DataTableRowActions as any, { row, actions: tableActions }),
-  },
-]
 
 // ── Values panel columns + actions ──────────────────────────────────────
 
@@ -482,10 +395,15 @@ async function retryLoad() {
   await fetchReferenceTables({ page: 1 })
 }
 
-const tableHasFilters = computed(() => tableQuery.value.trim().length > 0)
 const valueHasFilters = computed(() => valueQuery.value.trim().length > 0)
 
-onMounted(() => fetchReferenceTables({ page: 1 }))
+onMounted(async () => {
+  await fetchReferenceTables({ page: 1 })
+  // Auto-open the first table so the values panel is useful on arrival instead
+  // of showing an empty "choose a table" prompt when tables already exist.
+  const first = referenceTables.value[0]
+  if (first) await selectTable(first)
+})
 </script>
 
 <template>
@@ -531,71 +449,136 @@ onMounted(() => fetchReferenceTables({ page: 1 }))
           </MetricGrid>
         </div>
 
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <!-- Tables panel -->
-          <Card class="border-0 shadow">
-            <CardHeader class="pb-2">
-              <CardTitle class="flex items-center gap-2 text-sm font-semibold">
-                <Table2 class="text-primary h-4 w-4" />
-                الجداول المرجعية
-              </CardTitle>
-            </CardHeader>
-            <CardContent class="p-4 pt-0">
-              <DataTable
-                :data="filteredTables"
-                :columns="tableColumns"
-                :loading="tablesLoading"
-                :row-class="() => 'cursor-pointer'"
-                @row-click="selectTable"
-              >
-                <template #toolbar="{ table: dt }">
-                  <DataTableToolbar
-                    :table="dt"
-                    search-placeholder="بحث بالرمز أو الاسم..."
-                    :has-filters="tableHasFilters"
-                    :selected-count="
-                      Object.values(dt.getState().rowSelection).filter(Boolean).length
-                    "
-                    @update:search="(v) => (tableQuery = v)"
-                    @reset="tableQuery = ''"
-                    @clear-selection="dt.resetRowSelection()"
+        <div class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(260px,320px)_1fr]">
+          <!-- Tables sidebar: a light selectable list, not a full data table.
+               There are only a handful of reference tables, so a compact list
+               reads faster and hands the values panel the dominant space. -->
+          <div class="flex flex-col gap-3">
+            <div class="relative">
+              <Search
+                class="text-muted-foreground pointer-events-none absolute start-2.5 top-1/2 h-4 w-4 -translate-y-1/2"
+              />
+              <Input
+                :model-value="tableQuery"
+                placeholder="بحث في الجداول..."
+                class="h-9 ps-8 text-sm"
+                @update:model-value="(v) => (tableQuery = String(v))"
+              />
+            </div>
+
+            <div
+              v-if="tablesLoading"
+              class="text-muted-foreground rounded-lg border border-dashed p-6 text-center text-sm"
+            >
+              جارٍ التحميل...
+            </div>
+
+            <Empty
+              v-else-if="filteredTables.length === 0"
+              class="bg-muted/20 rounded-xl border border-dashed py-8"
+            >
+              <EmptyHeader>
+                <div
+                  class="bg-muted text-muted-foreground flex size-10 items-center justify-center rounded-xl"
+                >
+                  <SearchX class="size-4" />
+                </div>
+                <EmptyTitle class="text-sm">
+                  {{ tableQuery.trim() ? 'لا توجد جداول مطابقة' : 'لا توجد جداول مرجعية' }}
+                </EmptyTitle>
+              </EmptyHeader>
+              <EmptyContent>
+                <EmptyDescription class="text-xs">
+                  {{
+                    tableQuery.trim()
+                      ? 'جرّب تعديل نص البحث.'
+                      : 'ابدأ بإضافة جدول مرجعي جديد من الأعلى.'
+                  }}
+                </EmptyDescription>
+              </EmptyContent>
+            </Empty>
+
+            <ul v-else class="flex flex-col gap-1" role="listbox" aria-label="الجداول المرجعية">
+              <li v-for="t in filteredTables" :key="t.id">
+                <div
+                  class="group hover:bg-muted/60 flex items-center gap-2 rounded-lg border px-2.5 py-2 transition-colors"
+                  :class="
+                    selectedTable?.id === t.id
+                      ? 'border-primary/40 bg-primary/5'
+                      : 'border-transparent'
+                  "
+                >
+                  <button
+                    type="button"
+                    role="option"
+                    :aria-selected="selectedTable?.id === t.id"
+                    class="flex min-w-0 flex-1 items-center gap-2.5 text-start"
+                    @click="selectTable(t)"
                   >
-                    <template #filters>
-                      <DataTableFacetedFilter
-                        v-if="dt.getColumn('is_active')"
-                        :column="dt.getColumn('is_active')!"
-                        title="الحالة"
-                        :options="statusOptions"
-                      />
-                    </template>
-                    <template #actions>
-                      <DataTableViewOptions :table="dt" :column-labels="TABLE_COLUMN_LABELS" />
-                    </template>
-                  </DataTableToolbar>
-                </template>
-                <template #empty>
-                  <Empty class="bg-muted/20 min-h-[200px] rounded-xl border border-dashed">
-                    <EmptyHeader>
-                      <div
-                        class="bg-muted text-muted-foreground flex size-10 items-center justify-center rounded-xl"
+                    <span
+                      class="grid size-8 shrink-0 place-items-center rounded-lg text-xs font-semibold"
+                      :class="
+                        selectedTable?.id === t.id
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-primary/10 text-primary'
+                      "
+                    >
+                      {{ t.label.trim().charAt(0) }}
+                    </span>
+                    <span class="min-w-0 flex-1">
+                      <span class="flex items-center gap-1.5">
+                        <span class="truncate text-sm leading-5 font-semibold text-foreground">
+                          {{ t.label }}
+                        </span>
+                        <Badge
+                          v-if="t.is_system"
+                          variant="outline"
+                          class="shrink-0 text-[10px] leading-tight"
+                        >
+                          نظامي
+                        </Badge>
+                      </span>
+                      <span class="text-muted-foreground block truncate font-mono text-xs leading-5">
+                        {{ t.key }}
+                      </span>
+                    </span>
+                    <span
+                      class="size-1.5 shrink-0 rounded-full"
+                      :style="{
+                        background: t.is_active ? 'var(--color-success)' : 'var(--color-locked)',
+                      }"
+                      :title="t.is_active ? 'نشط' : 'موقوف'"
+                    />
+                  </button>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger as-child>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        class="size-7 shrink-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
                       >
-                        <SearchX class="size-4" />
-                      </div>
-                      <EmptyTitle class="text-sm">لا توجد جداول مرجعية</EmptyTitle>
-                    </EmptyHeader>
-                    <EmptyContent>
-                      <EmptyDescription class="text-xs">
-                        ابدأ بإضافة جدول مرجعي جديد.
-                      </EmptyDescription>
-                    </EmptyContent>
-                  </Empty>
-                </template>
-                <template #pagination="{ table: dt }">
-                  <DataTablePagination :table="dt" />
-                </template>
-              </DataTable>
-            </CardContent>
-          </Card>
+                        <span class="sr-only">إجراءات {{ t.label }}</span>
+                        <MoreHorizontal class="size-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem @click="openEditTable(t)">تعديل</DropdownMenuItem>
+                      <DropdownMenuItem @click="toggleTable(t)">
+                        {{ t.is_active ? 'إيقاف' : 'تفعيل' }}
+                      </DropdownMenuItem>
+                      <template v-if="!t.is_system && !t.is_in_use">
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem class="text-destructive" @click="deletingTable = t">
+                          حذف
+                        </DropdownMenuItem>
+                      </template>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </li>
+            </ul>
+          </div>
 
           <!-- Values panel -->
           <Card class="border-0 shadow">
@@ -688,7 +671,7 @@ onMounted(() => fetchReferenceTables({ page: 1 }))
                 </DataTable>
               </template>
 
-              <Empty v-else class="bg-muted/20 min-h-[300px] rounded-xl border border-dashed">
+              <Empty v-else class="bg-muted/20 min-h-[420px] rounded-xl border border-dashed">
                 <EmptyHeader>
                   <div
                     class="bg-muted text-muted-foreground flex size-12 items-center justify-center rounded-xl"
