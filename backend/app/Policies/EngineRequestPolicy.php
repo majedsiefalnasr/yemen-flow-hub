@@ -15,6 +15,10 @@ class EngineRequestPolicy
 
     public function view(User $user, EngineRequest $request): bool
     {
+        if ($user->isSystemAdmin()) {
+            return true;
+        }
+
         if (! $this->inScope($user, $request)) {
             return false;
         }

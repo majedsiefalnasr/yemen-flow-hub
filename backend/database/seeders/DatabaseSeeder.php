@@ -38,24 +38,19 @@ class DatabaseSeeder extends Seeder
         $this->call([MerchantSeeder::class]);
         $this->command?->info('Seeded merchants.');
 
-        if (! app()->isProduction()) {
-            $this->call([TraderSeeder::class]);
-            $this->command?->info('Seeded trader sample data.');
-        }
-
-        $this->call([ImportRequestSeeder::class]);
-        $this->command?->info('Seeded requests and linked workflow artifacts.');
+        $this->call([EngineRequestDemoSeeder::class]);
+        $this->command?->info('Seeded engine request demo data.');
 
         $this->call([AuditLogSeeder::class]);
         $this->command?->info('Seeded login audit logs.');
-
-        $this->call([NotificationSeeder::class]);
-        $this->command?->info('Seeded notifications.');
 
         $this->call([SystemSettingsSeeder::class]);
         $this->command?->info('Seeded system settings.');
 
         $this->call([NotificationTemplateSeeder::class]);
         $this->command?->info('Seeded notification templates.');
+
+        $this->call([EngineAuxiliaryDemoSeeder::class]);
+        $this->command?->info('Seeded engine auxiliary demo data.');
     }
 }

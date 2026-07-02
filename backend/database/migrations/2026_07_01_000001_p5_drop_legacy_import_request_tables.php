@@ -18,7 +18,7 @@ return new class extends Migration
         // Drop child tables first (FK order).
         Schema::dropIfExists('request_votes');
         Schema::dropIfExists('request_documents');
-        Schema::dropIfExists('request_stage_histories');
+        Schema::dropIfExists('request_stage_history');
         Schema::dropIfExists('import_request_reference_sequences');
         Schema::dropIfExists('import_requests');
     }

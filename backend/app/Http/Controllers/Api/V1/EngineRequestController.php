@@ -201,9 +201,13 @@ class EngineRequestController extends Controller
 
         $query = EngineRequest::query()
             ->withStageEntry()
-            ->forUser($user)
-            ->whereIn('engine_requests.current_stage_id', $accessibleStageIds)
             ->with(['currentStage', 'bank', 'merchant', 'creator']);
+
+        if (! $user->isSystemAdmin()) {
+            $query
+                ->forUser($user)
+                ->whereIn('engine_requests.current_stage_id', $accessibleStageIds);
+        }
 
         $this->applyFilters($query, $request);
 

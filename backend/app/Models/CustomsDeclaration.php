@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class CustomsDeclaration extends Model
 {
     protected $fillable = [
-        'request_id',
         'engine_request_id',
         'declaration_number',
         'issued_by',

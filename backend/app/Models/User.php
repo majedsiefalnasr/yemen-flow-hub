@@ -124,6 +124,15 @@ class User extends Authenticatable
         return $this->role?->isCbyRole() ?? false;
     }
 
+    public function isSystemAdmin(): bool
+    {
+        if ($this->relationLoaded('roles')) {
+            return $this->roles->contains('code', 'system_admin');
+        }
+
+        return $this->roles()->where('code', 'system_admin')->exists();
+    }
+
     public function hasPermission(string $slug): bool
     {
         return app(PermissionService::class)->userCan($this, $slug);

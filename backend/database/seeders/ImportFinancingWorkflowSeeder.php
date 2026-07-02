@@ -9,6 +9,7 @@ use App\Enums\WorkflowVersionState;
 use App\Models\FieldDefinition;
 use App\Models\FieldGroup;
 use App\Models\Organization;
+use App\Models\ReferenceTable;
 use App\Models\Role;
 use App\Models\StagePermission;
 use App\Models\Team;
@@ -129,54 +130,54 @@ class ImportFinancingWorkflowSeeder extends Seeder
      */
     private function seedFields(int $versionId, array $groups): array
     {
-        // [key, label, type, group, options|null, dynamic_source|null]
+        // [key, label, type, group, options|null, dynamic_source|null, reference_table_key|null]
         $rows = [
             // basic
-            ['taxNumber', 'الرقم الضريبي', FieldType::TEXT, 'basic', null, null],
-            ['importerName', 'اسم التاجر', FieldType::DYNAMIC_SELECT, 'basic', null, 'MERCHANTS'],
-            ['linkedCompany', 'الشركة المرتبطة', FieldType::DYNAMIC_SELECT, 'basic', null, 'MERCHANT_COMPANIES'],
-            ['taxCardExpiry', 'تاريخ انتهاء البطاقة الضريبية', FieldType::DATE, 'basic', null, null],
-            ['commercialRegistration', 'رقم السجل التجاري', FieldType::TEXT, 'basic', null, null],
-            ['commercialRegistrationExpiry', 'تاريخ انتهاء السجل التجاري', FieldType::DATE, 'basic', null, null],
-            ['owners', 'الملاك والمساهمون (25% فأكثر)', FieldType::TEXTAREA, 'basic', null, null],
+            ['taxNumber', 'الرقم الضريبي', FieldType::TEXT, 'basic', null, null, null],
+            ['importerName', 'اسم التاجر', FieldType::DYNAMIC_SELECT, 'basic', null, 'MERCHANTS', null],
+            ['linkedCompany', 'الشركة المرتبطة', FieldType::DYNAMIC_SELECT, 'basic', null, 'MERCHANT_COMPANIES', null],
+            ['taxCardExpiry', 'تاريخ انتهاء البطاقة الضريبية', FieldType::DATE, 'basic', null, null, null],
+            ['commercialRegistration', 'رقم السجل التجاري', FieldType::TEXT, 'basic', null, null, null],
+            ['commercialRegistrationExpiry', 'تاريخ انتهاء السجل التجاري', FieldType::DATE, 'basic', null, null, null],
+            ['owners', 'الملاك والمساهمون (25% فأكثر)', FieldType::TEXTAREA, 'basic', null, null, null],
             // invoice
-            ['requestType', 'نوع الطلب', FieldType::SELECT, 'invoice', ['طلب مصارفة وتحويل خارجي', 'طلب تمويل واردات', 'طلب اعتماد مستندي'], null],
-            ['coverageType', 'نوع التغطية', FieldType::SELECT, 'invoice', ['اعتماد مستندي', 'تحويل مباشر', 'دفعة مقدمة'], null],
-            ['foreignCurrencySource', 'مصادر العملة الأجنبية', FieldType::SELECT, 'invoice', ['حساب العميل', 'موارد البنك', 'مصدر خارجي'], null],
-            ['paymentTerms', 'شروط الدفع', FieldType::SELECT, 'invoice', ['كلي', 'جزئي'], null],
-            ['requestCurrency', 'عملة الطلب', FieldType::SELECT, 'invoice', ['دولار أمريكي', 'يورو', 'ريال سعودي'], null],
-            ['requestPercentage', 'نسبة الطلب %', FieldType::NUMBER, 'invoice', null, null],
-            ['invoiceType', 'نوع الفاتورة', FieldType::SELECT, 'invoice', ['فاتورة تجارية', 'فاتورة أولية'], null],
-            ['financeAmount', 'إجمالي الطلب', FieldType::CURRENCY, 'invoice', null, null],
-            ['currency', 'عملة الفاتورة', FieldType::SELECT, 'invoice', ['دولار أمريكي', 'يورو', 'ريال سعودي'], null],
-            ['invoiceNumber', 'رقم الفاتورة', FieldType::TEXT, 'invoice', null, null],
-            ['invoiceDate', 'تاريخ الفاتورة', FieldType::DATE, 'invoice', null, null],
-            ['quantity', 'الكمية', FieldType::NUMBER, 'invoice', null, null],
-            ['unit', 'وحدة القياس', FieldType::TEXT, 'invoice', null, null],
-            ['invoiceTotal', 'إجمالي الفاتورة', FieldType::CURRENCY, 'invoice', null, null],
-            ['importType', 'السلعة', FieldType::DYNAMIC_SELECT, 'invoice', null, 'REFERENCE_DATA'],
-            ['supplierName', 'اسم الشركة المصدرة', FieldType::TEXT, 'invoice', null, null],
-            ['supplierLocation', 'موقع الشركة المصدرة', FieldType::TEXT, 'invoice', null, null],
-            ['originCountry', 'بلد المنشأ', FieldType::DYNAMIC_SELECT, 'invoice', null, 'REFERENCE_DATA'],
+            ['requestType', 'نوع الطلب', FieldType::SELECT, 'invoice', $this->options(['طلب مصارفة وتحويل خارجي', 'طلب تمويل واردات', 'طلب اعتماد مستندي']), null, null],
+            ['coverageType', 'نوع التغطية', FieldType::SELECT, 'invoice', $this->options(['اعتماد مستندي', 'تحويل مباشر', 'دفعة مقدمة']), null, null],
+            ['foreignCurrencySource', 'مصادر العملة الأجنبية', FieldType::SELECT, 'invoice', $this->options(['حساب العميل', 'موارد البنك', 'مصدر خارجي']), null, null],
+            ['paymentTerms', 'شروط الدفع', FieldType::SELECT, 'invoice', $this->options(['كلي', 'جزئي']), null, null],
+            ['requestCurrency', 'عملة الطلب', FieldType::SELECT, 'invoice', $this->currencyOptions(), null, null],
+            ['request_percentage', 'نسبة الطلب %', FieldType::NUMBER, 'invoice', null, null, null],
+            ['invoiceType', 'نوع الفاتورة', FieldType::SELECT, 'invoice', $this->options(['فاتورة تجارية', 'فاتورة أولية']), null, null],
+            ['amount', 'إجمالي الطلب', FieldType::CURRENCY, 'invoice', null, null, null],
+            ['currency', 'عملة الفاتورة', FieldType::SELECT, 'invoice', $this->currencyOptions(), null, null],
+            ['invoice_number', 'رقم الفاتورة', FieldType::TEXT, 'invoice', null, null, null],
+            ['invoiceDate', 'تاريخ الفاتورة', FieldType::DATE, 'invoice', null, null, null],
+            ['quantity', 'الكمية', FieldType::NUMBER, 'invoice', null, null, null],
+            ['unit', 'وحدة القياس', FieldType::TEXT, 'invoice', null, null, null],
+            ['invoiceTotal', 'إجمالي الفاتورة', FieldType::CURRENCY, 'invoice', null, null, null],
+            ['importType', 'السلعة', FieldType::DYNAMIC_SELECT, 'invoice', null, 'REFERENCE_DATA', 'sector_activity'],
+            ['supplierName', 'اسم الشركة المصدرة', FieldType::TEXT, 'invoice', null, null, null],
+            ['supplierLocation', 'موقع الشركة المصدرة', FieldType::TEXT, 'invoice', null, null, null],
+            ['originCountry', 'بلد المنشأ', FieldType::DYNAMIC_SELECT, 'invoice', null, 'REFERENCE_DATA', 'origin_country'],
             // shipping
-            ['shippingDate', 'تاريخ الشحن', FieldType::DATE, 'shipping', null, null],
-            ['arrivalDate', 'تاريخ الوصول', FieldType::DATE, 'shipping', null, null],
-            ['shippingPort', 'ميناء الشحن', FieldType::TEXT, 'shipping', null, null],
-            ['arrivalPort', 'ميناء الوصول', FieldType::DYNAMIC_SELECT, 'shipping', null, 'REFERENCE_DATA'],
-            ['deliveryTerms', 'شروط التسليم', FieldType::SELECT, 'shipping', ['FOB', 'CIF', 'CFR'], null],
-            ['finalDestination', 'الوجهة النهائية', FieldType::TEXT, 'shipping', null, null],
+            ['shippingDate', 'تاريخ الشحن', FieldType::DATE, 'shipping', null, null, null],
+            ['arrivalDate', 'تاريخ الوصول', FieldType::DATE, 'shipping', null, null, null],
+            ['shippingPort', 'ميناء الشحن', FieldType::TEXT, 'shipping', null, null, null],
+            ['arrivalPort', 'ميناء الوصول', FieldType::DYNAMIC_SELECT, 'shipping', null, 'REFERENCE_DATA', 'arrival_port'],
+            ['deliveryTerms', 'شروط التسليم', FieldType::SELECT, 'shipping', $this->options(['FOB', 'CIF', 'CFR']), null, null],
+            ['finalDestination', 'الوجهة النهائية', FieldType::TEXT, 'shipping', null, null, null],
             // docs
-            ['docYemeniRialSharia', 'كشف حساب بالريال اليمني (مناطق الشرعية)', FieldType::FILE, 'docs', null, null],
-            ['docSaudiRialSharia', 'كشف حساب بالريال السعودي (مناطق الشرعية)', FieldType::FILE, 'docs', null, null],
-            ['docUsdSharia', 'كشف حساب بالدولار الأمريكي (مناطق الشرعية)', FieldType::FILE, 'docs', null, null],
-            ['docTaxAndCr', 'البطاقة الضريبية والسجل التجاري', FieldType::FILE, 'docs', null, null],
-            ['docCommercialInvoice', 'الفاتورة', FieldType::FILE, 'docs', null, null],
-            ['docLicenses', 'التراخيص المطلوبة لبعض السلع', FieldType::FILE, 'docs', null, null],
-            ['docExtra', 'مستندات إضافية', FieldType::FILE, 'docs', null, null],
+            ['docYemeniRialSharia', 'كشف حساب بالريال اليمني (مناطق الشرعية)', FieldType::FILE, 'docs', null, null, null],
+            ['docSaudiRialSharia', 'كشف حساب بالريال السعودي (مناطق الشرعية)', FieldType::FILE, 'docs', null, null, null],
+            ['docUsdSharia', 'كشف حساب بالدولار الأمريكي (مناطق الشرعية)', FieldType::FILE, 'docs', null, null, null],
+            ['docTaxAndCr', 'البطاقة الضريبية والسجل التجاري', FieldType::FILE, 'docs', null, null, null],
+            ['docCommercialInvoice', 'الفاتورة', FieldType::FILE, 'docs', null, null, null],
+            ['docLicenses', 'التراخيص المطلوبة لبعض السلع', FieldType::FILE, 'docs', null, null, null],
+            ['docExtra', 'مستندات إضافية', FieldType::FILE, 'docs', null, null, null],
         ];
 
         $ids = [];
-        foreach ($rows as $index => [$key, $label, $type, $groupKey, $options, $source]) {
+        foreach ($rows as $index => [$key, $label, $type, $groupKey, $options, $source, $referenceTableKey]) {
             $field = FieldDefinition::query()->create([
                 'workflow_version_id' => $versionId,
                 'field_group_id' => $groups[$groupKey],
@@ -185,6 +186,9 @@ class ImportFinancingWorkflowSeeder extends Seeder
                 'type' => $type->value,
                 'options' => $options,
                 'dynamic_source' => $source,
+                'reference_table_id' => $referenceTableKey
+                    ? ReferenceTable::query()->where('key', $referenceTableKey)->value('id')
+                    : null,
                 'is_system' => true,
                 'sort_order' => $index + 1,
             ]);
@@ -192,6 +196,27 @@ class ImportFinancingWorkflowSeeder extends Seeder
         }
 
         return $ids;
+    }
+
+    /**
+     * @param  array<int, string>  $labels
+     * @return array<int, array{value: string, label: string}>
+     */
+    private function options(array $labels): array
+    {
+        return array_map(fn (string $label): array => ['value' => $label, 'label' => $label], $labels);
+    }
+
+    /**
+     * @return array<int, array{value: string, label: string}>
+     */
+    private function currencyOptions(): array
+    {
+        return [
+            ['value' => 'USD', 'label' => 'دولار أمريكي'],
+            ['value' => 'EUR', 'label' => 'يورو'],
+            ['value' => 'SAR', 'label' => 'ريال سعودي'],
+        ];
     }
 
     /**
@@ -269,8 +294,8 @@ class ImportFinancingWorkflowSeeder extends Seeder
     {
         $requiredOnCreate = [
             'taxNumber', 'importerName', 'linkedCompany', 'taxCardExpiry', 'commercialRegistration', 'commercialRegistrationExpiry',
-            'requestType', 'coverageType', 'foreignCurrencySource', 'paymentTerms', 'requestCurrency', 'requestPercentage',
-            'invoiceType', 'financeAmount', 'currency', 'invoiceNumber', 'invoiceDate', 'quantity', 'unit', 'invoiceTotal',
+            'requestType', 'coverageType', 'foreignCurrencySource', 'paymentTerms', 'requestCurrency', 'request_percentage',
+            'invoiceType', 'amount', 'currency', 'invoice_number', 'invoiceDate', 'quantity', 'unit', 'invoiceTotal',
             'importType', 'supplierName', 'supplierLocation', 'originCountry',
             'shippingDate', 'arrivalDate', 'shippingPort', 'arrivalPort', 'deliveryTerms', 'finalDestination',
             'docYemeniRialSharia', 'docSaudiRialSharia', 'docUsdSharia', 'docTaxAndCr', 'docCommercialInvoice',
