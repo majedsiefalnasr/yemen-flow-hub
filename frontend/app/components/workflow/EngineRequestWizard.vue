@@ -89,6 +89,7 @@ async function onSubmit() {
         :key="group.id"
         :step="index + 1"
         :completed="index < wizard.stepIndex.value"
+        :disabled="true"
       >
         <StepperTrigger class="pointer-events-none">
           <StepperIndicator>
