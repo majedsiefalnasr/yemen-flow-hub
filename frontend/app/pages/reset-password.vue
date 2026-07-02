@@ -25,6 +25,10 @@ orgStore.loadSettings()
 
 const step = ref<'email' | 'otp' | 'password' | 'done'>('email')
 const isSubmitting = ref(false)
+// Gate field-error display until the user submits, so a blur (e.g. clicking the
+// "login instead" link) never injects an error row that shifts layout and eats
+// the click — matching the submit-gated pattern used on the login page.
+const submitAttempted = ref(false)
 const serverError = ref<string | null>(null)
 const notice = ref<string | null>(null)
 const pageDir = computed<'rtl' | 'ltr'>(() => (auth.preferredLanguage === 'en' ? 'ltr' : 'rtl'))
@@ -110,6 +114,7 @@ const startCountdown = () => {
 const goBackFromRecoveryStep = () => {
   notice.value = null
   serverError.value = null
+  submitAttempted.value = false
   stopCountdown()
   step.value = step.value === 'otp' ? 'email' : 'otp'
 }
@@ -178,6 +183,7 @@ defineExpose({
   password,
   passwordConfirmation,
   step,
+  submitAttempted,
   submitEmail,
   submitOtp,
   submitPassword,
@@ -221,7 +227,12 @@ defineExpose({
           <AlertDescription>{{ notice }}</AlertDescription>
         </Alert>
 
-        <form v-if="step === 'email'" class="space-y-4" novalidate @submit.prevent="submitEmail">
+        <form
+          v-if="step === 'email'"
+          class="space-y-4"
+          novalidate
+          @submit.prevent="((submitAttempted = true), submitEmail())"
+        >
           <div class="space-y-2">
             <Label for="reset-email">البريد الإلكتروني المؤسسي</Label>
             <Input
@@ -231,9 +242,14 @@ defineExpose({
               type="email"
               autocomplete="email"
               class="bg-muted/30 h-11"
-              :aria-invalid="emailForm.errors.value.email ? 'true' : undefined"
+              :aria-invalid="
+                submitAttempted && emailForm.errors.value.email ? 'true' : undefined
+              "
             />
-            <p v-if="emailForm.errors.value.email" class="text-destructive text-sm">
+            <p
+              v-if="submitAttempted && emailForm.errors.value.email"
+              class="text-destructive text-sm"
+            >
               {{ emailForm.errors.value.email }}
             </p>
           </div>
@@ -244,7 +260,12 @@ defineExpose({
           </Button>
         </form>
 
-        <form v-else-if="step === 'otp'" class="space-y-4" novalidate @submit.prevent="submitOtp">
+        <form
+          v-else-if="step === 'otp'"
+          class="space-y-4"
+          novalidate
+          @submit.prevent="((submitAttempted = true), submitOtp())"
+        >
           <div class="email-chip">
             <span class="text-muted-foreground text-xs">البريد الإلكتروني</span>
             <span class="text-sm font-medium">{{ email }}</span>
@@ -273,9 +294,9 @@ defineExpose({
               maxlength="6"
               placeholder="123456"
               class="bg-muted/30 h-11"
-              :aria-invalid="otpForm.errors.value.otp ? 'true' : undefined"
+              :aria-invalid="submitAttempted && otpForm.errors.value.otp ? 'true' : undefined"
             />
-            <p v-if="otpForm.errors.value.otp" class="text-destructive text-sm">
+            <p v-if="submitAttempted && otpForm.errors.value.otp" class="text-destructive text-sm">
               {{ otpForm.errors.value.otp }}
             </p>
           </div>
@@ -297,7 +318,7 @@ defineExpose({
           v-else-if="step === 'password'"
           class="space-y-4"
           novalidate
-          @submit.prevent="submitPassword"
+          @submit.prevent="((submitAttempted = true), submitPassword())"
         >
           <div class="space-y-2">
             <Label for="reset-password">كلمة المرور الجديدة</Label>
@@ -308,10 +329,15 @@ defineExpose({
               type="password"
               autocomplete="new-password"
               class="bg-muted/30 h-11"
-              :aria-invalid="passwordForm.errors.value.password ? 'true' : undefined"
+              :aria-invalid="
+                submitAttempted && passwordForm.errors.value.password ? 'true' : undefined
+              "
             />
             <PasswordRequirements :password="password ?? ''" />
-            <p v-if="passwordForm.errors.value.password" class="text-destructive text-sm">
+            <p
+              v-if="submitAttempted && passwordForm.errors.value.password"
+              class="text-destructive text-sm"
+            >
               {{ passwordForm.errors.value.password }}
             </p>
           </div>
@@ -325,10 +351,14 @@ defineExpose({
               type="password"
               autocomplete="new-password"
               class="bg-muted/30 h-11"
-              :aria-invalid="passwordForm.errors.value.password_confirmation ? 'true' : undefined"
+              :aria-invalid="
+                submitAttempted && passwordForm.errors.value.password_confirmation
+                  ? 'true'
+                  : undefined
+              "
             />
             <p
-              v-if="passwordForm.errors.value.password_confirmation"
+              v-if="submitAttempted && passwordForm.errors.value.password_confirmation"
               class="text-destructive text-sm"
             >
               {{ passwordForm.errors.value.password_confirmation }}
