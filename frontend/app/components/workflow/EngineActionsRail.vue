@@ -1,0 +1,58 @@
+<!-- app/components/workflow/EngineActionsRail.vue -->
+<script setup lang="ts">
+import type { WorkflowGraphEdge } from '@/types/models'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
+import { Field, FieldLabel } from '@/components/ui/field'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { AlertCircle } from 'lucide-vue-next'
+
+defineProps<{
+  availableActions: WorkflowGraphEdge[]
+  canAct: boolean
+  claimRequiredButNotHeld: boolean
+  showClaimButton: boolean
+  busy: boolean
+}>()
+
+const emit = defineEmits<{ run: [transitionId: number, requiresComment: boolean]; claim: [] }>()
+const comment = defineModel<string>('comment', { default: '' })
+</script>
+
+<template>
+  <Card dir="rtl" class="bg-muted/30 sticky top-6 border-0 shadow-none">
+    <CardHeader class="pb-2">
+      <CardTitle class="text-sm font-semibold">إجراءات المرحلة</CardTitle>
+    </CardHeader>
+    <CardContent class="space-y-3">
+      <Button v-if="showClaimButton" class="w-full" :disabled="busy" @click="emit('claim')">
+        بدء المراجعة
+      </Button>
+
+      <Alert v-if="claimRequiredButNotHeld" role="status">
+        <AlertCircle class="h-4 w-4" />
+        <AlertDescription>يجب مطالبة هذه المرحلة قبل تنفيذ الإجراء.</AlertDescription>
+      </Alert>
+
+      <Field>
+        <FieldLabel for="action-comment">ملاحظات</FieldLabel>
+        <Textarea id="action-comment" v-model="comment" rows="3" :disabled="!canAct" />
+      </Field>
+
+      <div class="flex flex-col gap-2">
+        <Button
+          v-for="action in availableActions"
+          :key="action.id"
+          :disabled="!canAct || busy"
+          @click="emit('run', action.id, action.requires_comment)"
+        >
+          {{ action.action_name ?? action.action_code }}
+        </Button>
+        <p v-if="!availableActions.length" class="text-muted-foreground text-xs">
+          لا توجد إجراءات متاحة في هذه المرحلة.
+        </p>
+      </div>
+    </CardContent>
+  </Card>
+</template>
