@@ -84,6 +84,63 @@ describe('useAuthStore', () => {
     })
   })
 
+  describe('switchDemoUser', () => {
+    it('logs in as the target user and persists auth state', async () => {
+      const targetUser: AuthUser = {
+        id: 42,
+        name: 'Nada Al-Kibsi',
+        email: 'exec2@cby.gov.ye',
+        role: UserRole.EXECUTIVE_MEMBER,
+        bank_id: null,
+        bank_name_ar: null,
+        bank_name_en: null,
+        is_active: true,
+      }
+
+      mockFetch.mockResolvedValueOnce({
+        success: true,
+        message: 'Login successful.',
+        data: {
+          user: targetUser,
+          token: null,
+          token_type: null,
+          mode: 'cookie',
+          requires_mfa: false,
+        },
+      })
+
+      const store = useAuthStore()
+      await store.switchDemoUser(42)
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/auth/switch-demo-user',
+        expect.objectContaining({
+          method: 'POST',
+          body: { user_id: 42 },
+        }),
+      )
+      expect(store.user).toEqual(targetUser)
+      expect(store.isAuthenticated).toBe(true)
+    })
+
+    it('throws when the returned user is inactive', async () => {
+      mockFetch.mockResolvedValueOnce({
+        success: true,
+        message: 'Login successful.',
+        data: {
+          user: { ...DEMO_USER, is_active: false },
+          token: null,
+          token_type: null,
+          mode: 'cookie',
+          requires_mfa: false,
+        },
+      })
+
+      const store = useAuthStore()
+      await expect(store.switchDemoUser(1)).rejects.toMatchObject({ statusCode: 403 })
+    })
+  })
+
   describe('login()', () => {
     it('sets user and isAuthenticated on successful login', async () => {
       mockFetch.mockResolvedValueOnce(null) // CSRF cookie prefetch

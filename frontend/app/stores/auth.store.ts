@@ -470,6 +470,41 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
+    async switchDemoUser(userId: number): Promise<void> {
+      const config = useRuntimeConfig()
+      const baseURL = config.public.apiBase as string
+      const xsrfToken = this.getXsrfToken()
+
+      const response = await $fetch<ApiResponse<LoginResponseData>>('/api/auth/switch-demo-user', {
+        method: 'POST',
+        baseURL,
+        credentials: 'include',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
+        },
+        body: { user_id: userId },
+      })
+
+      if (!response.data.user?.is_active) {
+        throw {
+          statusCode: 403,
+          data: { success: false, message: 'حساب العرض التوضيحي غير مفعل.' },
+        }
+      }
+
+      this.user = response.data.user
+      this.isAuthenticated = true
+      this.isLoggingOut = false
+      markLogoutInProgress(false)
+      this.persistAuthMode({ mode: response.data.mode, token: response.data.token })
+      syncAvatarCache(this.user)
+      if (import.meta.client) {
+        localStorage.setItem('yfh-authenticated', '1')
+      }
+    },
+
     async verifyOtp(email: string, otp: string, challengeId: string): Promise<void> {
       const config = useRuntimeConfig()
       const baseURL = config.public.apiBase as string
