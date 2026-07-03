@@ -83,7 +83,7 @@ class IdentityGovernanceTest extends TestCase
 
         $this->assertDatabaseCount('organizations', 3);
         $this->assertDatabaseCount('teams', 8);
-        $this->assertDatabaseCount('roles', 8);
+        $this->assertDatabaseCount('roles', 9);
 
         foreach (['commercial_banks', 'national_committee', 'system_administration'] as $code) {
             $this->assertDatabaseHas('organizations', [
@@ -94,6 +94,7 @@ class IdentityGovernanceTest extends TestCase
         }
 
         $this->assertDatabaseHas('roles', ['code' => 'committee_manager']);
+        $this->assertDatabaseHas('roles', ['code' => 'committee_director']);
         $this->assertDatabaseHas('roles', ['code' => 'fx_confirm']);
         $this->assertDatabaseHas('teams', ['code' => 'administration']);
     }

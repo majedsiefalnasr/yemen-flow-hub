@@ -76,6 +76,13 @@ class ScreenPermissionSeeder extends Seeder
                 'notifications' => ['VIEW'],
                 'settings' => ['VIEW'],
             ],
+            'committee_director' => [
+                'requests' => ['VIEW', 'UPDATE', 'MANAGE'],
+                'reports' => ['VIEW', 'EXPORT'],
+                'audit' => ['VIEW', 'EXPORT'],
+                'notifications' => ['VIEW'],
+                'settings' => ['VIEW'],
+            ],
             'fx_confirm' => [
                 'requests' => ['VIEW', 'UPDATE'],
                 'reports' => ['VIEW'],

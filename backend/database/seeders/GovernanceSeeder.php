@@ -40,7 +40,8 @@ class GovernanceSeeder extends Seeder
             ['commercial_banks', 'bank_admin', 'مسؤول البنك'],
             ['commercial_banks', 'fx_swift', 'موظف الصرف/السويفت'],
             ['national_committee', 'support', 'عضو اللجنة المساندة'],
-            ['national_committee', 'committee_manager', 'مدير اللجنة التنفيذية'],
+            ['national_committee', 'committee_manager', 'عضو اللجنة التنفيذية'],
+            ['national_committee', 'committee_director', 'مدير اللجنة التنفيذية (مدير)'],
             ['national_committee', 'fx_confirm', 'موظف تأكيد المصارفة'],
             ['system_administration', 'system_admin', 'مسؤول النظام'],
         ];

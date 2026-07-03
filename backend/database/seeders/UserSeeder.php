@@ -114,7 +114,7 @@ class UserSeeder extends Seeder
         $this->command?->line('✓ National committee + system admin users:');
         $this->command?->line('  - 1 CBY_ADMIN (system_admin)');
         $this->command?->line('  - 2 SUPPORT_COMMITTEE (support)');
-        $this->command?->line('  - 1 COMMITTEE_DIRECTOR (committee_manager)');
+        $this->command?->line('  - 1 COMMITTEE_DIRECTOR (committee_director)');
         $this->command?->line('  - 6 EXECUTIVE_MEMBER (committee_manager)');
         $this->command?->line('  - 1 FX_CONFIRM (fxconfirm@cby.gov.ye)');
         $this->command?->line('✓ Bank users (2 active banks × 4 roles):');
@@ -197,7 +197,7 @@ class UserSeeder extends Seeder
             UserRole::SWIFT_OFFICER->value => ['commercial_banks', 'fx_ops', 'fx_swift', true],
             UserRole::SUPPORT_COMMITTEE->value => ['national_committee', 'support', 'support', false],
             UserRole::EXECUTIVE_MEMBER->value => ['national_committee', 'executive', 'committee_manager', false],
-            UserRole::COMMITTEE_DIRECTOR->value => ['national_committee', 'executive', 'committee_manager', false],
+            UserRole::COMMITTEE_DIRECTOR->value => ['national_committee', 'executive', 'committee_director', false],
             UserRole::CBY_ADMIN->value => ['system_administration', 'administration', 'system_admin', false],
         ];
 
