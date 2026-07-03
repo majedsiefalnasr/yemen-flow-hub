@@ -117,6 +117,17 @@ export interface GovernanceBank {
   name: string
 }
 
+export interface DemoUser {
+  id: number
+  name: string
+  email: string
+  role: UserRole
+  role_label: string
+  organization: GovernanceIdentity | null
+  team: GovernanceIdentity | null
+  bank: GovernanceBank | null
+}
+
 export type ScreenCapability = 'VIEW' | 'CREATE' | 'UPDATE' | 'DELETE' | 'EXPORT' | 'MANAGE'
 export type ScreenPermissions = Record<string, ScreenCapability[]>
 
