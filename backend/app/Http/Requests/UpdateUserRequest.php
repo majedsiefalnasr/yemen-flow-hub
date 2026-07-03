@@ -13,11 +13,11 @@ class UpdateUserRequest extends ApiFormRequest
     {
         $actor = $this->user();
         $target = $this->route('user');
-        if (! $actor?->hasRole(UserRole::BANK_ADMIN)) {
+        if (! $actor?->hasRoleCode('bank_admin')) {
             return true;
         }
 
-        if (! $target || $target->bank_id !== $actor->bank_id || ! $target->role?->isBankAdminManageable()) {
+        if (! $target || $target->bank_id !== $actor->bank_id || ! $target->hasAnyRoleCode(['intake', 'internal_reviewer'])) {
             return false;
         }
 
@@ -69,7 +69,7 @@ class UpdateUserRequest extends ApiFormRequest
                 $validator->errors()->add('bank_id', 'bank_id must be null for CBY roles.');
             }
 
-            if ($this->user()?->hasRole(UserRole::BANK_ADMIN)) {
+            if ($this->user()?->hasRoleCode('bank_admin')) {
                 if (! $role->isBankAdminManageable()) {
                     $validator->errors()->add('role', 'BANK_ADMIN can only manage DATA_ENTRY and BANK_REVIEWER users.');
                 }

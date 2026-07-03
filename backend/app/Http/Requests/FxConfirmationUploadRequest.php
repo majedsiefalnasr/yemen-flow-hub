@@ -2,8 +2,6 @@
 
 namespace App\Http\Requests;
 
-use App\Enums\UserRole;
-
 class FxConfirmationUploadRequest extends ApiFormRequest
 {
     public function authorize(): bool
@@ -13,8 +11,8 @@ class FxConfirmationUploadRequest extends ApiFormRequest
             return false;
         }
 
-        // Only COMMITTEE_DIRECTOR may upload signed FX confirmation documents
-        return $user->role === UserRole::COMMITTEE_DIRECTOR;
+        // Only the committee_director governance role may upload signed FX confirmation documents
+        return $user->hasRoleCode('committee_director');
     }
 
     public function rules(): array

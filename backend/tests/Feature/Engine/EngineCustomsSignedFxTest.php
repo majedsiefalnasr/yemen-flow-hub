@@ -14,12 +14,20 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Tests\Support\AssignsGovernanceIdentity;
 use Tests\Support\EngineWorkflowFactory;
 use Tests\TestCase;
 
 class EngineCustomsSignedFxTest extends TestCase
 {
     use RefreshDatabase;
+    use AssignsGovernanceIdentity;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seedGovernance();
+    }
 
     private function grantViewToUser(EngineRequest $request, User $user): void
     {
@@ -59,7 +67,10 @@ class EngineCustomsSignedFxTest extends TestCase
         Storage::fake('local');
 
         ['request' => $request, 'declaration' => $declaration] = $this->seedDeclaration();
-        $director = User::factory()->create(['role' => UserRole::COMMITTEE_DIRECTOR]);
+        $director = $this->assignGovernanceIdentity(
+            User::factory()->create(['role' => UserRole::COMMITTEE_DIRECTOR]),
+            UserRole::COMMITTEE_DIRECTOR
+        );
         $this->grantViewToUser($request, $director);
 
         $file = UploadedFile::fake()->create('signed.pdf', 100, 'application/pdf');
@@ -89,7 +100,10 @@ class EngineCustomsSignedFxTest extends TestCase
         Storage::fake('local');
 
         ['request' => $request] = $this->seedDeclaration();
-        $reviewer = User::factory()->create(['role' => UserRole::BANK_REVIEWER]);
+        $reviewer = $this->assignGovernanceIdentity(
+            User::factory()->create(['role' => UserRole::BANK_REVIEWER]),
+            UserRole::BANK_REVIEWER
+        );
         $this->grantViewToUser($request, $reviewer);
 
         $file = UploadedFile::fake()->create('signed.pdf', 100, 'application/pdf');
@@ -106,7 +120,10 @@ class EngineCustomsSignedFxTest extends TestCase
         Storage::fake('local');
 
         ['request' => $request, 'declaration' => $declaration] = $this->seedDeclaration();
-        $director = User::factory()->create(['role' => UserRole::COMMITTEE_DIRECTOR]);
+        $director = $this->assignGovernanceIdentity(
+            User::factory()->create(['role' => UserRole::COMMITTEE_DIRECTOR]),
+            UserRole::COMMITTEE_DIRECTOR
+        );
         $this->grantViewToUser($request, $director);
 
         // Seed an existing signed doc path.
@@ -135,7 +152,10 @@ class EngineCustomsSignedFxTest extends TestCase
         Storage::fake('local');
 
         ['request' => $request] = EngineWorkflowFactory::seedClaimStageWithTransition();
-        $director = User::factory()->create(['role' => UserRole::COMMITTEE_DIRECTOR]);
+        $director = $this->assignGovernanceIdentity(
+            User::factory()->create(['role' => UserRole::COMMITTEE_DIRECTOR]),
+            UserRole::COMMITTEE_DIRECTOR
+        );
         $this->grantViewToUser($request, $director);
 
         $file = UploadedFile::fake()->create('signed.pdf', 100, 'application/pdf');

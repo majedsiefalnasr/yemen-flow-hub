@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests;
 
-use App\Enums\UserRole;
 use Illuminate\Validation\Rule;
 
 class UpdateBankRequest extends ApiFormRequest
@@ -31,7 +30,7 @@ class UpdateBankRequest extends ApiFormRequest
     {
         $bankId = $this->route('bank')?->id;
 
-        if ($this->user()?->hasRole(UserRole::BANK_ADMIN)) {
+        if ($this->user()?->hasRoleCode('bank_admin')) {
             return [
                 'name' => ['required', 'string', 'max:255', Rule::unique('banks', 'name')->ignore($bankId)],
                 'code' => ['prohibited'],

@@ -12,7 +12,7 @@ class StoreUserRequest extends ApiFormRequest
     public function authorize(): bool
     {
         $actor = $this->user();
-        if (! $actor?->hasRole(UserRole::BANK_ADMIN)) {
+        if (! $actor?->hasRoleCode('bank_admin')) {
             return true;
         }
 
@@ -62,7 +62,7 @@ class StoreUserRequest extends ApiFormRequest
                 $validator->errors()->add('bank_id', 'bank_id must be null for CBY roles.');
             }
 
-            if ($this->user()?->hasRole(UserRole::BANK_ADMIN)) {
+            if ($this->user()?->hasRoleCode('bank_admin')) {
                 if (! $role->isBankAdminManageable()) {
                     $validator->errors()->add('role', 'BANK_ADMIN can only manage DATA_ENTRY and BANK_REVIEWER users.');
                 }
