@@ -20,7 +20,7 @@ class EngineRequestAdminVisibilityTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_cby_admin_sees_all_requests_even_without_legacy_role_pivot_sync(): void
+    public function test_cby_admin_visibility_is_governed_by_pivot_role_not_legacy_enum(): void
     {
         $this->seed(GovernanceSeeder::class);
         $this->seed(BankSeeder::class);
@@ -35,10 +35,16 @@ class EngineRequestAdminVisibilityTest extends TestCase
 
         $this->makeEngineRequests(3);
 
-        // Pivot detached: admin must NOT see all requests via the legacy enum alone.
-        // (Admin has bank_id === null, so scopeForUser() would still return everything
-        // regardless of pivot state — the real proof point is the re-attach below,
-        // which demonstrates visibility tracks the pivot, not the enum.)
+        // Pivot detached: admin must NOT see all requests. The legacy `role` enum
+        // column still says CBY_ADMIN throughout (attach/detach never touches it),
+        // so this only fails if the production code regresses to checking the enum
+        // instead of reading the pivot at request time.
+        $detachedResponse = $this->actingAs($admin->fresh())->getJson('/api/v1/engine-requests');
+        $detachedResponse->assertOk();
+        $this->assertCount(0, $detachedResponse->json('data'));
+
+        // Re-attach the pivot role: visibility must now be full, proving the check
+        // tracks the pivot, not the enum.
         $admin->roles()->attach(Role::where('code', 'system_admin')->firstOrFail());
         $admin->refresh();
 
