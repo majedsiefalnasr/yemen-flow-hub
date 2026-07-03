@@ -30,7 +30,6 @@ const emit = defineEmits<{
 const { users, loading, error, fetchDemoUsers } = useDemoUsers()
 const authStore = useAuthStore()
 const searchQuery = ref('')
-const switchingUserId = ref<number | null>(null)
 
 watch(
   () => props.open,
@@ -73,15 +72,12 @@ const groupedUsers = computed(() => {
 })
 
 async function handleSelect(user: DemoUser): Promise<void> {
-  switchingUserId.value = user.id
   try {
     await authStore.switchDemoUser(user.id)
     emit('update:open', false)
     await navigateTo('/dashboard')
   } catch {
     toast.error(`تعذّر تسجيل الدخول كـ ${user.name}`)
-  } finally {
-    switchingUserId.value = null
   }
 }
 </script>
