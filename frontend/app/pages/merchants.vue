@@ -73,7 +73,6 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from '@/components/ui/empty'
-import { Skeleton } from '@/components/ui/skeleton'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   DataTable,
@@ -185,16 +184,6 @@ const preFiltered = computed(() => {
   return scoped.value.filter((m) =>
     [m.name, m.tax_number, bankName(m.bank_id)].some((v) => (v ?? '').toLowerCase().includes(q)),
   )
-})
-
-const filtered = computed(() => {
-  const q = query.value.trim().toLowerCase()
-  return scoped.value.filter((m) => {
-    if (!q) return true
-    return [m.name, m.tax_number, bankName(m.bank_id)].some((v) =>
-      (v ?? '').toLowerCase().includes(q),
-    )
-  })
 })
 
 const stats = computed(() => ({
@@ -367,7 +356,17 @@ async function saveEdit(data: MerchantFormData) {
 const rowSelection = ref<Record<string, boolean>>({})
 const columnVisibility = ref<VisibilityState>({
   transactions: false,
+  bank: false,
 })
+
+watch(
+  isCbyAdmin,
+  (cby) => {
+    columnVisibility.value = { ...columnVisibility.value, bank: cby }
+  },
+  { immediate: true },
+)
+
 const selectedCount = computed(() => Object.values(rowSelection.value).filter(Boolean).length)
 
 const hasActiveFilters = computed(
@@ -815,244 +814,97 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
       </Card>
     </div>
 
-    <!-- CBY Admin: tanstack table view -->
-    <template v-if="isCbyAdmin">
-      <div class="relative flex flex-col gap-4">
-        <DataTable
-          :data="preFiltered"
-          :columns="columns"
-          :loading="loadingMerchants"
-          :pagination="merchantPagination"
-          :column-filters="columnFilters"
-          :column-visibility="columnVisibility"
-          :row-selection="rowSelection"
-          row-class="group/row"
-          @update:pagination="onMerchantPaginationChange"
-          @update:column-filters="(v) => (columnFilters = v)"
-          @update:column-visibility="(v) => (columnVisibility = v)"
-          @update:row-selection="(v) => (rowSelection = v)"
-        >
-          <template #toolbar="{ table: dataTable }">
-            <DataTableToolbar
-              :table="dataTable"
-              search-placeholder="بحث بالاسم أو الرقم الضريبي"
-              :has-filters="hasActiveFilters"
-              :selected-count="selectedCount"
-              @update:search="(v) => (query = v)"
-              @reset="handleReset"
-              @clear-selection="clearSelection"
-            >
-              <template #bulk-actions>
-                <DataTableBulkExport
-                  @csv="exportSelectedRows('csv')"
-                  @excel="exportSelectedRows('excel')"
-                  @json="exportSelectedRows('json')"
-                />
-              </template>
-              <template #filters>
-                <DataTableFacetedFilter
-                  v-if="dataTable.getColumn('status')"
-                  :column="dataTable.getColumn('status')!"
-                  title="الحالة"
-                  :options="statusFilterOptions"
-                />
-                <DataTableFacetedFilter
-                  v-if="dataTable.getColumn('bank') && bankFilterOptions.length > 0"
-                  :column="dataTable.getColumn('bank')!"
-                  title="البنك"
-                  :options="bankFilterOptions"
-                />
-              </template>
-              <template #actions>
-                <DataTableViewOptions :table="dataTable" :column-labels="MERCHANT_COLUMN_LABELS" />
-                <DataTableExport
-                  :table="dataTable as any"
-                  :export-columns="exportCols as any"
-                  :filename="buildExportFilename()"
-                  :formats="['csv', 'tsv', 'json', 'excel', 'pdf']"
-                  :respect-column-visibility="true"
-                />
-              </template>
-            </DataTableToolbar>
-          </template>
-          <template #empty>
-            <Empty class="bg-muted/20 min-h-[280px] rounded-xl border border-dashed">
-              <EmptyHeader>
-                <div
-                  class="bg-muted text-muted-foreground flex size-12 items-center justify-center rounded-xl"
-                >
-                  <SearchX class="size-5" />
-                </div>
-                <EmptyTitle>
-                  {{
-                    merchants.length === 0 ? 'لا يوجد مستوردون مسجلون بعد' : 'لا توجد نتائج مطابقة'
-                  }}
-                </EmptyTitle>
-              </EmptyHeader>
-              <EmptyContent>
-                <EmptyDescription>
-                  {{
-                    merchants.length === 0
-                      ? isCbyAdmin
-                        ? 'لم يتم تسجيل أي مستوردين عبر البنوك حتى الآن.'
-                        : 'ابدأ بتسجيل أول مستورد باستخدام زر "مستورد جديد" أعلاه.'
-                      : 'جرّب إزالة فلتر الحالة أو البنك، أو تغيير نص البحث.'
-                  }}
-                </EmptyDescription>
-              </EmptyContent>
-            </Empty>
-          </template>
-          <template #pagination="{ table: dataTable }">
-            <DataTablePagination :table="dataTable" />
-          </template>
-        </DataTable>
-      </div>
-    </template>
-
-    <!-- Bank Admin: card grid view -->
-    <template v-else>
-      <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <!-- Skeleton loading cards -->
-        <template v-if="loadingMerchants">
-          <Card v-for="i in 6" :key="`skel-card-${i}`" class="flex flex-col border-0 p-5 shadow">
-            <div class="mb-3 flex items-start justify-between">
-              <Skeleton class="h-12 w-12 rounded-xl" />
-              <Skeleton class="h-5 w-16 rounded-full" />
-            </div>
-            <Skeleton class="mb-1 h-4 w-3/4" />
-            <Skeleton class="h-3 w-1/2" />
-            <div class="mt-4 space-y-2">
-              <Skeleton class="h-3 w-full" />
-              <Skeleton class="h-3 w-full" />
-              <Skeleton class="h-3 w-3/4" />
-            </div>
-            <div class="mt-auto border-t pt-4">
-              <Skeleton class="h-8 w-full rounded-md" />
-            </div>
-          </Card>
-        </template>
-
-        <!-- Empty state -->
-        <template v-else-if="filtered.length === 0">
-          <div class="col-span-full">
-            <Empty class="bg-muted/20 min-h-[240px] rounded-xl border border-dashed">
-              <EmptyHeader>
-                <div
-                  class="bg-muted text-muted-foreground flex size-12 items-center justify-center rounded-xl"
-                >
-                  <SearchX class="size-5" />
-                </div>
-                <EmptyTitle>
-                  {{
-                    merchants.length === 0 ? 'لا يوجد مستوردون مسجلون بعد' : 'لا توجد نتائج مطابقة'
-                  }}
-                </EmptyTitle>
-              </EmptyHeader>
-              <EmptyContent>
-                <EmptyDescription>
-                  {{
-                    merchants.length === 0
-                      ? 'ابدأ بتسجيل أول مستورد باستخدام زر "مستورد جديد" أعلاه.'
-                      : 'جرّب تغيير البحث أو فلتر الحالة لعرض المزيد من التجار.'
-                  }}
-                </EmptyDescription>
-              </EmptyContent>
-            </Empty>
-          </div>
-        </template>
-
-        <!-- Merchant cards -->
-        <template v-else>
-          <Card
-            v-for="merchant in filtered"
-            :key="merchant.id"
-            class="hover:shadow-soft flex flex-col border-0 p-5 shadow transition-shadow"
+    <!-- Advanced data table (both CBY Admin and Bank Admin, bank-scoped via `scoped`) -->
+    <div class="relative flex flex-col gap-4">
+      <DataTable
+        :data="preFiltered"
+        :columns="columns"
+        :loading="loadingMerchants"
+        :pagination="merchantPagination"
+        :column-filters="columnFilters"
+        :column-visibility="columnVisibility"
+        :row-selection="rowSelection"
+        row-class="group/row"
+        @update:pagination="onMerchantPaginationChange"
+        @update:column-filters="(v) => (columnFilters = v)"
+        @update:column-visibility="(v) => (columnVisibility = v)"
+        @update:row-selection="(v) => (rowSelection = v)"
+      >
+        <template #toolbar="{ table: dataTable }">
+          <DataTableToolbar
+            :table="dataTable"
+            search-placeholder="بحث بالاسم أو الرقم الضريبي"
+            :has-filters="hasActiveFilters"
+            :selected-count="selectedCount"
+            @update:search="(v) => (query = v)"
+            @reset="handleReset"
+            @clear-selection="clearSelection"
           >
-            <div class="mb-3 flex items-start justify-between">
-              <div
-                class="bg-primary text-primary-foreground grid h-12 w-12 place-items-center rounded-xl"
-              >
-                <Building2 class="h-6 w-6" />
-              </div>
-              <Badge
-                :class="
-                  merchant.status === 'ACTIVE'
-                    ? 'border-0 bg-[var(--color-surface-success)] text-[var(--color-text-success)]'
-                    : 'border-0 bg-[var(--color-surface-error)] text-[var(--color-text-error)]'
-                "
-              >
-                {{ merchant.status === 'ACTIVE' ? 'نشط' : 'موقوف' }}
-              </Badge>
-            </div>
-            <div class="font-heading text-foreground text-base leading-6 font-semibold">
-              {{ merchant.name }}
-            </div>
-            <div class="mt-4 space-y-1.5 text-xs">
-              <div class="flex justify-between gap-2">
-                <span class="font-section text-muted-foreground leading-5 font-medium"
-                  >الرقم الضريبي</span
-                >
-                <span class="text-foreground leading-5 font-medium">{{ merchant.tax_number }}</span>
-              </div>
-              <div class="flex justify-between gap-2">
-                <span class="font-section text-muted-foreground leading-5 font-medium">البنك</span>
-                <span class="text-foreground leading-5 font-medium">{{
-                  bankName(merchant.bank_id)
-                }}</span>
-              </div>
-              <div class="flex justify-between gap-2">
-                <span class="font-section text-muted-foreground leading-5 font-medium"
-                  >العنوان</span
-                >
-                <span class="text-foreground text-end leading-5 font-medium">{{
-                  merchant.address ?? 'غير محدد'
-                }}</span>
-              </div>
-              <div class="flex justify-between gap-2">
-                <span class="font-section text-muted-foreground leading-5 font-medium">هاتف</span>
-                <span class="text-foreground leading-5 font-medium">{{
-                  merchant.phone ?? 'غير محدد'
-                }}</span>
-              </div>
-              <div class="flex justify-between gap-2">
-                <span class="font-section text-muted-foreground leading-5 font-medium"
-                  >المالكون</span
-                >
-                <span class="text-foreground leading-5 font-medium tabular-nums">{{
-                  merchant.owners?.length ?? 0
-                }}</span>
-              </div>
-              <div class="flex justify-between gap-2">
-                <span class="font-section text-muted-foreground leading-5 font-medium"
-                  >الشركات</span
-                >
-                <span class="text-foreground leading-5 font-medium tabular-nums">{{
-                  merchant.companies?.length ?? 0
-                }}</span>
-              </div>
-            </div>
-            <div class="mt-auto flex items-center justify-between border-t pt-4">
-              <div class="text-xs">
-                <span class="font-section text-muted-foreground leading-5 font-medium"
-                  >المعاملات:
-                </span>
-                <span class="text-foreground leading-5 font-semibold tabular-nums">{{
-                  merchant.transaction_count ?? 0
-                }}</span>
-              </div>
-              <div class="flex gap-1">
-                <Button size="sm" variant="ghost" class="h-8" @click="toggleStatus(merchant)">
-                  {{ merchant.status === 'ACTIVE' ? 'إيقاف' : 'تفعيل' }}
-                </Button>
-                <Button size="icon" variant="ghost" class="h-8 w-8" @click="editing = merchant">
-                  <Edit class="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
-          </Card>
+            <template #bulk-actions>
+              <DataTableBulkExport
+                @csv="exportSelectedRows('csv')"
+                @excel="exportSelectedRows('excel')"
+                @json="exportSelectedRows('json')"
+              />
+            </template>
+            <template #filters>
+              <DataTableFacetedFilter
+                v-if="dataTable.getColumn('status')"
+                :column="dataTable.getColumn('status')!"
+                title="الحالة"
+                :options="statusFilterOptions"
+              />
+              <DataTableFacetedFilter
+                v-if="isCbyAdmin && dataTable.getColumn('bank') && bankFilterOptions.length > 0"
+                :column="dataTable.getColumn('bank')!"
+                title="البنك"
+                :options="bankFilterOptions"
+              />
+            </template>
+            <template #actions>
+              <DataTableViewOptions :table="dataTable" :column-labels="MERCHANT_COLUMN_LABELS" />
+              <DataTableExport
+                :table="dataTable as any"
+                :export-columns="exportCols as any"
+                :filename="buildExportFilename()"
+                :formats="['csv', 'tsv', 'json', 'excel', 'pdf']"
+                :respect-column-visibility="true"
+              />
+            </template>
+          </DataTableToolbar>
         </template>
-      </div>
-    </template>
+        <template #empty>
+          <Empty class="bg-muted/20 min-h-[280px] rounded-xl border border-dashed">
+            <EmptyHeader>
+              <div
+                class="bg-muted text-muted-foreground flex size-12 items-center justify-center rounded-xl"
+              >
+                <SearchX class="size-5" />
+              </div>
+              <EmptyTitle>
+                {{
+                  merchants.length === 0 ? 'لا يوجد مستوردون مسجلون بعد' : 'لا توجد نتائج مطابقة'
+                }}
+              </EmptyTitle>
+            </EmptyHeader>
+            <EmptyContent>
+              <EmptyDescription>
+                {{
+                  merchants.length === 0
+                    ? isCbyAdmin
+                      ? 'لم يتم تسجيل أي مستوردين عبر البنوك حتى الآن.'
+                      : 'ابدأ بتسجيل أول مستورد باستخدام زر "مستورد جديد" أعلاه.'
+                    : 'جرّب إزالة فلتر الحالة أو البنك، أو تغيير نص البحث.'
+                }}
+              </EmptyDescription>
+            </EmptyContent>
+          </Empty>
+        </template>
+        <template #pagination="{ table: dataTable }">
+          <DataTablePagination :table="dataTable" />
+        </template>
+      </DataTable>
+    </div>
 
     <Dialog v-model:open="createOpen">
       <MerchantDialog

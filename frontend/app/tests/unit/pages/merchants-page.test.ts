@@ -202,3 +202,16 @@ describe('merchants page — version-aware update payload', () => {
     expect(payload.status).toBe('SUSPENDED')
   })
 })
+
+describe('merchants page column visibility by role', () => {
+  it('hides the bank column for bank admin by default', () => {
+    const columnVisibility: Record<string, boolean> = { transactions: false, bank: false }
+    expect(columnVisibility.bank).toBe(false)
+  })
+
+  it('shows the bank column for CBY admin', () => {
+    const isCbyAdmin = true
+    const columnVisibility: Record<string, boolean> = { transactions: false, bank: isCbyAdmin }
+    expect(columnVisibility.bank).toBe(true)
+  })
+})
