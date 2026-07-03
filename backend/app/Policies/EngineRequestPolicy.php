@@ -15,7 +15,7 @@ class EngineRequestPolicy
 
     public function view(User $user, EngineRequest $request): bool
     {
-        if ($user->isSystemAdmin()) {
+        if ($user->hasRoleCode('system_admin')) {
             return true;
         }
 

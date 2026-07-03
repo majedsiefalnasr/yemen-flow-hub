@@ -216,7 +216,7 @@ class EngineRequestController extends Controller
             ->withStageEntry()
             ->with(['currentStage', 'bank', 'merchant', 'creator']);
 
-        if (! $user->isSystemAdmin()) {
+        if (! $user->hasRoleCode('system_admin')) {
             $query
                 ->forUser($user)
                 ->whereIn('engine_requests.current_stage_id', $accessibleStageIds);
