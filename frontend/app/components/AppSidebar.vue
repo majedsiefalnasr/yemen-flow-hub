@@ -141,7 +141,7 @@ const NAV_GROUP_DEFS: Array<{
       '/admin/orgs',
       '/admin/banks',
       '/merchants',
-      '/admin/cby-staff',
+      '/admin/staff',
       '/admin/teams',
       '/admin/roles',
     ],

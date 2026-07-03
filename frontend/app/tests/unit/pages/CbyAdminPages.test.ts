@@ -117,10 +117,10 @@ function makeBank(overrides: Record<string, unknown> = {}) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// /admin/cby-staff
+// /admin/staff
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe('/admin/cby-staff', () => {
+describe('/admin/staff', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     fetchUsersMock.mockResolvedValue([])
@@ -130,7 +130,7 @@ describe('/admin/cby-staff', () => {
   })
 
   async function mountPage() {
-    const page = (await import('../../../pages/admin/cby-staff.vue')).default
+    const page = (await import('../../../pages/admin/staff.vue')).default
     const wrapper = mount(page, { global: { stubs: { Teleport: true } } })
     await flushPromises()
     return wrapper

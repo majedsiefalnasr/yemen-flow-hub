@@ -37,7 +37,7 @@ describe('NAV_ITEMS role filtering', () => {
 
   it('CBY_ADMIN sees all admin routes', () => {
     const routes = navItemsForRole(UserRole.CBY_ADMIN).map((i) => i.route)
-    expect(routes).toContain('/admin/cby-staff')
+    expect(routes).toContain('/admin/staff')
     expect(routes).toContain('/admin/banks')
     expect(routes).toContain('/admin/workflows')
     expect(routes).toContain('/admin/roles')
@@ -54,7 +54,7 @@ describe('NAV_ITEMS role filtering', () => {
   it('DATA_ENTRY does not see admin routes', () => {
     const routes = navItemsForRole(UserRole.DATA_ENTRY).map((i) => i.route)
     expect(routes).not.toContain('/admin/banks')
-    expect(routes).not.toContain('/admin/cby-staff')
+    expect(routes).not.toContain('/admin/staff')
     expect(routes).not.toContain('/audit')
     expect(routes).not.toContain('/merchants')
   })
@@ -78,7 +78,7 @@ describe('NAV_ITEMS role filtering', () => {
   it('BANK_ADMIN does not see CBY admin routes', () => {
     const routes = navItemsForRole(UserRole.BANK_ADMIN).map((i) => i.route)
     expect(routes).not.toContain('/audit')
-    expect(routes).not.toContain('/admin/cby-staff')
+    expect(routes).not.toContain('/admin/staff')
     expect(routes).not.toContain('/admin/banks')
     expect(routes).not.toContain('/admin/roles')
   })

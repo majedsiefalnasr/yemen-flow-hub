@@ -20,7 +20,7 @@ describe('identity user management pages', () => {
   })
 
   it('exposes committee and bank routes', () => {
-    expect(readFileSync(resolve(process.cwd(), 'app/pages/admin/cby-staff.vue'), 'utf8')).toContain(
+    expect(readFileSync(resolve(process.cwd(), 'app/pages/admin/staff.vue'), 'utf8')).toContain(
       'audience="committee"',
     )
     expect(readFileSync(resolve(process.cwd(), 'app/pages/bank/users.vue'), 'utf8')).toContain(

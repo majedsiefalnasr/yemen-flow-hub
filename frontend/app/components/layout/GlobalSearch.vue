@@ -203,7 +203,7 @@ onBeforeUnmount(() => {
             :key="user.id"
             class="search-result-item hover:bg-muted/50 flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors"
             type="button"
-            @click="navigateTo('/admin/cby-staff')"
+            @click="navigateTo('/admin/staff')"
           >
             <User class="text-muted-foreground h-4 w-4 flex-shrink-0" />
             <div class="min-w-0 flex-1">

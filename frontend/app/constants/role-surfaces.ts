@@ -14,7 +14,7 @@ export type RoleSurfaceKey =
   | 'nav.admin.banks'
   | 'nav.admin.orgs'
   | 'nav.admin.system_settings'
-  | 'nav.admin.cby_staff'
+  | 'nav.admin.staff'
   | 'nav.admin.workflow_designer'
   | 'nav.admin.teams'
   | 'nav.admin.reference_data'
@@ -64,7 +64,7 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
       'nav.admin.banks',
       'nav.admin.orgs',
       'nav.admin.system_settings',
-      'nav.admin.cby_staff',
+      'nav.admin.staff',
       'nav.admin.workflow_designer',
       'nav.admin.teams',
       'nav.admin.reference_data',
@@ -90,7 +90,7 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
       'nav.admin.banks',
       'nav.admin.orgs',
       'nav.admin.system_settings',
-      'nav.admin.cby_staff',
+      'nav.admin.staff',
       'nav.admin.workflow_designer',
       'nav.admin.teams',
       'nav.admin.reference_data',
@@ -122,7 +122,7 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
       'nav.admin.banks',
       'nav.admin.orgs',
       'nav.admin.system_settings',
-      'nav.admin.cby_staff',
+      'nav.admin.staff',
       'nav.admin.workflow_designer',
       'nav.admin.teams',
       'nav.admin.reference_data',
@@ -157,7 +157,7 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
       'nav.admin.banks',
       'nav.admin.orgs',
       'nav.admin.system_settings',
-      'nav.admin.cby_staff',
+      'nav.admin.staff',
       'nav.admin.workflow_designer',
       'nav.admin.teams',
       'nav.admin.reference_data',
@@ -188,7 +188,7 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
       'nav.admin.banks',
       'nav.admin.orgs',
       'nav.admin.system_settings',
-      'nav.admin.cby_staff',
+      'nav.admin.staff',
       'nav.admin.workflow_designer',
       'nav.admin.teams',
       'nav.admin.reference_data',
@@ -222,7 +222,7 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
       'nav.admin.banks',
       'nav.admin.orgs',
       'nav.admin.system_settings',
-      'nav.admin.cby_staff',
+      'nav.admin.staff',
       'nav.admin.workflow_designer',
       'nav.admin.teams',
       'nav.admin.reference_data',
@@ -257,7 +257,7 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
       'nav.admin.banks',
       'nav.admin.orgs',
       'nav.admin.system_settings',
-      'nav.admin.cby_staff',
+      'nav.admin.staff',
       'nav.admin.workflow_designer',
       'nav.admin.teams',
       'nav.admin.reference_data',
@@ -280,7 +280,7 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
       'nav.admin.banks',
       'nav.admin.orgs',
       'nav.admin.system_settings',
-      'nav.admin.cby_staff',
+      'nav.admin.staff',
       'nav.admin.workflow_designer',
       'nav.admin.teams',
       'nav.admin.reference_data',
@@ -317,7 +317,7 @@ export const NAV_SURFACE_ROUTES: Record<
   | 'nav.admin.banks'
   | 'nav.admin.orgs'
   | 'nav.admin.system_settings'
-  | 'nav.admin.cby_staff'
+  | 'nav.admin.staff'
   | 'nav.admin.workflow_designer'
   | 'nav.admin.teams'
   | 'nav.admin.reference_data'
@@ -340,7 +340,7 @@ export const NAV_SURFACE_ROUTES: Record<
   'nav.admin.banks': '/admin/banks',
   'nav.admin.orgs': '/admin/orgs',
   'nav.admin.system_settings': '/admin/settings',
-  'nav.admin.cby_staff': '/admin/cby-staff',
+  'nav.admin.staff': '/admin/staff',
   'nav.admin.workflow_designer': '/admin/workflows',
   'nav.admin.teams': '/admin/teams',
   'nav.admin.reference_data': '/admin/reference-data',

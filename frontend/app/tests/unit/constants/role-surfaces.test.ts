@@ -123,7 +123,7 @@ describe('ROLE_SURFACE_MATRIX — DATA_ENTRY forbidden surfaces (plan §1)', () 
   })
 
   it('cannot see admin CBY staff nav', () => {
-    expect(roleHasSurface(UserRole.DATA_ENTRY, 'nav.admin.cby_staff')).toBe(false)
+    expect(roleHasSurface(UserRole.DATA_ENTRY, 'nav.admin.staff')).toBe(false)
   })
 
   it('cannot see admin roles nav', () => {
@@ -201,7 +201,7 @@ describe('ROLE_SURFACE_MATRIX — BANK_REVIEWER forbidden surfaces (plan §1)', 
   })
 
   it('cannot see admin CBY staff nav', () => {
-    expect(roleHasSurface(UserRole.BANK_REVIEWER, 'nav.admin.cby_staff')).toBe(false)
+    expect(roleHasSurface(UserRole.BANK_REVIEWER, 'nav.admin.staff')).toBe(false)
   })
 
   it('cannot access support claim action', () => {
@@ -306,7 +306,7 @@ describe('ROLE_SURFACE_MATRIX — BANK_ADMIN forbidden surfaces (plan §1)', () 
   })
 
   it('cannot see admin CBY staff nav', () => {
-    expect(roleHasSurface(UserRole.BANK_ADMIN, 'nav.admin.cby_staff')).toBe(false)
+    expect(roleHasSurface(UserRole.BANK_ADMIN, 'nav.admin.staff')).toBe(false)
   })
 })
 
@@ -564,7 +564,7 @@ describe('ROLE_SURFACE_MATRIX — CBY_ADMIN allowed surfaces', () => {
   })
 
   it('allows admin CBY staff nav', () => {
-    expect(roleHasSurface(UserRole.CBY_ADMIN, 'nav.admin.cby_staff')).toBe(true)
+    expect(roleHasSurface(UserRole.CBY_ADMIN, 'nav.admin.staff')).toBe(true)
   })
 
   it('allows notifications', () => {

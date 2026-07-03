@@ -86,7 +86,7 @@ describe('Story 5.7 page smoke tests', () => {
 
   it('renders Story 6.5 admin pages with real content (not redirects)', async () => {
     const cbystaffHtml = await renderPage(
-      (await import('../../../pages/admin/cby-staff.vue')).default,
+      (await import('../../../pages/admin/staff.vue')).default,
     )
     expect(cbystaffHtml).toContain('مستخدمي النظام')
 

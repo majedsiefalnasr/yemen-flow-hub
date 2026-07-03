@@ -79,7 +79,7 @@ const shortcutByRoute: Record<string, string> = {
   '/audit': 'A',
   '/notifications': 'I',
   '/admin/banks': 'B',
-  '/admin/cby-staff': 'U',
+  '/admin/staff': 'U',
   '/admin/workflows': 'Y',
   '/admin/reference-data': 'J',
   '/admin/teams': 'Q',
@@ -102,7 +102,7 @@ const aliasesByRoute: Record<string, string> = {
   '/audit': 'audit logs compliance',
   '/notifications': 'notifications alerts',
   '/admin/banks': 'banks بنوك organizations institutions',
-  '/admin/cby-staff': 'cby staff admin users',
+  '/admin/staff': 'cby staff admin users',
   '/admin/workflows': 'workflow designer مصمم سير العمل stages transitions',
   '/admin/reference-data': 'reference data البيانات الأساسية lookup tables',
   '/admin/teams': 'teams فرق groups',
@@ -219,7 +219,7 @@ const GROUP_DEFS: Array<{ heading: string; routes: string[] }> = [
   { heading: 'الطوابير', routes: ['/dashboard', '/customs'] },
   {
     heading: 'الجهات والمستخدمون',
-    routes: ['/merchants', '/staff', '/admin/banks', '/admin/cby-staff'],
+    routes: ['/merchants', '/staff', '/admin/banks', '/admin/staff'],
   },
   { heading: 'التدقيق والتقارير', routes: ['/audit', '/reports'] },
   {
