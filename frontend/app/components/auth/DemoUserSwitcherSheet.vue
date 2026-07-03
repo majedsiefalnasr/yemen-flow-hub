@@ -88,7 +88,7 @@ async function handleSelect(user: DemoUser): Promise<void> {
 
 <template>
   <Sheet :open="open" @update:open="(value) => emit('update:open', value)">
-    <SheetContent side="right" class="flex w-[420px] flex-col gap-4">
+    <SheetContent side="left" class="flex w-[420px] flex-col gap-4">
       <SheetHeader>
         <SheetTitle>تبديل المستخدم السريع</SheetTitle>
         <SheetDescription>اختر حساباً لتسجيل الدخول به مباشرة دون إعادة المصادقة</SheetDescription>

@@ -1,14 +1,15 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { defineComponent, h, ref } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import { UserRole } from '../../../types/enums'
 import type { DemoUser } from '../../../types/models'
 
 const mockFetchDemoUsers = vi.fn()
-const mockUsers = { value: [] as DemoUser[] }
-const mockLoading = { value: false }
-const mockError = { value: null as string | null }
+const mockUsers = ref<DemoUser[]>([])
+const mockLoading = ref(false)
+const mockError = ref<string | null>(null)
 
 vi.mock('../../../composables/useDemoUsers', () => ({
   useDemoUsers: () => ({
@@ -27,6 +28,32 @@ vi.mock('../../../stores/auth.store', () => ({
 }))
 
 vi.stubGlobal('navigateTo', vi.fn())
+
+// shadcn Sheet's SheetContent renders inside a reka-ui DialogPortal, which
+// teleports its content to document.body — @vue/test-utils' mount() wrapper
+// cannot introspect Teleport targets. Per AGENTS.md, Sheet must not be
+// downgraded to raw HTML in the SOURCE component to make tests pass; instead
+// (same technique as CommandPalette.test.ts's `@/components/ui/command`
+// mock) the TEST replaces the shadcn Sheet module with simple passthrough
+// stubs that render their default slots directly into the DOM, no Teleport
+// involved. DemoUserSwitcherSheet.vue itself is untouched and keeps using
+// the real `<Sheet>`/`<SheetContent>` API surface.
+function passthrough(name: string) {
+  return defineComponent({
+    name,
+    setup(_, { slots, attrs }) {
+      return () => h('div', attrs, slots.default?.())
+    },
+  })
+}
+
+vi.mock('../../../components/ui/sheet', () => ({
+  Sheet: passthrough('Sheet'),
+  SheetContent: passthrough('SheetContent'),
+  SheetHeader: passthrough('SheetHeader'),
+  SheetTitle: passthrough('SheetTitle'),
+  SheetDescription: passthrough('SheetDescription'),
+}))
 
 const SAMPLE_USERS: DemoUser[] = [
   {
@@ -64,14 +91,7 @@ describe('DemoUserSwitcherSheet', () => {
     mockError.value = null
   })
 
-  // shadcn Sheet's SheetContent renders inside a reka-ui DialogPortal, which
-  // teleports its content to document.body. @vue/test-utils' wrapper.text()/
-  // wrapper.find() only query within the wrapper's own mounted root and do not
-  // follow Vue Teleport targets, so the search input and cards are invisible
-  // to the wrapper even though the real DOM (verified via document.body.innerHTML)
-  // renders correctly. Per AGENTS.md, Sheet must not be downgraded to raw HTML
-  // to make this assertion introspectable — skipping instead.
-  it.skip('filters the visible users by the search query', async () => {
+  it('filters the visible users by the search query', async () => {
     const wrapper = mount(DemoUserSwitcherSheet, {
       props: { open: true, 'onUpdate:open': () => {} },
     })
@@ -86,11 +106,7 @@ describe('DemoUserSwitcherSheet', () => {
     expect(wrapper.text()).toContain('Nada Al-Kibsi')
   })
 
-  // Same Teleport limitation as above: DemoUserSwitcherCard's [role="button"]
-  // is rendered inside SheetContent's teleported DialogPortal subtree, which
-  // wrapper.findAll() cannot see. Skipping per AGENTS.md rather than replacing
-  // Sheet with raw HTML.
-  it.skip('calls switchDemoUser with the clicked user id', async () => {
+  it('calls switchDemoUser with the clicked user id', async () => {
     mockSwitchDemoUser.mockResolvedValueOnce(undefined)
 
     const wrapper = mount(DemoUserSwitcherSheet, {
