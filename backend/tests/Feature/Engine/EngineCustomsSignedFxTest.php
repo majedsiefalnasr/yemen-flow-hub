@@ -147,6 +147,54 @@ class EngineCustomsSignedFxTest extends TestCase
         $this->assertStringNotContainsString('old_signed.pdf', $fresh->signed_fx_doc_path);
     }
 
+    public function test_pivot_role_is_authoritative_for_director_upload_even_when_legacy_enum_disagrees(): void
+    {
+        Storage::fake('local');
+
+        ['request' => $request, 'declaration' => $declaration] = $this->seedDeclaration();
+
+        // Desync case 1: legacy enum says COMMITTEE_DIRECTOR, but the governance
+        // pivot role is NOT committee_director. The pivot must be authoritative,
+        // so this upload must be rejected.
+        $staleEnumUser = $this->assignGovernanceIdentity(
+            User::factory()->create(['role' => UserRole::COMMITTEE_DIRECTOR]),
+            UserRole::BANK_REVIEWER
+        );
+        $this->grantViewToUser($request, $staleEnumUser);
+
+        $file = UploadedFile::fake()->create('signed.pdf', 100, 'application/pdf');
+
+        $this->actingAs($staleEnumUser)
+            ->postJson("/api/v1/engine-requests/{$request->id}/fx-confirmation-signed", [
+                'signed_document' => $file,
+            ])
+            ->assertStatus(403);
+
+        $this->assertNull($declaration->fresh()->signed_fx_doc_path);
+
+        // Desync case 2: legacy enum does NOT say COMMITTEE_DIRECTOR, but the
+        // governance pivot role IS committee_director. The pivot must be
+        // authoritative, so this upload must succeed.
+        $realDirector = $this->assignGovernanceIdentity(
+            User::factory()->create(['role' => UserRole::BANK_REVIEWER]),
+            UserRole::COMMITTEE_DIRECTOR
+        );
+        $this->grantViewToUser($request, $realDirector);
+
+        $file2 = UploadedFile::fake()->create('signed2.pdf', 100, 'application/pdf');
+
+        $this->actingAs($realDirector)
+            ->postJson("/api/v1/engine-requests/{$request->id}/fx-confirmation-signed", [
+                'signed_document' => $file2,
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $fresh = $declaration->fresh();
+        $this->assertNotNull($fresh->signed_fx_doc_path);
+        $this->assertSame($realDirector->id, $fresh->signed_fx_doc_uploaded_by);
+    }
+
     public function test_upload_returns_404_if_no_declaration_exists_for_engine_request(): void
     {
         Storage::fake('local');

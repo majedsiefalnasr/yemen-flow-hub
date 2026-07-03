@@ -3,7 +3,6 @@
 namespace App\Services\Customs;
 
 use App\Enums\AuditAction;
-use App\Enums\UserRole;
 use App\Exceptions\CustomsException;
 use App\Models\CustomsDeclaration;
 use App\Models\EngineRequest;
@@ -23,7 +22,7 @@ class EngineCustomsService
      */
     public function uploadSignedFxDoc(EngineRequest $request, User $uploader, UploadedFile $file): CustomsDeclaration
     {
-        if ($uploader->role !== UserRole::COMMITTEE_DIRECTOR) {
+        if (! $uploader->hasRoleCode('committee_director')) {
             throw new CustomsException('Only committee director can upload signed FX confirmation documents.');
         }
 
