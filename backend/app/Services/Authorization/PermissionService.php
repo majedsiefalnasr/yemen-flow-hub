@@ -100,6 +100,71 @@ class PermissionService
     }
 
     /**
+     * Derive requests-screen access per role from stage_permissions on the
+     * published workflow version. This is the single source of truth for
+     * `requests` screen capability — used by both the screen-permissions
+     * matrix display and runtime enforcement.
+     *
+     * @param  array<int>  $roleIds
+     * @return array<int, array{view: bool, add: bool, edit: bool}>
+     */
+    public function derivedRequestsCapabilities(array $roleIds): array
+    {
+        $result = array_fill_keys($roleIds, ['view' => false, 'add' => false, 'edit' => false]);
+        if (empty($roleIds)) {
+            return $result;
+        }
+
+        $publishedVersionId = DB::table('workflow_versions')
+            ->where('state', \App\Enums\WorkflowVersionState::PUBLISHED->value)
+            ->orderByDesc('version_number')
+            ->value('id');
+
+        if ($publishedVersionId === null) {
+            return $result;
+        }
+
+        $stageIds = DB::table('workflow_stages')
+            ->where('workflow_version_id', $publishedVersionId)
+            ->where('status', 'ACTIVE')
+            ->pluck('id', 'id');
+
+        if ($stageIds->isEmpty()) {
+            return $result;
+        }
+
+        $initialStageId = DB::table('workflow_stages')
+            ->where('workflow_version_id', $publishedVersionId)
+            ->where('is_initial', true)
+            ->value('id');
+
+        $assignments = DB::table('stage_permissions')
+            ->whereIn('role_id', $roleIds)
+            ->whereIn('stage_id', $stageIds)
+            ->select('role_id', 'stage_id', 'access_level')
+            ->get()
+            ->groupBy('role_id')
+            ->map(fn ($items) => $items->keyBy('stage_id')->map(fn ($item) => $item->access_level))
+            ->all();
+
+        foreach ($roleIds as $roleId) {
+            $perRole = $assignments[$roleId] ?? collect();
+            if ($perRole->isEmpty()) {
+                continue;
+            }
+
+            $view = $perRole->isNotEmpty();
+            $edit = $perRole->contains(fn (string $level) => $level === 'EXECUTE');
+            $add = $initialStageId !== null
+                && ($perRole->get($initialStageId) === 'EXECUTE');
+
+            $result[$roleId] = ['view' => $view, 'add' => $add, 'edit' => $edit];
+        }
+
+        return $result;
+    }
+
+    /**
      * Whether the user holds a specific capability on a specific screen,
      * derived from the data-driven screen_permissions catalog (never role codes).
      */

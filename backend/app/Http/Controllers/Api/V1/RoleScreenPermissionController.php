@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\AuditAction;
 use App\Enums\ScreenCapability;
-use App\Enums\WorkflowVersionState;
 use App\Http\Controllers\Api\Controller;
 use App\Models\Role;
 use App\Models\Screen;
@@ -131,7 +130,7 @@ class RoleScreenPermissionController extends Controller
             ->map(fn ($items) => $items->groupBy('key')->map(fn ($caps) => $caps->pluck('capability')->unique()->values()->all()))
             ->all();
 
-        $derived = $this->derivedRequestsAccess($roles->pluck('id')->all());
+        $derived = $this->permissionService->derivedRequestsCapabilities($roles->pluck('id')->all());
 
         $rows = $roles->map(fn (Role $role) => [
             'id' => $role->id,
@@ -152,72 +151,6 @@ class RoleScreenPermissionController extends Controller
                 'capabilities' => self::SCREEN_CAPABILITIES[$screen->key] ?? ['VIEW'],
             ])->all(),
         ], 'Screen permission matrix retrieved.');
-    }
-
-    /**
-     * Derive requests-screen access per role from stage_permissions on the
-     * published workflow version. Mirrors the dynamic-workflow-engine
-     * `requestsAccessForRole` derivation.
-     *
-     * @param  array<int>  $roleIds
-     * @return array<int, array{view: bool, add: bool, edit: bool}>
-     */
-    private function derivedRequestsAccess(array $roleIds): array
-    {
-        $result = array_fill_keys($roleIds, ['view' => false, 'add' => false, 'edit' => false]);
-        if (empty($roleIds)) {
-            return $result;
-        }
-
-        // Resolve the published version (first published definition, latest version number).
-        $publishedVersionId = DB::table('workflow_versions')
-            ->where('state', WorkflowVersionState::PUBLISHED->value)
-            ->orderByDesc('version_number')
-            ->value('id');
-
-        if ($publishedVersionId === null) {
-            return $result;
-        }
-
-        $stageIds = DB::table('workflow_stages')
-            ->where('workflow_version_id', $publishedVersionId)
-            ->where('status', 'ACTIVE')
-            ->pluck('id', 'id');
-
-        if ($stageIds->isEmpty()) {
-            return $result;
-        }
-
-        $initialStageId = DB::table('workflow_stages')
-            ->where('workflow_version_id', $publishedVersionId)
-            ->where('is_initial', true)
-            ->value('id');
-
-        // role_id → [stage_id => access_level]
-        $assignments = DB::table('stage_permissions')
-            ->where('role_id', $roleIds)
-            ->whereIn('stage_id', $stageIds)
-            ->select('role_id', 'stage_id', 'access_level')
-            ->get()
-            ->groupBy('role_id')
-            ->map(fn ($items) => $items->keyBy('stage_id')->map(fn ($item) => $item->access_level))
-            ->all();
-
-        foreach ($roleIds as $roleId) {
-            $perRole = $assignments[$roleId] ?? collect();
-            if ($perRole->isEmpty()) {
-                continue;
-            }
-
-            $view = $perRole->isNotEmpty();
-            $edit = $perRole->contains(fn (string $level) => $level === 'EXECUTE');
-            $add = $initialStageId !== null
-                && ($perRole->get($initialStageId) === 'EXECUTE');
-
-            $result[$roleId] = ['view' => $view, 'add' => $add, 'edit' => $edit];
-        }
-
-        return $result;
     }
 
     public function update(Request $request, Role $role)
