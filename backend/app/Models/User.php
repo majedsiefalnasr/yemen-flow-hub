@@ -133,6 +133,33 @@ class User extends Authenticatable
         return $this->roles()->where('code', 'system_admin')->exists();
     }
 
+    public function hasRoleCode(string $code): bool
+    {
+        if ($this->relationLoaded('roles')) {
+            return $this->roles->contains('code', $code);
+        }
+
+        return $this->roles()->where('code', $code)->exists();
+    }
+
+    public function hasAnyRoleCode(array $codes): bool
+    {
+        if ($this->relationLoaded('roles')) {
+            return $this->roles->whereIn('code', $codes)->isNotEmpty();
+        }
+
+        return $this->roles()->whereIn('code', $codes)->exists();
+    }
+
+    public function inOrganization(string $code): bool
+    {
+        if ($this->relationLoaded('organization')) {
+            return $this->organization?->code === $code;
+        }
+
+        return $this->organization()->where('code', $code)->exists();
+    }
+
     public function hasPermission(string $slug): bool
     {
         return app(PermissionService::class)->userCan($this, $slug);
