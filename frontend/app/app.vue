@@ -6,6 +6,7 @@ import { ConfigProvider } from 'reka-ui'
 import { useAuthStore } from '@/stores/auth.store'
 import { DEFAULT_BRAND_LOGO_URL, useOrgStore } from '@/stores/org.store'
 import { useThemingStore } from '@/stores/theming.store'
+import DemoUserSwitcherButton from '@/components/auth/DemoUserSwitcherButton.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -173,6 +174,7 @@ const showShell = computed(() => route.path !== '/login' && Boolean(user.value))
     <NuxtLoadingIndicator color="var(--primary)" />
     <NuxtRouteAnnouncer />
     <Toaster :position="toasterPosition" rich-colors />
+    <DemoUserSwitcherButton />
 
     <AppShell v-if="showShell">
       <NuxtLayout>
