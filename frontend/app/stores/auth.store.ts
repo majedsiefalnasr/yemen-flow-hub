@@ -136,6 +136,7 @@ export const useAuthStore = defineStore('auth', {
     userPreferences: null as UserPreferences | null,
     screenPermissions: {} as ScreenPermissions,
     capabilities: {} as Record<string, boolean>,
+    authReady: true,
   }),
 
   getters: {
@@ -468,6 +469,8 @@ export const useAuthStore = defineStore('auth', {
       if (import.meta.client) {
         localStorage.setItem('yfh-authenticated', '1')
       }
+
+      await this.fetchUser()
     },
 
     async switchDemoUser(userId: number): Promise<void> {
@@ -503,6 +506,8 @@ export const useAuthStore = defineStore('auth', {
       if (import.meta.client) {
         localStorage.setItem('yfh-authenticated', '1')
       }
+
+      await this.fetchUser()
     },
 
     async verifyOtp(email: string, otp: string, challengeId: string): Promise<void> {
@@ -539,6 +544,8 @@ export const useAuthStore = defineStore('auth', {
       if (import.meta.client) {
         localStorage.setItem('yfh-authenticated', '1')
       }
+
+      await this.fetchUser()
     },
 
     async logout(): Promise<void> {

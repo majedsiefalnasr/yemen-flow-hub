@@ -1,10 +1,13 @@
 import { useAuthStore } from '../stores/auth.store'
+import { waitForAuthReady } from '../composables/useAuthReady'
 
-export default defineNuxtRouteMiddleware((to) => {
+export default defineNuxtRouteMiddleware(async (to) => {
   const config = useRuntimeConfig()
   if (config.public.visualBypass) {
     return
   }
+
+  await waitForAuthReady()
 
   const auth = useAuthStore()
 

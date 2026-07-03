@@ -3,18 +3,23 @@ import { useThemingStore } from '../stores/theming.store'
 
 export default defineNuxtPlugin(async () => {
   const config = useRuntimeConfig()
+  const auth = useAuthStore()
+
   if (config.public.visualBypass) {
+    auth.authReady = true
     return
   }
 
   const hasAuthHint = localStorage.getItem('yfh-authenticated') === '1'
 
   if (!hasAuthHint) {
+    auth.authReady = true
     return
   }
 
-  const auth = useAuthStore()
+  auth.authReady = false
   await auth.fetchUser()
+  auth.authReady = true
   if (auth.isAuthenticated) {
     await auth.fetchUserPreferences()
     const theming = useThemingStore()
