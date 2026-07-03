@@ -15,6 +15,7 @@ import AnalyticsCard from '../../components/shared/dashboard/AnalyticsCard.vue'
 import TimeSeriesChartCard from '../../components/shared/dashboard/TimeSeriesChartCard.vue'
 import BreakdownChartCard from '../../components/shared/dashboard/BreakdownChartCard.vue'
 import RankedListCard from '../../components/shared/dashboard/RankedListCard.vue'
+import PageHeader from '../../components/layout/PageHeader.vue'
 import DataTable from '@/components/ui/data-table/DataTable.vue'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -295,17 +296,12 @@ const bankBreakdownColumns: ColumnDef<{
 <template>
   <div class="reports-page">
     <!-- Page Header -->
-    <div class="page-header">
-      <div class="header-text">
-        <nav class="breadcrumbs" aria-label="مسار التنقل">
-          <NuxtLink to="/dashboard" class="breadcrumb-link">الرئيسية</NuxtLink>
-          <span class="breadcrumb-sep">←</span>
-          <span class="breadcrumb-current">التقارير</span>
-        </nav>
-        <h1 class="page-title">التقارير والتحليلات المتقدمة</h1>
-        <p class="page-subtitle">مؤشرات الأداء، التحليل الإحصائي، والتقارير القابلة للتصدير</p>
-      </div>
-      <div class="header-actions">
+    <PageHeader
+      title="التقارير والتحليلات المتقدمة"
+      subtitle="مؤشرات الأداء، التحليل الإحصائي، والتقارير القابلة للتصدير"
+      :breadcrumbs="[{ label: 'الرئيسية', to: '/dashboard' }, { label: 'التقارير' }]"
+    >
+      <template #actions>
         <Button variant="outline" :disabled="store.loading" aria-label="تحديد الفترة الزمنية">
           <CalendarDays class="h-4 w-4" aria-hidden="true" />
           الفترة
@@ -324,8 +320,8 @@ const bankBreakdownColumns: ColumnDef<{
         >
           تصدير Excel
         </Button>
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <!-- Error State -->
     <Alert v-if="store.error" variant="destructive" role="alert">
@@ -585,66 +581,6 @@ const bankBreakdownColumns: ColumnDef<{
   flex-direction: column;
   gap: 24px;
   direction: rtl;
-}
-
-/* ─── Header ────────────────────────────────────────────────── */
-.page-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.breadcrumbs {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--font-section);
-  font-size: 0.8125rem;
-  line-height: 1.25rem;
-  color: var(--muted-foreground);
-  margin-bottom: 6px;
-}
-
-.breadcrumb-link {
-  color: var(--color-primary);
-  text-decoration: none;
-}
-
-.breadcrumb-link:hover {
-  text-decoration: underline;
-}
-
-.breadcrumb-sep {
-  color: var(--border);
-}
-
-.breadcrumb-current {
-  color: var(--foreground);
-}
-
-.page-title {
-  font-family: var(--font-heading);
-  font-size: 1.75rem;
-  line-height: 2.25rem;
-  font-weight: 600;
-  color: var(--foreground);
-  margin: 0;
-}
-
-.page-subtitle {
-  max-width: 68ch;
-  font-size: 0.875rem;
-  line-height: 1.5rem;
-  color: var(--muted-foreground);
-  margin: 4px 0 0;
-}
-
-.header-actions {
-  display: flex;
-  gap: 8px;
-  flex-shrink: 0;
-  align-items: center;
 }
 
 /* ─── Buttons ───────────────────────────────────────────────── */
