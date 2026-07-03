@@ -23,7 +23,7 @@ const auth = useAuthStore()
 const router = useRouter()
 
 const role = computed(() => auth.user?.role)
-const firstName = computed(() => auth.user?.name?.split(' ')[0] ?? '')
+const userName = computed(() => auth.user?.name ?? '')
 
 const ROLE_SUBTITLES: Record<UserRole, string> = {
   [UserRole.DATA_ENTRY]: 'موظف إدخال البيانات بالبنك التجاري',
@@ -53,7 +53,7 @@ const showNewRequestAction = computed(
         <h1
           class="font-heading text-foreground text-2xl leading-8 font-semibold sm:text-3xl sm:leading-10"
         >
-          أهلاً، {{ firstName }}
+          أهلاً، {{ userName }}
         </h1>
         <p class="font-section text-muted-foreground text-sm leading-5">{{ roleSubtitle }}</p>
       </div>

@@ -24,7 +24,7 @@ const auth = useAuthStore()
 const router = useRouter()
 
 const role = computed(() => auth.user?.role)
-const firstName = computed(() => auth.user?.name?.split(' ')[0] ?? '')
+const userName = computed(() => auth.user?.name ?? '')
 
 const ROLE_SUBTITLES: Record<UserRole, string> = {
   [UserRole.DATA_ENTRY]: 'موظف إدخال البيانات بالبنك التجاري',
@@ -49,7 +49,7 @@ const showNewRequestAction = computed(
 <template>
   <div class="flex flex-col gap-6">
     <!-- Page header -->
-    <PageHeader :title="`أهلاً، ${firstName}`" :subtitle="roleSubtitle">
+    <PageHeader :title="`أهلاً، ${userName}`" :subtitle="roleSubtitle">
       <template v-if="showNewRequestAction" #actions>
         <Button class="shrink-0" @click="router.push('/workflows/new')">
           <FilePlus2 class="h-4 w-4" />
