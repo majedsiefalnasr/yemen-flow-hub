@@ -43,6 +43,7 @@ use App\Http\Controllers\Api\V1\WorkflowVersionController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('auth')->group(function () {
+    Route::get('demo-users', [AuthController::class, 'demoUsers'])->middleware('throttle:20,1');
     Route::post('login', [AuthController::class, 'login'])->middleware('throttle:5,1');
     Route::post('login-pin', [AuthController::class, 'loginWithPin'])->middleware('throttle:10,1');
     Route::post('verify-otp', [AuthController::class, 'verifyOtp'])->middleware('throttle:10,1');

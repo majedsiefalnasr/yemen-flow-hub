@@ -6,6 +6,7 @@ use App\Enums\AuditAction;
 use App\Enums\UserRole;
 use App\Http\Requests\LoginRequest;
 use App\Http\Resources\AuthMeResource;
+use App\Http\Resources\DemoUserResource;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\Audit\AuditService;
@@ -314,6 +315,30 @@ class AuthController extends Controller
         }
 
         return ApiResponse::success((object) [], 'Password reset successfully.');
+    }
+
+    #[OA\Get(
+        path: '/api/auth/demo-users',
+        tags: ['Auth'],
+        summary: 'List active demo users available for quick session switching',
+        responses: [
+            new OA\Response(response: 200, description: 'List of demo users'),
+            new OA\Response(response: 403, description: 'Demo role switching disabled'),
+        ]
+    )]
+    public function demoUsers(Request $request)
+    {
+        if (! config('demo.allow_role_switch', false)) {
+            return ApiResponse::forbidden('Demo role switching is disabled.');
+        }
+
+        $users = User::query()
+            ->where('is_active', true)
+            ->with(['organization', 'teams', 'bank'])
+            ->orderBy('name')
+            ->get();
+
+        return ApiResponse::success(['users' => DemoUserResource::collection($users)]);
     }
 
     #[OA\Post(
