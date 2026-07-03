@@ -9,10 +9,12 @@ use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Tests\Support\AssignsGovernanceIdentity;
 use Tests\TestCase;
 
 class EmailTemplateSaveTest extends TestCase
 {
+    use AssignsGovernanceIdentity;
     use RefreshDatabase;
 
     private User $admin;
@@ -20,14 +22,15 @@ class EmailTemplateSaveTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->admin = User::query()->create([
+        $this->seedGovernance();
+        $this->admin = $this->assignGovernanceIdentity(User::query()->create([
             'name' => 'CBY Admin',
             'email' => 'admin@cby.ye',
             'password' => Hash::make('password'),
             'role' => UserRole::CBY_ADMIN,
             'bank_id' => null,
             'is_active' => true,
-        ]);
+        ]), UserRole::CBY_ADMIN);
     }
 
     // ─── normalizeSectionData email branch ────────────────────────────────────

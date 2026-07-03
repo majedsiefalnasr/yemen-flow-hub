@@ -9,11 +9,13 @@ use App\Models\User;
 use App\Services\Workflow\EngineClaimService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use Tests\Support\AssignsGovernanceIdentity;
 use Tests\Support\EngineWorkflowFactory;
 use Tests\TestCase;
 
 class ExpireEngineClaimsCommandTest extends TestCase
 {
+    use AssignsGovernanceIdentity;
     use RefreshDatabase;
 
     public function test_expired_claim_is_released_by_command(): void
@@ -66,10 +68,11 @@ class ExpireEngineClaimsCommandTest extends TestCase
     {
         Queue::fake();
 
-        $admin = User::factory()->create([
+        $this->seedGovernance();
+        $admin = $this->assignGovernanceIdentity(User::factory()->create([
             'role' => UserRole::CBY_ADMIN,
             'is_active' => true,
-        ]);
+        ]), UserRole::CBY_ADMIN);
 
         ['request' => $request, 'executor' => $user] = EngineWorkflowFactory::seedClaimStageWithTransition();
         app(EngineClaimService::class)->claim($request, $user);

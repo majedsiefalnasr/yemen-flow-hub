@@ -9,10 +9,12 @@ use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Tests\Support\AssignsGovernanceIdentity;
 use Tests\TestCase;
 
 class SettingsControllerTest extends TestCase
 {
+    use AssignsGovernanceIdentity;
     use RefreshDatabase;
 
     // --- GET /api/settings ---
@@ -112,14 +114,15 @@ class SettingsControllerTest extends TestCase
 
     public function test_cby_admin_save_branding_persists_system_branding(): void
     {
-        $user = User::query()->create([
+        $this->seedGovernance();
+        $user = $this->assignGovernanceIdentity(User::query()->create([
             'name' => 'Admin User',
             'email' => 'admin@example.com',
             'password' => Hash::make('password'),
             'role' => UserRole::CBY_ADMIN,
             'bank_id' => null,
             'is_active' => true,
-        ]);
+        ]), UserRole::CBY_ADMIN);
 
         $response = $this->actingAs($user)->postJson('/api/settings/save-section', [
             'section' => 'theming',

@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Enums\UserRole;
 use App\Models\EngineRequest;
 use App\Models\User;
 use App\Services\Notifications\EngineNotificationDispatcher;
@@ -48,7 +47,7 @@ class ExpireEngineClaimsCommand extends Command
     private function resolveCbyAdminIds(): array
     {
         return User::query()
-            ->where('role', UserRole::CBY_ADMIN->value)
+            ->whereHas('roles', fn ($q) => $q->where('code', 'system_admin'))
             ->where('is_active', true)
             ->pluck('id')
             ->toArray();

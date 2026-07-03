@@ -3,7 +3,6 @@
 namespace App\Services\Workflow;
 
 use App\Enums\AuditAction;
-use App\Enums\UserRole;
 use App\Exceptions\EngineException;
 use App\Models\EngineRequest;
 use App\Models\User;
@@ -71,7 +70,7 @@ class EngineClaimService
     {
         return DB::transaction(function () use ($request, $user) {
             $locked = EngineRequest::lockForUpdate()->findOrFail($request->id);
-            $isAdmin = $user->role === UserRole::CBY_ADMIN;
+            $isAdmin = $user->hasRoleCode('system_admin');
             if (! $isAdmin && $locked->claimed_by !== $user->id) {
                 throw EngineException::claimNotHeld();
             }

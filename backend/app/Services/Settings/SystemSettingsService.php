@@ -3,7 +3,6 @@
 namespace App\Services\Settings;
 
 use App\Enums\AuditAction;
-use App\Enums\UserRole;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Services\Audit\AuditService;
@@ -39,7 +38,7 @@ class SystemSettingsService
     public function saveSection(User $user, string $section, array $data, ?string $subsection = null): array
     {
         // Check authorization
-        if (! $user->hasRole(UserRole::CBY_ADMIN)) {
+        if (! $user->hasRoleCode('system_admin')) {
             throw new AuthorizationException('Only administrators can modify system settings.');
         }
 
