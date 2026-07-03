@@ -43,7 +43,6 @@ import { Alert, AlertTitle, AlertDescription, AlertAction } from '@/components/u
 import PageHeader from '@/components/layout/PageHeader.vue'
 import MetricCard from '@/components/shared/dashboard/MetricCard.vue'
 import MetricGrid from '@/components/shared/dashboard/MetricGrid.vue'
-import { useTableExport } from '@/composables/useTableExport'
 import {
   DataTable,
   DataTableColumnHeader,
@@ -59,7 +58,6 @@ definePageMeta({ middleware: ['auth', 'screen'], requiredScreen: 'requests' })
 const router = useRouter()
 const store = useEngineRequestsStore()
 const authStore = useAuthStore()
-const { exportToCSV, exportToExcel, exportToJSON } = useTableExport()
 
 // Supervisor = oversight role (CBY admin). They monitor every request across the
 // platform but cannot create requests or execute stage actions, so their view
@@ -147,25 +145,23 @@ function slaLabel(sla: string | null): string {
   return '—'
 }
 
-function slaTone(sla: string | null): { fg: string; bg: string } | null {
+// Semantic-token badge classes per DESIGN.md §7 status mapping — no inline styles.
+function slaBadgeClass(sla: string | null): string | null {
   if (sla === 'breached')
-    return { fg: 'var(--color-text-error)', bg: 'var(--color-surface-error)' }
+    return 'border-[var(--severity-red)]/30 bg-[var(--severity-red)]/10 text-[var(--severity-red)]'
   if (sla === 'nearing')
-    return {
-      fg: 'var(--severity-amber)',
-      bg: 'color-mix(in oklab, var(--severity-amber) 12%, transparent)',
-    }
+    return 'border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/10 text-[var(--severity-amber)]'
   if (sla === 'ok')
-    return { fg: 'var(--color-text-success)', bg: 'var(--color-surface-success)' }
+    return 'border-[var(--severity-green)]/30 bg-[var(--severity-green)]/10 text-[var(--severity-green)]'
   return null
 }
 
-function statusTone(status: string): { fg: string; bg: string } {
+function statusBadgeClass(status: string): string {
   if (status === 'CLOSED')
-    return { fg: 'var(--color-text-success)', bg: 'var(--color-surface-success)' }
+    return 'border-[var(--severity-green)]/30 bg-[var(--severity-green)]/10 text-[var(--severity-green)]'
   if (status === 'REJECTED')
-    return { fg: 'var(--color-text-error)', bg: 'var(--color-surface-error)' }
-  return { fg: 'var(--severity-amber)', bg: 'color-mix(in oklab, var(--severity-amber) 12%, transparent)' }
+    return 'border-[var(--severity-red)]/30 bg-[var(--severity-red)]/10 text-[var(--severity-red)]'
+  return 'border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/10 text-[var(--severity-amber)]'
 }
 
 const currencyFmt = new Intl.NumberFormat('ar-EG')
@@ -234,17 +230,16 @@ const columns: ColumnDef<EngineRequest>[] = [
     enableHiding: false,
     cell: ({ row }) =>
       h(
-        'button',
+        Button,
         {
-          type: 'button',
-          class:
-            'text-primary font-mono text-sm text-start hover:underline underline-offset-2 focus-visible:outline-none focus-visible:underline',
+          variant: 'link',
+          class: 'text-primary h-auto p-0 font-mono text-sm',
           onClick: (e: Event) => {
             e.stopPropagation()
             openInstance(row.original.id)
           },
         },
-        row.original.reference,
+        () => row.original.reference,
       ),
   },
   {
@@ -290,17 +285,12 @@ const columns: ColumnDef<EngineRequest>[] = [
     accessorKey: 'status',
     header: 'الحالة',
     filterFn: (row, _id, value: string[]) => value.includes(row.original.status),
-    cell: ({ row }) => {
-      const tone = statusTone(row.original.status)
-      return h(
-        'span',
-        {
-          class: 'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
-          style: { color: tone.fg, background: tone.bg },
-        },
-        statusLabel(row.original.status),
-      )
-    },
+    cell: ({ row }) =>
+      h(
+        Badge,
+        { variant: 'outline', class: statusBadgeClass(row.original.status) },
+        () => statusLabel(row.original.status),
+      ),
   },
   {
     id: 'sla',
@@ -308,15 +298,12 @@ const columns: ColumnDef<EngineRequest>[] = [
     accessorFn: (row) => row.sla_status ?? '',
     filterFn: (row, _id, value: string[]) => value.includes(row.original.sla_status ?? ''),
     cell: ({ row }) => {
-      const tone = slaTone(row.original.sla_status)
-      if (!tone) return h('span', { class: 'text-muted-foreground text-sm' }, '—')
+      const badgeClass = slaBadgeClass(row.original.sla_status)
+      if (!badgeClass) return h('span', { class: 'text-muted-foreground text-sm' }, '—')
       return h(
-        'span',
-        {
-          class: 'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
-          style: { color: tone.fg, background: tone.bg },
-        },
-        slaLabel(row.original.sla_status),
+        Badge,
+        { variant: 'outline', class: badgeClass },
+        () => slaLabel(row.original.sla_status),
       )
     },
   },

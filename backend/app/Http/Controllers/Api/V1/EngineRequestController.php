@@ -122,10 +122,23 @@ class EngineRequestController extends Controller
 
         $engineRequest->load(['currentStage', 'creator', 'bank', 'merchant', 'claimedBy']);
 
-        return response()->json([
+        $response = [
             'success' => true,
             'data' => new EngineRequestResource($engineRequest),
-        ]);
+        ];
+
+        // Surface a duplicate-invoice warning on the detail view so a reviewer
+        // sees the conflict without re-running a transition. Read-only: no
+        // notification is dispatched here (that happens on create/transition).
+        $invoiceNumber = $engineRequest->invoice_number;
+        if ($invoiceNumber !== null) {
+            $warning = $this->duplicateChecker->check($invoiceNumber, $engineRequest->id);
+            if ($warning !== null) {
+                $response['warnings'] = [$warning];
+            }
+        }
+
+        return response()->json($response);
     }
 
     public function formSchema(EngineRequest $engineRequest): JsonResponse
@@ -544,7 +557,7 @@ class EngineRequestController extends Controller
         ]);
     }
 
-    public function graph(EngineRequest $engineRequest): JsonResponse
+    public function graph(Request $request, EngineRequest $engineRequest): JsonResponse
     {
         $this->authorize('view', $engineRequest);
 
@@ -583,9 +596,17 @@ class EngineRequestController extends Controller
         }
         unset($edge);
 
+        // Stages the current user can execute, scoped to this version, so the UI can
+        // mark non-current "دورك" (your turn) stages on the process rail.
+        $versionStageIds = array_column($graphData['nodes'], 'id');
+        $executeStageIds = array_values(array_intersect(
+            $this->permissionResolver->accessibleStageIds($request->user(), StageAccessLevel::EXECUTE),
+            $versionStageIds,
+        ));
+
         return response()->json([
             'success' => true,
-            'data' => $graphData,
+            'data' => $graphData + ['execute_stage_ids' => $executeStageIds],
         ]);
     }
 

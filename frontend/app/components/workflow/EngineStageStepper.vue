@@ -4,15 +4,19 @@ import { computed } from 'vue'
 import type { EngineHistoryEntry, WorkflowGraph } from '@/types/models'
 import { buildStagePath } from '@/composables/useEngineStagePath'
 import { Stepper, StepperItem, StepperIndicator, StepperSeparator, StepperTitle, StepperTrigger } from '@/components/ui/stepper'
+import { Badge } from '@/components/ui/badge'
 import { Check } from 'lucide-vue-next'
 
 const props = defineProps<{
   graph: WorkflowGraph | null
   currentStageId: number | null
   history: EngineHistoryEntry[]
+  currentStageIsYours?: boolean
 }>()
 
-const steps = computed(() => buildStagePath(props.graph, props.currentStageId, props.history))
+const steps = computed(() =>
+  buildStagePath(props.graph, props.currentStageId, props.history, props.currentStageIsYours ?? false),
+)
 const currentIndex = computed(() => {
   const i = steps.value.findIndex((s) => s.status === 'current')
   return i === -1 ? 0 : i + 1
@@ -40,6 +44,13 @@ const currentIndex = computed(() => {
           >
             {{ step.label }}
           </StepperTitle>
+          <Badge
+            v-if="step.isYours"
+            variant="outline"
+            class="border-primary/40 text-primary h-4 px-1 text-[10px]"
+          >
+            دورك
+          </Badge>
         </StepperTrigger>
         <StepperSeparator v-if="index < steps.length - 1" class="mx-2" />
       </StepperItem>

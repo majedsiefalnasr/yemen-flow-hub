@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import type {
   AvailableWorkflow,
+  EngineDuplicateWarning,
   EngineHistoryEntry,
   EngineRequest,
   EngineRequestDocument,
@@ -26,6 +27,7 @@ export const useEngineRequestsStore = defineStore('engineRequests', {
     queueMeta: null as PaginationMeta | null,
     availableWorkflows: [] as AvailableWorkflow[],
     current: null as EngineRequest | null,
+    duplicateWarnings: [] as EngineDuplicateWarning[],
     history: [] as EngineHistoryEntry[],
     graph: null as WorkflowGraph | null,
     documents: [] as EngineRequestDocument[],
@@ -73,11 +75,12 @@ export const useEngineRequestsStore = defineStore('engineRequests', {
     },
 
     async loadInstance(id: number) {
-      const { show } = useEngineRequests()
+      const { show, currentWarnings } = useEngineRequests()
       const { history, graph, fetchHistory, fetchGraph } = useEngineRequestHistory()
       const { documents, fetchDocuments } = useEngineRequestDocuments()
 
       this.current = await show(id)
+      this.duplicateWarnings = currentWarnings.value
       await Promise.all([fetchHistory(id), fetchGraph(id), fetchDocuments(id)])
       this.history = history.value
       this.graph = graph.value

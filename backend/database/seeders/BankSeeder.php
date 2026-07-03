@@ -11,12 +11,12 @@ class BankSeeder extends Seeder
     public function run(): void
     {
         $organizationId = Organization::query()->where('code', 'commercial_banks')->value('id');
+
+        // Two active commercial banks. Each gets its own full role set of users and
+        // four merchants, so org-scoped visibility can be tested per bank.
         Bank::query()->upsert([
             ['organization_id' => $organizationId, 'code' => 'YBRD', 'name' => 'البنك اليمني للإنشاء والتعمير', 'status' => 'ACTIVE', 'is_active' => true],
             ['organization_id' => $organizationId, 'code' => 'TIIB', 'name' => 'بنك التضامن الإسلامي الدولي', 'status' => 'ACTIVE', 'is_active' => true],
-            ['organization_id' => $organizationId, 'code' => 'YCB', 'name' => 'البنك التجاري اليمني', 'status' => 'ACTIVE', 'is_active' => true],
-            ['organization_id' => $organizationId, 'code' => 'SIB', 'name' => 'بنك سبأ الإسلامي', 'status' => 'ACTIVE', 'is_active' => true],
-            ['organization_id' => $organizationId, 'code' => 'NBY', 'name' => 'البنك الأهلي اليمني', 'status' => 'SUSPENDED', 'is_active' => false],
         ], ['code'], ['organization_id', 'name', 'status', 'is_active']);
     }
 }

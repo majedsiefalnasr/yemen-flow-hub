@@ -45,4 +45,19 @@ describe('useEngineWizard', () => {
     await w.finish({ b: 2 })
     expect(submit).toHaveBeenCalledWith({ b: 2 })
   })
+
+  it('extraSteps lets the index advance past the last group into a review step', async () => {
+    const groups = ref([group(1, 10), group(2, 20)])
+    const w = useEngineWizard(groups, { saveDraft: vi.fn(), submit: vi.fn(), extraSteps: 1 })
+    // Two groups + one review step: not last until index 2.
+    await w.next({})
+    expect(w.stepIndex.value).toBe(1)
+    expect(w.isLast.value).toBe(false)
+    await w.next({})
+    expect(w.stepIndex.value).toBe(2)
+    expect(w.isLast.value).toBe(true)
+    // Cannot advance past the review step.
+    await w.next({})
+    expect(w.stepIndex.value).toBe(2)
+  })
 })

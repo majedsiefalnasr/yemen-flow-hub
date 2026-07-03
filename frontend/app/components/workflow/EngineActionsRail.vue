@@ -14,6 +14,7 @@ defineProps<{
   claimRequiredButNotHeld: boolean
   showClaimButton: boolean
   busy: boolean
+  viewOnly?: boolean
 }>()
 
 const emit = defineEmits<{ run: [transitionId: number, requiresComment: boolean]; claim: [] }>()
@@ -21,38 +22,46 @@ const comment = defineModel<string>('comment', { default: '' })
 </script>
 
 <template>
-  <Card dir="rtl" class="bg-muted/30 sticky top-6 border-0 shadow-none">
+  <!-- Sticky offset clears the h-14 topbar; opaque background + z-29 so scrolled
+       content stays behind it (kept under the z-30 topbar). -->
+  <Card dir="rtl" class="bg-card sticky top-16 z-29 border-0 shadow">
     <CardHeader class="pb-2">
       <CardTitle class="text-sm font-semibold">إجراءات المرحلة</CardTitle>
     </CardHeader>
     <CardContent class="space-y-3">
-      <Button v-if="showClaimButton" class="w-full" :disabled="busy" @click="emit('claim')">
-        بدء المراجعة
-      </Button>
+      <p v-if="viewOnly" class="text-muted-foreground text-xs">
+        لا تملك صلاحية تنفيذ إجراءات على المرحلة الحالية. يمكنك الاطلاع على الطلب وسجله.
+      </p>
 
-      <Alert v-if="claimRequiredButNotHeld" role="status">
-        <AlertCircle class="h-4 w-4" />
-        <AlertDescription>يجب مطالبة هذه المرحلة قبل تنفيذ الإجراء.</AlertDescription>
-      </Alert>
-
-      <Field>
-        <FieldLabel for="action-comment">ملاحظات</FieldLabel>
-        <Textarea id="action-comment" v-model="comment" rows="3" :disabled="!canAct" />
-      </Field>
-
-      <div class="flex flex-col gap-2">
-        <Button
-          v-for="action in availableActions"
-          :key="action.id"
-          :disabled="!canAct || busy"
-          @click="emit('run', action.id, action.requires_comment)"
-        >
-          {{ action.action_name ?? action.action_code }}
+      <template v-else>
+        <Button v-if="showClaimButton" class="w-full" :disabled="busy" @click="emit('claim')">
+          بدء المراجعة
         </Button>
-        <p v-if="!availableActions.length" class="text-muted-foreground text-xs">
-          لا توجد إجراءات متاحة في هذه المرحلة.
-        </p>
-      </div>
+
+        <Alert v-if="claimRequiredButNotHeld" role="status">
+          <AlertCircle class="h-4 w-4" />
+          <AlertDescription>يجب مطالبة هذه المرحلة قبل تنفيذ الإجراء.</AlertDescription>
+        </Alert>
+
+        <Field>
+          <FieldLabel for="action-comment">ملاحظات</FieldLabel>
+          <Textarea id="action-comment" v-model="comment" rows="3" :disabled="!canAct" />
+        </Field>
+
+        <div class="flex flex-col gap-2">
+          <Button
+            v-for="action in availableActions"
+            :key="action.id"
+            :disabled="!canAct || busy"
+            @click="emit('run', action.id, action.requires_comment)"
+          >
+            {{ action.action_name ?? action.action_code }}
+          </Button>
+          <p v-if="!availableActions.length" class="text-muted-foreground text-xs">
+            لا توجد إجراءات متاحة في هذه المرحلة.
+          </p>
+        </div>
+      </template>
     </CardContent>
   </Card>
 </template>

@@ -5,8 +5,6 @@ namespace Database\Seeders;
 use App\Models\Bank;
 use App\Models\EngineRequest;
 use App\Models\Merchant;
-use App\Models\Role;
-use App\Models\Team;
 use App\Models\User;
 use App\Models\WorkflowDefinition;
 use App\Models\WorkflowHistoryEntry;
@@ -18,6 +16,13 @@ use Illuminate\Support\Facades\DB;
 
 class EngineRequestDemoSeeder extends Seeder
 {
+    /**
+     * Linear stage progression used to build history hops.
+     *
+     * @var array<int, string>
+     */
+    private const PATH = ['CREATE', 'INTERNAL', 'SUPPORT', 'EXEC', 'FX', 'FX_CONFIRM', 'FINAL', 'CLOSED'];
+
     /**
      * @var Collection<string, WorkflowStage>
      */
@@ -77,41 +82,50 @@ class EngineRequestDemoSeeder extends Seeder
         $this->bankActors = $this->bankActors();
 
         DB::transaction(function () use ($version, $merchantsByBank): void {
-            foreach ($this->samples() as $index => $sample) {
-                $bank = $this->banks[$index % $this->banks->count()];
+            // Each bank owns a contiguous block of 20 references. Bank 0 =
+            // 2001–2020 (carries the auxiliary-seeder anchors), bank 1 = 2021–2040.
+            $globalIndex = 0;
+
+            foreach ($this->banks as $bankIndex => $bank) {
                 $merchants = ($merchantsByBank->get($bank->id) ?? collect())->values();
 
                 if ($merchants->isEmpty()) {
                     continue;
                 }
 
-                $createdAt = Carbon::create(2026, 5, ($index % 27) + 1, 9, 0, 0);
-                $merchant = $merchants[$index % $merchants->count()];
-                $data = $this->requestData($sample, $merchant);
                 $this->actors = $this->actorsFor($bank);
+                $samples = $bankIndex === 0 ? $this->anchoredSamples() : $this->mirrorSamples();
 
-                ['history' => $historyRows, 'updated_at' => $updatedAt] = $this->historyRows($sample, $createdAt);
+                foreach ($samples as $slot => $sample) {
+                    $createdAt = Carbon::create(2026, 5, ($globalIndex % 27) + 1, 9, 0, 0);
+                    $merchant = $merchants[$slot % $merchants->count()];
+                    $data = $this->requestData($sample, $merchant);
 
-                $request = EngineRequest::query()->create([
-                    'workflow_version_id' => $version->id,
-                    'current_stage_id' => $this->stages[$sample['stage']]->id,
-                    'reference' => sprintf('ENG-2026-%06d', 2001 + $index),
-                    'status' => $sample['status'],
-                    'created_by' => $this->actors['CREATE']->id,
-                    'bank_id' => $bank->id,
-                    'merchant_id' => $merchant->id,
-                    'data' => $data,
-                    'version' => 1,
-                    'amount' => $sample['amount'],
-                    'currency' => $sample['currency'],
-                    'invoice_number' => $sample['invoice_number'],
-                    'request_percentage' => 100,
-                    'created_at' => $createdAt,
-                    'updated_at' => $updatedAt,
-                ]);
+                    ['history' => $historyRows, 'updated_at' => $updatedAt] = $this->historyRows($sample, $createdAt);
 
-                foreach ($historyRows as $row) {
-                    WorkflowHistoryEntry::query()->create($row + ['request_id' => $request->id]);
+                    $request = EngineRequest::query()->create([
+                        'workflow_version_id' => $version->id,
+                        'current_stage_id' => $this->stages[$sample['stage']]->id,
+                        'reference' => sprintf('ENG-2026-%06d', 2001 + $globalIndex),
+                        'status' => $sample['status'],
+                        'created_by' => $this->actors['CREATE']->id,
+                        'bank_id' => $bank->id,
+                        'merchant_id' => $merchant->id,
+                        'data' => $data,
+                        'version' => 1,
+                        'amount' => $sample['amount'],
+                        'currency' => $sample['currency'],
+                        'invoice_number' => $sample['invoice_number'],
+                        'request_percentage' => 100,
+                        'created_at' => $createdAt,
+                        'updated_at' => $updatedAt,
+                    ]);
+
+                    foreach ($historyRows as $row) {
+                        WorkflowHistoryEntry::query()->create($row + ['request_id' => $request->id]);
+                    }
+
+                    $globalIndex++;
                 }
             }
         });
@@ -122,13 +136,10 @@ class EngineRequestDemoSeeder extends Seeder
      */
     private function commonActors(): array
     {
-        $fxConfirm = User::query()->where('email', 'exec3@cby.gov.ye')->firstOrFail();
-        $this->grantFxConfirmationIdentity($fxConfirm);
-
         return [
             'SUPPORT' => User::query()->where('email', 'support1@cby.gov.ye')->firstOrFail(),
             'EXEC' => User::query()->where('email', 'director@cby.gov.ye')->firstOrFail(),
-            'FX_CONFIRM' => $fxConfirm,
+            'FX_CONFIRM' => User::query()->where('email', 'fxconfirm@cby.gov.ye')->firstOrFail(),
             'FINAL' => User::query()->where('email', 'director@cby.gov.ye')->firstOrFail(),
             'CLOSED' => User::query()->where('email', 'director@cby.gov.ye')->firstOrFail(),
         ];
@@ -162,51 +173,106 @@ class EngineRequestDemoSeeder extends Seeder
         return $this->bankActors[$bank->id] + $this->commonActors;
     }
 
-    private function grantFxConfirmationIdentity(User $user): void
-    {
-        $teamId = Team::query()->where('code', 'fx_confirmation')->value('id');
-        $roleId = Role::query()->where('code', 'fx_confirm')->value('id');
-
-        if ($teamId !== null) {
-            $user->teams()->syncWithoutDetaching([$teamId]);
-        }
-
-        if ($roleId !== null) {
-            $user->roles()->syncWithoutDetaching([$roleId]);
-        }
-    }
-
     /**
-     * @return array<int, array{stage: string, status: string, amount: int, currency: string, invoice_number: string, importType: string, supplierName: string, originCountry: string, arrivalPort: string}>
+     * Bank 0 samples, ordered so the 2001-based references land on the exact
+     * stage/status the auxiliary seeder expects:
+     *   002001 CREATE (submitted notification), 002013 SUPPORT (support
+     *   notification), 002017 FX_CONFIRM (fx-confirmation notification),
+     *   002018/002019 CLOSED-completed (customs declarations),
+     *   002020 REJECTED (rejected email).
+     *
+     * @return array<int, array<string, mixed>>
      */
-    private function samples(): array
+    private function anchoredSamples(): array
     {
         return [
-            ['stage' => 'CREATE', 'status' => 'ACTIVE', 'amount' => 120000, 'currency' => 'USD', 'invoice_number' => 'INV-2026-10000', 'importType' => 'food_beverages', 'supplierName' => 'Cargill Inc.', 'originCountry' => 'cn', 'arrivalPort' => 'aden_port'],
-            ['stage' => 'CREATE', 'status' => 'ACTIVE', 'amount' => 340000, 'currency' => 'USD', 'invoice_number' => 'INV-2026-10011', 'importType' => 'construction_materials', 'supplierName' => 'Siemens AG', 'originCountry' => 'tr', 'arrivalPort' => 'hodeidah_port'],
-            ['stage' => 'CREATE', 'status' => 'ACTIVE', 'amount' => 510000, 'currency' => 'USD', 'invoice_number' => 'INV-2026-10022', 'importType' => 'medical_pharma', 'supplierName' => 'Pfizer Ltd.', 'originCountry' => 'in', 'arrivalPort' => 'aden_port'],
-            ['stage' => 'CREATE', 'status' => 'ACTIVE', 'amount' => 89000, 'currency' => 'EUR', 'invoice_number' => 'INV-2026-10033', 'importType' => 'medical_pharma', 'supplierName' => 'Bayer AG', 'originCountry' => 'tr', 'arrivalPort' => 'mukalla_port'],
-            ['stage' => 'INTERNAL', 'status' => 'ACTIVE', 'amount' => 720000, 'currency' => 'USD', 'invoice_number' => 'INV-2026-10044', 'importType' => 'fuel_energy', 'supplierName' => 'Saudi Aramco Trading', 'originCountry' => 'ae', 'arrivalPort' => 'hodeidah_port'],
-            ['stage' => 'INTERNAL', 'status' => 'ACTIVE', 'amount' => 145000, 'currency' => 'SAR', 'invoice_number' => 'INV-2026-10055', 'importType' => 'construction_materials', 'supplierName' => 'Siemens AG', 'originCountry' => 'tr', 'arrivalPort' => 'aden_port'],
-            ['stage' => 'INTERNAL', 'status' => 'ACTIVE', 'amount' => 275000, 'currency' => 'USD', 'invoice_number' => 'INV-2026-10056', 'importType' => 'food_beverages', 'supplierName' => 'Cargill Inc.', 'originCountry' => 'cn', 'arrivalPort' => 'mukalla_port'],
-            ['stage' => 'INTERNAL', 'status' => 'ACTIVE', 'amount' => 305000, 'currency' => 'EUR', 'invoice_number' => 'INV-2026-10057', 'importType' => 'construction_materials', 'supplierName' => 'Siemens AG', 'originCountry' => 'tr', 'arrivalPort' => 'hodeidah_port'],
-            ['stage' => 'FX', 'status' => 'ACTIVE', 'amount' => 980000, 'currency' => 'USD', 'invoice_number' => 'INV-2026-10066', 'importType' => 'food_beverages', 'supplierName' => 'Cargill Inc.', 'originCountry' => 'cn', 'arrivalPort' => 'aden_port'],
-            ['stage' => 'FX', 'status' => 'ACTIVE', 'amount' => 230000, 'currency' => 'EUR', 'invoice_number' => 'INV-2026-10077', 'importType' => 'construction_materials', 'supplierName' => 'Siemens AG', 'originCountry' => 'tr', 'arrivalPort' => 'hodeidah_port'],
-            ['stage' => 'FX', 'status' => 'ACTIVE', 'amount' => 415000, 'currency' => 'USD', 'invoice_number' => 'INV-2026-10088', 'importType' => 'medical_pharma', 'supplierName' => 'Pfizer Ltd.', 'originCountry' => 'in', 'arrivalPort' => 'mukalla_port'],
-            ['stage' => 'FX', 'status' => 'ACTIVE', 'amount' => 1250000, 'currency' => 'USD', 'invoice_number' => 'INV-2026-10099', 'importType' => 'fuel_energy', 'supplierName' => 'Saudi Aramco Trading', 'originCountry' => 'ae', 'arrivalPort' => 'aden_port'],
-            ['stage' => 'SUPPORT', 'status' => 'ACTIVE', 'amount' => 640000, 'currency' => 'USD', 'invoice_number' => 'INV-2026-10110', 'importType' => 'food_beverages', 'supplierName' => 'Cargill Inc.', 'originCountry' => 'cn', 'arrivalPort' => 'hodeidah_port'],
-            ['stage' => 'SUPPORT', 'status' => 'ACTIVE', 'amount' => 1100000, 'currency' => 'USD', 'invoice_number' => 'INV-2026-10121', 'importType' => 'fuel_energy', 'supplierName' => 'Saudi Aramco Trading', 'originCountry' => 'ae', 'arrivalPort' => 'aden_port'],
-            ['stage' => 'EXEC', 'status' => 'ACTIVE', 'amount' => 420000, 'currency' => 'EUR', 'invoice_number' => 'INV-2026-10132', 'importType' => 'construction_materials', 'supplierName' => 'Bayer AG', 'originCountry' => 'tr', 'arrivalPort' => 'aden_port'],
-            ['stage' => 'EXEC', 'status' => 'ACTIVE', 'amount' => 540000, 'currency' => 'USD', 'invoice_number' => 'INV-2026-10143', 'importType' => 'food_beverages', 'supplierName' => 'Cargill Inc.', 'originCountry' => 'cn', 'arrivalPort' => 'aden_port'],
-            ['stage' => 'FX_CONFIRM', 'status' => 'ACTIVE', 'amount' => 1280000, 'currency' => 'USD', 'invoice_number' => 'INV-2026-10154', 'importType' => 'construction_materials', 'supplierName' => 'Siemens AG', 'originCountry' => 'tr', 'arrivalPort' => 'hodeidah_port'],
-            ['stage' => 'FINAL', 'status' => 'ACTIVE', 'amount' => 980000, 'currency' => 'USD', 'invoice_number' => 'INV-2026-10165', 'importType' => 'fuel_energy', 'supplierName' => 'Saudi Aramco Trading', 'originCountry' => 'ae', 'arrivalPort' => 'mukalla_port'],
-            ['stage' => 'CLOSED', 'status' => 'CLOSED', 'amount' => 360000, 'currency' => 'USD', 'invoice_number' => 'INV-2026-10176', 'importType' => 'medical_pharma', 'supplierName' => 'Pfizer Ltd.', 'originCountry' => 'in', 'arrivalPort' => 'aden_port'],
-            ['stage' => 'CLOSED', 'status' => 'REJECTED', 'amount' => 775000, 'currency' => 'EUR', 'invoice_number' => 'INV-2026-10187', 'importType' => 'fuel_energy', 'supplierName' => 'Saudi Aramco Trading', 'originCountry' => 'ae', 'arrivalPort' => 'mukalla_port'],
+            $this->sample('CREATE', 'ACTIVE', 120000, 'USD', 'INV-2026-10000', 'food_beverages', 'Cargill Inc.', 'cn', 'aden_port'),
+            $this->sample('CREATE', 'ACTIVE', 340000, 'USD', 'INV-2026-10011', 'construction_materials', 'Siemens AG', 'tr', 'hodeidah_port'),
+            $this->sample('INTERNAL', 'ACTIVE', 510000, 'USD', 'INV-2026-10022', 'medical_pharma', 'Pfizer Ltd.', 'in', 'aden_port'),
+            $this->sample('INTERNAL', 'ACTIVE', 89000, 'EUR', 'INV-2026-10033', 'medical_pharma', 'Bayer AG', 'tr', 'mukalla_port'),
+            $this->sample('SUPPORT', 'ACTIVE', 720000, 'USD', 'INV-2026-10044', 'fuel_energy', 'Saudi Aramco Trading', 'ae', 'hodeidah_port'),
+            $this->sample('EXEC', 'ACTIVE', 145000, 'SAR', 'INV-2026-10055', 'construction_materials', 'Siemens AG', 'tr', 'aden_port'),
+            $this->sample('FX', 'ACTIVE', 275000, 'USD', 'INV-2026-10056', 'food_beverages', 'Cargill Inc.', 'cn', 'mukalla_port'),
+            $this->sample('FX_CONFIRM', 'ACTIVE', 305000, 'EUR', 'INV-2026-10057', 'construction_materials', 'Siemens AG', 'tr', 'hodeidah_port'),
+            $this->sample('INTERNAL', 'ACTIVE', 980000, 'USD', 'INV-2026-10066', 'food_beverages', 'Cargill Inc.', 'cn', 'aden_port', 'returned_to_internal'),
+            $this->sample('CREATE', 'ACTIVE', 230000, 'EUR', 'INV-2026-10077', 'construction_materials', 'Siemens AG', 'tr', 'hodeidah_port', 'returned_to_entry'),
+            $this->sample('FX', 'ACTIVE', 415000, 'USD', 'INV-2026-10088', 'medical_pharma', 'Pfizer Ltd.', 'in', 'mukalla_port'),
+            $this->sample('FX_CONFIRM', 'ACTIVE', 1250000, 'USD', 'INV-2026-10099', 'fuel_energy', 'Saudi Aramco Trading', 'ae', 'aden_port'),
+            $this->sample('SUPPORT', 'ACTIVE', 640000, 'USD', 'INV-2026-10110', 'food_beverages', 'Cargill Inc.', 'cn', 'hodeidah_port'),
+            $this->sample('EXEC', 'ACTIVE', 1100000, 'USD', 'INV-2026-10121', 'fuel_energy', 'Saudi Aramco Trading', 'ae', 'aden_port'),
+            $this->sample('FINAL', 'ACTIVE', 420000, 'EUR', 'INV-2026-10132', 'construction_materials', 'Bayer AG', 'tr', 'aden_port'),
+            $this->sample('FINAL', 'ACTIVE', 540000, 'USD', 'INV-2026-10143', 'food_beverages', 'Cargill Inc.', 'cn', 'aden_port'),
+            $this->sample('FX_CONFIRM', 'ACTIVE', 1280000, 'USD', 'INV-2026-10154', 'construction_materials', 'Siemens AG', 'tr', 'hodeidah_port'),
+            $this->sample('CLOSED', 'CLOSED', 980000, 'USD', 'INV-2026-10165', 'fuel_energy', 'Saudi Aramco Trading', 'ae', 'mukalla_port'),
+            $this->sample('CLOSED', 'CLOSED', 360000, 'USD', 'INV-2026-10176', 'medical_pharma', 'Pfizer Ltd.', 'in', 'aden_port'),
+            $this->sample('CLOSED', 'REJECTED', 775000, 'EUR', 'INV-2026-10187', 'fuel_energy', 'Saudi Aramco Trading', 'ae', 'mukalla_port'),
         ];
     }
 
     /**
-     * @param  array{stage: string, status: string, amount: int, currency: string, invoice_number: string, importType: string, supplierName: string, originCountry: string, arrivalPort: string}  $sample
+     * Bank 1 samples — same stage/status matrix as bank 0 (two per stage plus the
+     * two return scenarios and a rejection) but distinct invoice numbers and no
+     * auxiliary anchors.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function mirrorSamples(): array
+    {
+        return [
+            $this->sample('CREATE', 'ACTIVE', 132000, 'USD', 'INV-2026-20000', 'food_beverages', 'Cargill Inc.', 'cn', 'aden_port'),
+            $this->sample('CREATE', 'ACTIVE', 358000, 'EUR', 'INV-2026-20011', 'construction_materials', 'Siemens AG', 'tr', 'hodeidah_port'),
+            $this->sample('INTERNAL', 'ACTIVE', 495000, 'USD', 'INV-2026-20022', 'medical_pharma', 'Pfizer Ltd.', 'in', 'mukalla_port'),
+            $this->sample('INTERNAL', 'ACTIVE', 96000, 'EUR', 'INV-2026-20033', 'medical_pharma', 'Bayer AG', 'tr', 'aden_port'),
+            $this->sample('SUPPORT', 'ACTIVE', 688000, 'USD', 'INV-2026-20044', 'fuel_energy', 'Saudi Aramco Trading', 'ae', 'hodeidah_port'),
+            $this->sample('EXEC', 'ACTIVE', 158000, 'SAR', 'INV-2026-20055', 'construction_materials', 'Siemens AG', 'tr', 'aden_port'),
+            $this->sample('FX', 'ACTIVE', 262000, 'USD', 'INV-2026-20056', 'food_beverages', 'Cargill Inc.', 'cn', 'mukalla_port'),
+            $this->sample('FX_CONFIRM', 'ACTIVE', 318000, 'EUR', 'INV-2026-20057', 'construction_materials', 'Siemens AG', 'tr', 'hodeidah_port'),
+            $this->sample('INTERNAL', 'ACTIVE', 910000, 'USD', 'INV-2026-20066', 'food_beverages', 'Cargill Inc.', 'cn', 'aden_port', 'returned_to_internal'),
+            $this->sample('CREATE', 'ACTIVE', 244000, 'EUR', 'INV-2026-20077', 'construction_materials', 'Siemens AG', 'tr', 'hodeidah_port', 'returned_to_entry'),
+            $this->sample('FX', 'ACTIVE', 402000, 'USD', 'INV-2026-20088', 'medical_pharma', 'Pfizer Ltd.', 'in', 'mukalla_port'),
+            $this->sample('FX_CONFIRM', 'ACTIVE', 1190000, 'USD', 'INV-2026-20099', 'fuel_energy', 'Saudi Aramco Trading', 'ae', 'aden_port'),
+            $this->sample('SUPPORT', 'ACTIVE', 612000, 'USD', 'INV-2026-20110', 'food_beverages', 'Cargill Inc.', 'cn', 'hodeidah_port'),
+            $this->sample('EXEC', 'ACTIVE', 1045000, 'USD', 'INV-2026-20121', 'fuel_energy', 'Saudi Aramco Trading', 'ae', 'aden_port'),
+            $this->sample('FINAL', 'ACTIVE', 436000, 'EUR', 'INV-2026-20132', 'construction_materials', 'Bayer AG', 'tr', 'aden_port'),
+            $this->sample('FINAL', 'ACTIVE', 528000, 'USD', 'INV-2026-20143', 'food_beverages', 'Cargill Inc.', 'cn', 'aden_port'),
+            $this->sample('FX_CONFIRM', 'ACTIVE', 1310000, 'USD', 'INV-2026-20154', 'construction_materials', 'Siemens AG', 'tr', 'hodeidah_port'),
+            $this->sample('CLOSED', 'CLOSED', 1020000, 'USD', 'INV-2026-20165', 'fuel_energy', 'Saudi Aramco Trading', 'ae', 'mukalla_port'),
+            $this->sample('CLOSED', 'CLOSED', 372000, 'USD', 'INV-2026-20176', 'medical_pharma', 'Pfizer Ltd.', 'in', 'aden_port'),
+            $this->sample('CLOSED', 'REJECTED', 805000, 'EUR', 'INV-2026-20187', 'fuel_energy', 'Saudi Aramco Trading', 'ae', 'mukalla_port'),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function sample(
+        string $stage,
+        string $status,
+        int $amount,
+        string $currency,
+        string $invoiceNumber,
+        string $importType,
+        string $supplierName,
+        string $originCountry,
+        string $arrivalPort,
+        ?string $scenario = null,
+    ): array {
+        return [
+            'stage' => $stage,
+            'status' => $status,
+            'amount' => $amount,
+            'currency' => $currency,
+            'invoice_number' => $invoiceNumber,
+            'importType' => $importType,
+            'supplierName' => $supplierName,
+            'originCountry' => $originCountry,
+            'arrivalPort' => $arrivalPort,
+            'scenario' => $scenario,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $sample
      * @return array<string, mixed>
      */
     private function requestData(array $sample, Merchant $merchant): array
@@ -259,28 +325,20 @@ class EngineRequestDemoSeeder extends Seeder
     }
 
     /**
-     * @param  array{stage: string, status: string}  $sample
+     * @param  array<string, mixed>  $sample
      * @return array{history: array<int, array<string, mixed>>, updated_at: Carbon}
      */
     private function historyRows(array $sample, Carbon $createdAt): array
     {
-        $path = ['CREATE', 'INTERNAL', 'SUPPORT', 'EXEC', 'FX', 'FX_CONFIRM', 'FINAL', 'CLOSED'];
-        $targetIndex = array_search($sample['stage'], $path, true);
         $timestamp = $createdAt->copy();
-        $rows = [[
-            'from_stage_id' => null,
-            'to_stage_id' => $this->stages['CREATE']->id,
-            'action_code' => 'CREATE',
-            'performed_by' => $this->actors['CREATE']->id,
-            'comments' => 'إنشاء الطلب',
-            'created_at' => $createdAt,
-        ]];
+        $rows = [$this->createRow($createdAt)];
 
+        // Rejection: linear approvals up to EXEC, then a final rejection hop.
         if ($sample['status'] === 'REJECTED') {
-            $execIndex = array_search('EXEC', $path, true);
+            $execIndex = (int) array_search('EXEC', self::PATH, true);
             for ($i = 1; $i <= $execIndex; $i++) {
                 $timestamp = $timestamp->copy()->addHours(26);
-                $rows[] = $this->historyHop($path[$i - 1], $path[$i], 'APPROVE', $timestamp);
+                $rows[] = $this->historyHop(self::PATH[$i - 1], self::PATH[$i], 'APPROVE', $timestamp);
             }
 
             $timestamp = $timestamp->copy()->addHours(26);
@@ -289,14 +347,55 @@ class EngineRequestDemoSeeder extends Seeder
             return ['history' => $rows, 'updated_at' => $timestamp];
         }
 
+        // Returned to internal review: forwarded, sent back for correction, then
+        // re-forwarded. Lands back on INTERNAL.
+        if (($sample['scenario'] ?? null) === 'returned_to_internal') {
+            $timestamp = $timestamp->copy()->addHours(26);
+            $rows[] = $this->historyHop('CREATE', 'INTERNAL', 'FORWARD', $timestamp);
+            $timestamp = $timestamp->copy()->addHours(26);
+            $rows[] = $this->historyHop('INTERNAL', 'CREATE', 'RETURN', $timestamp);
+            $timestamp = $timestamp->copy()->addHours(26);
+            $rows[] = $this->historyHop('CREATE', 'INTERNAL', 'FORWARD', $timestamp);
+
+            return ['history' => $rows, 'updated_at' => $timestamp];
+        }
+
+        // Returned to data entry: forwarded to internal review then bounced back
+        // to CREATE for correction. Lands on CREATE.
+        if (($sample['scenario'] ?? null) === 'returned_to_entry') {
+            $timestamp = $timestamp->copy()->addHours(26);
+            $rows[] = $this->historyHop('CREATE', 'INTERNAL', 'FORWARD', $timestamp);
+            $timestamp = $timestamp->copy()->addHours(26);
+            $rows[] = $this->historyHop('INTERNAL', 'CREATE', 'RETURN', $timestamp);
+
+            return ['history' => $rows, 'updated_at' => $timestamp];
+        }
+
+        // Linear progression up to the sample's current stage.
+        $targetIndex = (int) array_search($sample['stage'], self::PATH, true);
         for ($i = 1; $i <= $targetIndex; $i++) {
-            $from = $path[$i - 1];
-            $to = $path[$i];
+            $from = self::PATH[$i - 1];
+            $to = self::PATH[$i];
             $timestamp = $timestamp->copy()->addHours(26);
             $rows[] = $this->historyHop($from, $to, $to === 'CLOSED' ? 'FINAL_APPROVE' : 'APPROVE', $timestamp);
         }
 
         return ['history' => $rows, 'updated_at' => $timestamp];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function createRow(Carbon $createdAt): array
+    {
+        return [
+            'from_stage_id' => null,
+            'to_stage_id' => $this->stages['CREATE']->id,
+            'action_code' => 'CREATE',
+            'performed_by' => $this->actors['CREATE']->id,
+            'comments' => 'إنشاء الطلب',
+            'created_at' => $createdAt,
+        ];
     }
 
     /**

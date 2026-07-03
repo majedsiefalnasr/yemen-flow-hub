@@ -1,5 +1,10 @@
 import { ref } from 'vue'
-import type { AvailableWorkflow, EngineRequest, PaginatedResponse } from '@/types/models'
+import type {
+  AvailableWorkflow,
+  EngineDuplicateWarning,
+  EngineRequest,
+  PaginatedResponse,
+} from '@/types/models'
 import { useApi } from '@/composables/useApi'
 import { extractApiErrorMessage } from '@/utils/apiErrors'
 
@@ -25,6 +30,7 @@ export function useEngineRequests() {
   const queueMeta = ref<PaginatedResponse<EngineRequest>['meta'] | null>(null)
   const availableWorkflows = ref<AvailableWorkflow[]>([])
   const current = ref<EngineRequest | null>(null)
+  const currentWarnings = ref<EngineDuplicateWarning[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
 
@@ -94,10 +100,13 @@ export function useEngineRequests() {
   }
 
   const show = async (id: number): Promise<EngineRequest> => {
-    const response = await api.get<{ success: boolean; data: EngineRequest }>(
-      `/api/v1/engine-requests/${id}`,
-    )
+    const response = await api.get<{
+      success: boolean
+      data: EngineRequest
+      warnings?: EngineDuplicateWarning[]
+    }>(`/api/v1/engine-requests/${id}`)
     current.value = response.data
+    currentWarnings.value = response.warnings ?? []
     return response.data
   }
 
@@ -121,6 +130,7 @@ export function useEngineRequests() {
     queueMeta,
     availableWorkflows,
     current,
+    currentWarnings,
     loading,
     error,
     fetchList,

@@ -17,7 +17,10 @@ class UserSeeder extends Seeder
     {
         $password = Hash::make('password');
 
-        // CBY users — canonical 8-role model, extra exec members for voting quorum
+        // National-committee + system-admin users. One holder per committee role;
+        // extra exec members keep the voting quorum for the EXEC stage. The
+        // dedicated fx_confirm holder is seeded separately below (no legacy enum
+        // maps to it).
         $cbyUsers = [
             ['name' => 'ياسر الحضرمي',   'email' => 'admin@cby.gov.ye',    'role' => UserRole::CBY_ADMIN,          'phone' => '+967 77 123 4567'],
             ['name' => 'محمد الشامي',     'email' => 'support1@cby.gov.ye', 'role' => UserRole::SUPPORT_COMMITTEE,  'phone' => '+967 71 234 5678'],
@@ -48,15 +51,25 @@ class UserSeeder extends Seeder
             $this->assignIdentity($user, $row['role']);
         }
 
-        // Bank users — 5 canonical bank roles per bank (BANK_ADMIN, 2×DATA_ENTRY, BANK_REVIEWER, SWIFT_OFFICER)
-        // Two DATA_ENTRY users per bank give the request seeder variety in request creators.
+        // Dedicated fx_confirm holder for the FX_CONFIRM stage. No legacy UserRole
+        // maps to it, so its governance identity (org/team/role) is set explicitly.
+        $this->seedFxConfirmUser($password);
+
+        // Bank users — one holder per bank role (BANK_ADMIN, DATA_ENTRY,
+        // BANK_REVIEWER, SWIFT_OFFICER). Both banks get an explicit block so the
+        // seeded names match the demo screenshots.
         $bankSpecific = [
             'YBRD' => [
-                ['role' => UserRole::BANK_ADMIN,    'name' => 'فاطمة المقطري',   'email' => 'admin@ybrd.com.ye'],
-                ['role' => UserRole::DATA_ENTRY,    'name' => 'علي القاضي',      'email' => 'entry@ybrd.com.ye'],
-                ['role' => UserRole::DATA_ENTRY,    'name' => 'مريم الحارثي',    'email' => 'entry2@ybrd.com.ye'],
-                ['role' => UserRole::BANK_REVIEWER, 'name' => 'نوال الحاج',      'email' => 'reviewer@ybrd.com.ye'],
-                ['role' => UserRole::SWIFT_OFFICER, 'name' => 'سامي العتمي',     'email' => 'swift@ybrd.com.ye'],
+                ['role' => UserRole::BANK_ADMIN,    'name' => 'فاطمة المقطري', 'email' => 'admin@ybrd.com.ye'],
+                ['role' => UserRole::DATA_ENTRY,    'name' => 'علي القاضي',    'email' => 'entry@ybrd.com.ye'],
+                ['role' => UserRole::BANK_REVIEWER, 'name' => 'نوال الحاج',    'email' => 'reviewer@ybrd.com.ye'],
+                ['role' => UserRole::SWIFT_OFFICER, 'name' => 'سامي العتمي',   'email' => 'swift@ybrd.com.ye'],
+            ],
+            'TIIB' => [
+                ['role' => UserRole::BANK_ADMIN,    'name' => 'عبير الآنسي',   'email' => 'admin@tiib.com.ye'],
+                ['role' => UserRole::DATA_ENTRY,    'name' => 'رامي القدسي',   'email' => 'entry@tiib.com.ye'],
+                ['role' => UserRole::BANK_REVIEWER, 'name' => 'سليمان ناصر',   'email' => 'reviewer@tiib.com.ye'],
+                ['role' => UserRole::SWIFT_OFFICER, 'name' => 'هشام الوصابي',  'email' => 'swift@tiib.com.ye'],
             ],
         ];
 
@@ -75,7 +88,6 @@ class UserSeeder extends Seeder
             $rows = $bankSpecific[$bank->code] ?? [
                 ['role' => UserRole::BANK_ADMIN,    'name' => $namePool[$nameIdx++ % count($namePool)], 'email' => "admin@{$code}.com.ye"],
                 ['role' => UserRole::DATA_ENTRY,    'name' => $namePool[$nameIdx++ % count($namePool)], 'email' => "entry@{$code}.com.ye"],
-                ['role' => UserRole::DATA_ENTRY,    'name' => $namePool[$nameIdx++ % count($namePool)], 'email' => "entry2@{$code}.com.ye"],
                 ['role' => UserRole::BANK_REVIEWER, 'name' => $namePool[$nameIdx++ % count($namePool)], 'email' => "reviewer@{$code}.com.ye"],
                 ['role' => UserRole::SWIFT_OFFICER, 'name' => $namePool[$nameIdx++ % count($namePool)], 'email' => "swift@{$code}.com.ye"],
             ];
@@ -99,17 +111,58 @@ class UserSeeder extends Seeder
         }
 
         $this->command?->line('✓ Users seeded with phone, mfa_enabled, and notification preferences.');
-        $this->command?->line('✓ CBY users:');
-        $this->command?->line('  - 1 CBY_ADMIN');
-        $this->command?->line('  - 2 SUPPORT_COMMITTEE');
-        $this->command?->line('  - 1 COMMITTEE_DIRECTOR');
-        $this->command?->line('  - 6 EXECUTIVE_MEMBER');
-        $this->command?->line('✓ Bank users (4 active banks × 5 roles):');
-        $this->command?->line('  - 4 BANK_ADMIN');
-        $this->command?->line('  - 8 DATA_ENTRY (2 per bank)');
-        $this->command?->line('  - 4 BANK_REVIEWER');
-        $this->command?->line('  - 4 SWIFT_OFFICER');
-        $this->command?->line('✓ Total: ~30 users');
+        $this->command?->line('✓ National committee + system admin users:');
+        $this->command?->line('  - 1 CBY_ADMIN (system_admin)');
+        $this->command?->line('  - 2 SUPPORT_COMMITTEE (support)');
+        $this->command?->line('  - 1 COMMITTEE_DIRECTOR (committee_manager)');
+        $this->command?->line('  - 6 EXECUTIVE_MEMBER (committee_manager)');
+        $this->command?->line('  - 1 FX_CONFIRM (fxconfirm@cby.gov.ye)');
+        $this->command?->line('✓ Bank users (2 active banks × 4 roles):');
+        $this->command?->line('  - 2 BANK_ADMIN');
+        $this->command?->line('  - 2 DATA_ENTRY (intake)');
+        $this->command?->line('  - 2 BANK_REVIEWER (internal_reviewer)');
+        $this->command?->line('  - 2 SWIFT_OFFICER (fx_swift)');
+        $this->command?->line('✓ Total: 19 users');
+    }
+
+    /**
+     * Seed the dedicated fx_confirm holder for the FX_CONFIRM stage.
+     *
+     * No legacy UserRole enum case maps to fx_confirm, so its governance identity
+     * (organization national_committee / team fx_confirmation / role fx_confirm)
+     * is wired explicitly here instead of through assignIdentity(). The legacy
+     * `role` column is set to COMMITTEE_DIRECTOR only to satisfy the not-null enum
+     * column; authority derives entirely from the governance identity below.
+     */
+    private function seedFxConfirmUser(string $password): void
+    {
+        $organization = Organization::query()->where('code', 'national_committee')->firstOrFail();
+        $team = Team::query()
+            ->whereBelongsTo($organization)
+            ->where('code', 'fx_confirmation')
+            ->firstOrFail();
+        $role = Role::query()
+            ->whereBelongsTo($organization)
+            ->where('code', 'fx_confirm')
+            ->firstOrFail();
+
+        $user = User::query()->updateOrCreate(
+            ['email' => 'fxconfirm@cby.gov.ye'],
+            [
+                'name' => 'سلوى المروني',
+                'password' => $password,
+                'role' => UserRole::COMMITTEE_DIRECTOR,
+                'organization_id' => $organization->id,
+                'bank_id' => null,
+                'is_active' => true,
+                'mfa_enabled' => true,
+                'phone' => '+967 77 654 3210',
+                'user_preferences' => $this->defaultPreferences(UserRole::COMMITTEE_DIRECTOR),
+            ]
+        );
+
+        $user->teams()->sync([$team->id]);
+        $user->roles()->sync([$role->id]);
     }
 
     private function defaultPreferences(UserRole $role): array

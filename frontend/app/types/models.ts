@@ -413,7 +413,6 @@ export interface RequestFormData {
   trader_snapshot_commercial_registration_expiry?: string | null
 }
 
-
 export interface User {
   id: number
   name: string
@@ -812,6 +811,8 @@ export interface WorkflowGraphNode {
   is_initial: boolean
   is_final: boolean
   sort_order: number
+  /** Per-request lifecycle marker, present on the request graph endpoint. */
+  state?: 'executed' | 'current' | 'possible'
 }
 
 export interface WorkflowGraphEdge {
@@ -824,11 +825,15 @@ export interface WorkflowGraphEdge {
   requires_comment: boolean
   is_self_loop: boolean
   is_return: boolean
+  /** Per-request marker, present on the request graph endpoint. */
+  state?: 'executed' | 'possible'
 }
 
 export interface WorkflowGraph {
   nodes: WorkflowGraphNode[]
   edges: WorkflowGraphEdge[]
+  /** Stage ids the current user may execute, scoped to this version. */
+  execute_stage_ids?: number[]
 }
 
 export interface StageFieldRule {
@@ -889,10 +894,21 @@ export interface EngineRequest {
   claimed_by_user: { id: number; name: string } | null
   claimed_at: string | null
   claim_expires_at: string | null
+  // Whether the signed-in user may execute the current stage. Present only on
+  // the single-request (show) payload; absent/undefined on list rows.
+  can_execute?: boolean
   created_by: number
   creator: { id: number; name: string } | null
   created_at: string | null
   updated_at: string | null
+}
+
+// Engine duplicate-invoice warning shape (distinct from the legacy
+// DuplicateWarning): returned under `warnings` by create/transition/show.
+export interface EngineDuplicateWarning {
+  code: string
+  message: string
+  duplicates: { id: number; reference: string }[]
 }
 
 export interface EngineRequestDocument {

@@ -39,6 +39,7 @@ vi.mock('@/composables/useEngineRequests', () => ({
     queueMeta: { value: null },
     availableWorkflows: { value: [] },
     current: { value: null },
+    currentWarnings: { value: [] },
     loading: { value: false },
     error: { value: null },
     fetchList: vi.fn(),
@@ -128,6 +129,11 @@ const stubs = {
     template: '<div data-stub="dynamic-form" />',
     methods: { validate: () => ({ valid: true, values: {} }) },
   },
+  // The read-only data/rail/info components render their own children from the
+  // schema/graph; stub them so these page-level tests stay focused on the page.
+  EngineRequestDataTabs: { template: '<div data-stub="data-tabs" />' },
+  EngineOrgProcessRail: { template: '<div data-stub="org-rail" />' },
+  EngineQuickInfo: { template: '<div data-stub="quick-info" />' },
 }
 
 function makeInstance(overrides: Record<string, unknown> = {}) {
@@ -159,6 +165,8 @@ function makeInstance(overrides: Record<string, unknown> = {}) {
     claimed_by_user: null,
     claimed_at: null,
     claim_expires_at: null,
+    // Default fixture is the stage executor; view-only cases override to false.
+    can_execute: true,
     created_by: 1,
     creator: { id: 1, name: 'Test User' },
     created_at: '2026-06-25T00:00:00Z',
@@ -299,6 +307,53 @@ describe('workflows/instances/[id].vue', () => {
 
     expect(wrapper.text()).toContain('إجراءات المرحلة')
     expect(wrapper.text()).toContain('إرسال')
+  })
+
+  it('hides actions and shows a view-only badge for a non-executor', async () => {
+    const store = useEngineRequestsStore()
+    store.current = makeInstance({ can_execute: false })
+    store.graph = {
+      nodes: [],
+      edges: [
+        {
+          id: 9,
+          from_stage_id: 1,
+          to_stage_id: 2,
+          action_id: 1,
+          action_code: 'SUBMIT',
+          action_name: 'إرسال',
+          requires_comment: false,
+          is_self_loop: false,
+          is_return: false,
+        },
+      ],
+    }
+
+    const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
+    await wrapper.vm.$nextTick()
+
+    // The stage has an outgoing edge, but a viewer must not see the action.
+    expect(wrapper.text()).not.toContain('إرسال')
+    expect(wrapper.text()).toContain('عرض فقط')
+    expect(wrapper.text()).toContain('لا تملك صلاحية تنفيذ إجراءات على المرحلة الحالية')
+  })
+
+  it('surfaces a duplicate-invoice banner when the show payload carries warnings', async () => {
+    const store = useEngineRequestsStore()
+    store.current = makeInstance()
+    store.duplicateWarnings = [
+      {
+        code: 'DUPLICATE_INVOICE',
+        message: 'dup',
+        duplicates: [{ id: 7, reference: 'ENG-2026-000007' }],
+      },
+    ]
+
+    const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.text()).toContain('فاتورة مكرّرة محتملة')
+    expect(wrapper.text()).toContain('ENG-2026-000007')
   })
 
   it('explains why actions are disabled when claim is required and not held', async () => {

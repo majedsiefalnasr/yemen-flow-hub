@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 import WorkflowsNewPage from '@/pages/workflows/new.vue'
 import { useEngineRequestsStore } from '@/stores/engineRequests.store'
@@ -91,6 +91,21 @@ describe('workflows/new.vue', () => {
     auth.user = DATA_ENTRY_USER
   })
 
+  const WF_IMPORT = {
+    id: 1,
+    code: 'IMPORT_FINANCING',
+    name: 'تمويل الواردات',
+    version_id: 10,
+    version_number: 1,
+  }
+  const WF_EXPORT = {
+    id: 2,
+    code: 'EXPORT_FINANCING',
+    name: 'تمويل الصادرات',
+    version_id: 20,
+    version_number: 1,
+  }
+
   it('loads available workflows on mount', () => {
     const store = useEngineRequestsStore()
     const spy = vi.spyOn(store, 'loadAvailableWorkflows')
@@ -98,41 +113,41 @@ describe('workflows/new.vue', () => {
     expect(spy).toHaveBeenCalled()
   })
 
-  it('lists each available workflow as a selectable option', async () => {
+  it('auto-starts the sole workflow without rendering a picker', async () => {
     const store = useEngineRequestsStore()
-    store.availableWorkflows = [
-      {
-        id: 1,
-        code: 'IMPORT_FINANCING',
-        name: 'تمويل الواردات',
-        version_id: 10,
-        version_number: 1,
-      },
-    ]
+    vi.spyOn(store, 'loadAvailableWorkflows').mockImplementation(async () => {
+      store.availableWorkflows = [WF_IMPORT]
+    })
+    vi.spyOn(store, 'createInstance').mockResolvedValue({ id: 99 } as never)
+
     const wrapper = mount(WorkflowsNewPage)
-    await wrapper.vm.$nextTick()
-    expect(wrapper.text()).toContain('تمويل الواردات')
+    await flushPromises()
+
+    // No card was clicked, yet the one workflow was created and we navigated in.
+    expect(store.createInstance).toHaveBeenCalledWith({ workflow_version_id: 10, data: {} })
+    expect(mockNavigateTo).toHaveBeenCalledWith('/workflows/instances/99?mode=wizard')
+    expect(wrapper.find('[data-testid="create-instance-1"]').exists()).toBe(false)
   })
 
-  it('creates an instance and navigates to its detail page on confirm', async () => {
+  it('renders a picker and creates on click when multiple workflows exist', async () => {
     const store = useEngineRequestsStore()
-    store.availableWorkflows = [
-      {
-        id: 1,
-        code: 'IMPORT_FINANCING',
-        name: 'تمويل الواردات',
-        version_id: 10,
-        version_number: 1,
-      },
-    ]
+    vi.spyOn(store, 'loadAvailableWorkflows').mockImplementation(async () => {
+      store.availableWorkflows = [WF_IMPORT, WF_EXPORT]
+    })
     vi.spyOn(store, 'createInstance').mockResolvedValue({ id: 99 } as never)
+
     const wrapper = mount(WorkflowsNewPage)
-    await wrapper.vm.$nextTick()
+    await flushPromises()
 
-    await wrapper.find('[data-testid="create-instance-1"]').trigger('click')
-    await wrapper.vm.$nextTick()
+    // A genuine choice exists, so no auto-start; both options are listed.
+    expect(store.createInstance).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('تمويل الواردات')
+    expect(wrapper.text()).toContain('تمويل الصادرات')
 
-    expect(store.createInstance).toHaveBeenCalledWith({ workflow_version_id: 10, data: {} })
+    await wrapper.find('[data-testid="create-instance-2"]').trigger('click')
+    await flushPromises()
+
+    expect(store.createInstance).toHaveBeenCalledWith({ workflow_version_id: 20, data: {} })
     expect(mockNavigateTo).toHaveBeenCalledWith('/workflows/instances/99?mode=wizard')
   })
 })

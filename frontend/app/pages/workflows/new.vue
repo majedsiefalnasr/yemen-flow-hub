@@ -1,6 +1,6 @@
 <!-- app/pages/workflows/new.vue -->
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useEngineRequestsStore } from '@/stores/engineRequests.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { UserRole } from '@/types/enums'
@@ -17,9 +17,18 @@ const store = useEngineRequestsStore()
 const auth = useAuthStore()
 
 const canCreate = computed(() => auth.currentRole === UserRole.DATA_ENTRY)
+// True while auto-creating the sole workflow, so the picker never flashes.
+const autoStarting = ref(false)
 
-onMounted(() => {
-  if (canCreate.value) store.loadAvailableWorkflows()
+onMounted(async () => {
+  if (!canCreate.value) return
+  await store.loadAvailableWorkflows()
+  // Single published workflow is the common case: skip the picker and start the
+  // one workflow directly. The picker only renders when a genuine choice exists.
+  if (store.availableWorkflows.length === 1) {
+    autoStarting.value = true
+    await startWorkflow(store.availableWorkflows[0]!.version_id)
+  }
 })
 
 async function startWorkflow(versionId: number) {
@@ -50,7 +59,7 @@ async function startWorkflow(versionId: number) {
       </EmptyHeader>
     </Empty>
 
-    <div v-else-if="store.loading" class="grid gap-4 sm:grid-cols-2">
+    <div v-else-if="store.loading || autoStarting" class="grid gap-4 sm:grid-cols-2">
       <Skeleton v-for="n in 2" :key="n" class="h-32 w-full rounded-xl" />
     </div>
 

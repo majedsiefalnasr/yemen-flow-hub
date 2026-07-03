@@ -29,13 +29,13 @@ class EngineDemoSeederTest extends TestCase
         $definition = WorkflowDefinition::query()->where('code', 'IMPORT_FINANCING')->firstOrFail();
         $version = $definition->versions()->firstOrFail();
 
-        $this->assertSame(20, EngineRequest::query()->count());
+        $this->assertSame(40, EngineRequest::query()->count());
         $this->assertSame(
             Bank::query()->where('is_active', true)->count(),
             EngineRequest::query()->distinct('bank_id')->count('bank_id')
         );
-        $this->assertDatabaseCount('workflow_history', 72);
-        $this->assertDatabaseCount('engine_request_documents', 20);
+        $this->assertDatabaseCount('workflow_history', 180);
+        $this->assertDatabaseCount('engine_request_documents', 40);
         $this->assertDatabaseCount('customs_declarations', 2);
         $this->assertDatabaseCount('engine_notifications', 4);
         $this->assertDatabaseCount('notification_recipients', 4);
@@ -82,23 +82,28 @@ class EngineDemoSeederTest extends TestCase
     {
         $this->seed(DatabaseSeeder::class);
 
+        // Per bank, each executor's queue reflects the requests currently sitting
+        // on the stage they can execute: data entry sees the two CREATE requests
+        // plus the one returned to entry (3); the internal reviewer sees the two
+        // INTERNAL requests plus the one returned to internal review (3); the SWIFT
+        // officer sees the two FX requests (2).
         foreach (Bank::query()->where('is_active', true)->orderBy('id')->get() as $bank) {
             $code = strtolower($bank->code);
 
             $this->actingAs(User::query()->where('email', "entry@{$code}.com.ye")->firstOrFail())
                 ->getJson('/api/v1/engine-requests/my-queue')
                 ->assertOk()
-                ->assertJsonPath('meta.total', 1);
+                ->assertJsonPath('meta.total', 3);
 
             $this->actingAs(User::query()->where('email', "reviewer@{$code}.com.ye")->firstOrFail())
                 ->getJson('/api/v1/engine-requests/my-queue')
                 ->assertOk()
-                ->assertJsonPath('meta.total', 1);
+                ->assertJsonPath('meta.total', 3);
 
             $this->actingAs(User::query()->where('email', "swift@{$code}.com.ye")->firstOrFail())
                 ->getJson('/api/v1/engine-requests/my-queue')
                 ->assertOk()
-                ->assertJsonPath('meta.total', 1);
+                ->assertJsonPath('meta.total', 2);
         }
 
         $admin = User::query()->where('email', 'admin@cby.gov.ye')->firstOrFail();
@@ -110,7 +115,7 @@ class EngineDemoSeederTest extends TestCase
         $this->actingAs($admin)
             ->getJson('/api/v1/engine-requests?per_page=100')
             ->assertOk()
-            ->assertJsonPath('meta.total', 20);
+            ->assertJsonPath('meta.total', 40);
 
         $this->actingAs($admin)
             ->getJson("/api/v1/engine-requests/{$request->id}")

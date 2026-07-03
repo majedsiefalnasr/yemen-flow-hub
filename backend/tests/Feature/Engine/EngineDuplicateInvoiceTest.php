@@ -193,6 +193,44 @@ class EngineDuplicateInvoiceTest extends TestCase
         $this->assertArrayNotHasKey('warnings', $response->json());
     }
 
+    public function test_show_surfaces_duplicate_warning_for_conflicting_request(): void
+    {
+        // First request holds the invoice number.
+        $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', [
+            'workflow_version_id' => $this->version->id,
+            'merchant_id' => $this->merchant->id,
+            'data' => ['invoice_number' => 'INV-SHOW-001'],
+        ])->assertCreated();
+
+        // Second request re-uses it; viewing its detail must expose the conflict
+        // so a reviewer sees it without re-running a transition.
+        $second = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', [
+            'workflow_version_id' => $this->version->id,
+            'merchant_id' => $this->merchant->id,
+            'data' => ['invoice_number' => 'INV-SHOW-001'],
+        ])->assertCreated();
+
+        $this->actingAs($this->executor)
+            ->getJson("/api/v1/engine-requests/{$second->json('data.id')}")
+            ->assertOk()
+            ->assertJsonPath('warnings.0.code', 'DUPLICATE_INVOICE');
+    }
+
+    public function test_show_has_no_warning_for_unique_invoice(): void
+    {
+        $created = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', [
+            'workflow_version_id' => $this->version->id,
+            'merchant_id' => $this->merchant->id,
+            'data' => ['invoice_number' => 'INV-SHOW-UNIQUE'],
+        ])->assertCreated();
+
+        $response = $this->actingAs($this->executor)
+            ->getJson("/api/v1/engine-requests/{$created->json('data.id')}")
+            ->assertOk();
+
+        $this->assertArrayNotHasKey('warnings', $response->json());
+    }
+
     public function test_duplicate_warning_includes_matching_reference_list(): void
     {
         $first = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', [

@@ -2,6 +2,8 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\StageAccessLevel;
+use App\Services\Workflow\StagePermissionResolver;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -24,6 +26,19 @@ class EngineRequestResource extends JsonResource
                 'sla_duration_minutes' => $this->currentStage->sla_duration_minutes,
                 'requires_claim' => $this->currentStage->requires_claim,
             ]),
+            // Whether the signed-in user may EXECUTE the current stage. Drives the
+            // detail page's action panel and edit mode. Assignment-based even for
+            // system admins (admins widen visibility, never execute authority),
+            // matching the workflow-designer routing. Absent when the stage is not
+            // loaded (list endpoints), where the client does not need it.
+            'can_execute' => $this->when(
+                $request->user() !== null && $this->relationLoaded('currentStage') && $this->currentStage !== null,
+                fn (): bool => app(StagePermissionResolver::class)->userCanAccessStage(
+                    $request->user(),
+                    $this->currentStage,
+                    StageAccessLevel::EXECUTE,
+                ),
+            ),
             'bank_id' => $this->bank_id,
             'bank' => $this->whenLoaded('bank', fn () => [
                 'id' => $this->bank->id,

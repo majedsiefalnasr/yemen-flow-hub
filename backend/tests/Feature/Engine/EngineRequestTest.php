@@ -327,6 +327,30 @@ class EngineRequestTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['subject_id' => $id, 'action' => 'REQUEST_CREATED']);
     }
 
+    public function test_create_accepts_empty_data_for_a_blank_draft(): void
+    {
+        // The "new request" flow spins up an empty draft, then fills it in the
+        // wizard, so an empty data object must be accepted.
+        $response = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', [
+            'workflow_version_id' => $this->version->id,
+            'data' => [],
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.status', 'ACTIVE');
+    }
+
+    public function test_create_rejects_missing_data_key(): void
+    {
+        $response = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', [
+            'workflow_version_id' => $this->version->id,
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['data']);
+    }
+
     public function test_create_blocked_without_execute(): void
     {
         $response = $this->actingAs($this->viewer)->postJson('/api/v1/engine-requests', [
@@ -748,6 +772,22 @@ class EngineRequestTest extends TestCase
         $this->assertEquals('executed', $dataEntry['state']);
         $this->assertEquals('current', $review['state']);
         $this->assertEquals('possible', $completed['state']);
+    }
+
+    public function test_graph_reports_execute_stage_ids_for_current_user(): void
+    {
+        $request = $this->createRequest();
+
+        $response = $this->actingAs($this->executor)->getJson("/api/v1/engine-requests/{$request->id}/graph");
+        $response->assertOk();
+
+        $executeStageIds = $response->json('data.execute_stage_ids');
+
+        // The executor (entry role) holds EXECUTE only on the initial stage; it has
+        // just VIEW on the review stage and nothing on the final stage.
+        $this->assertContains($this->initialStage->id, $executeStageIds);
+        $this->assertNotContains($this->reviewStage->id, $executeStageIds);
+        $this->assertNotContains($this->finalStage->id, $executeStageIds);
     }
 
     // ── 18.5.8: Duplicate Invoice ────────────────────────────────────────
