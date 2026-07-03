@@ -23,6 +23,8 @@
 - Never commit `graphify-out/` artifacts
 - `users.role` scalar remains the live auth gate — do NOT change PermissionService, policies, or auth middleware
 
+> **⚠️ SUPERSEDED (2026-07-03):** The architectural decision above ("users.role scalar remains the live auth gate — do NOT change PermissionService, policies, or auth middleware") was explicitly reversed on 2026-07-03. See `docs/superpowers/plans/2026-07-03-governance-pivot-auth-migration.md` — all authorization now reads the governance pivot (`roles`/`user_roles`), not `users.role`. This file is kept for historical context only; do not use its constraints for new work.
+
 ---
 
 ### Task 1: Delete Trader Backend (controllers, services, models, policies, resources, form requests, routes, event provider bindings)
