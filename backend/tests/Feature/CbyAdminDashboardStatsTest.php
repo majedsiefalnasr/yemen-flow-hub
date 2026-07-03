@@ -15,10 +15,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Tests\Support\AssignsGovernanceIdentity;
 use Tests\TestCase;
 
 class CbyAdminDashboardStatsTest extends TestCase
 {
+    use AssignsGovernanceIdentity;
     use RefreshDatabase;
 
     private Bank $bank;
@@ -34,6 +36,7 @@ class CbyAdminDashboardStatsTest extends TestCase
     {
         parent::setUp();
         Cache::flush();
+        $this->seedGovernance();
 
         Permission::query()->firstOrCreate(
             ['slug' => 'request.create'],
@@ -64,14 +67,14 @@ class CbyAdminDashboardStatsTest extends TestCase
         static $counter = 0;
         $counter++;
 
-        return User::query()->create([
+        return $this->assignGovernanceIdentity(User::query()->create([
             'name' => "User {$counter}",
             'email' => "user{$counter}@example.com",
             'password' => Hash::make('password'),
             'role' => $role->value,
             'bank_id' => $bank?->id,
             'is_active' => true,
-        ]);
+        ]), $role);
     }
 
     /**

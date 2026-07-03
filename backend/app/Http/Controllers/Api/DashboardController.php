@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Enums\UserRole;
 use App\Models\Bank;
 use App\Models\EngineRequest;
 use App\Models\User;
@@ -31,14 +30,14 @@ class DashboardController extends Controller
         $user = request()->user();
 
         return match (true) {
-            $user->hasRole(UserRole::DATA_ENTRY) => $this->dataEntryStats($user),
-            $user->hasRole(UserRole::BANK_REVIEWER) => $this->bankReviewerStats($user),
-            $user->hasRole(UserRole::BANK_ADMIN) => $this->bankAdminStats($user),
-            $user->hasRole(UserRole::SUPPORT_COMMITTEE) => $this->supportCommitteeStats($user),
-            $user->hasRole(UserRole::SWIFT_OFFICER) => $this->swiftOfficerStats($user),
-            $user->hasRole(UserRole::EXECUTIVE_MEMBER) => $this->executiveMemberStats($user),
-            $user->hasRole(UserRole::COMMITTEE_DIRECTOR) => $this->committeeDirectorStats($user),
-            $user->hasRole(UserRole::CBY_ADMIN) => $this->cbyadminStats(),
+            $user->hasRoleCode('intake') => $this->dataEntryStats($user),
+            $user->hasRoleCode('internal_reviewer') => $this->bankReviewerStats($user),
+            $user->hasRoleCode('bank_admin') => $this->bankAdminStats($user),
+            $user->hasRoleCode('support') => $this->supportCommitteeStats($user),
+            $user->hasRoleCode('fx_swift') => $this->swiftOfficerStats($user),
+            $user->hasRoleCode('committee_manager') => $this->executiveMemberStats($user),
+            $user->hasRoleCode('committee_director') => $this->committeeDirectorStats($user),
+            $user->hasRoleCode('system_admin') => $this->cbyadminStats(),
             default => ApiResponse::success([], 'Dashboard stats retrieved.'),
         };
     }
@@ -64,7 +63,7 @@ class DashboardController extends Controller
         $atCby = (clone $base)->where(EngineRequestReadModel::bucket('at_cby'))->count();
         $activeUsers = User::query()
             ->where('bank_id', $bankId)
-            ->whereIn('role', [UserRole::DATA_ENTRY->value, UserRole::BANK_REVIEWER->value])
+            ->whereHas('roles', fn ($q) => $q->whereIn('code', ['intake', 'internal_reviewer']))
             ->where('is_active', true)
             ->count();
 

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Enums\AuditAction;
-use App\Enums\UserRole;
 use App\Http\Resources\AuditLogResource;
 use App\Models\AuditLog;
 use App\Services\Audit\AuditService;
@@ -19,9 +18,7 @@ class AuditController extends Controller
 
     private function isAuditAuthorized(): bool
     {
-        $role = request()->user()->role;
-
-        return in_array($role, [UserRole::CBY_ADMIN, UserRole::COMMITTEE_DIRECTOR], true);
+        return request()->user()->hasAnyRoleCode(['system_admin', 'committee_director']);
     }
 
     private function forbiddenAuditResponse(string $reason): JsonResponse
