@@ -59,4 +59,48 @@ class DemoUserSwitchTest extends TestCase
         $ids = collect($response->json('data.users'))->pluck('id');
         $this->assertNotContains($inactive->id, $ids);
     }
+
+    public function test_switch_demo_user_returns_forbidden_when_flag_disabled(): void
+    {
+        config(['demo.allow_role_switch' => false]);
+
+        $user = User::query()->where('role', UserRole::DATA_ENTRY->value)->firstOrFail();
+
+        $this->postJson('/api/auth/switch-demo-user', ['user_id' => $user->id])
+            ->assertForbidden();
+    }
+
+    public function test_switch_demo_user_returns_not_found_for_unknown_id(): void
+    {
+        config(['demo.allow_role_switch' => true]);
+
+        $this->postJson('/api/auth/switch-demo-user', ['user_id' => 999999])
+            ->assertNotFound();
+    }
+
+    public function test_switch_demo_user_returns_not_found_for_inactive_user(): void
+    {
+        config(['demo.allow_role_switch' => true]);
+
+        $inactive = User::query()->where('role', UserRole::SWIFT_OFFICER->value)->firstOrFail();
+        $inactive->update(['is_active' => false]);
+
+        $this->postJson('/api/auth/switch-demo-user', ['user_id' => $inactive->id])
+            ->assertNotFound();
+    }
+
+    public function test_switch_demo_user_issues_session_for_target_user(): void
+    {
+        config(['demo.allow_role_switch' => true]);
+
+        $target = User::query()->where('role', UserRole::COMMITTEE_DIRECTOR->value)->firstOrFail();
+
+        $response = $this->withHeader('Referer', 'http://'.config('sanctum.stateful.0'))
+            ->postJson('/api/auth/switch-demo-user', ['user_id' => $target->id])
+            ->assertOk();
+
+        $response->assertJsonPath('data.user.id', $target->id);
+        $response->assertJsonPath('data.requires_mfa', false);
+        $this->assertAuthenticatedAs($target);
+    }
 }

@@ -388,6 +388,48 @@ class AuthController extends Controller
         return $this->issueSession($request, $user);
     }
 
+    #[OA\Post(
+        path: '/api/auth/switch-demo-user',
+        tags: ['Auth'],
+        summary: 'Switch authenticated session to a specific demo user by id',
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['user_id'],
+                properties: [
+                    new OA\Property(property: 'user_id', type: 'integer'),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 200, description: 'Session switched'),
+            new OA\Response(response: 403, description: 'Demo role switching disabled'),
+            new OA\Response(response: 404, description: 'No active demo user found for the given id'),
+            new OA\Response(response: 422, description: 'Validation failed'),
+        ]
+    )]
+    public function switchDemoUser(Request $request)
+    {
+        if (! config('demo.allow_role_switch', false)) {
+            return ApiResponse::forbidden('Demo role switching is disabled.');
+        }
+
+        $validated = $request->validate([
+            'user_id' => ['required', 'integer'],
+        ]);
+
+        $user = User::query()
+            ->where('id', $validated['user_id'])
+            ->where('is_active', true)
+            ->first();
+
+        if (! $user) {
+            return ApiResponse::notFound('No active demo account found for the selected user.');
+        }
+
+        return $this->issueSession($request, $user);
+    }
+
     private function issueSession(Request $request, User $user)
     {
         $cookieMode = $request->hasSession();
