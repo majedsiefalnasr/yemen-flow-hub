@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Enums\AuditAction;
-use App\Enums\UserRole;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Http\Resources\UserResource;
@@ -38,13 +37,13 @@ class UserController extends Controller
         $users = User::query()
             ->with('bank')
             ->when(
-                $actor->hasRole(UserRole::BANK_ADMIN),
+                $actor->hasRoleCode('bank_admin'),
                 fn ($q) => $q->where('bank_id', $actor->bank_id)
-                    ->whereIn('role', [UserRole::DATA_ENTRY->value, UserRole::BANK_REVIEWER->value])
+                    ->whereHas('roles', fn ($rq) => $rq->whereIn('code', ['intake', 'internal_reviewer']))
             )
             ->when(request()->filled('role'), fn ($q) => $q->where('role', request('role')))
             ->when(
-                request()->filled('bank_id') && ! $actor->hasRole(UserRole::BANK_ADMIN),
+                request()->filled('bank_id') && ! $actor->hasRoleCode('bank_admin'),
                 fn ($q) => $q->where('bank_id', request('bank_id'))
             )
             ->when(request()->has('is_active'), fn ($q) => $q->where('is_active', filter_var(request('is_active'), FILTER_VALIDATE_BOOL)))

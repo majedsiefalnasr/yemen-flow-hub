@@ -9,6 +9,9 @@ use App\Http\Requests\UpdateBankRequest;
 use App\Http\Resources\BankResource;
 use App\Http\Resources\UserResource;
 use App\Models\Bank;
+use App\Models\Organization;
+use App\Models\Role;
+use App\Models\Team;
 use App\Models\User;
 use App\Services\Audit\AuditService;
 use App\Support\ApiResponse;
@@ -37,7 +40,7 @@ class BankController extends Controller
         $perPage = max(1, min(request()->integer('per_page', 20), 200));
         $banks = Bank::query()
             ->with('bankAdmin.bank')
-            ->when($actor->isBankUser(), fn ($q) => $q->where('id', $actor->bank_id))
+            ->when($actor->hasAnyRoleCode(['intake', 'internal_reviewer', 'bank_admin', 'fx_swift']), fn ($q) => $q->where('id', $actor->bank_id))
             ->when(request()->filled('search'), function ($q) {
                 $s = request('search');
                 $q->where(fn ($x) => $x->where('name_ar', 'like', "%{$s}%")
@@ -98,6 +101,16 @@ class BankController extends Controller
                 'must_change_password' => true,
                 'temporary_password_set_at' => now(),
             ]);
+
+            $organization = Organization::query()->where('code', 'commercial_banks')->firstOrFail();
+            $team = Team::query()->where('organization_id', $organization->id)->where('code', 'bank_admin')->firstOrFail();
+            $role = Role::query()->where('organization_id', $organization->id)->where('code', 'bank_admin')->firstOrFail();
+
+            $admin->forceFill([
+                'organization_id' => $organization->id,
+            ])->save();
+            $admin->teams()->sync([$team->id]);
+            $admin->roles()->sync([$role->id]);
 
             $this->auditService->log(AuditAction::BANK_CREATED, $request->user(), $bank, [
                 'bank_id' => $bank->id,
@@ -175,7 +188,7 @@ class BankController extends Controller
     {
         $this->authorize('update', $bank);
 
-        if (! $request->user()?->hasRole(UserRole::CBY_ADMIN)) {
+        if (! $request->user()?->hasRoleCode('system_admin')) {
             return ApiResponse::forbidden('Only CBY Admin can reset Bank Admin credentials.');
         }
 
@@ -185,7 +198,7 @@ class BankController extends Controller
 
         $admin = User::query()
             ->where('bank_id', $bank->id)
-            ->where('role', UserRole::BANK_ADMIN->value)
+            ->whereHas('roles', fn ($q) => $q->where('code', 'bank_admin'))
             ->orderBy('id')
             ->first();
 

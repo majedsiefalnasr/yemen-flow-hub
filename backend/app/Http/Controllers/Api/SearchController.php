@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Enums\UserRole;
 use App\Http\Resources\UserResource;
 use App\Models\Bank;
 use App\Models\CustomsDeclaration;
@@ -90,7 +89,7 @@ class SearchController extends Controller
 
     private function searchUsers(User $user, string $query): array
     {
-        if (! in_array($user->role, [UserRole::CBY_ADMIN, UserRole::BANK_ADMIN], true)) {
+        if (! $user->hasAnyRoleCode(['system_admin', 'bank_admin'])) {
             return [];
         }
 
@@ -103,16 +102,13 @@ class SearchController extends Controller
                     ->orWhere('email', 'like', $like);
             });
 
-        if ($user->role === UserRole::BANK_ADMIN) {
+        if ($user->hasRoleCode('bank_admin')) {
             if (! $user->bank_id) {
                 return [];
             }
 
             $userQuery->where('bank_id', $user->bank_id)
-                ->whereIn('role', [
-                    UserRole::DATA_ENTRY->value,
-                    UserRole::BANK_REVIEWER->value,
-                ]);
+                ->whereHas('roles', fn ($q) => $q->whereIn('code', ['intake', 'internal_reviewer']));
         }
 
         return UserResource::collection(
@@ -122,7 +118,7 @@ class SearchController extends Controller
 
     private function searchBanks(User $user, string $query): array
     {
-        if ($user->role !== UserRole::CBY_ADMIN) {
+        if (! $user->hasRoleCode('system_admin')) {
             return [];
         }
 
@@ -150,21 +146,24 @@ class SearchController extends Controller
         $like = "%{$query}%";
 
         $customsQuery = CustomsDeclaration::query()
-            ->with(['request'])
+            ->with(['engineRequest'])
             ->where('declaration_number', 'like', $like);
 
-        if ($user->isBankUser()) {
-            $customsQuery->whereHas('request', fn ($q) => $q->where('bank_id', $user->bank_id));
+        if ($user->hasAnyRoleCode(['intake', 'internal_reviewer', 'bank_admin', 'fx_swift'])) {
+            $customsQuery->whereHas('engineRequest', fn ($q) => $q->where('bank_id', $user->bank_id));
         }
 
         $declarations = $customsQuery->limit(self::MAX_RESULTS_PER_GROUP)->get();
 
+        // Output keys 'request_id'/'reference_number' are the public API contract
+        // (see frontend GlobalSearch.vue); only the underlying relation/column
+        // names changed below (engine_request_id/reference).
         return $declarations->map(fn (CustomsDeclaration $d) => [
             'id' => $d->id,
             'declaration_number' => $d->declaration_number,
             'issued_at' => $d->issued_at?->toISOString(),
-            'request_id' => $d->request_id,
-            'reference_number' => $d->request?->reference_number,
+            'request_id' => $d->engine_request_id,
+            'reference_number' => $d->engineRequest?->reference,
         ])->values()->all();
     }
 

@@ -34,7 +34,7 @@ class UserController extends Controller
         $this->authorize('viewAny', User::class);
         $actor = $request->user();
         $page = User::query()->with(['organization', 'teams.organization', 'roles.organization', 'bank.organization'])
-            ->when($actor->hasRole(UserRole::BANK_ADMIN), fn ($q) => $q->where('bank_id', $actor->bank_id))
+            ->when($actor->hasRoleCode('bank_admin'), fn ($q) => $q->where('bank_id', $actor->bank_id))
             ->when($request->filled('organization_id'), fn ($q) => $q->where('organization_id', $request->integer('organization_id')))
             ->when($request->filled('team_id'), fn ($q) => $q->whereHas('teams', fn ($t) => $t->whereKey($request->integer('team_id'))))
             ->when($request->filled('role_id'), fn ($q) => $q->whereHas('roles', fn ($r) => $r->whereKey($request->integer('role_id'))))
