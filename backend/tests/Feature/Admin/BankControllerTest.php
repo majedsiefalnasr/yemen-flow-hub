@@ -7,46 +7,54 @@ use App\Models\Bank;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Tests\Support\AssignsGovernanceIdentity;
 use Tests\TestCase;
 
 class BankControllerTest extends TestCase
 {
+    use AssignsGovernanceIdentity;
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seedGovernance();
+    }
 
     private function makeCbyAdmin(): User
     {
-        return User::query()->create([
+        return $this->assignGovernanceIdentity(User::query()->create([
             'name' => 'CBY Admin',
             'email' => 'admin@cby.gov.ye',
             'password' => Hash::make('password'),
             'role' => UserRole::CBY_ADMIN->value,
             'bank_id' => null,
             'is_active' => true,
-        ]);
+        ]), UserRole::CBY_ADMIN);
     }
 
     private function makeBankReviewer(Bank $bank): User
     {
-        return User::query()->create([
+        return $this->assignGovernanceIdentity(User::query()->create([
             'name' => 'Reviewer',
             'email' => 'reviewer@bank.com',
             'password' => Hash::make('password'),
             'role' => UserRole::BANK_REVIEWER->value,
             'bank_id' => $bank->id,
             'is_active' => true,
-        ]);
+        ]), UserRole::BANK_REVIEWER);
     }
 
     private function makeSupportCommittee(): User
     {
-        return User::query()->create([
+        return $this->assignGovernanceIdentity(User::query()->create([
             'name' => 'Support Member',
             'email' => 'support@cby.gov.ye',
             'password' => Hash::make('password'),
             'role' => UserRole::SUPPORT_COMMITTEE->value,
             'bank_id' => null,
             'is_active' => true,
-        ]);
+        ]), UserRole::SUPPORT_COMMITTEE);
     }
 
     private function makeBank(array $attrs = []): Bank

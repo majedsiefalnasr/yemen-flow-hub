@@ -2,7 +2,6 @@
 
 namespace App\Policies;
 
-use App\Enums\UserRole;
 use App\Models\Bank;
 use App\Models\User;
 
@@ -17,24 +16,24 @@ class BankPolicy
     {
         return (bool) $user->is_active
             && (
-                $user->hasRole(UserRole::CBY_ADMIN)
-                || ($user->isBankUser() && $user->bank_id === $bank->id)
+                $user->hasRoleCode('system_admin')
+                || ($user->hasAnyRoleCode(['intake', 'internal_reviewer', 'bank_admin', 'fx_swift']) && $user->bank_id === $bank->id)
             );
     }
 
     public function create(User $user): bool
     {
-        return $user->hasRole(UserRole::CBY_ADMIN);
+        return $user->hasRoleCode('system_admin');
     }
 
     public function update(User $user, Bank $bank): bool
     {
-        return $user->hasRole(UserRole::CBY_ADMIN)
-            || ($user->hasRole(UserRole::BANK_ADMIN) && $user->bank_id === $bank->id);
+        return $user->hasRoleCode('system_admin')
+            || ($user->hasRoleCode('bank_admin') && $user->bank_id === $bank->id);
     }
 
     public function delete(User $user, Bank $bank): bool
     {
-        return $user->hasRole(UserRole::CBY_ADMIN);
+        return $user->hasRoleCode('system_admin');
     }
 }

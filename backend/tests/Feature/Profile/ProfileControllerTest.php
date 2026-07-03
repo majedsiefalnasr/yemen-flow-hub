@@ -10,10 +10,12 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use PragmaRX\Google2FA\Google2FA;
+use Tests\Support\AssignsGovernanceIdentity;
 use Tests\TestCase;
 
 class ProfileControllerTest extends TestCase
 {
+    use AssignsGovernanceIdentity;
     use RefreshDatabase;
 
     // --- GET /api/profile ---
@@ -353,14 +355,15 @@ class ProfileControllerTest extends TestCase
 
     public function test_get_smtp_returns_masked_password(): void
     {
-        $cbyAdmin = User::query()->create([
+        $this->seedGovernance();
+        $cbyAdmin = $this->assignGovernanceIdentity(User::query()->create([
             'name' => 'CBY Admin',
             'email' => 'admin@cby.ye',
             'password' => Hash::make('Password123'),
             'role' => UserRole::CBY_ADMIN,
             'bank_id' => null,
             'is_active' => true,
-        ]);
+        ]), UserRole::CBY_ADMIN);
 
         // Seed an SMTP password setting
         SystemSetting::query()->create([

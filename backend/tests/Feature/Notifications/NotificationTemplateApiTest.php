@@ -11,10 +11,12 @@ use App\Models\User;
 use Database\Seeders\NotificationTemplateSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Tests\Support\AssignsGovernanceIdentity;
 use Tests\TestCase;
 
 class NotificationTemplateApiTest extends TestCase
 {
+    use AssignsGovernanceIdentity;
     use RefreshDatabase;
 
     private User $admin;
@@ -26,6 +28,7 @@ class NotificationTemplateApiTest extends TestCase
         parent::setUp();
 
         $this->seed(NotificationTemplateSeeder::class);
+        $this->seedGovernance();
 
         $this->admin = $this->makeUser(UserRole::CBY_ADMIN, 'admin@cby.ye');
         $this->bankUser = $this->makeUser(UserRole::BANK_REVIEWER, 'reviewer@bank.ye');
@@ -189,13 +192,13 @@ class NotificationTemplateApiTest extends TestCase
 
     private function makeUser(UserRole $role, string $email): User
     {
-        return User::query()->create([
+        return $this->assignGovernanceIdentity(User::query()->create([
             'name' => $role->value,
             'email' => $email,
             'password' => Hash::make('password'),
             'role' => $role,
             'bank_id' => null,
             'is_active' => true,
-        ]);
+        ]), $role);
     }
 }

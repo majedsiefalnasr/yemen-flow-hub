@@ -11,24 +11,37 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Tests\Support\AssignsGovernanceIdentity;
 use Tests\TestCase;
 
 class AdminSettingsControllerTest extends TestCase
 {
+    use AssignsGovernanceIdentity;
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seedGovernance();
+    }
+
+    private function makeCbyAdmin(string $email = 'admin@cby.gov.ye'): User
+    {
+        return $this->assignGovernanceIdentity(User::query()->create([
+            'name' => 'CBY Admin',
+            'email' => $email,
+            'password' => Hash::make('password'),
+            'role' => UserRole::CBY_ADMIN,
+            'bank_id' => null,
+            'is_active' => true,
+        ]), UserRole::CBY_ADMIN);
+    }
 
     // --- GET /api/admin/settings ---
 
     public function test_get_admin_settings_returns_all_settings_for_cby_admin(): void
     {
-        $admin = User::query()->create([
-            'name' => 'CBY Admin',
-            'email' => 'admin@cby.gov.ye',
-            'password' => Hash::make('password'),
-            'role' => UserRole::CBY_ADMIN,
-            'bank_id' => null,
-            'is_active' => true,
-        ]);
+        $admin = $this->makeCbyAdmin();
 
         $response = $this->actingAs($admin)->getJson('/api/admin/settings');
 
@@ -66,14 +79,7 @@ class AdminSettingsControllerTest extends TestCase
 
     public function test_update_support_claim_ttl_with_valid_value(): void
     {
-        $admin = User::query()->create([
-            'name' => 'CBY Admin',
-            'email' => 'admin@cby.gov.ye',
-            'password' => Hash::make('password'),
-            'role' => UserRole::CBY_ADMIN,
-            'bank_id' => null,
-            'is_active' => true,
-        ]);
+        $admin = $this->makeCbyAdmin();
 
         $response = $this->actingAs($admin)->putJson('/api/admin/settings/support_claim_ttl', [
             'value' => 20,
@@ -89,14 +95,7 @@ class AdminSettingsControllerTest extends TestCase
 
     public function test_update_voting_session_timeout_with_valid_value(): void
     {
-        $admin = User::query()->create([
-            'name' => 'CBY Admin',
-            'email' => 'admin@cby.gov.ye',
-            'password' => Hash::make('password'),
-            'role' => UserRole::CBY_ADMIN,
-            'bank_id' => null,
-            'is_active' => true,
-        ]);
+        $admin = $this->makeCbyAdmin();
 
         $response = $this->actingAs($admin)->putJson('/api/admin/settings/voting_session_timeout', [
             'value' => 90,
@@ -108,14 +107,7 @@ class AdminSettingsControllerTest extends TestCase
 
     public function test_update_pdf_upload_size_limit_with_valid_value(): void
     {
-        $admin = User::query()->create([
-            'name' => 'CBY Admin',
-            'email' => 'admin@cby.gov.ye',
-            'password' => Hash::make('password'),
-            'role' => UserRole::CBY_ADMIN,
-            'bank_id' => null,
-            'is_active' => true,
-        ]);
+        $admin = $this->makeCbyAdmin();
 
         $response = $this->actingAs($admin)->putJson('/api/admin/settings/pdf_upload_size_limit', [
             'value' => 25,
@@ -127,14 +119,7 @@ class AdminSettingsControllerTest extends TestCase
 
     public function test_update_boolean_feature_toggle(): void
     {
-        $admin = User::query()->create([
-            'name' => 'CBY Admin',
-            'email' => 'admin@cby.gov.ye',
-            'password' => Hash::make('password'),
-            'role' => UserRole::CBY_ADMIN,
-            'bank_id' => null,
-            'is_active' => true,
-        ]);
+        $admin = $this->makeCbyAdmin();
 
         $response = $this->actingAs($admin)->putJson('/api/admin/settings/notifications_phase_1_enabled', [
             'value' => true,
@@ -146,14 +131,7 @@ class AdminSettingsControllerTest extends TestCase
 
     public function test_update_setting_fails_with_value_below_minimum(): void
     {
-        $admin = User::query()->create([
-            'name' => 'CBY Admin',
-            'email' => 'admin@cby.gov.ye',
-            'password' => Hash::make('password'),
-            'role' => UserRole::CBY_ADMIN,
-            'bank_id' => null,
-            'is_active' => true,
-        ]);
+        $admin = $this->makeCbyAdmin();
 
         $response = $this->actingAs($admin)->putJson('/api/admin/settings/support_claim_ttl', [
             'value' => 2,
@@ -165,14 +143,7 @@ class AdminSettingsControllerTest extends TestCase
 
     public function test_update_setting_fails_with_value_above_maximum(): void
     {
-        $admin = User::query()->create([
-            'name' => 'CBY Admin',
-            'email' => 'admin@cby.gov.ye',
-            'password' => Hash::make('password'),
-            'role' => UserRole::CBY_ADMIN,
-            'bank_id' => null,
-            'is_active' => true,
-        ]);
+        $admin = $this->makeCbyAdmin();
 
         $response = $this->actingAs($admin)->putJson('/api/admin/settings/support_claim_ttl', [
             'value' => 100,
@@ -184,14 +155,7 @@ class AdminSettingsControllerTest extends TestCase
 
     public function test_update_setting_fails_with_invalid_key(): void
     {
-        $admin = User::query()->create([
-            'name' => 'CBY Admin',
-            'email' => 'admin@cby.gov.ye',
-            'password' => Hash::make('password'),
-            'role' => UserRole::CBY_ADMIN,
-            'bank_id' => null,
-            'is_active' => true,
-        ]);
+        $admin = $this->makeCbyAdmin();
 
         $response = $this->actingAs($admin)->putJson('/api/admin/settings/invalid_key', [
             'value' => 10,
@@ -221,14 +185,7 @@ class AdminSettingsControllerTest extends TestCase
 
     public function test_update_setting_logs_audit_entry(): void
     {
-        $admin = User::query()->create([
-            'name' => 'CBY Admin',
-            'email' => 'admin@cby.gov.ye',
-            'password' => Hash::make('password'),
-            'role' => UserRole::CBY_ADMIN,
-            'bank_id' => null,
-            'is_active' => true,
-        ]);
+        $admin = $this->makeCbyAdmin();
 
         $this->actingAs($admin)->putJson('/api/admin/settings/support_claim_ttl', [
             'value' => 25,
@@ -252,14 +209,7 @@ class AdminSettingsControllerTest extends TestCase
 
     public function test_reset_setting_to_default(): void
     {
-        $admin = User::query()->create([
-            'name' => 'CBY Admin',
-            'email' => 'admin@cby.gov.ye',
-            'password' => Hash::make('password'),
-            'role' => UserRole::CBY_ADMIN,
-            'bank_id' => null,
-            'is_active' => true,
-        ]);
+        $admin = $this->makeCbyAdmin();
 
         // First update the setting
         $this->actingAs($admin)->putJson('/api/admin/settings/support_claim_ttl', [
@@ -278,14 +228,7 @@ class AdminSettingsControllerTest extends TestCase
 
     public function test_reset_setting_logs_audit_entry(): void
     {
-        $admin = User::query()->create([
-            'name' => 'CBY Admin',
-            'email' => 'admin@cby.gov.ye',
-            'password' => Hash::make('password'),
-            'role' => UserRole::CBY_ADMIN,
-            'bank_id' => null,
-            'is_active' => true,
-        ]);
+        $admin = $this->makeCbyAdmin();
 
         $this->actingAs($admin)->postJson('/api/admin/settings/support_claim_ttl/reset');
 
@@ -298,14 +241,7 @@ class AdminSettingsControllerTest extends TestCase
 
     public function test_reset_setting_fails_with_invalid_key(): void
     {
-        $admin = User::query()->create([
-            'name' => 'CBY Admin',
-            'email' => 'admin@cby.gov.ye',
-            'password' => Hash::make('password'),
-            'role' => UserRole::CBY_ADMIN,
-            'bank_id' => null,
-            'is_active' => true,
-        ]);
+        $admin = $this->makeCbyAdmin();
 
         $response = $this->actingAs($admin)->postJson('/api/admin/settings/invalid_key/reset');
 
@@ -335,18 +271,6 @@ class AdminSettingsControllerTest extends TestCase
     }
 
     // --- POST /api/admin/settings/email/test ---
-
-    private function makeCbyAdmin(string $email = 'admin@cby.gov.ye'): User
-    {
-        return User::query()->create([
-            'name' => 'CBY Admin',
-            'email' => $email,
-            'password' => Hash::make('password'),
-            'role' => UserRole::CBY_ADMIN,
-            'bank_id' => null,
-            'is_active' => true,
-        ]);
-    }
 
     public function test_test_email_sends_to_admin_own_email_by_default(): void
     {

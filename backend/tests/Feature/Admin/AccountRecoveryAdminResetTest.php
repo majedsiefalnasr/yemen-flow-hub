@@ -7,11 +7,19 @@ use App\Models\Bank;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Tests\Support\AssignsGovernanceIdentity;
 use Tests\TestCase;
 
 class AccountRecoveryAdminResetTest extends TestCase
 {
+    use AssignsGovernanceIdentity;
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seedGovernance();
+    }
 
     private function makeBank(string $code = 'YCB'): Bank
     {
@@ -24,14 +32,14 @@ class AccountRecoveryAdminResetTest extends TestCase
 
     private function makeUser(UserRole $role, ?Bank $bank, string $email): User
     {
-        return User::query()->create([
+        return $this->assignGovernanceIdentity(User::query()->create([
             'name' => $role->value,
             'email' => $email,
             'password' => Hash::make('Password123'),
             'role' => $role->value,
             'bank_id' => $bank?->id,
             'is_active' => true,
-        ]);
+        ]), $role);
     }
 
     public function test_cby_admin_can_reset_bank_admin_password(): void

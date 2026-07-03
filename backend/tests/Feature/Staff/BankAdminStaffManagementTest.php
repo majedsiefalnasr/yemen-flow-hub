@@ -8,10 +8,12 @@ use App\Models\Bank;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Tests\Support\AssignsGovernanceIdentity;
 use Tests\TestCase;
 
 class BankAdminStaffManagementTest extends TestCase
 {
+    use AssignsGovernanceIdentity;
     use RefreshDatabase;
 
     private Bank $bank;
@@ -24,6 +26,7 @@ class BankAdminStaffManagementTest extends TestCase
     {
         parent::setUp();
 
+        $this->seedGovernance();
         $this->bank = Bank::query()->create(['name' => 'Bank YCB', 'code' => 'YCB', 'is_active' => true]);
         $this->otherBank = Bank::query()->create(['name' => 'Bank OTH', 'code' => 'OTH', 'is_active' => true]);
         $this->bankAdmin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank, 'admin@bank.test');
@@ -31,14 +34,14 @@ class BankAdminStaffManagementTest extends TestCase
 
     private function makeUser(UserRole $role, ?Bank $bank, string $email): User
     {
-        return User::query()->create([
+        return $this->assignGovernanceIdentity(User::query()->create([
             'name' => $role->value,
             'email' => $email,
             'password' => Hash::make('password'),
             'role' => $role->value,
             'bank_id' => $bank?->id,
             'is_active' => true,
-        ]);
+        ]), $role);
     }
 
     // ─── List staff ───────────────────────────────────────────────────────────

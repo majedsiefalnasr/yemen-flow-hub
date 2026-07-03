@@ -2,7 +2,6 @@
 
 namespace App\Policies;
 
-use App\Enums\UserRole;
 use App\Models\CustomsDeclaration;
 use App\Models\User;
 
@@ -12,16 +11,19 @@ class CustomsDeclarationPolicy
     {
         $bankId = $this->resolveBankId($declaration);
 
-        if ($bankId === null && ! in_array($user->role, [UserRole::COMMITTEE_DIRECTOR, UserRole::CBY_ADMIN], true)) {
+        if ($bankId === null && ! $user->hasAnyRoleCode(['committee_director', 'system_admin'])) {
             return false;
         }
 
-        return match ($user->role) {
-            UserRole::COMMITTEE_DIRECTOR,
-            UserRole::CBY_ADMIN => true,
-            UserRole::BANK_REVIEWER => $user->bank_id !== null && $user->bank_id === $bankId,
-            default => false,
-        };
+        if ($user->hasAnyRoleCode(['committee_director', 'system_admin'])) {
+            return true;
+        }
+
+        if ($user->hasRoleCode('internal_reviewer')) {
+            return $user->bank_id !== null && $user->bank_id === $bankId;
+        }
+
+        return false;
     }
 
     /**
@@ -33,16 +35,11 @@ class CustomsDeclarationPolicy
         $bankId = $this->resolveBankId($declaration);
         $isSameBank = $user->bank_id !== null && $user->bank_id === $bankId;
 
-        return match ($user->role) {
-            UserRole::DATA_ENTRY,
-            UserRole::BANK_REVIEWER,
-            UserRole::BANK_ADMIN => $isSameBank,
-            UserRole::SUPPORT_COMMITTEE,
-            UserRole::EXECUTIVE_MEMBER,
-            UserRole::COMMITTEE_DIRECTOR,
-            UserRole::CBY_ADMIN => true,
-            default => false,
-        };
+        if ($user->hasAnyRoleCode(['intake', 'internal_reviewer', 'bank_admin'])) {
+            return $isSameBank;
+        }
+
+        return $user->hasAnyRoleCode(['support', 'committee_manager', 'committee_director', 'system_admin']);
     }
 
     private function resolveBankId(CustomsDeclaration $declaration): ?int

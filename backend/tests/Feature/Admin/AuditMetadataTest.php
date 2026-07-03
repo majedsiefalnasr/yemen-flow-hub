@@ -11,11 +11,19 @@ use App\Services\Audit\AuditService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Tests\Support\AssignsGovernanceIdentity;
 use Tests\TestCase;
 
 class AuditMetadataTest extends TestCase
 {
+    use AssignsGovernanceIdentity;
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seedGovernance();
+    }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -26,13 +34,13 @@ class AuditMetadataTest extends TestCase
 
     private function makeCbyAdmin(): User
     {
-        return User::query()->create([
+        return $this->assignGovernanceIdentity(User::query()->create([
             'name' => 'Admin',
             'email' => 'admin@cby.gov.ye',
             'password' => Hash::make('password'),
             'role' => UserRole::CBY_ADMIN->value,
             'is_active' => true,
-        ]);
+        ]), UserRole::CBY_ADMIN);
     }
 
     private function makeUser(UserRole $role, Bank $bank): User
@@ -40,14 +48,14 @@ class AuditMetadataTest extends TestCase
         static $n = 0;
         $n++;
 
-        return User::query()->create([
+        return $this->assignGovernanceIdentity(User::query()->create([
             'name' => "User {$n}",
             'email' => "user{$n}@meta.test",
             'password' => Hash::make('password'),
             'role' => $role->value,
             'bank_id' => $bank->id,
             'is_active' => true,
-        ]);
+        ]), $role);
     }
 
     // ─── Migration: user_agent column width ───────────────────────────────────

@@ -10,11 +10,13 @@ use App\Models\User;
 use App\Policies\CustomsDeclarationPolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Tests\Support\AssignsGovernanceIdentity;
 use Tests\Support\EngineWorkflowFactory;
 use Tests\TestCase;
 
 class CustomsDeclarationPolicyTest extends TestCase
 {
+    use AssignsGovernanceIdentity;
     use RefreshDatabase;
 
     private CustomsDeclarationPolicy $policy;
@@ -23,6 +25,7 @@ class CustomsDeclarationPolicyTest extends TestCase
     {
         parent::setUp();
         $this->policy = new CustomsDeclarationPolicy;
+        $this->seedGovernance();
     }
 
     // ── download() ───────────────────────────────────────────────────────
@@ -33,7 +36,10 @@ class CustomsDeclarationPolicyTest extends TestCase
         $engineRequest = $this->makeEngineRequest($bank->id);
         $declaration = $this->makeEngineDeclaration($engineRequest);
 
-        $director = User::factory()->create(['role' => UserRole::COMMITTEE_DIRECTOR]);
+        $director = $this->assignGovernanceIdentity(
+            User::factory()->create(['role' => UserRole::COMMITTEE_DIRECTOR]),
+            UserRole::COMMITTEE_DIRECTOR
+        );
 
         $this->assertTrue($this->policy->download($director, $declaration));
     }
@@ -45,14 +51,14 @@ class CustomsDeclarationPolicyTest extends TestCase
         $engineRequest = $this->makeEngineRequest($bank->id);
         $declaration = $this->makeEngineDeclaration($engineRequest);
 
-        $sameReviewer = User::factory()->create([
-            'role' => UserRole::BANK_REVIEWER,
-            'bank_id' => $bank->id,
-        ]);
-        $otherReviewer = User::factory()->create([
-            'role' => UserRole::BANK_REVIEWER,
-            'bank_id' => $otherBank->id,
-        ]);
+        $sameReviewer = $this->assignGovernanceIdentity(
+            User::factory()->create(['role' => UserRole::BANK_REVIEWER, 'bank_id' => $bank->id]),
+            UserRole::BANK_REVIEWER
+        );
+        $otherReviewer = $this->assignGovernanceIdentity(
+            User::factory()->create(['role' => UserRole::BANK_REVIEWER, 'bank_id' => $otherBank->id]),
+            UserRole::BANK_REVIEWER
+        );
 
         $this->assertTrue($this->policy->download($sameReviewer, $declaration));
         $this->assertFalse($this->policy->download($otherReviewer, $declaration));
@@ -66,7 +72,10 @@ class CustomsDeclarationPolicyTest extends TestCase
         $engineRequest = $this->makeEngineRequest($bank->id);
         $declaration = $this->makeEngineDeclaration($engineRequest);
 
-        $director = User::factory()->create(['role' => UserRole::COMMITTEE_DIRECTOR]);
+        $director = $this->assignGovernanceIdentity(
+            User::factory()->create(['role' => UserRole::COMMITTEE_DIRECTOR]),
+            UserRole::COMMITTEE_DIRECTOR
+        );
 
         $this->assertTrue($this->policy->downloadSignedFx($director, $declaration));
     }
@@ -78,14 +87,14 @@ class CustomsDeclarationPolicyTest extends TestCase
         $engineRequest = $this->makeEngineRequest($bank->id);
         $declaration = $this->makeEngineDeclaration($engineRequest);
 
-        $sameDataEntry = User::factory()->create([
-            'role' => UserRole::DATA_ENTRY,
-            'bank_id' => $bank->id,
-        ]);
-        $otherDataEntry = User::factory()->create([
-            'role' => UserRole::DATA_ENTRY,
-            'bank_id' => $otherBank->id,
-        ]);
+        $sameDataEntry = $this->assignGovernanceIdentity(
+            User::factory()->create(['role' => UserRole::DATA_ENTRY, 'bank_id' => $bank->id]),
+            UserRole::DATA_ENTRY
+        );
+        $otherDataEntry = $this->assignGovernanceIdentity(
+            User::factory()->create(['role' => UserRole::DATA_ENTRY, 'bank_id' => $otherBank->id]),
+            UserRole::DATA_ENTRY
+        );
 
         $this->assertTrue($this->policy->downloadSignedFx($sameDataEntry, $declaration));
         $this->assertFalse($this->policy->downloadSignedFx($otherDataEntry, $declaration));
