@@ -9,7 +9,6 @@ use App\Models\Role;
 use App\Models\User;
 use App\Services\Authorization\PermissionService;
 use Database\Seeders\GovernanceSeeder;
-use Database\Seeders\PermissionSeeder;
 use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -160,10 +159,6 @@ class DerivedRequestsEnforcementTest extends TestCase
 
     public function test_publishing_workflow_via_endpoint_busts_cache_without_manual_clear(): void
     {
-        // publish() is guarded by hasPermission('workflow.design'), which is
-        // seeded by PermissionSeeder (not part of this class's shared setUp()).
-        $this->seed(PermissionSeeder::class);
-
         $org = Organization::where('code', 'commercial_banks')->firstOrFail();
         $role = Role::create([
             'organization_id' => $org->id,
@@ -173,11 +168,16 @@ class DerivedRequestsEnforcementTest extends TestCase
             'is_active' => true,
         ]);
 
+        // publish() is guarded by WorkflowVersionPolicy::publish(), which checks
+        // userHasCapability($user, 'workflow_designer', 'MANAGE') -- granted to
+        // the system_admin governance role by ScreenPermissionSeeder.
         $adminOrg = Organization::where('code', 'system_administration')->firstOrFail();
         $admin = User::factory()->create([
             'organization_id' => $adminOrg->id,
             'role' => UserRole::CBY_ADMIN,
         ]);
+        $systemAdminRole = Role::where('code', 'system_admin')->firstOrFail();
+        $admin->roles()->attach($systemAdminRole->id);
 
         $definitionId = DB::table('workflow_definitions')->insertGetId([
             'code' => 'cache_bust_wf', 'name' => 'Cache Bust Test', 'created_at' => now(), 'updated_at' => now(),
