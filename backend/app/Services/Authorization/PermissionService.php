@@ -132,6 +132,15 @@ class PermissionService
             return $result;
         }
 
+        $systemAdminRoleIds = DB::table('roles')
+            ->whereIn('id', $roleIds)
+            ->where('code', 'system_admin')
+            ->pluck('id');
+
+        foreach ($systemAdminRoleIds as $roleId) {
+            $result[$roleId] = ['view' => true, 'add' => false, 'edit' => false];
+        }
+
         $publishedVersionId = DB::table('workflow_versions')
             ->where('state', WorkflowVersionState::PUBLISHED->value)
             ->orderByDesc('version_number')
