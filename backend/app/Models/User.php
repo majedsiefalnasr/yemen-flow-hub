@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Enums\UserRole;
-use App\Services\Authorization\PermissionService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -158,10 +157,5 @@ class User extends Authenticatable
         }
 
         return $this->organization()->where('code', $code)->exists();
-    }
-
-    public function hasPermission(string $slug): bool
-    {
-        return app(PermissionService::class)->userCan($this, $slug);
     }
 }

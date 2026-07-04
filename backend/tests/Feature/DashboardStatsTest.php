@@ -6,7 +6,6 @@ use App\Enums\UserRole;
 use App\Models\Bank;
 use App\Models\EngineRequest;
 use App\Models\Merchant;
-use App\Models\Permission;
 use App\Models\User;
 use App\Models\WorkflowDefinition;
 use App\Models\WorkflowStage;
@@ -36,7 +35,6 @@ class DashboardStatsTest extends TestCase
         parent::setUp();
         Cache::flush();
         $this->seedGovernance();
-        $this->seedPermissions();
 
         $this->bank = $this->makeBank('YCB');
         $this->otherBank = $this->makeBank('OTH');
@@ -46,14 +44,6 @@ class DashboardStatsTest extends TestCase
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
-
-    private function seedPermissions(): void
-    {
-        Permission::query()->firstOrCreate(
-            ['slug' => 'request.create'],
-            ['name_ar' => 'إنشاء طلب', 'name_en' => 'Create Request', 'group' => 'requests']
-        );
-    }
 
     private function makeBank(string $code): Bank
     {

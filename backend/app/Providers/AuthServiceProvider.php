@@ -42,7 +42,6 @@ use App\Policies\WorkflowDefinitionPolicy;
 use App\Policies\WorkflowStagePolicy;
 use App\Policies\WorkflowTransitionPolicy;
 use App\Policies\WorkflowVersionPolicy;
-use App\Services\Authorization\PermissionService;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -70,13 +69,5 @@ class AuthServiceProvider extends ServiceProvider
         Gate::policy(FieldDefinition::class, FieldDefinitionPolicy::class);
         Gate::policy(StageFieldRule::class, StageFieldRulePolicy::class);
         Gate::policy(EngineRequest::class, EngineRequestPolicy::class);
-
-        Gate::before(function ($user, string $ability) {
-            if (! str_contains($ability, '.')) {
-                return null;
-            }
-
-            return app(PermissionService::class)->userCan($user, $ability);
-        });
     }
 }

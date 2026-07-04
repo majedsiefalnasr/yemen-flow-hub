@@ -8,9 +8,6 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $this->call([PermissionSeeder::class]);
-        $this->command?->info('Seeded permissions matrix.');
-
         $this->call([DocumentTypeSeeder::class]);
         $this->command?->info('Seeded document types.');
 
