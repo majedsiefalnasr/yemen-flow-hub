@@ -46,8 +46,8 @@ class ScreenPermissionSeeder extends Seeder
                 'settings' => ['VIEW'],
             ],
             'bank_admin' => [
-                'merchants' => ['VIEW', 'CREATE', 'UPDATE', 'DELETE', 'MANAGE'],
-                'users' => ['VIEW', 'CREATE', 'UPDATE', 'DELETE', 'MANAGE'],
+                'merchants' => ['VIEW', 'MANAGE'],
+                'users' => ['VIEW', 'MANAGE'],
                 'reports' => ['VIEW'],
                 'notifications' => ['VIEW'],
                 'settings' => ['VIEW'],
@@ -84,20 +84,24 @@ class ScreenPermissionSeeder extends Seeder
             ],
 
             // ── System Administration ─────────────────────────────
+            // system_admin is intentionally restricted on merchants: VIEW +
+            // EXPORT only, never MANAGE. Enforced again in code
+            // (PermissionService::userHasCapability) so it cannot be
+            // bypassed by a future edit to this seeder.
             'system_admin' => [
-                'organizations' => ['VIEW', 'CREATE', 'UPDATE', 'DELETE', 'MANAGE'],
-                'teams' => ['VIEW', 'CREATE', 'UPDATE', 'DELETE', 'MANAGE'],
-                'roles' => ['VIEW', 'CREATE', 'UPDATE', 'DELETE', 'MANAGE'],
-                'banks' => ['VIEW', 'CREATE', 'UPDATE', 'DELETE', 'MANAGE'],
-                'users' => ['VIEW', 'CREATE', 'UPDATE', 'DELETE', 'MANAGE'],
-                'merchants' => ['VIEW', 'CREATE', 'UPDATE', 'DELETE', 'MANAGE'],
-                'workflow_designer' => ['VIEW', 'CREATE', 'UPDATE', 'DELETE', 'MANAGE'],
+                'organizations' => ['VIEW', 'MANAGE'],
+                'teams' => ['VIEW', 'MANAGE'],
+                'roles' => ['VIEW', 'MANAGE'],
+                'banks' => ['VIEW', 'MANAGE'],
+                'users' => ['VIEW', 'MANAGE'],
+                'merchants' => ['VIEW', 'EXPORT'],
+                'workflow_designer' => ['VIEW', 'MANAGE'],
                 'reports' => ['VIEW', 'EXPORT'],
                 'audit' => ['VIEW', 'EXPORT'],
-                'reference_data' => ['VIEW', 'CREATE', 'UPDATE', 'DELETE', 'MANAGE'],
-                'screen_permissions' => ['VIEW', 'CREATE', 'UPDATE', 'DELETE', 'MANAGE'],
+                'reference_data' => ['VIEW', 'MANAGE'],
+                'screen_permissions' => ['VIEW', 'MANAGE'],
                 'notifications' => ['VIEW'],
-                'settings' => ['VIEW', 'UPDATE', 'MANAGE'],
+                'settings' => ['VIEW', 'MANAGE'],
             ],
         ];
 
