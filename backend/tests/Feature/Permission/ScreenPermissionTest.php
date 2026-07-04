@@ -220,4 +220,16 @@ class ScreenPermissionTest extends TestCase
             ])
             ->assertStatus(422);
     }
+
+    // ── Matrix excludes the real system_admin role code ──────────────────
+
+    public function test_matrix_excludes_system_admin_role(): void
+    {
+        $response = $this->actingAs($this->admin)
+            ->getJson('/api/v1/screen-permissions/matrix')
+            ->assertOk();
+
+        $roleCodes = collect($response->json('data.roles'))->pluck('code')->all();
+        $this->assertNotContains('system_admin', $roleCodes);
+    }
 }

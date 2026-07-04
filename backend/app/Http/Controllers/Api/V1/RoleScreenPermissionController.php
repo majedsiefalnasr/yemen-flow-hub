@@ -110,7 +110,7 @@ class RoleScreenPermissionController extends Controller
 
         $roles = Role::query()
             ->where('is_active', true)
-            ->where('code', '!=', 'platform_admin')
+            ->where('code', '!=', 'system_admin')
             ->orderBy('organization_id')
             ->orderBy('name')
             ->get(['id', 'code', 'name', 'organization_id', 'is_system']);
