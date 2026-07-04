@@ -24,6 +24,7 @@ class AuditLogController extends Controller
             ->when($request->filled('user'), fn ($q) => $q->where('user_id', $request->integer('user')))
             ->when($request->filled('role'), fn ($q) => $q->where('actor_role_id', $request->integer('role')))
             ->when($request->filled('event'), fn ($q) => $q->where('action', $request->string('event')))
+            ->when(! $request->filled('event'), fn ($q) => $q->whereNotIn('action', [AuditAction::LOGIN->value, AuditAction::LOGOUT->value]))
             ->when($request->filled('entity'), fn ($q) => $q->where('subject_type', 'like', '%'.class_basename($request->string('entity')).'%'))
             ->when($request->filled('request'), fn ($q) => $q->where('workflow_instance_id', $request->integer('request')))
             ->when($request->filled('from'), fn ($q) => $q->whereDate('created_at', '>=', $request->string('from')))

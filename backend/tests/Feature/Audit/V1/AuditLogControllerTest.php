@@ -101,8 +101,8 @@ class AuditLogControllerTest extends TestCase
 
     public function test_index_returns_paginated_results(): void
     {
-        AuditLog::create(['user_id' => $this->admin->id, 'action' => AuditAction::LOGIN->value, 'created_at' => now()]);
-        AuditLog::create(['user_id' => $this->admin->id, 'action' => AuditAction::LOGOUT->value, 'created_at' => now()]);
+        AuditLog::create(['user_id' => $this->admin->id, 'action' => AuditAction::USER_UPDATED->value, 'created_at' => now()]);
+        AuditLog::create(['user_id' => $this->admin->id, 'action' => AuditAction::SETTINGS_UPDATED->value, 'created_at' => now()]);
 
         $response = $this->actingAs($this->admin)
             ->getJson('/api/v1/audit-logs')
@@ -112,10 +112,28 @@ class AuditLogControllerTest extends TestCase
         $this->assertCount(2, $response->json('data'));
     }
 
-    public function test_index_filters_by_user(): void
+    public function test_index_excludes_login_and_logout_by_default(): void
     {
         AuditLog::create(['user_id' => $this->admin->id, 'action' => AuditAction::LOGIN->value, 'created_at' => now()]);
-        AuditLog::create(['user_id' => $this->bankUser->id, 'action' => AuditAction::LOGIN->value, 'created_at' => now()]);
+        AuditLog::create(['user_id' => $this->admin->id, 'action' => AuditAction::LOGOUT->value, 'created_at' => now()]);
+        AuditLog::create(['user_id' => $this->admin->id, 'action' => AuditAction::LOGIN_FAILED->value, 'created_at' => now()]);
+        AuditLog::create(['user_id' => $this->admin->id, 'action' => AuditAction::USER_UPDATED->value, 'created_at' => now()]);
+
+        $response = $this->actingAs($this->admin)
+            ->getJson('/api/v1/audit-logs')
+            ->assertOk();
+
+        $actions = collect($response->json('data'))->pluck('event_code')->all();
+        $this->assertNotContains('LOGIN', $actions);
+        $this->assertNotContains('LOGOUT', $actions);
+        $this->assertContains('LOGIN_FAILED', $actions);
+        $this->assertContains('USER_UPDATED', $actions);
+    }
+
+    public function test_index_filters_by_user(): void
+    {
+        AuditLog::create(['user_id' => $this->admin->id, 'action' => AuditAction::USER_UPDATED->value, 'created_at' => now()]);
+        AuditLog::create(['user_id' => $this->bankUser->id, 'action' => AuditAction::USER_UPDATED->value, 'created_at' => now()]);
 
         $response = $this->actingAs($this->admin)
             ->getJson('/api/v1/audit-logs?user='.$this->admin->id)
@@ -139,11 +157,11 @@ class AuditLogControllerTest extends TestCase
 
     public function test_index_filters_by_date_range(): void
     {
-        $old = new AuditLog(['user_id' => $this->admin->id, 'action' => AuditAction::LOGIN->value]);
+        $old = new AuditLog(['user_id' => $this->admin->id, 'action' => AuditAction::USER_UPDATED->value]);
         $old->created_at = '2025-01-01 10:00:00';
         $old->save();
 
-        $recent = new AuditLog(['user_id' => $this->admin->id, 'action' => AuditAction::LOGOUT->value]);
+        $recent = new AuditLog(['user_id' => $this->admin->id, 'action' => AuditAction::SETTINGS_UPDATED->value]);
         $recent->created_at = '2026-06-15 10:00:00';
         $recent->save();
 
