@@ -304,6 +304,9 @@ class AuthController extends Controller
             'email' => ['required', 'string', 'email'],
             'otp' => ['required', 'string', 'size:6', 'regex:/^[0-9]{6}$/'],
             'password' => ['required', 'string', 'min:8', 'confirmed', 'regex:/[A-Z]/', 'regex:/[a-z]/', 'regex:/[0-9]/'],
+        ], [
+            'password.min' => 'Password must be at least 8 characters long.',
+            'password.regex' => 'Password must contain uppercase letters, lowercase letters, and numbers.',
         ]);
 
         if (! $this->passwordRecoveryService->reset(

@@ -122,7 +122,7 @@ class UserControllerTest extends TestCase
         $response = $this->actingAs($admin)->postJson('/api/users', [
             'name' => 'محمد العمري',
             'email' => 'exec@cby.gov.ye',
-            'password' => 'password123',
+            'password' => 'Password123',
             'role' => UserRole::EXECUTIVE_MEMBER->value,
             'bank_id' => null,
             'is_active' => true,
@@ -143,7 +143,7 @@ class UserControllerTest extends TestCase
         $response = $this->actingAs($admin)->postJson('/api/users', [
             'name' => 'علي القاضي',
             'email' => 'entry@bank.com',
-            'password' => 'password123',
+            'password' => 'Password123',
             'role' => UserRole::DATA_ENTRY->value,
             'bank_id' => $bank->id,
             'is_active' => true,
@@ -161,7 +161,7 @@ class UserControllerTest extends TestCase
         $this->actingAs($reviewer)->postJson('/api/users', [
             'name' => 'New User',
             'email' => 'new@bank.com',
-            'password' => 'password123',
+            'password' => 'Password123',
             'role' => UserRole::DATA_ENTRY->value,
             'bank_id' => $bank->id,
         ])->assertForbidden();
@@ -174,7 +174,7 @@ class UserControllerTest extends TestCase
         $this->actingAs($admin)->postJson('/api/users', [
             'name' => 'علي',
             'email' => 'entry@example.com',
-            'password' => 'password123',
+            'password' => 'Password123',
             'role' => UserRole::DATA_ENTRY->value,
             'bank_id' => null,
         ])->assertUnprocessable()
@@ -188,7 +188,7 @@ class UserControllerTest extends TestCase
         $this->actingAs($admin)->postJson('/api/users', [
             'name' => 'موظف سويفت',
             'email' => 'swift@example.com',
-            'password' => 'password123',
+            'password' => 'Password123',
             'role' => UserRole::SWIFT_OFFICER->value,
             'bank_id' => null,
         ])->assertUnprocessable()
@@ -203,7 +203,7 @@ class UserControllerTest extends TestCase
         $this->actingAs($admin)->postJson('/api/users', [
             'name' => 'لجنة المساندة',
             'email' => 'support@cby.gov.ye',
-            'password' => 'password123',
+            'password' => 'Password123',
             'role' => UserRole::SUPPORT_COMMITTEE->value,
             'bank_id' => $bank->id,
         ])->assertUnprocessable()
@@ -218,7 +218,7 @@ class UserControllerTest extends TestCase
         $this->actingAs($admin)->postJson('/api/users', [
             'name' => 'مدير اللجنة',
             'email' => 'director@cby.gov.ye',
-            'password' => 'password123',
+            'password' => 'Password123',
             'role' => UserRole::COMMITTEE_DIRECTOR->value,
             'bank_id' => $bank->id,
         ])->assertUnprocessable()

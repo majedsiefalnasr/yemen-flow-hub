@@ -194,6 +194,9 @@ class BankController extends Controller
 
         $validated = $request->validate([
             'password' => ['required', 'string', 'min:8', 'confirmed', 'regex:/[A-Z]/', 'regex:/[a-z]/', 'regex:/[0-9]/'],
+        ], [
+            'password.min' => 'Password must be at least 8 characters long.',
+            'password.regex' => 'Password must contain uppercase letters, lowercase letters, and numbers.',
         ]);
 
         $admin = User::query()

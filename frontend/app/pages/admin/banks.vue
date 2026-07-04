@@ -10,7 +10,19 @@ import {
   useVueTable,
 } from '@tanstack/vue-table'
 import { h } from 'vue'
-import { Archive, Building2, Plus, PowerOff, SearchX, Zap } from 'lucide-vue-next'
+import {
+  Archive,
+  Building2,
+  Check,
+  Eye,
+  EyeOff,
+  Plus,
+  PowerOff,
+  RefreshCw,
+  SearchX,
+  X,
+  Zap,
+} from 'lucide-vue-next'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { ROUTE_ROLE_MAP } from '@/constants/workflow'
 import { UserRole } from '@/types/enums'
@@ -59,6 +71,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import MetricCard from '@/components/shared/dashboard/MetricCard.vue'
 import MetricGrid from '@/components/shared/dashboard/MetricGrid.vue'
 import AccountRecoveryDialog from '@/components/security/AccountRecoveryDialog.vue'
@@ -81,7 +94,7 @@ type BankForm = {
 
 const authStore = useAuthStore()
 const currentUser = computed(() => authStore.user)
-const { fetchBanks, createBank, updateBank } = useBanks()
+const { fetchBanks, createBank, updateBank, extractFieldErrors, extractMessage } = useBanks()
 const { exportToCSV, exportToExcel, exportToJSON } = useTableExport()
 const { notify, error: toastError } = useToast()
 
@@ -96,6 +109,7 @@ const columnVisibility = ref<VisibilityState>({})
 const columnFilters = ref<ColumnFiltersState>([])
 const rowSelection = ref<Record<string, boolean>>({})
 const recoveryTarget = ref<User | null>(null)
+const fieldErrors = ref<Record<string, string[]>>({})
 
 const form = reactive<BankForm>({
   name_ar: '',
@@ -164,6 +178,57 @@ function bankInitials(nameAr: string): string {
 const emailValid = computed(
   () => !form.adminEmail.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.adminEmail.trim()),
 )
+function checkPasswordRules(password: string) {
+  return {
+    minLength: password.length >= 8,
+    hasUpper: /[A-Z]/.test(password),
+    hasLower: /[a-z]/.test(password),
+    hasDigit: /[0-9]/.test(password),
+  }
+}
+
+const showPassword = ref(false)
+
+const PASSWORD_LENGTH = 12
+const UPPER_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
+const LOWER_CHARS = 'abcdefghijkmnpqrstuvwxyz'
+const DIGIT_CHARS = '23456789'
+const ALL_CHARS = UPPER_CHARS + LOWER_CHARS + DIGIT_CHARS
+
+function randomInt(max: number): number {
+  const bytes = new Uint32Array(1)
+  crypto.getRandomValues(bytes)
+  return bytes[0]! % max
+}
+
+function randomChar(pool: string): string {
+  return pool.charAt(randomInt(pool.length))
+}
+
+function generatePassword() {
+  const required = [randomChar(UPPER_CHARS), randomChar(LOWER_CHARS), randomChar(DIGIT_CHARS)]
+  const rest = Array.from({ length: PASSWORD_LENGTH - required.length }, () =>
+    randomChar(ALL_CHARS),
+  )
+  const chars = [...required, ...rest]
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = randomInt(i + 1)
+    const temp = chars[i]!
+    chars[i] = chars[j]!
+    chars[j] = temp
+  }
+  form.adminPassword = chars.join('')
+  showPassword.value = true
+}
+
+const passwordRules = computed(() => checkPasswordRules(form.adminPassword))
+const passwordMeetsRules = computed(() => Object.values(passwordRules.value).every((rule) => rule))
+const passwordRuleList = computed(() => [
+  { key: 'minLength', label: '8 أحرف على الأقل', met: passwordRules.value.minLength },
+  { key: 'hasUpper', label: 'حرف كبير واحد على الأقل (A-Z)', met: passwordRules.value.hasUpper },
+  { key: 'hasLower', label: 'حرف صغير واحد على الأقل (a-z)', met: passwordRules.value.hasLower },
+  { key: 'hasDigit', label: 'رقم واحد على الأقل (0-9)', met: passwordRules.value.hasDigit },
+])
 const formValid = computed(
   () =>
     form.name_ar.trim().length > 0 &&
@@ -171,7 +236,7 @@ const formValid = computed(
     emailValid.value &&
     form.adminName.trim().length > 0 &&
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.adminEmail.trim()) &&
-    (Boolean(editing.value) || form.adminPassword.length >= 8),
+    (Boolean(editing.value) || passwordMeetsRules.value),
 )
 
 function resetForm(initial?: Bank) {
@@ -188,23 +253,31 @@ function resetForm(initial?: Bank) {
 function openCreate() {
   editing.value = null
   resetForm()
+  fieldErrors.value = {}
   createOpen.value = true
 }
 
 function openEdit(bank: Bank) {
   editing.value = bank
   resetForm(bank)
+  fieldErrors.value = {}
 }
 
 function closeForm() {
   createOpen.value = false
   editing.value = null
   resetForm()
+  fieldErrors.value = {}
+}
+
+function firstFieldError(field: string): string | null {
+  return fieldErrors.value[field]?.[0] ?? null
 }
 
 async function saveBank() {
   if (!formValid.value) return
   saving.value = true
+  fieldErrors.value = {}
   try {
     if (editing.value) {
       const payload: UpdateBankPayload = {
@@ -235,8 +308,9 @@ async function saveBank() {
       notify(`تم إضافة "${created.name_ar}"`)
     }
     closeForm()
-  } catch {
-    toastError('تعذّر حفظ بيانات البنك. راجع الحقول ثم أعد المحاولة.')
+  } catch (err) {
+    fieldErrors.value = extractFieldErrors(err)
+    toastError(extractMessage(err, 'تعذّر حفظ بيانات البنك. راجع الحقول ثم أعد المحاولة.'))
   } finally {
     saving.value = false
   }
@@ -786,12 +860,61 @@ async function bulkArchive() {
               </div>
               <div v-if="!editing" class="space-y-1.5">
                 <Label>كلمة المرور المؤقتة *</Label>
-                <Input
-                  v-model="form.adminPassword"
-                  type="password"
-                  autocomplete="new-password"
-                  placeholder="TempPassword123"
-                />
+                <div class="relative">
+                  <Input
+                    v-model="form.adminPassword"
+                    :type="showPassword ? 'text' : 'password'"
+                    autocomplete="new-password"
+                    placeholder="TempPassword123"
+                    class="ps-9 pe-9"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    class="text-muted-foreground hover:text-foreground absolute start-1 top-1/2 h-7 w-7 -translate-y-1/2"
+                    :aria-label="showPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'"
+                    @click="showPassword = !showPassword"
+                  >
+                    <EyeOff v-if="showPassword" class="size-4" aria-hidden="true" />
+                    <Eye v-else class="size-4" aria-hidden="true" />
+                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger as-child>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        class="text-muted-foreground hover:text-foreground absolute end-1 top-1/2 h-7 w-7 -translate-y-1/2"
+                        aria-label="توليد كلمة مرور عشوائية تستوفي الشروط"
+                        @click="generatePassword"
+                      >
+                        <RefreshCw class="size-4" aria-hidden="true" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>توليد كلمة مرور تستوفي شروط الأمان تلقائياً</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <ul
+                  v-if="form.adminPassword.length > 0 && !passwordMeetsRules"
+                  class="mt-1 space-y-1"
+                >
+                  <li
+                    v-for="rule in passwordRuleList"
+                    :key="rule.key"
+                    class="flex items-center gap-1.5 text-xs"
+                    :class="rule.met ? 'text-[var(--severity-green)]' : 'text-muted-foreground'"
+                  >
+                    <Check v-if="rule.met" class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    <X v-else class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    {{ rule.label }}
+                  </li>
+                </ul>
+                <p v-else-if="firstFieldError('admin_password')" class="text-destructive text-xs">
+                  {{ firstFieldError('admin_password') }}
+                </p>
               </div>
               <Button
                 v-if="editing?.admin"

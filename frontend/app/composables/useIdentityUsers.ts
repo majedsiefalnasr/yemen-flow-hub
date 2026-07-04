@@ -51,7 +51,7 @@ export function useIdentityUsers() {
   return { users, loading, error, fetchUsers, createUser, deactivateUser, resetPassword, resetMfa }
 }
 
-function generateTempPassword(): string {
+export function generateTempPassword(): string {
   const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
   const lower = 'abcdefghijkmnpqrstuvwxyz'
   const digits = '23456789'

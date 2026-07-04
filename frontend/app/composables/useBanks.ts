@@ -1,4 +1,4 @@
-import type { ApiResponse, Bank, PaginatedResponse } from '../types/models'
+import type { ApiError, ApiResponse, Bank, PaginatedResponse } from '../types/models'
 import { useApi } from './useApi'
 
 export interface FetchBanksParams {
@@ -33,7 +33,7 @@ export interface UpdateBankPayload {
 }
 
 export function useBanks() {
-  const { get, post, put } = useApi()
+  const { get, post, put, isApiError } = useApi()
 
   // Returns all banks (used for dropdowns / selectors that need the full set).
   async function fetchBanks(): Promise<Bank[]> {
@@ -70,5 +70,27 @@ export function useBanks() {
     await post(`/api/banks/${id}/admin/reset-password`, payload)
   }
 
-  return { fetchBanks, fetchBanksPaginated, createBank, updateBank, resetBankAdminPassword }
+  function extractFieldErrors(err: unknown): Record<string, string[]> {
+    if (isApiError(err)) {
+      return (err.data as ApiError).errors ?? {}
+    }
+    return {}
+  }
+
+  function extractMessage(err: unknown, fallback: string): string {
+    if (isApiError(err)) {
+      return err.data.message || fallback
+    }
+    return fallback
+  }
+
+  return {
+    fetchBanks,
+    fetchBanksPaginated,
+    createBank,
+    updateBank,
+    resetBankAdminPassword,
+    extractFieldErrors,
+    extractMessage,
+  }
 }

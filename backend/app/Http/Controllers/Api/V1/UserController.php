@@ -149,7 +149,12 @@ class UserController extends Controller
     public function resetPassword(Request $request, User $user): GovernanceUserResource
     {
         $this->authorize('resetPassword', $user);
-        $data = $request->validate(['password' => ['required', 'string', 'min:8', 'confirmed']]);
+        $data = $request->validate([
+            'password' => ['required', 'string', 'min:8', 'regex:/[A-Z]/', 'regex:/[a-z]/', 'regex:/[0-9]/', 'confirmed'],
+        ], [
+            'password.min' => 'Password must be at least 8 characters long.',
+            'password.regex' => 'Password must contain uppercase letters, lowercase letters, and numbers.',
+        ]);
         $user->forceFill(['password' => Hash::make($data['password']), 'must_change_password' => true])->save();
         $this->sessionInvalidationService->invalidate($user);
         $this->auditService->log(AuditAction::PASSWORD_RESET, $request->user(), $user);
@@ -184,10 +189,13 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', Rule::unique('users', 'email')->ignore($user)],
             'phone' => ['nullable', 'string', 'max:50'],
-            'password' => [$user ? 'nullable' : 'required', 'string', 'min:8'],
+            'password' => [$user ? 'nullable' : 'required', 'string', 'min:8', 'regex:/[A-Z]/', 'regex:/[a-z]/', 'regex:/[0-9]/'],
             'is_active' => ['sometimes', 'boolean'],
             'mfa_enabled' => ['sometimes', 'boolean'],
             'version' => [$user ? 'required' : 'sometimes', 'integer'],
+        ], [
+            'password.min' => 'Password must be at least 8 characters long.',
+            'password.regex' => 'Password must contain uppercase letters, lowercase letters, and numbers.',
         ]);
 
         $organization = Organization::query()->findOrFail($organizationId);

@@ -36,4 +36,12 @@ class StoreBankRequest extends ApiFormRequest
             'admin_password' => ['required', 'string', 'min:8', 'regex:/[A-Z]/', 'regex:/[a-z]/', 'regex:/[0-9]/'],
         ];
     }
+
+    public function messages(): array
+    {
+        return [
+            'admin_password.min' => 'Password must be at least 8 characters long.',
+            'admin_password.regex' => 'Password must contain uppercase letters, lowercase letters, and numbers.',
+        ];
+    }
 }

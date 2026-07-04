@@ -31,7 +31,7 @@ class StoreUserRequest extends ApiFormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:8'],
+            'password' => ['required', 'string', 'min:8', 'regex:/[A-Z]/', 'regex:/[a-z]/', 'regex:/[0-9]/'],
             'role' => ['required', new Enum(UserRole::class)],
             'bank_id' => ['nullable', 'integer', 'exists:banks,id'],
             'is_active' => ['sometimes', 'boolean'],
@@ -72,5 +72,13 @@ class StoreUserRequest extends ApiFormRequest
                 }
             }
         });
+    }
+
+    public function messages(): array
+    {
+        return [
+            'password.min' => 'Password must be at least 8 characters long.',
+            'password.regex' => 'Password must contain uppercase letters, lowercase letters, and numbers.',
+        ];
     }
 }

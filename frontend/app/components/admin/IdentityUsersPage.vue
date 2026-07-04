@@ -10,7 +10,19 @@ import {
   useVueTable,
 } from '@tanstack/vue-table'
 import { h } from 'vue'
-import { AlertCircle, KeyRound, Plus, SearchX, ShieldOff, Users } from 'lucide-vue-next'
+import {
+  AlertCircle,
+  Check,
+  Eye,
+  EyeOff,
+  KeyRound,
+  Plus,
+  RefreshCw,
+  SearchX,
+  ShieldOff,
+  Users,
+  X,
+} from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
@@ -18,7 +30,7 @@ import { z } from 'zod'
 import ScreenGuard from '@/components/security/ScreenGuard.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import type { GovernanceUser } from '@/types/models'
-import { useIdentityUsers } from '@/composables/useIdentityUsers'
+import { generateTempPassword, useIdentityUsers } from '@/composables/useIdentityUsers'
 import { useOrganizations } from '@/composables/useOrganizations'
 import { useTeams } from '@/composables/useTeams'
 import { useGovernanceRoles } from '@/composables/useGovernanceRoles'
@@ -64,6 +76,7 @@ import {
   type RowAction,
 } from '@/components/ui/data-table'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import MetricCard from '@/components/shared/dashboard/MetricCard.vue'
 import MetricGrid from '@/components/shared/dashboard/MetricGrid.vue'
 
@@ -100,7 +113,12 @@ const userSchema = toTypedSchema(
       name: z.string().min(2, 'الاسم مطلوب (حرفان على الأقل)'),
       email: z.string().email('بريد إلكتروني غير صالح'),
       phone: z.string().optional(),
-      password: z.string().min(8, 'كلمة المرور 8 أحرف على الأقل'),
+      password: z
+        .string()
+        .min(8, 'كلمة المرور 8 أحرف على الأقل')
+        .regex(/[A-Z]/, 'يجب أن تحتوي كلمة المرور على حرف كبير')
+        .regex(/[a-z]/, 'يجب أن تحتوي كلمة المرور على حرف صغير')
+        .regex(/[0-9]/, 'يجب أن تحتوي كلمة المرور على رقم'),
     })
     .superRefine((values, ctx) => {
       const org = organizations.value.find((item) => item.id === values.organization_id)
@@ -119,6 +137,31 @@ const userSchema = toTypedSchema(
 )
 
 const form = useForm({ validationSchema: userSchema })
+
+const showPassword = ref(false)
+
+function checkPasswordRules(password: string) {
+  return {
+    minLength: password.length >= 8,
+    hasUpper: /[A-Z]/.test(password),
+    hasLower: /[a-z]/.test(password),
+    hasDigit: /[0-9]/.test(password),
+  }
+}
+
+const passwordRules = computed(() => checkPasswordRules(form.values.password ?? ''))
+const passwordMeetsRules = computed(() => Object.values(passwordRules.value).every((rule) => rule))
+const passwordRuleList = computed(() => [
+  { key: 'minLength', label: '8 أحرف على الأقل', met: passwordRules.value.minLength },
+  { key: 'hasUpper', label: 'حرف كبير واحد على الأقل (A-Z)', met: passwordRules.value.hasUpper },
+  { key: 'hasLower', label: 'حرف صغير واحد على الأقل (a-z)', met: passwordRules.value.hasLower },
+  { key: 'hasDigit', label: 'رقم واحد على الأقل (0-9)', met: passwordRules.value.hasDigit },
+])
+
+function generatePassword() {
+  form.setFieldValue('password', generateTempPassword())
+  showPassword.value = true
+}
 
 const organizationId = ref<number>(0)
 const selectedOrganization = computed(() =>
@@ -553,6 +596,10 @@ const onSubmit = form.handleSubmit(async (values) => {
     toast.success('تم إنشاء المستخدم')
     closeForm()
   } catch (cause) {
+    const fieldErrors = extractApiFieldErrors(cause)
+    for (const [field, message] of Object.entries(fieldErrors)) {
+      if (message) form.setFieldError(field as keyof typeof form.values, message)
+    }
     toast.error(extractApiErrorMessage(cause, 'تعذّر إنشاء المستخدم'))
   } finally {
     saving.value = false
@@ -799,14 +846,59 @@ onMounted(async () => {
               <FormItem>
                 <FormLabel>كلمة المرور المؤقتة *</FormLabel>
                 <FormControl>
-                  <Input
-                    v-bind="componentField"
-                    type="password"
-                    placeholder="8 أحرف على الأقل"
-                    dir="ltr"
-                  />
+                  <div class="relative">
+                    <Input
+                      v-bind="componentField"
+                      :type="showPassword ? 'text' : 'password'"
+                      placeholder="8 أحرف على الأقل"
+                      class="ps-9 pe-9"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      class="text-muted-foreground hover:text-foreground absolute start-1 top-1/2 h-7 w-7 -translate-y-1/2"
+                      :aria-label="showPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'"
+                      @click="showPassword = !showPassword"
+                    >
+                      <EyeOff v-if="showPassword" class="size-4" aria-hidden="true" />
+                      <Eye v-else class="size-4" aria-hidden="true" />
+                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger as-child>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          class="text-muted-foreground hover:text-foreground absolute end-1 top-1/2 h-7 w-7 -translate-y-1/2"
+                          aria-label="توليد كلمة مرور عشوائية تستوفي الشروط"
+                          @click="generatePassword"
+                        >
+                          <RefreshCw class="size-4" aria-hidden="true" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>توليد كلمة مرور تستوفي شروط الأمان تلقائياً</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                 </FormControl>
-                <FormMessage />
+                <ul
+                  v-if="(form.values.password?.length ?? 0) > 0 && !passwordMeetsRules"
+                  class="mt-1 space-y-1"
+                >
+                  <li
+                    v-for="rule in passwordRuleList"
+                    :key="rule.key"
+                    class="flex items-center gap-1.5 text-xs"
+                    :class="rule.met ? 'text-[var(--severity-green)]' : 'text-muted-foreground'"
+                  >
+                    <Check v-if="rule.met" class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    <X v-else class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    {{ rule.label }}
+                  </li>
+                </ul>
+                <FormMessage v-else />
               </FormItem>
             </FormField>
 
