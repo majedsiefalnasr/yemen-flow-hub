@@ -813,7 +813,7 @@ onMounted(async () => {
             <FormField name="organization_id">
               <FormItem>
                 <FormLabel>المؤسسة *</FormLabel>
-                <Select v-model="formOrgId" disabled>
+                <Select v-model="formOrgId">
                   <FormControl>
                     <SelectTrigger class="w-full">
                       <SelectValue placeholder="اختر المؤسسة" />
