@@ -9,7 +9,7 @@ alwaysApply: true
 Read `AGENTS.md` at the root before taking any action. It is the single file of truth.
 
 ## This Repo Scope
-- Tracks: `docs/`, `DESIGN.md`, `AI-ENGINEERING-PROMPT.md`, `AGENTS.md`, root configs
+- Tracks: `docs/`, `DESIGN.md`, `AGENTS.md`, root configs
 - Does NOT contain runnable app code
 
 ## Git

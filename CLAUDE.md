@@ -66,7 +66,6 @@ Keep `pnpm` as the JavaScript package manager. For narrow changes, verify with t
 - `AGENTS.md` — Single file of truth for all AI tools
 - `docs/` — Authoritative project documentation
 - `DESIGN.md` — Visual design system
-- `AI-ENGINEERING-PROMPT.md` — Full engineering context
 
 ## graphify
 

@@ -25,7 +25,6 @@ yemen-flow-hub/               ← Root Git repository (git@github.com:majedsiefa
 │   └── CLAUDE.md             ← Frontend AI instructions (loads PRODUCT.md + DESIGN.md + SHADCN.md)
 ├── docs/                     ← Project documentation (source of truth)
 ├── DESIGN.md                 ← Root visual design system (typography, spacing, elevation)
-├── AI-ENGINEERING-PROMPT.md  ← Full engineering context
 └── AGENTS.md                 ← This file
 ```
 
@@ -156,7 +155,6 @@ All implementation decisions must follow these docs in order of authority:
 6. `docs/04-frontend-guide.md` — Frontend architecture, UI rules
 7. `docs/02-system-architecture.md` — Overall architecture
 8. `DESIGN.md` — Root visual design system (colors, typography, spacing, elevation)
-9. `AI-ENGINEERING-PROMPT.md` — Full engineering context and anti-patterns
 
 ### Frontend-specific context files (mandatory for all frontend work)
 
