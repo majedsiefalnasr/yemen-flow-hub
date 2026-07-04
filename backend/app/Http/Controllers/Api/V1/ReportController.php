@@ -5,17 +5,19 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Api\Controller;
 use App\Models\EngineRequest;
 use App\Models\WorkflowHistoryEntry;
+use App\Services\Authorization\PermissionService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Gate;
 
 class ReportController extends Controller
 {
+    public function __construct(private readonly PermissionService $permissionService) {}
+
     public function summary(Request $request): JsonResponse
     {
-        Gate::authorize('reports.view');
+        abort_unless($this->permissionService->userHasCapability($request->user(), 'reports', 'VIEW'), 403);
 
         $query = $this->baseQuery($request);
 
@@ -30,7 +32,7 @@ class ReportController extends Controller
 
     public function requestsOverTime(Request $request): JsonResponse
     {
-        Gate::authorize('reports.view');
+        abort_unless($this->permissionService->userHasCapability($request->user(), 'reports', 'VIEW'), 403);
 
         $query = $this->baseQuery($request);
         $monthFormat = $this->monthFormat();
@@ -60,7 +62,7 @@ class ReportController extends Controller
 
     public function byWorkflowStage(Request $request): JsonResponse
     {
-        Gate::authorize('reports.view');
+        abort_unless($this->permissionService->userHasCapability($request->user(), 'reports', 'VIEW'), 403);
 
         $query = $this->baseQuery($request);
 
@@ -82,7 +84,7 @@ class ReportController extends Controller
 
     public function byBank(Request $request): JsonResponse
     {
-        Gate::authorize('reports.view');
+        abort_unless($this->permissionService->userHasCapability($request->user(), 'reports', 'VIEW'), 403);
 
         $query = $this->baseQuery($request);
 
@@ -110,7 +112,7 @@ class ReportController extends Controller
 
     public function byMerchant(Request $request): JsonResponse
     {
-        Gate::authorize('reports.view');
+        abort_unless($this->permissionService->userHasCapability($request->user(), 'reports', 'VIEW'), 403);
 
         $query = $this->baseQuery($request);
 
@@ -135,7 +137,7 @@ class ReportController extends Controller
 
     public function bySector(Request $request): JsonResponse
     {
-        Gate::authorize('reports.view');
+        abort_unless($this->permissionService->userHasCapability($request->user(), 'reports', 'VIEW'), 403);
 
         $query = $this->baseQuery($request);
 
@@ -158,7 +160,7 @@ class ReportController extends Controller
 
     public function byCurrency(Request $request): JsonResponse
     {
-        Gate::authorize('reports.view');
+        abort_unless($this->permissionService->userHasCapability($request->user(), 'reports', 'VIEW'), 403);
 
         $query = $this->baseQuery($request);
 
@@ -180,7 +182,7 @@ class ReportController extends Controller
 
     public function stageDuration(Request $request): JsonResponse
     {
-        Gate::authorize('reports.view');
+        abort_unless($this->permissionService->userHasCapability($request->user(), 'reports', 'VIEW'), 403);
 
         $driver = DB::connection()->getDriverName();
         $hoursDiff = $driver === 'sqlite'
@@ -218,7 +220,7 @@ class ReportController extends Controller
 
     public function sla(Request $request): JsonResponse
     {
-        Gate::authorize('reports.view');
+        abort_unless($this->permissionService->userHasCapability($request->user(), 'reports', 'VIEW'), 403);
 
         $query = EngineRequest::query()
             ->withStageEntry()
@@ -253,7 +255,7 @@ class ReportController extends Controller
 
     public function teamPerformance(Request $request): JsonResponse
     {
-        Gate::authorize('reports.view');
+        abort_unless($this->permissionService->userHasCapability($request->user(), 'reports', 'VIEW'), 403);
 
         $query = WorkflowHistoryEntry::query()
             ->join('users as u', 'u.id', '=', 'workflow_history.performed_by')

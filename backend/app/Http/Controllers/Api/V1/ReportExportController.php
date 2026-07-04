@@ -5,16 +5,18 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Api\Controller;
 use App\Jobs\GenerateReportExport;
 use App\Models\ReportExport;
+use App\Services\Authorization\PermissionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 
 class ReportExportController extends Controller
 {
+    public function __construct(private readonly PermissionService $permissionService) {}
+
     public function store(Request $request): JsonResponse
     {
-        Gate::authorize('reports.view');
+        abort_unless($this->permissionService->userHasCapability($request->user(), 'reports', 'VIEW'), 403);
 
         $validated = $request->validate([
             'report_type' => ['required', 'string', 'in:summary,requests-over-time,by-workflow-stage,by-bank,by-merchant,by-sector,by-currency,stage-duration,sla,team-performance'],
@@ -41,7 +43,7 @@ class ReportExportController extends Controller
 
     public function show(Request $request, ReportExport $reportExport): JsonResponse
     {
-        Gate::authorize('reports.view');
+        abort_unless($this->permissionService->userHasCapability($request->user(), 'reports', 'VIEW'), 403);
 
         if ((int) $reportExport->requested_by !== (int) $request->user()->id) {
             abort(403);
@@ -52,7 +54,7 @@ class ReportExportController extends Controller
 
     public function download(Request $request, ReportExport $reportExport): mixed
     {
-        Gate::authorize('reports.view');
+        abort_unless($this->permissionService->userHasCapability($request->user(), 'reports', 'VIEW'), 403);
 
         if ((int) $reportExport->requested_by !== (int) $request->user()->id) {
             abort(403);
@@ -76,7 +78,7 @@ class ReportExportController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        Gate::authorize('reports.view');
+        abort_unless($this->permissionService->userHasCapability($request->user(), 'reports', 'VIEW'), 403);
 
         $exports = ReportExport::query()
             ->where('requested_by', $request->user()->id)
