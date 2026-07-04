@@ -760,82 +760,6 @@ onMounted(async () => {
           </DialogHeader>
 
           <form class="flex flex-col gap-4 py-2" @submit="onSubmit">
-            <FormField name="organization_id">
-              <FormItem>
-                <FormLabel>المؤسسة *</FormLabel>
-                <Select v-model="formOrgId" disabled>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="اختر المؤسسة" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem v-for="org in organizations" :key="org.id" :value="String(org.id)">
-                      {{ org.name }}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            </FormField>
-
-            <FormField name="team_id">
-              <FormItem>
-                <FormLabel>الفريق *</FormLabel>
-                <Select v-model="formTeamId">
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="اختر الفريق" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem v-for="team in teams" :key="team.id" :value="String(team.id)">
-                      {{ team.name }}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            </FormField>
-
-            <FormField name="role_id">
-              <FormItem>
-                <FormLabel>الدور *</FormLabel>
-                <Select v-model="formRoleId">
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="اختر الدور" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem v-for="role in roles" :key="role.id" :value="String(role.id)">
-                      {{ role.name }}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            </FormField>
-
-            <FormField v-if="bankRequired" name="bank_id">
-              <FormItem>
-                <FormLabel>البنك *</FormLabel>
-                <Select v-model="formBankId">
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="اختر البنك" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem v-for="bank in banks" :key="bank.id" :value="String(bank.id)">
-                      {{ bank.name_ar }}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            </FormField>
-
             <FormField v-slot="{ componentField }" name="name">
               <FormItem>
                 <FormLabel>الاسم *</FormLabel>
@@ -882,6 +806,82 @@ onMounted(async () => {
                     dir="ltr"
                   />
                 </FormControl>
+                <FormMessage />
+              </FormItem>
+            </FormField>
+
+            <FormField name="organization_id">
+              <FormItem>
+                <FormLabel>المؤسسة *</FormLabel>
+                <Select v-model="formOrgId" disabled>
+                  <FormControl>
+                    <SelectTrigger class="w-full">
+                      <SelectValue placeholder="اختر المؤسسة" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem v-for="org in organizations" :key="org.id" :value="String(org.id)">
+                      {{ org.name }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            </FormField>
+
+            <FormField v-if="bankRequired" name="bank_id">
+              <FormItem>
+                <FormLabel>البنك *</FormLabel>
+                <Select v-model="formBankId">
+                  <FormControl>
+                    <SelectTrigger class="w-full">
+                      <SelectValue placeholder="اختر البنك" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem v-for="bank in banks" :key="bank.id" :value="String(bank.id)">
+                      {{ bank.name_ar }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            </FormField>
+
+            <FormField name="role_id">
+              <FormItem>
+                <FormLabel>الدور *</FormLabel>
+                <Select v-model="formRoleId">
+                  <FormControl>
+                    <SelectTrigger class="w-full">
+                      <SelectValue placeholder="اختر الدور" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem v-for="role in roles" :key="role.id" :value="String(role.id)">
+                      {{ role.name }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            </FormField>
+
+            <FormField name="team_id">
+              <FormItem>
+                <FormLabel>الفريق *</FormLabel>
+                <Select v-model="formTeamId">
+                  <FormControl>
+                    <SelectTrigger class="w-full">
+                      <SelectValue placeholder="اختر الفريق" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem v-for="team in teams" :key="team.id" :value="String(team.id)">
+                      {{ team.name }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             </FormField>

@@ -779,11 +779,13 @@ function handleFit() {
           <DialogTitle>إضافة انتقال</DialogTitle>
           <DialogDescription>اربط مرحلتين بإجراء.</DialogDescription>
         </DialogHeader>
-        <div class="flex flex-col gap-4">
+        <div class="flex flex-col gap-4 py-2">
           <div class="flex flex-col gap-1.5">
             <Label>من المرحلة</Label>
             <Select v-model="transFromId">
-              <SelectTrigger><SelectValue placeholder="اختر المرحلة" /></SelectTrigger>
+              <SelectTrigger class="w-full"
+                ><SelectValue placeholder="اختر المرحلة"
+              /></SelectTrigger>
               <SelectContent>
                 <SelectItem v-for="s in stages" :key="s.id" :value="String(s.id)">{{
                   s.name
@@ -794,7 +796,9 @@ function handleFit() {
           <div class="flex flex-col gap-1.5">
             <Label>الإجراء</Label>
             <Select v-model="transActionId">
-              <SelectTrigger><SelectValue placeholder="اختر الإجراء" /></SelectTrigger>
+              <SelectTrigger class="w-full"
+                ><SelectValue placeholder="اختر الإجراء"
+              /></SelectTrigger>
               <SelectContent>
                 <SelectItem v-for="a in actions" :key="a.id" :value="String(a.id)">{{
                   a.name
@@ -805,7 +809,9 @@ function handleFit() {
           <div class="flex flex-col gap-1.5">
             <Label>إلى المرحلة</Label>
             <Select v-model="transToId">
-              <SelectTrigger><SelectValue placeholder="اختر المرحلة" /></SelectTrigger>
+              <SelectTrigger class="w-full"
+                ><SelectValue placeholder="اختر المرحلة"
+              /></SelectTrigger>
               <SelectContent>
                 <SelectItem v-for="s in stages" :key="s.id" :value="String(s.id)">{{
                   s.name

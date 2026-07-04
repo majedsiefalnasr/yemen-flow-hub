@@ -218,11 +218,18 @@ onMounted(() => {
           <DialogDescription>تُشتق صلاحيات الطلبات والدوري من هذه الصفوف.</DialogDescription>
         </DialogHeader>
 
-        <div class="flex flex-col gap-4">
+        <div class="flex flex-col gap-4 py-2">
+          <div class="flex flex-col gap-1.5">
+            <Label>التسمية الظاهرة</Label>
+            <Input v-model="displayLabel" placeholder="مراجعو البنك" />
+          </div>
+
           <div class="flex flex-col gap-1.5">
             <Label>الجهة</Label>
             <Select v-model="organizationId">
-              <SelectTrigger><SelectValue placeholder="اختر الجهة (اختياري)" /></SelectTrigger>
+              <SelectTrigger class="w-full"
+                ><SelectValue placeholder="اختر الجهة (اختياري)"
+              /></SelectTrigger>
               <SelectContent>
                 <SelectItem v-for="org in organizations" :key="org.id" :value="String(org.id)">
                   {{ org.name }}
@@ -234,7 +241,9 @@ onMounted(() => {
           <div class="flex flex-col gap-1.5">
             <Label>الفريق</Label>
             <Select v-model="teamId" :disabled="!organizationId">
-              <SelectTrigger><SelectValue placeholder="اختر الفريق (اختياري)" /></SelectTrigger>
+              <SelectTrigger class="w-full"
+                ><SelectValue placeholder="اختر الفريق (اختياري)"
+              /></SelectTrigger>
               <SelectContent>
                 <SelectItem v-for="team in teams" :key="team.id" :value="String(team.id)">
                   {{ team.name }}
@@ -246,7 +255,9 @@ onMounted(() => {
           <div class="flex flex-col gap-1.5">
             <Label>الدور</Label>
             <Select v-model="roleId" :disabled="!organizationId">
-              <SelectTrigger><SelectValue placeholder="اختر الدور (اختياري)" /></SelectTrigger>
+              <SelectTrigger class="w-full"
+                ><SelectValue placeholder="اختر الدور (اختياري)"
+              /></SelectTrigger>
               <SelectContent>
                 <SelectItem v-for="role in roles" :key="role.id" :value="String(role.id)">
                   {{ role.name }}
@@ -258,17 +269,12 @@ onMounted(() => {
           <div class="flex flex-col gap-1.5">
             <Label>مستوى الوصول</Label>
             <Select v-model="accessLevel">
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger class="w-full"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="VIEW">عرض</SelectItem>
                 <SelectItem value="EXECUTE">تنفيذ</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-
-          <div class="flex flex-col gap-1.5">
-            <Label>التسمية الظاهرة</Label>
-            <Input v-model="displayLabel" placeholder="مراجعو البنك" />
           </div>
 
           <p v-if="formError" class="text-xs text-[var(--severity-red)]" role="alert">

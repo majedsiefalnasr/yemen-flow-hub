@@ -146,7 +146,7 @@ const submit = handleSubmit((values) => {
 </script>
 
 <template>
-  <DialogContent class="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+  <DialogContent class="sm:max-w-2xl">
     <DialogHeader>
       <DialogTitle>{{ title }}</DialogTitle>
       <DialogDescription>أدخل بيانات المستورد كما تظهر في السجل التجاري.</DialogDescription>
@@ -201,13 +201,24 @@ const submit = handleSubmit((values) => {
         </FormItem>
       </FormField>
 
+      <!-- Address -->
+      <FormField v-slot="{ componentField }" name="address">
+        <FormItem class="sm:col-span-2">
+          <FormLabel class="text-xs">العنوان</FormLabel>
+          <FormControl>
+            <Input v-bind="componentField" placeholder="مثال: صنعاء، شارع الستين" />
+          </FormControl>
+          <FormMessage />
+        </FormItem>
+      </FormField>
+
       <!-- Status -->
       <FormField v-slot="{ componentField }" name="status">
         <FormItem>
           <FormLabel class="text-xs">الحالة</FormLabel>
           <Select v-bind="componentField">
             <FormControl>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger class="w-full"><SelectValue /></SelectTrigger>
             </FormControl>
             <SelectContent>
               <SelectItem value="ACTIVE">نشط</SelectItem>
@@ -228,7 +239,7 @@ const submit = handleSubmit((values) => {
             @update:model-value="componentField['onUpdate:modelValue']"
           >
             <FormControl>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger class="w-full"><SelectValue /></SelectTrigger>
             </FormControl>
             <SelectContent>
               <SelectItem v-for="bank in banks" :key="bank.id" :value="bank.id.toString()">
@@ -236,17 +247,6 @@ const submit = handleSubmit((values) => {
               </SelectItem>
             </SelectContent>
           </Select>
-          <FormMessage />
-        </FormItem>
-      </FormField>
-
-      <!-- Address -->
-      <FormField v-slot="{ componentField }" name="address">
-        <FormItem class="sm:col-span-2">
-          <FormLabel class="text-xs">العنوان</FormLabel>
-          <FormControl>
-            <Input v-bind="componentField" placeholder="مثال: صنعاء، شارع الستين" />
-          </FormControl>
           <FormMessage />
         </FormItem>
       </FormField>
@@ -371,7 +371,7 @@ const submit = handleSubmit((values) => {
               <FormItem>
                 <Select v-bind="componentField">
                   <FormControl>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger class="w-full"><SelectValue /></SelectTrigger>
                   </FormControl>
                   <SelectContent>
                     <SelectItem value="true">نشطة</SelectItem>

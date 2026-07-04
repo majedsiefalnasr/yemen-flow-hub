@@ -224,28 +224,6 @@ const onSubmit = handleSubmit((values) => {
               </FormItem>
             </FormField>
 
-            <!-- Role -->
-            <FormField v-slot="{ componentField }" name="role">
-              <FormItem>
-                <FormLabel class="text-xs"
-                  >الدور الوظيفي <span class="text-destructive">*</span></FormLabel
-                >
-                <Select v-bind="componentField">
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="اختر الدور الوظيفي" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem v-for="r in BANK_ADMIN_MANAGED_ROLES" :key="r" :value="r">
-                      {{ ROLE_LABELS[r] }}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            </FormField>
-
             <!-- Department -->
             <FormField v-slot="{ componentField }" name="department">
               <FormItem>
@@ -259,11 +237,33 @@ const onSubmit = handleSubmit((values) => {
 
             <!-- Password -->
             <FormField v-if="!isEdit" v-slot="{ componentField }" name="password">
-              <FormItem class="col-span-2">
+              <FormItem>
                 <FormLabel class="text-xs">كلمة المرور الأولية *</FormLabel>
                 <FormControl>
                   <Input v-bind="componentField" type="password" placeholder="8 أحرف على الأقل" />
                 </FormControl>
+                <FormMessage />
+              </FormItem>
+            </FormField>
+
+            <!-- Role -->
+            <FormField v-slot="{ componentField }" name="role">
+              <FormItem class="col-span-2">
+                <FormLabel class="text-xs"
+                  >الدور الوظيفي <span class="text-destructive">*</span></FormLabel
+                >
+                <Select v-bind="componentField">
+                  <FormControl>
+                    <SelectTrigger class="w-full">
+                      <SelectValue placeholder="اختر الدور الوظيفي" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem v-for="r in BANK_ADMIN_MANAGED_ROLES" :key="r" :value="r">
+                      {{ ROLE_LABELS[r] }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             </FormField>

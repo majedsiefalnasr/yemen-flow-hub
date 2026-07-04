@@ -234,11 +234,11 @@ onMounted(() => {
         <DialogDescription>اربط مرحلة المصدر بإجراء ومرحلة الوجهة.</DialogDescription>
       </DialogHeader>
 
-      <div class="flex flex-col gap-4">
+      <div class="flex flex-col gap-4 py-2">
         <div class="flex flex-col gap-1.5">
           <Label>من المرحلة</Label>
           <Select v-model="fromStageId">
-            <SelectTrigger><SelectValue placeholder="اختر المرحلة" /></SelectTrigger>
+            <SelectTrigger class="w-full"><SelectValue placeholder="اختر المرحلة" /></SelectTrigger>
             <SelectContent>
               <SelectItem v-for="stage in stages" :key="stage.id" :value="String(stage.id)">
                 {{ stage.name }}
@@ -250,7 +250,7 @@ onMounted(() => {
         <div class="flex flex-col gap-1.5">
           <Label>الإجراء</Label>
           <Select v-model="actionId">
-            <SelectTrigger><SelectValue placeholder="اختر الإجراء" /></SelectTrigger>
+            <SelectTrigger class="w-full"><SelectValue placeholder="اختر الإجراء" /></SelectTrigger>
             <SelectContent>
               <SelectItem v-for="action in actions" :key="action.id" :value="String(action.id)">
                 {{ action.name }}
@@ -262,7 +262,7 @@ onMounted(() => {
         <div class="flex flex-col gap-1.5">
           <Label>إلى المرحلة</Label>
           <Select v-model="toStageId">
-            <SelectTrigger><SelectValue placeholder="اختر المرحلة" /></SelectTrigger>
+            <SelectTrigger class="w-full"><SelectValue placeholder="اختر المرحلة" /></SelectTrigger>
             <SelectContent>
               <SelectItem v-for="stage in stages" :key="stage.id" :value="String(stage.id)">
                 {{ stage.name }}

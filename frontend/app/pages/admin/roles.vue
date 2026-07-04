@@ -662,21 +662,12 @@ const formOrgId = computed({
           </DialogHeader>
 
           <form class="flex flex-col gap-4 py-2" @submit="onSubmit">
-            <FormField name="organization_id">
+            <FormField v-slot="{ componentField }" name="name">
               <FormItem>
-                <FormLabel>المؤسسة *</FormLabel>
-                <Select v-model="formOrgId" :disabled="Boolean(editing)">
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="اختر المؤسسة" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem v-for="org in organizations" :key="org.id" :value="String(org.id)">
-                      {{ org.name }}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                <FormLabel>اسم الدور *</FormLabel>
+                <FormControl>
+                  <Input v-bind="componentField" placeholder="مثال: دور إدخال البيانات" />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             </FormField>
@@ -696,12 +687,21 @@ const formOrgId = computed({
               </FormItem>
             </FormField>
 
-            <FormField v-slot="{ componentField }" name="name">
+            <FormField name="organization_id">
               <FormItem>
-                <FormLabel>اسم الدور *</FormLabel>
-                <FormControl>
-                  <Input v-bind="componentField" placeholder="مثال: دور إدخال البيانات" />
-                </FormControl>
+                <FormLabel>المؤسسة *</FormLabel>
+                <Select v-model="formOrgId" :disabled="Boolean(editing)">
+                  <FormControl>
+                    <SelectTrigger class="w-full">
+                      <SelectValue placeholder="اختر المؤسسة" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem v-for="org in organizations" :key="org.id" :value="String(org.id)">
+                      {{ org.name }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             </FormField>

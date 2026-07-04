@@ -318,7 +318,7 @@ onMounted(() => fetchActions())
               <FormLabel>النوع</FormLabel>
               <Select v-bind="componentField" :disabled="editing !== null">
                 <FormControl>
-                  <SelectTrigger>
+                  <SelectTrigger class="w-full">
                     <SelectValue placeholder="اختر النوع" />
                   </SelectTrigger>
                 </FormControl>

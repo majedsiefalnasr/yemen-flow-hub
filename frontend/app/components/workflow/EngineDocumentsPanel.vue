@@ -38,7 +38,7 @@ function onFileChange(event: Event) {
 </script>
 
 <template>
-  <div dir="rtl" class="flex flex-col gap-4">
+  <div class="flex flex-col gap-4">
     <ul v-if="documents.length" class="flex flex-col divide-y">
       <li v-for="doc in documents" :key="doc.id" class="flex items-center gap-3 py-3">
         <FileText class="text-muted-foreground h-5 w-5 shrink-0" />

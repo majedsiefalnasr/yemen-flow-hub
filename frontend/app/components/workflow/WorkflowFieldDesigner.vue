@@ -492,7 +492,7 @@ onMounted(async () => {
           <DialogTitle>إضافة مجموعة</DialogTitle>
           <DialogDescription>تظهر المجموعات كتبويبات في نموذج الطلب.</DialogDescription>
         </DialogHeader>
-        <div class="flex flex-col gap-4">
+        <div class="flex flex-col gap-4 py-2">
           <div class="flex flex-col gap-1.5">
             <Label>الرمز</Label>
             <Input v-model="groupName" placeholder="request_data" dir="ltr" />
@@ -516,18 +516,7 @@ onMounted(async () => {
           <DialogTitle>إضافة حقل</DialogTitle>
           <DialogDescription>عرّف الحقل وإعداداته حسب النوع.</DialogDescription>
         </DialogHeader>
-        <div class="flex flex-col gap-4">
-          <div class="flex flex-col gap-1.5">
-            <Label>المجموعة</Label>
-            <Select v-model="fieldGroupId" disabled>
-              <SelectTrigger><SelectValue placeholder="اختر المجموعة" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem v-for="group in groups" :key="group.id" :value="group.id">
-                  {{ group.label }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        <div class="flex flex-col gap-4 py-2">
           <div class="flex flex-col gap-1.5">
             <Label>الرمز</Label>
             <Input v-model="fieldKey" placeholder="amount" dir="ltr" />
@@ -535,17 +524,6 @@ onMounted(async () => {
           <div class="flex flex-col gap-1.5">
             <Label>الاسم</Label>
             <Input v-model="fieldLabel" placeholder="المبلغ" />
-          </div>
-          <div class="flex flex-col gap-1.5">
-            <Label>النوع</Label>
-            <Select v-model="fieldType">
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem v-for="t in FIELD_TYPES" :key="t" :value="t">
-                  {{ typeLabels[t] }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
           </div>
 
           <div v-if="isNumeric" class="grid grid-cols-2 gap-3">
@@ -559,10 +537,43 @@ onMounted(async () => {
             </div>
           </div>
 
+          <div class="flex items-center gap-2">
+            <Checkbox id="field-required" v-model:checked="fieldRequired" />
+            <Label for="field-required">حقل مطلوب</Label>
+          </div>
+
+          <div class="flex flex-col gap-1.5">
+            <Label>المجموعة</Label>
+            <Select v-model="fieldGroupId" disabled>
+              <SelectTrigger class="w-full"
+                ><SelectValue placeholder="اختر المجموعة"
+              /></SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="group in groups" :key="group.id" :value="group.id">
+                  {{ group.label }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div class="flex flex-col gap-1.5">
+            <Label>النوع</Label>
+            <Select v-model="fieldType">
+              <SelectTrigger class="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="t in FIELD_TYPES" :key="t" :value="t">
+                  {{ typeLabels[t] }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <div v-if="isDynamic" class="flex flex-col gap-1.5">
             <Label>المصدر الديناميكي</Label>
             <Select v-model="fieldDynamicSource">
-              <SelectTrigger><SelectValue placeholder="اختر المصدر" /></SelectTrigger>
+              <SelectTrigger class="w-full"
+                ><SelectValue placeholder="اختر المصدر"
+              /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="MERCHANTS">{{ sourceLabels.MERCHANTS }}</SelectItem>
                 <SelectItem value="MERCHANT_COMPANIES">
@@ -576,7 +587,9 @@ onMounted(async () => {
           <div v-if="needsReferenceTable" class="flex flex-col gap-1.5">
             <Label>الجدول المرجعي</Label>
             <Select v-model="fieldReferenceTableId">
-              <SelectTrigger><SelectValue placeholder="اختر الجدول" /></SelectTrigger>
+              <SelectTrigger class="w-full"
+                ><SelectValue placeholder="اختر الجدول"
+              /></SelectTrigger>
               <SelectContent>
                 <SelectItem
                   v-for="table in referenceTables"
@@ -587,11 +600,6 @@ onMounted(async () => {
                 </SelectItem>
               </SelectContent>
             </Select>
-          </div>
-
-          <div class="flex items-center gap-2">
-            <Checkbox id="field-required" v-model:checked="fieldRequired" />
-            <Label for="field-required">حقل مطلوب</Label>
           </div>
 
           <p v-if="formError" class="text-xs text-[var(--severity-red)]" role="alert">
