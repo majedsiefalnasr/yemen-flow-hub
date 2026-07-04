@@ -254,10 +254,6 @@ const orgActions: RowAction<Organization>[] = [
     label: 'حذف',
     destructive: true,
     hidden: (row) => row.original.is_system,
-    confirm: {
-      title: 'تأكيد حذف المؤسسة',
-      description: 'سيتم حذف هذه المؤسسة نهائياً. لا يمكن التراجع عن هذا الإجراء.',
-    },
     onClick: (row) => confirmDelete(row.original),
   },
 ]
