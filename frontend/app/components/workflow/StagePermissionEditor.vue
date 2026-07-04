@@ -133,7 +133,7 @@ onMounted(() => {
   <div class="space-y-3">
     <div class="flex items-center justify-between">
       <h4 class="font-section text-xs font-semibold">صلاحيات المرحلة</h4>
-      <ScreenGuard v-if="editable" screen="workflow_designer" capability="CREATE">
+      <ScreenGuard v-if="editable" screen="workflow_designer" capability="MANAGE">
         <Button size="sm" variant="outline" @click="openCreate">
           <Plus class="h-3.5 w-3.5" />إضافة صلاحية
         </Button>
@@ -183,7 +183,7 @@ onMounted(() => {
             </TableCell>
             <TableCell class="text-left" @click.stop>
               <div class="flex items-center justify-end gap-0.5">
-                <ScreenGuard v-if="editable" screen="workflow_designer" capability="DELETE">
+                <ScreenGuard v-if="editable" screen="workflow_designer" capability="MANAGE">
                   <Tooltip>
                     <TooltipTrigger as-child>
                       <Button

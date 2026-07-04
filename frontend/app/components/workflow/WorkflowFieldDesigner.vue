@@ -282,7 +282,7 @@ onMounted(async () => {
             <FolderTree class="text-primary h-4 w-4" aria-hidden="true" />
             <h3 class="font-section text-sm font-semibold">مجموعات الحقول (تبويبات شاشة الطلب)</h3>
           </div>
-          <ScreenGuard v-if="editable" screen="workflow_designer" capability="CREATE">
+          <ScreenGuard v-if="editable" screen="workflow_designer" capability="MANAGE">
             <Button size="sm" variant="outline" @click="openGroupDialog">
               <Plus class="h-3.5 w-3.5" />إضافة مجموعة
             </Button>
@@ -304,7 +304,7 @@ onMounted(async () => {
             <EmptyDescription>أضف مجموعة (تبويب) لتعريف حقول النموذج.</EmptyDescription>
           </EmptyHeader>
           <EmptyContent v-if="editable">
-            <ScreenGuard screen="workflow_designer" capability="CREATE">
+            <ScreenGuard screen="workflow_designer" capability="MANAGE">
               <Button size="sm" variant="outline" @click="openGroupDialog">
                 <Plus class="h-3.5 w-3.5" />إضافة مجموعة
               </Button>
@@ -342,7 +342,7 @@ onMounted(async () => {
             >
               <ChevronDown class="h-4 w-4" />
             </Button>
-            <ScreenGuard v-if="editable" screen="workflow_designer" capability="DELETE">
+            <ScreenGuard v-if="editable" screen="workflow_designer" capability="MANAGE">
               <Button
                 size="icon-sm"
                 variant="ghost"
@@ -365,7 +365,7 @@ onMounted(async () => {
           <ScreenGuard
             v-if="editable && groups.length > 0"
             screen="workflow_designer"
-            capability="CREATE"
+            capability="MANAGE"
           >
             <Button size="sm" @click="openFieldDialog(groups[0]?.id ?? null)">
               <Plus class="h-3.5 w-3.5" />إضافة حقل
@@ -387,7 +387,7 @@ onMounted(async () => {
               <EmptyDescription>أضف الحقول ثم أسند كل حقل إلى مجموعته.</EmptyDescription>
             </EmptyHeader>
             <EmptyContent v-if="editable && groups.length > 0">
-              <ScreenGuard screen="workflow_designer" capability="CREATE">
+              <ScreenGuard screen="workflow_designer" capability="MANAGE">
                 <Button size="sm" @click="openFieldDialog(groups[0]?.id ?? null)">
                   <Plus class="h-3.5 w-3.5" />إضافة حقل
                 </Button>
@@ -451,7 +451,7 @@ onMounted(async () => {
                     <ScreenGuard
                       v-if="editable && !field.is_system"
                       screen="workflow_designer"
-                      capability="DELETE"
+                      capability="MANAGE"
                     >
                       <Tooltip>
                         <TooltipTrigger as-child>

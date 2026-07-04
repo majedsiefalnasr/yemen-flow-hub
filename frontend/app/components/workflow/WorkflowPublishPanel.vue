@@ -72,7 +72,7 @@ async function confirmPublish() {
           <Spinner v-if="validating" class="h-3.5 w-3.5" />
           التحقق من الصحة
         </Button>
-        <ScreenGuard screen="workflow_designer" capability="UPDATE">
+        <ScreenGuard screen="workflow_designer" capability="MANAGE">
           <Button
             size="sm"
             :disabled="errors === null || errors.length > 0 || publishing"

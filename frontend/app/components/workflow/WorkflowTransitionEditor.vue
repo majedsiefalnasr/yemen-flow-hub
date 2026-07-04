@@ -142,7 +142,7 @@ onMounted(() => {
         اربط كل مرحلة بإجراء ومرحلة وجهة لتحديد كيف يتحرك الطلب عبر سير العمل.
       </CardDescription>
       <CardAction>
-        <ScreenGuard v-if="editable" screen="workflow_designer" capability="CREATE">
+        <ScreenGuard v-if="editable" screen="workflow_designer" capability="MANAGE">
           <Button size="sm" @click="openCreate"><Plus class="h-3.5 w-3.5" />إضافة انتقال</Button>
         </ScreenGuard>
       </CardAction>
@@ -161,7 +161,7 @@ onMounted(() => {
           <EmptyDescription>اربط المراحل بالإجراءات لتمكين حركة الطلبات.</EmptyDescription>
         </EmptyHeader>
         <EmptyContent v-if="editable">
-          <ScreenGuard screen="workflow_designer" capability="CREATE">
+          <ScreenGuard screen="workflow_designer" capability="MANAGE">
             <Button size="sm" @click="openCreate"><Plus class="h-3.5 w-3.5" />إضافة انتقال</Button>
           </ScreenGuard>
         </EmptyContent>
@@ -197,7 +197,7 @@ onMounted(() => {
               </TableCell>
               <TableCell class="text-left" @click.stop>
                 <div class="flex items-center justify-end gap-0.5">
-                  <ScreenGuard v-if="editable" screen="workflow_designer" capability="DELETE">
+                  <ScreenGuard v-if="editable" screen="workflow_designer" capability="MANAGE">
                     <Tooltip>
                       <TooltipTrigger as-child>
                         <Button

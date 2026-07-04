@@ -174,7 +174,7 @@ onMounted(() => fetchActions())
         الإنشاء.
       </CardDescription>
       <CardAction>
-        <ScreenGuard screen="workflow_designer" capability="CREATE">
+        <ScreenGuard screen="workflow_designer" capability="MANAGE">
           <Button size="sm" @click="openCreate"><Plus class="h-3.5 w-3.5" />إضافة إجراء</Button>
         </ScreenGuard>
       </CardAction>
@@ -199,7 +199,7 @@ onMounted(() => fetchActions())
           <EmptyDescription>أضف إجراءات لتتمكن من بناء الانتقالات بينها.</EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
-          <ScreenGuard screen="workflow_designer" capability="CREATE">
+          <ScreenGuard screen="workflow_designer" capability="MANAGE">
             <Button size="sm" @click="openCreate"><Plus class="h-3.5 w-3.5" />إضافة إجراء</Button>
           </ScreenGuard>
         </EmptyContent>
@@ -231,7 +231,7 @@ onMounted(() => fetchActions())
                 </div>
               </TableCell>
               <TableCell @click.stop>
-                <ScreenGuard screen="workflow_designer" capability="UPDATE">
+                <ScreenGuard screen="workflow_designer" capability="MANAGE">
                   <Switch
                     :checked="action.is_active"
                     :disabled="action.is_active && action.is_in_use"
@@ -242,7 +242,7 @@ onMounted(() => fetchActions())
               </TableCell>
               <TableCell class="text-left" @click.stop>
                 <div class="flex items-center justify-end gap-0.5">
-                  <ScreenGuard screen="workflow_designer" capability="UPDATE">
+                  <ScreenGuard screen="workflow_designer" capability="MANAGE">
                     <Tooltip>
                       <TooltipTrigger as-child>
                         <Button
@@ -257,7 +257,7 @@ onMounted(() => fetchActions())
                       <TooltipContent>تعديل الإجراء</TooltipContent>
                     </Tooltip>
                   </ScreenGuard>
-                  <ScreenGuard screen="workflow_designer" capability="DELETE">
+                  <ScreenGuard screen="workflow_designer" capability="MANAGE">
                     <Tooltip v-if="!action.is_system && !action.is_in_use">
                       <TooltipTrigger as-child>
                         <Button

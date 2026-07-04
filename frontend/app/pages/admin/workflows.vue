@@ -206,7 +206,7 @@ onMounted(reload)
         :breadcrumbs="[{ label: 'الرئيسية', to: '/dashboard' }, { label: 'مصمم مسارات العمل' }]"
       >
         <template #actions>
-          <ScreenGuard screen="workflow_designer" capability="CREATE">
+          <ScreenGuard screen="workflow_designer" capability="MANAGE">
             <Button @click="openCreate">
               <Plus class="h-4 w-4" />
               إنشاء مسار عمل
@@ -318,7 +318,7 @@ onMounted(reload)
                 لوحة
               </Button>
             </ButtonGroup>
-            <ScreenGuard screen="workflow_designer" capability="CREATE">
+            <ScreenGuard screen="workflow_designer" capability="MANAGE">
               <Button
                 variant="outline"
                 size="sm"

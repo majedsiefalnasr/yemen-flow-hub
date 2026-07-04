@@ -158,7 +158,7 @@ onMounted(() => fetchStages(props.version.id))
         رتّب مراحل سير العمل، وحدّد مرحلة البداية والنهاية، واضبط صلاحيات كل مرحلة.
       </CardDescription>
       <CardAction>
-        <ScreenGuard v-if="editable" screen="workflow_designer" capability="CREATE">
+        <ScreenGuard v-if="editable" screen="workflow_designer" capability="MANAGE">
           <Button size="sm" @click="openCreate"><Plus class="h-3.5 w-3.5" />إضافة مرحلة</Button>
         </ScreenGuard>
       </CardAction>
@@ -177,7 +177,7 @@ onMounted(() => fetchStages(props.version.id))
           <EmptyDescription>أضف مراحل لتعريف خطوات سير العمل.</EmptyDescription>
         </EmptyHeader>
         <EmptyContent v-if="editable">
-          <ScreenGuard screen="workflow_designer" capability="CREATE">
+          <ScreenGuard screen="workflow_designer" capability="MANAGE">
             <Button size="sm" @click="openCreate"><Plus class="h-3.5 w-3.5" />إضافة مرحلة</Button>
           </ScreenGuard>
         </EmptyContent>
@@ -244,7 +244,7 @@ onMounted(() => fetchStages(props.version.id))
                     </TooltipTrigger>
                     <TooltipContent>قواعد الحقول</TooltipContent>
                   </Tooltip>
-                  <ScreenGuard v-if="editable" screen="workflow_designer" capability="UPDATE">
+                  <ScreenGuard v-if="editable" screen="workflow_designer" capability="MANAGE">
                     <Tooltip>
                       <TooltipTrigger as-child>
                         <Button
@@ -259,7 +259,7 @@ onMounted(() => fetchStages(props.version.id))
                       <TooltipContent>تعديل المرحلة</TooltipContent>
                     </Tooltip>
                   </ScreenGuard>
-                  <ScreenGuard v-if="editable" screen="workflow_designer" capability="DELETE">
+                  <ScreenGuard v-if="editable" screen="workflow_designer" capability="MANAGE">
                     <Tooltip>
                       <TooltipTrigger as-child>
                         <Button

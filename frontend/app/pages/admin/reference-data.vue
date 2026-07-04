@@ -417,7 +417,7 @@ onMounted(async () => {
           :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'البيانات المرجعية' }]"
         >
           <template #actions>
-            <ScreenGuard screen="reference_data" capability="CREATE">
+            <ScreenGuard screen="reference_data" capability="MANAGE">
               <Button size="sm" class="btn-primary h-8" @click="openCreateTable">
                 <Plus class="h-4 w-4" />
                 <span class="hidden lg:inline">جدول مرجعي جديد</span>
@@ -588,7 +588,7 @@ onMounted(async () => {
                   <Database class="text-primary h-4 w-4" />
                   {{ selectedTable ? `قيم: ${selectedTable.label}` : 'القيم المرجعية' }}
                 </CardTitle>
-                <ScreenGuard v-if="selectedTable" screen="reference_data" capability="CREATE">
+                <ScreenGuard v-if="selectedTable" screen="reference_data" capability="MANAGE">
                   <Button size="sm" variant="outline" class="h-7" @click="openCreateValue">
                     <Plus class="h-3.5 w-3.5" />
                     إضافة قيمة
