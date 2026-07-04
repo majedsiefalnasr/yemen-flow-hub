@@ -243,7 +243,7 @@ CBY_ADMIN
 - Wrap external FX confirmation generation/completion in a single database transaction
 - Use pessimistic locking (`lockForUpdate()` in `EngineTransitionService::execute()`) for vote submission and voting session closure
 - Validate file type as PDF-only for all document uploads
-- Return `REQUEST_CLOSED` (HTTP 403) for mutations on terminal/inactive requests — there is no `WORKFLOW_IMMUTABLE_STATE` error code in the current API
+- Return `REQUEST_CLOSED` (HTTP 403) for mutations on terminal/inactive requests — the distinct `WORKFLOW_IMMUTABLE_STATE` code (HTTP 409) applies only to editing a published/archived workflow *version* in the designer, not to runtime request state
 
 ---
 

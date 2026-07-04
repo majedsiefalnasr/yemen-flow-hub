@@ -54,7 +54,7 @@ PDF only. Private storage. SWIFT documents immutable after upload.
 
 ### Immutable states
 
-Mutation attempts on a non-`ACTIVE` request (e.g. `EXECUTIVE_REJECTED`, `CUSTOMS_DECLARATION_ISSUED`, `COMPLETED`) return HTTP 403 with error code `REQUEST_CLOSED` — there is no `WORKFLOW_IMMUTABLE_STATE` code in the current API.
+Mutation attempts on a non-`ACTIVE` request (e.g. `EXECUTIVE_REJECTED`, `CUSTOMS_DECLARATION_ISSUED`, `COMPLETED`) return HTTP 403 with error code `REQUEST_CLOSED`. The distinct `WORKFLOW_IMMUTABLE_STATE` code (HTTP 409) applies only to editing a published/archived workflow *version* in the designer, not to runtime request state.
 
 ## Context7
 

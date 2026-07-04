@@ -208,7 +208,9 @@ Note: this section covers only the 6 named SocratiCode/graphify config files per
 ## Summary
 
 - Total files audited: 188
-- Keep: 127
-- Update needed: 19
+- Keep: 126
+- Update needed: 20
 - Delete — legacy: 42
 - Merge into X: 0
+
+(Counts reflect the Task 2 human amendment — `docs/04-frontend-guide.md` moved from Keep to Update needed after the original audit.)

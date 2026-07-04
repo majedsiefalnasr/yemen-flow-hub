@@ -106,7 +106,7 @@ Role enum values: `DATA_ENTRY`, `BANK_REVIEWER`, `SWIFT_OFFICER`, `SUPPORT_COMMI
     "error_code": "REQUEST_CLOSED"
   }
   ```
-- Immutable/terminal (non-`ACTIVE`) requests return HTTP 403 with `REQUEST_CLOSED` — there is no `WORKFLOW_IMMUTABLE_STATE` error code in the current API
+- Immutable/terminal (non-`ACTIVE`) requests return HTTP 403 with `REQUEST_CLOSED` — the distinct `WORKFLOW_IMMUTABLE_STATE` code (HTTP 409) applies only to editing a published/archived workflow *version* in the designer, not to runtime request state
 
 ## Context7 Usage
 
