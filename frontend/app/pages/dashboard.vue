@@ -47,7 +47,7 @@ const showNewRequestAction = computed(
 </script>
 
 <template>
-  <div class="flex flex-col gap-6">
+  <div class="flex flex-col gap-6 py-2">
     <!-- Page header -->
     <PageHeader :title="`أهلاً، ${userName}`" :subtitle="roleSubtitle">
       <template v-if="showNewRequestAction" #actions>

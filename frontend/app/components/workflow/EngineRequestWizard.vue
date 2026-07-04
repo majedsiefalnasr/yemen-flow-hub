@@ -120,7 +120,7 @@ const isLastGroup = computed(() => wizard.stepIndex.value === groupCount.value -
 </script>
 
 <template>
-  <div dir="rtl" class="flex flex-col gap-6">
+  <div dir="rtl" class="flex flex-col gap-6 py-2">
     <!-- Horizontal numbered stepper: one step per field group + review. -->
     <div class="w-full overflow-x-auto">
       <Stepper :model-value="stepNumber" class="min-w-max">

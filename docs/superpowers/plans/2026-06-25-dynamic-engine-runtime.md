@@ -2102,7 +2102,7 @@ defineExpose({ validate })
 </script>
 
 <template>
-  <div class="flex flex-col gap-6">
+  <div class="flex flex-col gap-6 py-2">
     <div v-for="group in fieldGroups" :key="group.id" class="flex flex-col gap-4">
       <h3 class="text-sm font-semibold text-foreground">{{ group.label }}</h3>
       <template v-for="field in group.fields" :key="field.id">
@@ -2385,7 +2385,7 @@ const rows = computed(() => (view.value === 'queue' ? store.queue : store.instan
 </script>
 
 <template>
-  <div class="flex flex-col gap-6 p-6" dir="rtl">
+  <div class="flex flex-col gap-6 py-2 p-6" dir="rtl">
     <div class="flex items-center justify-between">
       <h1 class="text-lg font-semibold text-foreground">سير العمل الديناميكي</h1>
       <Button @click="navigateTo('/workflows/new')">
@@ -2600,7 +2600,7 @@ async function startWorkflow(versionId: number) {
 </script>
 
 <template>
-  <div class="flex flex-col gap-6 p-6" dir="rtl">
+  <div class="flex flex-col gap-6 py-2 p-6" dir="rtl">
     <h1 class="text-lg font-semibold text-foreground">إنشاء طلب جديد</h1>
 
     <div v-if="store.loading" class="grid grid-cols-2 gap-4">
@@ -2867,7 +2867,7 @@ async function runAction(transitionId: number, requiresComment: boolean) {
 </script>
 
 <template>
-  <div class="flex flex-col gap-6 p-6" dir="rtl">
+  <div class="flex flex-col gap-6 py-2 p-6" dir="rtl">
     <div v-if="store.loading">
       <Skeleton class="h-8 w-64 mb-4" />
       <Skeleton class="h-48 w-full" />

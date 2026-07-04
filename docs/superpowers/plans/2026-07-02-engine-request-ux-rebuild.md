@@ -997,7 +997,7 @@ async function onSubmit() {
 </script>
 
 <template>
-  <div dir="rtl" class="flex flex-col gap-6">
+  <div dir="rtl" class="flex flex-col gap-6 py-2">
     <Stepper :model-value="stepperValue" orientation="vertical" class="w-full">
       <StepperItem
         v-for="(group, index) in [...fieldGroups].sort((a, b) => a.sort_order - b.sort_order)"
@@ -1105,7 +1105,7 @@ async function startWorkflow(versionId: number) {
 </script>
 
 <template>
-  <div class="flex flex-col gap-6 p-6" dir="rtl">
+  <div class="flex flex-col gap-6 py-2 p-6" dir="rtl">
     <PageHeader
       title="طلب تمويل جديد"
       subtitle="اختر مسار العمل لبدء طلب تمويل جديد وإدخال بياناته خطوة بخطوة."
@@ -1298,7 +1298,7 @@ async function onRemove(documentId: number) {
 </script>
 
 <template>
-  <div class="flex flex-col gap-6 p-6" dir="rtl">
+  <div class="flex flex-col gap-6 py-2 p-6" dir="rtl">
     <div v-if="store.loading && !store.current">
       <Skeleton class="mb-4 h-8 w-64" />
       <Skeleton class="h-48 w-full" />

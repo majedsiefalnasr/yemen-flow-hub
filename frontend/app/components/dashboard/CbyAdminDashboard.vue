@@ -276,7 +276,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-6">
+  <div class="flex flex-col gap-6 py-2">
     <!-- Global toolbar -->
     <DashboardToolbar
       badge-label="إشراف فقط"
@@ -303,7 +303,7 @@ onMounted(() => {
       v-if="store.loading"
       aria-busy="true"
       aria-label="جارٍ تحميل الإحصائيات"
-      class="flex flex-col gap-6"
+      class="flex flex-col gap-6 py-2"
     >
       <div class="grid grid-cols-6 gap-4 max-xl:grid-cols-3 max-md:grid-cols-2">
         <Card v-for="n in 6" :key="n" class="border-0 shadow" aria-hidden="true">

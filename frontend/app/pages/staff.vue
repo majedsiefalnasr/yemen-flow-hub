@@ -532,7 +532,7 @@ onMounted(loadStaff)
 </script>
 
 <template>
-  <div class="flex flex-col gap-6">
+  <div class="flex flex-col gap-6 py-2">
     <h1 class="page-title sr-only">موظفو الجهة</h1>
     <PageHeader
       title="موظفو الجهة"

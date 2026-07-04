@@ -188,7 +188,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-6">
+  <div class="flex flex-col gap-6 py-2">
     <!-- CBY-global scope chip -->
     <div class="mb-2">
       <Badge

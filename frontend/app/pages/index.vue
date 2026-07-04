@@ -46,7 +46,7 @@ const showNewRequestAction = computed(
 </script>
 
 <template>
-  <div class="flex flex-col gap-6">
+  <div class="flex flex-col gap-6 py-2">
     <!-- Page header -->
     <div class="flex flex-wrap items-start justify-between gap-4">
       <div class="flex flex-col gap-1">

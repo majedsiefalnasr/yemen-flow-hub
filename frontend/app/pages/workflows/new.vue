@@ -38,7 +38,7 @@ async function startWorkflow(versionId: number) {
 </script>
 
 <template>
-  <div class="flex flex-col gap-6 p-6" dir="rtl">
+  <div class="flex flex-col gap-6 py-2 p-6" dir="rtl">
     <PageHeader
       title="طلب تمويل جديد"
       subtitle="اختر مسار العمل لبدء طلب تمويل جديد وإدخال بياناته خطوة بخطوة."

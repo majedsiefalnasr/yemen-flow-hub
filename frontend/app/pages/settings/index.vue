@@ -712,7 +712,7 @@ function savePersonalNotifications() {
       :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'إعداداتي' }]"
     />
 
-    <div class="flex flex-col gap-6 lg:flex-row">
+    <div class="flex flex-col gap-6 py-2 lg:flex-row">
       <!-- ── Desktop: left sidebar nav ───────────────────────────────────── -->
       <aside class="hidden lg:block lg:w-56 lg:shrink-0">
         <nav class="flex flex-col gap-1">
