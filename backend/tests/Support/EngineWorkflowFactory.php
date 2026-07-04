@@ -13,7 +13,6 @@ use App\Models\WorkflowDefinition;
 use App\Models\WorkflowStage;
 use App\Models\WorkflowTransition;
 use App\Models\WorkflowVersion;
-use Database\Seeders\PermissionSeeder;
 use Illuminate\Support\Str;
 
 /**
@@ -177,15 +176,13 @@ class EngineWorkflowFactory
     }
 
     /**
-     * Seed a CBY_ADMIN user (with the workflow.design permission) plus a stage on a
-     * DRAFT workflow version, for designer-endpoint tests (e.g. requires_claim toggle).
+     * Seed a CBY_ADMIN user plus a stage on a DRAFT workflow version, for
+     * designer-endpoint tests (e.g. requires_claim toggle).
      *
      * @return array{admin: User, stage: WorkflowStage}
      */
     public static function draftStageForAdmin(): array
     {
-        (new PermissionSeeder)->run();
-
         $admin = User::factory()->create(['role' => UserRole::CBY_ADMIN->value]);
 
         $def = WorkflowDefinition::create([

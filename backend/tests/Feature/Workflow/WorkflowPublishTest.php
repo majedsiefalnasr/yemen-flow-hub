@@ -14,7 +14,6 @@ use App\Models\WorkflowVersion;
 use App\Services\Workflow\WorkflowVersionValidator;
 use Database\Seeders\BankSeeder;
 use Database\Seeders\GovernanceSeeder;
-use Database\Seeders\PermissionSeeder;
 use Database\Seeders\ScreenPermissionSeeder;
 use Database\Seeders\UserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -33,7 +32,7 @@ class WorkflowPublishTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed([PermissionSeeder::class, GovernanceSeeder::class, ScreenPermissionSeeder::class, BankSeeder::class, UserSeeder::class]);
+        $this->seed([GovernanceSeeder::class, ScreenPermissionSeeder::class, BankSeeder::class, UserSeeder::class]);
         $this->admin = User::query()->where('role', UserRole::CBY_ADMIN->value)->firstOrFail();
         $this->org = Organization::query()->firstOrFail();
         $this->role = Role::query()->where('organization_id', $this->org->id)->firstOrFail();

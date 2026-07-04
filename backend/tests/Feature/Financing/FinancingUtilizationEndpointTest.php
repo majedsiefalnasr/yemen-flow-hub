@@ -3,7 +3,10 @@
 namespace Tests\Feature\Financing;
 
 use App\Enums\UserRole;
+use App\Enums\WorkflowVersionState;
 use App\Models\Bank;
+use App\Models\Organization;
+use App\Models\Role;
 use App\Models\User;
 use App\Services\Workflow\Engine\EngineFinancingLedger;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -23,15 +26,34 @@ class FinancingUtilizationEndpointTest extends TestCase
         parent::setUp();
 
         $bank = Bank::query()->create(['name' => 'Bank', 'code' => 'B1', 'is_active' => true]);
-        $permissionId = DB::table('permissions')->insertGetId([
-            'slug' => 'request.create',
-            'name_ar' => 'Create',
-            'name_en' => 'Create',
-            'group' => 'requests',
+
+        $org = Organization::query()->create([
+            'code' => 'util_test_org',
+            'name' => 'Utilization Test Org',
+            'is_active' => true,
         ]);
-        DB::table('role_permissions')->insert([
-            'permission_id' => $permissionId,
-            'role' => UserRole::DATA_ENTRY->value,
+        $role = Role::query()->create([
+            'organization_id' => $org->id,
+            'code' => 'util_test_data_entry',
+            'name' => 'Utilization Test Data Entry',
+            'is_system' => false,
+            'is_active' => true,
+        ]);
+
+        $definitionId = DB::table('workflow_definitions')->insertGetId([
+            'code' => 'util_test_wf', 'name' => 'Utilization Test Workflow', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $versionId = DB::table('workflow_versions')->insertGetId([
+            'workflow_definition_id' => $definitionId, 'version_number' => 1,
+            'state' => WorkflowVersionState::PUBLISHED->value, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $stageId = DB::table('workflow_stages')->insertGetId([
+            'workflow_version_id' => $versionId, 'code' => 'intake', 'name' => 'Intake', 'is_initial' => true,
+            'status' => 'ACTIVE', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        DB::table('stage_permissions')->insert([
+            'stage_id' => $stageId, 'role_id' => $role->id, 'access_level' => 'EXECUTE',
+            'display_label' => $role->name, 'created_at' => now(), 'updated_at' => now(),
         ]);
 
         $this->dataEntry = User::query()->create([
@@ -42,6 +64,7 @@ class FinancingUtilizationEndpointTest extends TestCase
             'bank_id' => $bank->id,
             'is_active' => true,
         ]);
+        $this->dataEntry->roles()->attach($role->id);
     }
 
     public function test_returns_aggregate_utilization_shape(): void
