@@ -232,4 +232,35 @@ class ScreenPermissionTest extends TestCase
         $roleCodes = collect($response->json('data.roles'))->pluck('code')->all();
         $this->assertNotContains('system_admin', $roleCodes);
     }
+
+    // ── Merchants MANAGE carve-out: system_admin is always denied ────────
+
+    public function test_system_admin_never_has_merchants_manage_even_if_granted(): void
+    {
+        $merchantsScreenId = Screen::where('key', 'merchants')->value('id');
+
+        // Force-grant MANAGE directly, bypassing the admin UI, to prove the
+        // code-level guard holds even when the data says otherwise.
+        ScreenPermission::create([
+            'role_id' => $this->systemAdminRole->id,
+            'screen_id' => $merchantsScreenId,
+            'capability' => 'MANAGE',
+        ]);
+
+        app(PermissionService::class)->clearScreenPermissionCache($this->systemAdminRole->id);
+
+        $this->assertFalse(
+            app(PermissionService::class)->userHasCapability($this->admin, 'merchants', 'MANAGE')
+        );
+    }
+
+    public function test_system_admin_keeps_merchants_view_and_export(): void
+    {
+        $this->assertTrue(
+            app(PermissionService::class)->userHasCapability($this->admin, 'merchants', 'VIEW')
+        );
+        $this->assertTrue(
+            app(PermissionService::class)->userHasCapability($this->admin, 'merchants', 'EXPORT')
+        );
+    }
 }

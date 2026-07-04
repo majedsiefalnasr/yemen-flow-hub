@@ -193,9 +193,19 @@ class PermissionService
     /**
      * Whether the user holds a specific capability on a specific screen,
      * derived from the data-driven screen_permissions catalog (never role codes).
+     *
+     * Exception: system_admin never holds MANAGE on the merchants screen,
+     * even if a screen_permissions row grants it -- system_admin may
+     * inspect and export merchant data but never create/update/delete it.
+     * This is enforced here (not just by omission from seed data) so it
+     * cannot be bypassed by a future manual grant.
      */
     public function userHasCapability(User $user, string $screenKey, string $capability): bool
     {
+        if ($screenKey === 'merchants' && $capability === 'MANAGE' && $user->hasRoleCode('system_admin')) {
+            return false;
+        }
+
         $sp = $this->screenPermissionsForUser($user);
 
         return in_array($capability, $sp[$screenKey] ?? [], true);
