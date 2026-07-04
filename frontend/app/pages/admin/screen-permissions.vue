@@ -28,9 +28,6 @@ const REQUEST_CAPS: { cap: 'view' | 'add' | 'edit'; label: string }[] = [
 const CAP_LABELS: Record<string, string> = {
   VIEW: 'عرض',
   MANAGE: 'إدارة',
-  CREATE: 'إنشاء',
-  UPDATE: 'تعديل',
-  DELETE: 'حذف',
   EXPORT: 'تصدير',
 }
 
@@ -150,7 +147,7 @@ onMounted(fetchMatrix)
     </PageHeader>
 
     <Card class="border-0 shadow">
-      <CardContent class="flex items-start gap-3 p-4">
+      <CardContent class="flex items-start gap-3">
         <Info class="text-primary mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
         <div class="text-muted-foreground text-sm leading-relaxed">
           مسؤول النظام يملك كل الصلاحيات تلقائيًا (غير معروض). صلاحيات شاشة
@@ -182,7 +179,7 @@ onMounted(fetchMatrix)
       <AlertDescription>{{ error }}</AlertDescription>
     </Alert>
 
-    <Card class="overflow-hidden border-0 shadow">
+    <Card class="overflow-hidden border-0 shadow py-0">
       <CardContent class="p-0">
         <div v-if="loading" class="space-y-2 p-4">
           <Skeleton v-for="n in 6" :key="n" class="h-10 w-full rounded-md" />
