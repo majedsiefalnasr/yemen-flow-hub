@@ -5,7 +5,6 @@ namespace Tests\Feature\Merchants;
 use App\Enums\UserRole;
 use App\Models\Bank;
 use App\Models\Merchant;
-use App\Models\Permission;
 use App\Models\Role;
 use App\Models\Screen;
 use App\Models\ScreenPermission;
@@ -14,7 +13,6 @@ use App\Services\Authorization\PermissionService;
 use Database\Seeders\GovernanceSeeder;
 use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
@@ -46,8 +44,6 @@ class MerchantControllerTest extends TestCase
 
         $this->bankAdminRole = Role::where('code', 'bank_admin')->firstOrFail();
         $this->bankAdmin->roles()->attach($this->bankAdminRole->id);
-
-        $this->seedMerchantsPermission();
     }
 
     private function makeBank(string $code): Bank
@@ -84,33 +80,6 @@ class MerchantControllerTest extends TestCase
             'version' => 1,
             'created_by' => $this->bankAdmin->id,
         ], $overrides));
-    }
-
-    /**
-     * UNRESOLVED LEGACY DEPENDENCY (see task-9-audit-report.md): cbyadmin has no
-     * governance role attached and still needs merchants:MANAGE via the legacy
-     * permissions/role_permissions fallback for test_cby_admin_must_provide_bank_id()
-     * and test_cby_admin_creates_for_selected_bank() below. Under the new
-     * screen_permissions model, system_admin (cbyadmin's governance-role
-     * equivalent) is deliberately denied merchants:MANAGE (see
-     * docs/superpowers/specs/2026-07-04-screen-permissions-simplification-design.md),
-     * and no other non-bank-user governance role is granted merchants:MANAGE by
-     * ScreenPermissionSeeder. bank_admin no longer needs this grant -- it now
-     * gets merchants:MANAGE for real via its attached governance role and
-     * ScreenPermissionSeeder, confirmed by removing its legacy row here.
-     */
-    private function seedMerchantsPermission(): void
-    {
-        $permissionId = Permission::query()->insertGetId([
-            'slug' => 'merchants.manage',
-            'name_ar' => 'إدارة المستوردين',
-            'name_en' => 'Manage importers',
-            'group' => 'admin',
-        ]);
-
-        DB::table('role_permissions')->insert([
-            ['permission_id' => $permissionId, 'role' => UserRole::CBY_ADMIN->value],
-        ]);
     }
 
     // ─── GET /api/v1/merchants ───────────────────────────────────────────────
@@ -243,25 +212,6 @@ class MerchantControllerTest extends TestCase
         $this->assertSame($this->bank->id, $response->json('data.bank_id'));
     }
 
-    public function test_cby_admin_must_provide_bank_id(): void
-    {
-        $this->actingAs($this->cbyadmin)->postJson('/api/v1/merchants', [
-            'name' => 'تاجر بدون بنك',
-            'tax_number' => 'TX-NO-BANK',
-        ])->assertUnprocessable();
-    }
-
-    public function test_cby_admin_creates_for_selected_bank(): void
-    {
-        $response = $this->actingAs($this->cbyadmin)->postJson('/api/v1/merchants', [
-            'name' => 'تاجر مركزي',
-            'tax_number' => 'TX-CBY-001',
-            'bank_id' => $this->otherBank->id,
-        ]);
-
-        $response->assertCreated()->assertJsonPath('data.bank_id', $this->otherBank->id);
-    }
-
     public function test_create_requires_name_and_tax_number(): void
     {
         $this->actingAs($this->bankAdmin)
@@ -290,10 +240,8 @@ class MerchantControllerTest extends TestCase
     public function test_merchant_create_allowed_when_role_has_merchants_manage(): void
     {
         // bank_admin already gets merchants:MANAGE for real from
-        // ScreenPermissionSeeder (not from seedMerchantsPermission(), which only
-        // grants the legacy CBY_ADMIN fallback -- see its docblock); re-assert
-        // explicitly so this test documents and verifies the positive path
-        // independent of the seeder default.
+        // ScreenPermissionSeeder; re-assert explicitly so this test documents
+        // and verifies the positive path independent of the seeder default.
         $screenId = Screen::where('key', 'merchants')->value('id');
         ScreenPermission::firstOrCreate([
             'role_id' => $this->bankAdminRole->id,
