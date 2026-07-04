@@ -135,7 +135,7 @@ onMounted(fetchMatrix)
 </script>
 
 <template>
-  <div class="mx-auto max-w-[1600px] space-y-6 p-6">
+  <div class="mx-auto max-w-[1600px] space-y-6 py-2">
     <PageHeader
       title="صلاحيات ظهور الشاشات"
       subtitle="مصفوفة واحدة: كل دور في صف، وكل شاشة في مجموعة أعمدة. صلاحيات الطلبات مشتقة من مصمم سير العمل."

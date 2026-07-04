@@ -428,7 +428,7 @@ function handleReset() {
 </script>
 
 <template>
-  <div class="mx-auto max-w-[1600px] space-y-6 p-6" dir="rtl">
+  <div class="mx-auto max-w-[1600px] space-y-6 py-2" dir="rtl">
     <PageHeader
       title="طلبات التمويل"
       subtitle="متابعة طلبات تمويل الواردات وإدارة ما ينتظر إجراءك عبر مراحل سير العمل"

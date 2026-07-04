@@ -199,7 +199,7 @@ onMounted(reload)
 
 <template>
   <ScreenGuard screen="workflow_designer">
-    <div class="mx-auto max-w-[1600px] space-y-6 p-6">
+    <div class="mx-auto max-w-[1600px] space-y-6 py-2">
       <PageHeader
         title="مصمم مسارات العمل"
         subtitle="إنشاء وإدارة تعريفات مسارات العمل ونسخها ضمن تبويبات تصميم متخصصة"

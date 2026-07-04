@@ -704,7 +704,7 @@ function statusLabel(status: string) {
 Use template shape:
 
 ```vue
-<div class="mx-auto max-w-[1600px] space-y-6 p-6" dir="rtl">
+<div class="mx-auto max-w-[1600px] space-y-6 py-2" dir="rtl">
   <PageHeader
     title="سير العمل الديناميكي"
     subtitle="متابعة طلبات محرك سير العمل والطلبات التي تنتظر إجراءك"
