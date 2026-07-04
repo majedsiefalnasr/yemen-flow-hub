@@ -22,7 +22,6 @@ use App\Models\WorkflowStage;
 use App\Models\WorkflowTransition;
 use App\Models\WorkflowVersion;
 use Database\Seeders\GovernanceSeeder;
-use Database\Seeders\PermissionSeeder;
 use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -40,7 +39,7 @@ class EngineDuplicateInvoiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed([PermissionSeeder::class, GovernanceSeeder::class, ScreenPermissionSeeder::class]);
+        $this->seed([GovernanceSeeder::class, ScreenPermissionSeeder::class]);
 
         $bankOrg = Organization::where('code', 'commercial_banks')->firstOrFail();
         $entryRole = Role::where('code', 'intake')->firstOrFail();

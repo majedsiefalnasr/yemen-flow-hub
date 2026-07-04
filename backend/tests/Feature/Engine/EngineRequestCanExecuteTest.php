@@ -7,7 +7,6 @@ use App\Enums\UserRole;
 use App\Models\Role;
 use App\Models\StagePermission;
 use App\Models\User;
-use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\EngineWorkflowFactory;
 use Tests\TestCase;
@@ -59,7 +58,6 @@ class EngineRequestCanExecuteTest extends TestCase
 
         // System admin sees every request (policy view === true) but is not
         // assigned to execute this stage, so must not be offered stage actions.
-        (new PermissionSeeder)->run();
         $admin = User::factory()->create(['role' => UserRole::CBY_ADMIN->value]);
         $admin->roles()->attach(Role::query()->where('code', 'system_admin')->firstOrFail()->id);
 

@@ -9,7 +9,6 @@ use App\Models\Role;
 use App\Models\Team;
 use App\Models\User;
 use Database\Seeders\GovernanceSeeder;
-use Database\Seeders\PermissionSeeder;
 use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -48,7 +47,7 @@ class EngineBankAdminRbacTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed([PermissionSeeder::class, GovernanceSeeder::class, ScreenPermissionSeeder::class]);
+        $this->seed([GovernanceSeeder::class, ScreenPermissionSeeder::class]);
 
         $this->bankOrg = Organization::where('code', 'commercial_banks')->firstOrFail();
         $this->intakeRole = Role::where('code', 'intake')->firstOrFail();

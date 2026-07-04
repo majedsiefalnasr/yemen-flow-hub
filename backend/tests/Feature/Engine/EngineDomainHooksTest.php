@@ -24,7 +24,6 @@ use App\Models\WorkflowTransition;
 use App\Models\WorkflowVersion;
 use App\Services\Workflow\Engine\EngineFinancingLedger;
 use Database\Seeders\GovernanceSeeder;
-use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
@@ -55,7 +54,7 @@ class EngineDomainHooksTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed([PermissionSeeder::class, GovernanceSeeder::class]);
+        $this->seed(GovernanceSeeder::class);
 
         // Point the DI-4 hooks at this test workflow's stage codes.
         config([

@@ -23,7 +23,6 @@ use App\Models\WorkflowTransition;
 use App\Models\WorkflowVersion;
 use App\Services\Workflow\StageHookRegistry;
 use Database\Seeders\GovernanceSeeder;
-use Database\Seeders\PermissionSeeder;
 use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -63,7 +62,7 @@ class EngineRequestTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed([PermissionSeeder::class, GovernanceSeeder::class, ScreenPermissionSeeder::class]);
+        $this->seed([GovernanceSeeder::class, ScreenPermissionSeeder::class]);
         $this->setUpWorkflow();
     }
 

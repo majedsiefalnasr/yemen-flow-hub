@@ -5,12 +5,12 @@ namespace Tests\Feature\Engine;
 use App\Enums\UserRole;
 use App\Models\Bank;
 use App\Models\EngineRequest;
+use App\Models\Role;
 use App\Models\User;
 use App\Models\WorkflowDefinition;
 use App\Models\WorkflowStage;
 use App\Models\WorkflowVersion;
 use Database\Seeders\GovernanceSeeder;
-use Database\Seeders\PermissionSeeder;
 use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -33,11 +33,12 @@ class EngineReportTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed([PermissionSeeder::class, GovernanceSeeder::class, ScreenPermissionSeeder::class]);
+        $this->seed([GovernanceSeeder::class, ScreenPermissionSeeder::class]);
 
         $this->bank = Bank::create(['name' => 'Report Bank', 'code' => 'RPB', 'is_active' => true]);
 
-        // CBY Admin has reports.view permission via PermissionSeeder
+        // CBY Admin has reports:VIEW via the system_admin governance role's
+        // screen_permissions grant.
         $this->reportViewer = User::create([
             'name' => 'CBY Admin',
             'email' => 'admin@report.test',
@@ -46,8 +47,11 @@ class EngineReportTest extends TestCase
             'bank_id' => null,
             'is_active' => true,
         ]);
+        $systemAdminRole = Role::query()->where('code', 'system_admin')->firstOrFail();
+        $this->reportViewer->roles()->attach($systemAdminRole->id);
 
-        // BANK_ADMIN does NOT get reports.view from PermissionSeeder
+        // BANK_ADMIN has no governance role attached here, so it does not
+        // get reports:VIEW.
         $this->bankReportViewer = User::create([
             'name' => 'Bank Admin',
             'email' => 'bankadmin@report.test',
