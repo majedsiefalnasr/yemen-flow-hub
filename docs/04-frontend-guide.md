@@ -256,15 +256,15 @@ Dashboards are operational workspaces, not global analytics pages.
 
 ---
 
-# Requests
+# Requests (Dynamic Workflow Engine)
 
 ```text
-/requests
-/requests/new
-/requests/[id]
+/workflows
+/workflows/new
+/workflows/instances/[id]
 ```
 
-Features:
+The legacy `/requests`, `/requests/new`, and `/requests/[id]` routes no longer exist — the dynamic-engine request pages replaced them. Features:
 
 - Request list
 - Filters
@@ -272,7 +272,7 @@ Features:
 - Status badges
 - Timeline
 - Documents
-- Workflow actions based on role and request state
+- Workflow actions based on role and request state (executed as stage transitions/actions, not a fixed per-status action set)
 - Read-only workflow states after internal approval
 - Organization-scoped request visibility
 - Role-specific business statuses
@@ -282,12 +282,7 @@ Features:
 
 # Voting
 
-```text
-/voting
-/voting/[id]
-```
-
-Features:
+Executive voting has no dedicated `/voting`/`/voting/[id]` route family — those legacy pages no longer exist. Voting is presented as part of the `/workflows/instances/[id]` request detail page when the request's current stage is a voting stage, using the same workflow actions/transitions UI as every other stage. Features:
 
 - Pending votes
 - Vote details
@@ -300,10 +295,9 @@ Features:
 
 ```text
 /customs
-/customs/[id]
 ```
 
-Features:
+The legacy `/customs/[id]` detail route no longer exists; external FX confirmation content for a given request is presented on its `/workflows/instances/[id]` page. Features:
 
 - External FX confirmation generation
 - PDF preview
@@ -311,11 +305,14 @@ Features:
 
 ---
 
-# Users & Banks
+# Users & Banks (Admin)
+
+The legacy top-level `/users` and `/banks` routes no longer exist. Admin management pages live under role-scoped paths instead:
 
 ```text
-/users
-/banks
+/admin/banks
+/bank/users
+/staff
 ```
 
 Admin-only pages.

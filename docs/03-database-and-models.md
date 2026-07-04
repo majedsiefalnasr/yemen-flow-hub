@@ -46,67 +46,203 @@ Represents all system users.
 
 ## Fields
 
-| Field         | Type               |
-| ------------- | ------------------ |
-| id            | bigint             |
-| bank_id       | foreignId nullable |
-| role          | enum               |
-| name          | string             |
-| email         | string unique      |
-| password      | string             |
-| is_active     | boolean            |
-| last_login_at | timestamp nullable |
-| created_at    | timestamp          |
-| updated_at    | timestamp          |
+| Field           | Type               |
+| --------------- | ------------------ |
+| id              | bigint             |
+| organization_id | foreignId nullable |
+| bank_id         | foreignId nullable |
+| role            | string             |
+| name            | string             |
+| email           | string unique      |
+| password        | string             |
+| is_active       | boolean            |
+| last_login_at   | timestamp nullable |
+| created_at      | timestamp          |
+| updated_at      | timestamp          |
+
+`role` is a legacy single-value column retained for backward compatibility. Live authorization for the dynamic workflow engine is resolved through the `organizations` / `teams` / `roles` governance tables below via the `user_roles` and `user_teams` pivot tables, not this column alone.
 
 ---
 
-# 3. import_requests
+# 3. Governance Tables: organizations, teams, roles
 
-Main workflow table.
+The dynamic workflow engine's permission model is built on an organization/team/role hierarchy rather than a single fixed `role` enum.
 
-Stores financing requests and current workflow state.
+## organizations
+
+| Field     | Type          |
+| --------- | ------------- |
+| id        | bigint        |
+| code      | string unique |
+| name      | string        |
+| is_system | boolean       |
+| is_active | boolean       |
+
+## teams
+
+| Field           | Type      |
+| --------------- | --------- |
+| id              | bigint    |
+| organization_id | foreignId |
+| code            | string    |
+| name            | string    |
+| is_system       | boolean   |
+| is_active       | boolean   |
+
+Unique on `(organization_id, code)`.
+
+## roles
+
+| Field           | Type      |
+| --------------- | --------- |
+| id              | bigint    |
+| organization_id | foreignId |
+| code            | string    |
+| name            | string    |
+| is_system       | boolean   |
+| is_active       | boolean   |
+
+Unique on `(organization_id, code)`.
+
+## user_roles / user_teams (pivots)
+
+`user_roles` links `users` to `roles` (unique per `user_id`/`role_id` pair); `user_teams` links `users` to `teams` (unique per `user_id`/`team_id` pair). A user may hold multiple roles/teams; these pivots are what `stage_permissions` matches against.
+
+---
+
+# 4. Dynamic Workflow Engine Tables
+
+The workflow is not hardcoded — it is authored as data across these tables.
+
+## workflow_definitions
+
+| Field       | Type          |
+| ----------- | ------------- |
+| id          | bigint        |
+| code        | string unique |
+| name        | string        |
+| description | text nullable |
+| is_active   | boolean       |
+| version     | integer       |
+
+## workflow_versions
+
+One definition can have multiple versions; only one is normally `PUBLISHED` at a time.
+
+| Field                   | Type               |
+| ----------------------- | ------------------ |
+| id                      | bigint             |
+| workflow_definition_id  | foreignId          |
+| version_number          | integer            |
+| state                   | string (`DRAFT` \| `PUBLISHED` \| `ARCHIVED`) |
+| published_at            | timestamp nullable |
+| version                 | integer            |
+
+Unique on `(workflow_definition_id, version_number)`.
+
+## workflow_stages
+
+| Field                 | Type          |
+| --------------------- | ------------- |
+| id                    | bigint        |
+| workflow_version_id   | foreignId     |
+| code                  | string        |
+| name                  | string        |
+| description           | text nullable |
+| sort_order            | integer       |
+| is_initial            | boolean       |
+| is_final              | boolean       |
+| sla_duration_minutes  | integer nullable |
+| requires_claim        | boolean       |
+| status                | string (`ACTIVE` \| `INACTIVE`) |
+| version               | integer       |
+
+Unique on `(workflow_version_id, code)`. `requires_claim` marks stages (e.g. support review) that need the claim/heartbeat/release lifecycle before another user can also act on the request.
+
+## workflow_actions
+
+| Field     | Type          |
+| --------- | ------------- |
+| id        | bigint        |
+| code      | string unique |
+| name      | string        |
+| kind      | string (`DRAFT`\|`APPROVE`\|`REJECT`\|`RETURN`\|`CLOSE`\|`INFO`\|`CUSTOM`) |
+| is_active | boolean       |
+| is_system | boolean       |
+| version   | integer       |
+
+## workflow_transitions
+
+| Field                 | Type          |
+| --------------------- | ------------- |
+| id                    | bigint        |
+| workflow_version_id   | foreignId     |
+| from_stage_id         | foreignId     |
+| action_id             | foreignId     |
+| to_stage_id           | foreignId     |
+| requires_comment      | boolean       |
+| confirmation_message  | string nullable |
+| version               | integer       |
+
+Unique on `(from_stage_id, action_id)` — a stage can only wire a given action to one destination stage.
+
+## stage_permissions
+
+Controls who can view or execute a stage. At least one of `organization_id`/`team_id`/`role_id`/`user_id` is set to scope the grant.
+
+| Field           | Type               |
+| --------------- | ------------------ |
+| id              | bigint             |
+| stage_id        | foreignId          |
+| organization_id | foreignId nullable |
+| team_id         | foreignId nullable |
+| role_id         | foreignId nullable |
+| user_id         | foreignId nullable |
+| access_level    | string (`VIEW` \| `EXECUTE`) |
+| display_label   | string             |
+| version         | integer            |
+
+---
+
+# 5. engine_requests
+
+Main workflow table (replaces the legacy `import_requests` table, which has been physically dropped from the schema).
+
+Stores financing requests and their position in a published `WorkflowVersion`.
 
 ## Fields
 
-| Field                  | Type               |
-| ---------------------- | ------------------ |
-| id                     | bigint             |
-| request_number         | string unique      |
-| bank_id                | foreignId          |
-| current_status         | enum               |
-| currency               | enum               |
-| amount                 | decimal            |
-| supplier_name          | string             |
-| goods_description      | text               |
-| port_of_entry          | string             |
-| notes                  | text nullable      |
-| swift_uploaded_at      | timestamp nullable |
-| final_decision_at      | timestamp nullable |
-| customs_declaration_id | foreignId nullable |
-| created_by             | foreignId          |
-| last_updated_by        | foreignId nullable |
-| submitted_by           | foreignId nullable |
-| reviewed_by            | foreignId nullable |
-| rejected_by            | foreignId nullable |
-| resubmitted_by         | foreignId nullable |
-| support_reviewed_by    | foreignId nullable |
-| support_claimed_by     | foreignId nullable |
-| support_claimed_at     | timestamp nullable |
-| swift_uploaded_by      | foreignId nullable |
-| voting_opened_by       | foreignId nullable |
-| voting_opened_at       | timestamp nullable |
-| voting_closed_by       | foreignId nullable |
-| voting_closed_at       | timestamp nullable |
-| voting_session_status  | enum nullable      |
-| created_at             | timestamp          |
-| updated_at             | timestamp          |
+| Field                | Type               |
+| -------------------- | ------------------ |
+| id                   | bigint             |
+| workflow_version_id  | foreignId          |
+| current_stage_id     | foreignId          |
+| reference            | string unique      |
+| status               | string (`ACTIVE` \| `CLOSED` \| `REJECTED`, default `ACTIVE`) |
+| created_by           | foreignId          |
+| claimed_by           | foreignId nullable |
+| claimed_at           | timestamp nullable |
+| claim_expires_at     | timestamp nullable |
+| bank_id              | foreignId nullable |
+| merchant_id          | foreignId nullable |
+| data                 | json nullable      |
+| version              | integer            |
+| amount               | decimal nullable   |
+| currency             | string nullable    |
+| invoice_number       | string nullable    |
+| request_percentage   | decimal nullable   |
+| created_at           | timestamp          |
+| updated_at           | timestamp          |
+
+`status` here is a coarse lifecycle flag (`ACTIVE`/`CLOSED`/`REJECTED`), not the fine-grained business status enum in `docs/01-workflow-and-business-rules.md`. The request's position in the business-rules lifecycle is expressed by `current_stage_id` (which `WorkflowStage` the request currently occupies) combined with its dynamic `data`. `amount`, `currency`, `invoice_number`, and `request_percentage` are "hybrid projection" columns: indexed copies of values that otherwise live inside the `data` JSON, kept in sync by `RequestProjectionSync` so reports/filters never need to scan JSON.
+
+`claimed_by`/`claimed_at`/`claim_expires_at` implement the claim lifecycle (used by stages where `requires_claim` is true, e.g. support review) — this replaces the older `support_claimed_by`/`support_claimed_at` fields once modeled directly on the request row.
 
 ---
 
-# 4. request_documents
+# 6. engine_request_documents
 
-Stores uploaded request files.
+Stores uploaded request files (replaces the legacy `request_documents` table, which has been physically dropped from the schema).
 
 ## Supported Documents
 
@@ -139,25 +275,6 @@ Stores uploaded request files.
 
 ---
 
-# 5. request_votes
-
-Stores executive committee votes.
-
-## Fields
-
-| Field         | Type          |
-| ------------- | ------------- |
-| id            | bigint        |
-| request_id    | foreignId     |
-| user_id       | foreignId     |
-| vote          | enum          |
-| vote_source   | enum          |
-| justification | text nullable |
-| voted_at      | timestamp     |
-| created_at    | timestamp     |
-
----
-
 # Voting Rules
 
 - One vote per executive member
@@ -173,69 +290,81 @@ Vote types:
 - ABSTAIN
 - AUTO_ABSTAIN_TIMEOUT
 
+There is no dedicated `request_votes` table in the current schema (the legacy `request_votes` table has been physically dropped). Executive voting is executed as stage transitions/actions on `engine_requests` through the dynamic workflow engine; see `docs/01-workflow-and-business-rules.md` for the full voting business rules.
+
 ---
 
-# 6. request_stage_history
+# 7. workflow_history
 
-Stores workflow transition history.
+Stores workflow transition history (replaces the legacy `request_stage_history` table, which has been physically dropped from the schema).
 
 ## Purpose
 
-Tracks all workflow movement.
+Tracks all workflow movement for an `engine_requests` row.
 
 ## Fields
 
 | Field        | Type          |
 | ------------ | ------------- |
 | id           | bigint        |
-| request_id   | foreignId     |
-| from_status  | enum nullable |
-| to_status    | enum          |
-| action       | string        |
+| request_id   | foreignId (→ engine_requests) |
+| from_stage_id| foreignId nullable (→ workflow_stages) |
+| to_stage_id  | foreignId (→ workflow_stages) |
+| action_code  | string nullable |
 | performed_by | foreignId     |
-| notes        | text nullable |
+| comments     | text nullable |
 | created_at   | timestamp     |
+
+Note: this table tracks stage-to-stage movement (`from_stage_id`/`to_stage_id`), not the business-status-to-business-status movement (`from_status`/`to_status`) an earlier design described — stage identity is workflow-version-specific.
 
 ---
 
-# 7. audit_logs
+# 8. audit_logs
 
 Stores security and system audit events.
 
 ## Fields
 
-| Field         | Type               |
-| ------------- | ------------------ |
-| id            | bigint             |
-| user_id       | foreignId nullable |
-| role          | enum nullable      |
-| action        | string             |
-| entity_type   | string             |
-| entity_id     | bigint             |
-| from_status   | enum nullable      |
-| to_status     | enum nullable      |
-| metadata      | json nullable      |
-| created_at    | timestamp          |
+| Field                  | Type               |
+| ---------------------- | ------------------ |
+| id                     | bigint             |
+| user_id                | foreignId nullable |
+| user_role              | string nullable    |
+| actor_role_id          | foreignId nullable (→ roles) |
+| action                 | string             |
+| subject_type           | string nullable    |
+| subject_id             | bigint nullable    |
+| workflow_instance_id   | foreignId nullable (→ engine_requests) |
+| correlation_id         | string nullable    |
+| ip_address             | string nullable    |
+| user_agent             | string nullable    |
+| metadata               | json nullable      |
+| old_values             | json nullable      |
+| new_values             | json nullable      |
+| created_at             | timestamp          |
 
-Note: `role` captures the user's role at the time of the action (not current role), preserving audit integrity even if roles change. `from_status` and `to_status` record workflow state changes; they are null for non-transition events (e.g., login, file upload). The `request_stage_history` table tracks workflow transitions in detail; `audit_logs` provides the broader security and compliance audit trail.
+Note: `user_role` captures the user's role label at the time of the action (not current role), preserving audit integrity even if roles change; `actor_role_id` links this to the governance `roles` table. `subject_type`/`subject_id` identify the audited entity polymorphically (an `EngineRequest`, a `WorkflowVersion`, a user, etc.) rather than a fixed `entity_type`/`entity_id` pair scoped only to requests. There are no dedicated `from_status`/`to_status` columns; state-change detail for a given action is carried in `old_values`/`new_values` (or `metadata`), while `workflow_history` (above) is the authoritative stage-to-stage transition log for `engine_requests`.
 
 ---
 
-# 8. customs_declarations
+# 9. customs_declarations
 
 Stores external FX confirmation document information. The table name remains `customs_declarations` as a legacy compatibility name.
 
 ## Fields
 
-| Field              | Type          |
-| ------------------ | ------------- |
-| id                 | bigint        |
-| request_id         | foreignId     |
-| declaration_number | string unique |
-| issued_by          | foreignId     |
-| pdf_path           | string        |
-| issued_at          | timestamp     |
-| created_at         | timestamp     |
+| Field              | Type               |
+| ------------------ | ------------------ |
+| id                 | bigint             |
+| request_id         | foreignId nullable |
+| engine_request_id  | foreignId nullable (→ engine_requests) |
+| declaration_number | string unique      |
+| issued_by          | foreignId          |
+| pdf_path           | string             |
+| issued_at          | timestamp          |
+| created_at         | timestamp          |
+
+`request_id` is the legacy foreign key (now nullable, kept only because pre-engine rows still reference it). `engine_request_id` is the current foreign key used for declarations tied to `engine_requests`; exactly one of the two is populated per row.
 
 ---
 
@@ -246,13 +375,12 @@ Stores external FX confirmation document information. The table name remains `cu
 ```text
 Bank
  └── Users
- └── Import Requests
+ └── Engine Requests
 
-Import Request
- └── Organizational Workflow Ownership
+Engine Request (via published WorkflowVersion → WorkflowStage)
+ └── Stage Permissions (organization / team / role / user scoped)
  └── Documents
- └── Votes
- └── Stage History
+ └── Workflow History
  └── Audit Logs
  └── External FX Confirmation
 ```
@@ -325,14 +453,14 @@ EXECUTIVE_VOTING_OPEN
 EXECUTIVE_VOTING_CLOSED
 ```
 
-## Relationship Between `current_status` and `voting_session_status`
+## How Executive Voting Phase Is Tracked
 
-`voting_session_status` is a **denormalized sub-state cache** for the executive voting phase only.
+There is no dedicated `current_status`/`voting_session_status` pair of columns on `engine_requests` — that denormalized-cache design predates the dynamic engine. Instead:
 
-- When `current_status` is in the executive voting range (`WAITING_FOR_VOTING_OPEN`, `EXECUTIVE_VOTING_OPEN`, `EXECUTIVE_VOTING_CLOSED`), `voting_session_status` mirrors `current_status` for fast queue filtering without joining.
-- Outside the executive voting phase, `voting_session_status` is `NULL`.
-- `current_status` is always the authoritative source of truth.
-- `voting_session_status` must be kept in sync by `WorkflowService` and `VotingService` during every voting-phase transition.
+- `engine_requests.current_stage_id` points at the `WorkflowStage` the request currently occupies within its published `WorkflowVersion` (e.g. the stage corresponding to `EXECUTIVE_VOTING_OPEN` for the seeded Import Financing workflow).
+- `engine_requests.status` is a coarse lifecycle flag (`ACTIVE`/`CLOSED`/`REJECTED`) unrelated to the business-status enum above; it does not distinguish voting sub-states.
+- The business-status labels in the "Request Statuses" enum above (including the voting-phase values) describe which `WorkflowStage` a request is in, not a literal column value stored on the request row.
+- `EngineTransitionService::execute()` is the single mechanism that advances `current_stage_id` for every transition, including opening/closing a voting stage — there is no separate `WorkflowService`/`VotingService` pair keeping two columns in sync.
 
 ---
 
@@ -350,22 +478,16 @@ SAR
 
 Requests belong to the bank entity, NOT individual users.
 
-Workflow actor fields exist for auditability only.
+`engine_requests` does not carry one dedicated `*_by` column per lifecycle event the way the legacy `import_requests` table did. Instead:
 
-| Field               | Purpose                               |
-| ------------------- | ------------------------------------- |
-| created_by          | Original draft creator                |
-| last_updated_by     | Last draft editor                     |
-| submitted_by        | Submitted request for internal review |
-| reviewed_by         | Internal bank reviewer                |
-| rejected_by         | Last rejecting workflow actor         |
-| resubmitted_by      | Last user who resubmitted request     |
-| support_claimed_by  | Active support reviewer               |
-| support_claimed_at  | Active claim timestamp                |
-| support_reviewed_by | Final support reviewer                |
-| swift_uploaded_by   | SWIFT uploader                        |
-| voting_opened_by    | Voting session opener                 |
-| voting_closed_by    | Voting session closer                 |
+| Field            | Purpose                                                                 |
+| ---------------- | ------------------------------------------------------------------------ |
+| created_by        | Original draft creator                                                  |
+| claimed_by        | Current active claimant (e.g. the support reviewer actively reviewing)   |
+| claimed_at        | When the current claim was acquired                                     |
+| claim_expires_at  | When the current claim's TTL expires absent a heartbeat                 |
+
+Every other workflow actor (submitter, reviewer, rejector, SWIFT uploader, voting session opener/closer, etc.) is recorded per-transition in `workflow_history.performed_by`, not as a column on the request row — auditability comes from replaying the request's transition history rather than from a fixed set of actor columns.
 
 ---
 
@@ -525,17 +647,17 @@ The database structure should support future features including:
 
 # Technical Recommendations
 
-## Recommended Indexes
+## Indexes on `engine_requests`
 
-- request_number
-- current_status
-- support_claimed_by
-- support_claimed_at
+- reference (unique)
+- status
 - bank_id
-- voting_session_status
-- voting_opened_at
-- voting_closed_at
-- voted_at
+- merchant_id
+- claimed_by
+- claim_expires_at
+- amount, currency, invoice_number (hybrid projection columns, indexed for reporting/filtering)
+- composite: (status, current_stage_id)
+- composite: (workflow_version_id, status)
 - created_at
 
 ---
@@ -545,9 +667,8 @@ The database structure should support future features including:
 The backend should use:
 
 - Laravel Eloquent Models
-- Service classes
+- Service classes (`EngineTransitionService`, `WorkflowDesignerService`, `EngineClaimService`, and related `Services/Workflow/` classes — see `docs/02-system-architecture.md`)
 - Enums for statuses and roles
-- Workflow service
 - Policy-based authorization
 - Centralized audit logging
 

@@ -93,8 +93,7 @@ backend/
 │   ├── Notifications/
 │   ├── Policies/
 │   ├── Services/
-│   │   ├── Workflow/
-│   │   ├── Voting/
+│   │   ├── Workflow/    ← EngineTransitionService, WorkflowDesignerService, EngineClaimService, etc.
 │   │   ├── Audit/
 │   │   ├── Documents/
 │   │   └── Notifications/
@@ -111,11 +110,11 @@ backend/
 
 # Core Backend Services
 
-# 1. Workflow Service
+# 1. Dynamic Workflow Engine
 
-The Workflow Service is the core of the platform.
+There is no single monolithic "Workflow Service" class. The core of the platform is a set of focused services in `app/Services/Workflow/`, led by `EngineTransitionService` (executes transitions on `EngineRequest`s), `WorkflowDesignerService` (authors/validates/publishes `WorkflowVersion`s), `StagePermissionResolver` (resolves per-stage view/execute access from `stage_permissions`), `EngineClaimService` (claim/heartbeat/release), and `StageFieldRuleValidator` (per-stage field rules).
 
-Responsible for:
+Together, responsible for:
 
 - Request transitions
 - Stage validation
@@ -155,12 +154,17 @@ The workflow engine must validate:
 # Example Workflow Transition
 
 ```php
-$workflow->transition(
-    request: $request,
-    action: 'support_approve',
-    user: auth()->user()
+$engineTransitionService->execute(
+    request: $engineRequest,
+    transitionId: $transitionId,
+    comment: $comment,
+    data: $data,
+    version: $version,
+    actor: auth()->user(),
 );
 ```
+
+`$transitionId` identifies a `WorkflowTransition` row (from-stage + action + to-stage) on the request's current `WorkflowVersion` — there is no fixed string action name like `support_approve`; the available transitions are whatever the published workflow version defines for the request's current stage.
 
 ---
 
@@ -594,7 +598,7 @@ After executive rejection:
 
 Each workflow transition must create:
 
-- request_stage_history record
+- workflow_history record (replaces the dropped `request_stage_history` table)
 - audit_logs record
 - voting session events
 - claim lifecycle events
@@ -787,29 +791,26 @@ Documents should be stored using:
 
 # Immutable Workflow State Enforcement
 
-The `ImportRequest` model must guard against direct status mutation.
+There is no `ImportRequest` model in the current codebase — the request model is `EngineRequest` (table `engine_requests`).
 
 Implementation requirement:
 
-The `current_status` attribute must only be changed through `WorkflowService::transition()`.
+The request's `current_stage_id` (and coarse `status`) must only be changed through `EngineTransitionService::execute()`, never by direct attribute assignment on the model.
 
-Any attempt to set `current_status` directly on the model outside of `WorkflowService` must throw a `DirectStatusMutationException`.
+Unlike an earlier design, this is not enforced by a model-level `setAttribute()` guard: `EngineRequest` does not override `setAttribute()`, and the `DirectStatusMutationException` class exists in the codebase but is never thrown anywhere. Enforcement today is by convention and code review — controllers and services must route every status/stage change through `EngineTransitionService::execute()`, which itself:
 
-This can be enforced by overriding `setAttribute()` in the model:
+- Locks the row (`lockForUpdate()`) and re-checks `isActive()` and the optimistic-locking `version` before proceeding
+- Validates the requested transition is legal from the request's current stage
+- Validates stage permissions, field rules, and claim ownership before writing the new stage
 
 ```php
-public function setAttribute($key, $value): static
-{
-    if ($key === 'current_status' && ! app()->bound('workflow.transition.active')) {
-        throw new DirectStatusMutationException(
-            'current_status must only be changed via WorkflowService::transition()'
-        );
-    }
-    return parent::setAttribute($key, $value);
-}
-```
+// ✅ Only path for a stage/status change
+$engineTransitionService->execute($engineRequest, $transitionId, $comment, $data, $version, $user);
 
-`WorkflowService` must bind `workflow.transition.active` during transitions and release it after.
+// ❌ Never direct assignment — not blocked by a model guard, but forbidden by convention
+$engineRequest->current_stage_id = $someOtherStageId;
+$engineRequest->save();
+```
 
 ---
 

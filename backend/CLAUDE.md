@@ -34,9 +34,9 @@ Examples:
 
 ## Architecture Rules
 
-### WorkflowService is mandatory
+### EngineTransitionService is mandatory
 
-All `current_status` changes must go through `WorkflowService::transition()`. The `ImportRequest` model must throw `DirectStatusMutationException` on direct status assignment outside of this service.
+All `EngineRequest` status/stage changes must go through `EngineTransitionService::execute()`, which validates stage permissions (`StagePermissionResolver`), field rules (`StageFieldRuleValidator`), and claim ownership before advancing the request along a `WorkflowTransition`. There is no `ImportRequest` model or `DirectStatusMutationException` guard in the current architecture — `EngineRequest` is the request model, and direct status mutation is prevented by routing all writes through the service layer rather than by an exception thrown from the model itself.
 
 ### Service-oriented structure
 
@@ -53,8 +53,7 @@ app/
 ├── Models/
 ├── Policies/        ← Authorization policies
 ├── Services/
-│   ├── Workflow/    ← WorkflowService (core)
-│   ├── Voting/      ← VotingService
+│   ├── Workflow/    ← EngineTransitionService, WorkflowDesignerService, EngineClaimService, EngineRequestService (core dynamic engine)
 │   ├── Audit/       ← AuditService
 │   ├── Documents/   ← DocumentService
 │   └── Notifications/
@@ -67,17 +66,18 @@ Organization-scoped filtering must happen at the **Eloquent query level** — ne
 
 ### Audit logging
 
-Every workflow transition logs to BOTH `request_stage_history` AND `audit_logs`. The `audit_logs` table includes `role` (role at time of action), `from_status`, and `to_status`.
+Every workflow transition logs to BOTH `workflow_history` (the per-transition stage log, tied to `engine_requests`; replaces the dropped `request_stage_history` table) AND `audit_logs`. The `audit_logs` table includes `user_role` (role at time of action) plus `old_values`/`new_values` JSON — there are no dedicated `from_status`/`to_status` columns.
 
 ### Voting concurrency
 
-Vote submission (`POST /api/voting/{id}/vote`) and session closure (`POST /api/voting/{id}/close`) must use pessimistic locking (`lockForUpdate()`). Session closure atomically applies `AUTO_ABSTAIN_TIMEOUT` to all non-voted members.
+Executive voting is executed as a stage transition/action on the generic engine endpoint (`POST /api/engine-requests/{id}/actions`), not a dedicated `/api/voting/*` route family. `EngineTransitionService::execute()` locks the `EngineRequest` row (`lockForUpdate()`) before applying a transition, which covers vote submission and voting-session closure against race conditions. Session closure atomically applies `AUTO_ABSTAIN_TIMEOUT` to all non-voted members.
 
 ### Support claim TTL
 
-- TTL: 15 minutes (Redis key: `support_claim:{request_id}`)
-- Heartbeat endpoint extends TTL: `POST /api/workflow/{id}/claim-support-review/heartbeat`
-- Release endpoint: `DELETE /api/workflow/{id}/claim-support-review`
+- TTL: 15 minutes by default (`config('workflow.support_claim_ttl_minutes')`), tracked in the `claim_expires_at` column on `engine_requests` and mirrored in a cache key (`engine_claim:{request_id}`) by `EngineClaimService`
+- Claim endpoint: `POST /api/engine-requests/{id}/claim`
+- Heartbeat endpoint extends TTL: `POST /api/engine-requests/{id}/claim/heartbeat`
+- Release endpoint: `DELETE /api/engine-requests/{id}/claim`
 
 ### Security
 
@@ -96,17 +96,17 @@ Role enum values: `DATA_ENTRY`, `BANK_REVIEWER`, `SWIFT_OFFICER`, `SUPPORT_COMMI
 
 ## API Conventions
 
-- All workflow actions: `POST /api/workflow/{id}/{action}`
-- SWIFT upload: `POST /api/workflow/{id}/swift-upload` (NOT `/api/documents/`)
+- All workflow actions execute through the generic engine-request transition endpoint: `POST /api/engine-requests/{id}/actions` (the specific transition/action is identified in the request body, not the URL)
+- Document uploads (including SWIFT documents): `POST /api/engine-requests/{id}/documents`
 - Error format:
   ```json
   {
     "success": false,
     "message": "...",
-    "error_code": "WORKFLOW_IMMUTABLE_STATE"
+    "error_code": "REQUEST_CLOSED"
   }
   ```
-- Immutable terminal states return HTTP 403 with `WORKFLOW_IMMUTABLE_STATE`
+- Immutable/terminal (non-`ACTIVE`) requests return HTTP 403 with `REQUEST_CLOSED` — there is no `WORKFLOW_IMMUTABLE_STATE` error code in the current API
 
 ## Context7 Usage
 
@@ -145,7 +145,7 @@ Focused commands:
 php artisan test tests/Feature/Auth/PasswordRecoveryTest.php
 php artisan test --filter=PasswordRecoveryTest
 php artisan test --filter='password reset with valid otp'
-vendor/bin/pint app/Services/Workflow/WorkflowService.php --test
+vendor/bin/pint app/Services/Workflow/EngineTransitionService.php --test
 ```
 
 ## Browser Automation

@@ -17,7 +17,7 @@ Primary test viewpoint: claim-aware CBY support review queue.
 2. Verify sidebar includes dashboard, requests, notifications, and settings only for support work.
 3. Open `/dashboard`.
 4. Verify active-claim strip, waiting-for-claim count, active-by-me count, claimed-by-others count, and support queue table.
-5. Open `/requests`.
+5. Open `/workflows`.
 6. Verify claim-aware tabs: waiting, my claims, in progress/claimed by others, approved, returned, rejected, and all.
 7. Open a request in `SUPPORT_REVIEW_PENDING`.
 8. Claim the request.

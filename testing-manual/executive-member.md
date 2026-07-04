@@ -16,7 +16,7 @@ Primary test viewpoint: review voting materials and cast one immutable vote duri
 2. Verify sidebar includes dashboard, requests, reports, notifications, and settings, without admin or bank operation pages.
 3. Open `/dashboard`.
 4. Verify the primary queue is pending votes or active voting sessions.
-5. Open `/requests`.
+5. Open `/workflows`.
 6. Verify voting-aware tabs such as needs my vote, voted by me, waiting to open, voting open, voting closed, approved, rejected, and post-approval.
 7. Open a request in `EXECUTIVE_VOTING_OPEN`.
 8. Verify request detail includes request data, request documents, SWIFT document if allowed, voting summary, and a vote panel.

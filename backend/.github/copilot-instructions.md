@@ -19,13 +19,13 @@ Commit format: `type(scope): description`
 
 ## Critical Rules
 
-### Status changes via WorkflowService only
+### Status changes via EngineTransitionService only
 
 ```php
 // ✅
-$workflowService->transition($request, 'support_approve', $user);
+$engineTransitionService->execute($engineRequest, $transitionId, $comment, $data, $version, $user);
 // ❌ Never direct assignment
-$request->current_status = 'SUPPORT_APPROVED';
+$engineRequest->status = 'SUPPORT_APPROVED';
 ```
 
 ### Canonical status enum (use exactly these values)
@@ -38,11 +38,11 @@ EXECUTIVE_REJECTED, CUSTOMS_DECLARATION_ISSUED, COMPLETED
 
 ### Visibility scoping
 
-Every query for `import_requests` by bank users must filter by `bank_id`. Never return unscoped results.
+Every query for `engine_requests` by bank users must filter by `bank_id`. Never return unscoped results.
 
 ### Audit logging
 
-Both `request_stage_history` AND `audit_logs` on every transition. Include `role`, `from_status`, `to_status` in `audit_logs`.
+Both `workflow_history` (per-transition stage log; replaces the dropped `request_stage_history` table) AND `audit_logs` (broader security/compliance trail) on every transition. `audit_logs` carries `user_role`, `old_values`, `new_values` (there are no dedicated `from_status`/`to_status` columns).
 
 ### File uploads
 
@@ -50,11 +50,11 @@ PDF only. Private storage. SWIFT documents immutable after upload.
 
 ### Voting
 
-Use `lockForUpdate()` in transactions for vote submission and session closure.
+`EngineTransitionService::execute()` uses `lockForUpdate()` for every transition, which covers vote submission and voting-session closure (there is no separate voting-specific locking path).
 
 ### Immutable states
 
-Return HTTP 403 + `WORKFLOW_IMMUTABLE_STATE` error code for mutations on `EXECUTIVE_REJECTED`, `CUSTOMS_DECLARATION_ISSUED`, `COMPLETED`.
+Mutation attempts on a non-`ACTIVE` request (e.g. `EXECUTIVE_REJECTED`, `CUSTOMS_DECLARATION_ISSUED`, `COMPLETED`) return HTTP 403 with error code `REQUEST_CLOSED` — there is no `WORKFLOW_IMMUTABLE_STATE` code in the current API.
 
 ## Context7
 
@@ -85,5 +85,5 @@ Focused commands:
 php artisan test tests/Feature/Auth/PasswordRecoveryTest.php
 php artisan test --filter=PasswordRecoveryTest
 php artisan test --filter='password reset with valid otp'
-vendor/bin/pint app/Services/Workflow/WorkflowService.php --test
+vendor/bin/pint app/Services/Workflow/EngineTransitionService.php --test
 ```

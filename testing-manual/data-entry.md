@@ -19,7 +19,7 @@ Primary test viewpoint: create, edit, attach documents, submit, correct returned
 2. Verify sidebar includes dashboard, requests, new request, notifications, and settings.
 3. Open `/dashboard`.
 4. Verify dashboard focuses on drafts, returned requests, submitted/processing requests, completed, and rejected.
-5. Open `/requests/new`.
+5. Open `/workflows/new`.
 6. Fill request fields: currency, amount, supplier, goods description, port of entry, and notes.
 7. Save as draft.
 8. Expected: request exists in `DRAFT`; creator is `entry-a`.
@@ -31,17 +31,17 @@ Primary test viewpoint: create, edit, attach documents, submit, correct returned
 14. Update at least one field and save.
 15. Submit request.
 16. Expected: status becomes `SUBMITTED`; edit/delete/upload mutation controls disappear.
-17. Open `/requests`.
+17. Open `/workflows`.
 18. Verify `REQ-A-ENTRY-A` appears under submitted/processing business bucket with simplified status.
 
 ### Bank A second data entry user: `entry-a-2`
 
 1. Log out, then log in as `entry-a-2`.
-2. Open `/requests`.
+2. Open `/workflows`.
 3. Search for `REQ-A-ENTRY-A`.
 4. Expected: `entry-a-2` can see the Bank A request because requests belong to the bank, not the individual user.
 5. Verify `entry-a-2` cannot edit `REQ-A-ENTRY-A` while it is `SUBMITTED`.
-6. Open `/requests/new`.
+6. Open `/workflows/new`.
 7. Create and save a second Bank A draft request.
 8. Record the request number as `REQ-A-ENTRY-A-2`.
 9. Submit `REQ-A-ENTRY-A-2`.
@@ -52,14 +52,14 @@ Primary test viewpoint: create, edit, attach documents, submit, correct returned
 ### Bank B isolation user: `entry-b`
 
 1. Log out, then log in as `entry-b`.
-2. Open `/requests/new`.
+2. Open `/workflows/new`.
 3. Create and save a Bank B draft request.
 4. Record the request number as `REQ-B-ENTRY-B`.
 5. Submit the request if the Bank B reviewer path is available; otherwise keep it as a Bank B draft for visibility checks.
 6. Log out, then log in as `entry-b-2`.
 7. Search for `REQ-B-ENTRY-B`.
 8. Expected: `entry-b-2` can see the Bank B request because requests belong to the bank, not the individual user.
-9. Open `/requests/new`.
+9. Open `/workflows/new`.
 10. Create and save a second Bank B draft request.
 11. Record the request number as `REQ-B-ENTRY-B-2`.
 12. Search for `REQ-A-ENTRY-A`.

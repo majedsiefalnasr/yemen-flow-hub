@@ -254,32 +254,20 @@ The backend should follow a service-oriented architecture.
 
 # Backend Core Services
 
-## Workflow Service
+## Dynamic Workflow Engine (`app/Services/Workflow/`)
 
-Responsible for:
+The workflow is not a single monolithic service but a small set of focused services operating on data-driven workflow definitions:
 
-- State transitions
-- Transition validation
-- Workflow rules
-- Request locking
-- Organizational workflow governance
-- Role-scoped visibility enforcement
-- Voting session lifecycle
-- Support claim lifecycle
-- Immutable workflow enforcement
+- `WorkflowDesignerService` / `WorkflowVersionValidator` — author, validate, clone, publish, and archive `WorkflowVersion`s (each version owns its own `WorkflowStage`s, `WorkflowTransition`s, field groups, and field definitions)
+- `StagePermissionResolver` — resolves whether a user (via their organization, team, and role) may view or execute a given `WorkflowStage`, based on `stage_permissions` rows
+- `EngineTransitionService` — executes a transition on an `EngineRequest`: validates stage permissions, field rules, claim ownership, and optimistic-locking version, then moves the request to the transition's target stage and runs any registered stage hooks/effects
+- `EngineClaimService` — claim/heartbeat/release lifecycle for stages that require exclusive review (`requires_claim`)
+- `StageFieldRuleValidator` — enforces per-stage required/read-only field rules against the request's dynamic field data
+- `RequestProjectionSync` — projects selected JSON field data onto indexed columns on `engine_requests` (amount, currency, invoice number, etc.) for fast querying/reporting
 
----
+Together these replace what earlier design docs described as a single monolithic "Workflow Service": there is no fixed, hardcoded state machine — request lifecycles are defined by published `WorkflowVersion` data and interpreted by these services at runtime.
 
-## Voting Service
-
-Responsible for:
-
-- Executive voting
-- Voting session lifecycle
-- Voting session open/close
-- Director tie resolution
-- AUTO_ABSTAIN_TIMEOUT handling
-- Final decision locking
+Executive voting session governance (open/close, final decision) is executed through this same generic engine rather than a separate dedicated Voting Service. See `docs/01-workflow-and-business-rules.md` for the voting business rules (vote types, quorum-free closing, `AUTO_ABSTAIN_TIMEOUT`, Director tie resolution).
 
 ---
 
@@ -356,12 +344,16 @@ backend/
 
 - users
 - banks
-- import_requests
-- request_documents
-- request_votes
-- request_stage_history
+- organizations, teams, roles — the governance model that `stage_permissions` binds workflow access to
+- workflow_definitions, workflow_versions, workflow_stages, workflow_actions, workflow_transitions — the dynamic workflow engine's definition tables
+- stage_permissions — per-stage view/execute grants scoped to an organization, team, role, or individual user
+- engine_requests — the request records that move through a published `WorkflowVersion` (replaces the legacy `import_requests` table, which has been dropped)
+- engine_request_documents — request-attached documents (replaces the legacy `request_documents` table)
+- workflow_history — per-transition audit trail tied to `engine_requests` (replaces the legacy `request_stage_history` table)
 - audit_logs
 - customs_declarations
+
+The legacy `import_requests`, `request_documents`, `request_votes`, and `request_stage_history` tables have been dropped from the schema; they are not just superseded in application code but physically removed by migration.
 
 ---
 

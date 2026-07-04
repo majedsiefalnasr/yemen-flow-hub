@@ -111,7 +111,7 @@ php artisan test --filter=PasswordRecoveryTest
 php artisan test --filter='password reset with valid otp'
 
 # Backend: format specific touched PHP files
-vendor/bin/pint app/Services/Workflow/WorkflowService.php --test
+vendor/bin/pint app/Services/Workflow/EngineTransitionService.php --test
 ```
 
 The repository uses Husky hooks:
@@ -224,7 +224,7 @@ CBY_ADMIN
 
 ### Never Do
 
-- Do NOT mutate `current_status` directly on the model — all transitions via `WorkflowService::transition()`
+- Do NOT mutate `current_status`/stage fields directly on the model — all transitions go through `EngineTransitionService::execute()`, which validates stage permissions, field rules, and claim ownership before moving an `EngineRequest` along a `WorkflowTransition`
 - Do NOT put business logic in controllers, Vue components, or routes
 - Do NOT expose requests outside a user's organization scope
 - Do NOT generate shared admin dashboards — every view is queue-scoped and role-scoped
@@ -238,12 +238,12 @@ CBY_ADMIN
 
 - Enforce organization-scoped visibility at the database query level
 - Start role UI decisions from the relevant `docs/user-view/{role}.md`: operational queue first, supporting metrics second, least privilege on uncertainty
-- Log every workflow transition to both `request_stage_history` and `audit_logs`
+- Log every workflow transition to both `workflow_history` (per-transition stage log; replaces the dropped `request_stage_history` table) and `audit_logs`
 - Include `role` (at time of action) in every audit log entry
 - Wrap external FX confirmation generation/completion in a single database transaction
-- Use pessimistic locking for vote submission and voting session closure
+- Use pessimistic locking (`lockForUpdate()` in `EngineTransitionService::execute()`) for vote submission and voting session closure
 - Validate file type as PDF-only for all document uploads
-- Return `WORKFLOW_IMMUTABLE_STATE` (HTTP 403) for mutations on terminal states
+- Return `REQUEST_CLOSED` (HTTP 403) for mutations on terminal/inactive requests — there is no `WORKFLOW_IMMUTABLE_STATE` error code in the current API
 
 ---
 
@@ -332,10 +332,11 @@ Tool prefixes vary by client:
 
 ## Support Claim Behavior
 
-- Claim TTL: **15 minutes** of inactivity
-- Heartbeat: frontend must ping `POST /api/workflow/{id}/claim-support-review/heartbeat` every **60 seconds**
-- Release: `DELETE /api/workflow/{id}/claim-support-review`
-- TTL managed via Redis key: `support_claim:{request_id}`
+- Claim TTL: **15 minutes** of inactivity (`config('workflow.support_claim_ttl_minutes')`)
+- Claim: `POST /api/v1/engine-requests/{id}/claim`
+- Heartbeat: frontend must ping `POST /api/v1/engine-requests/{id}/claim/heartbeat` every **60 seconds**
+- Release: `DELETE /api/v1/engine-requests/{id}/claim`
+- TTL managed via `claim_expires_at` on `engine_requests`, mirrored in cache key: `engine_claim:{request_id}`
 
 ---
 

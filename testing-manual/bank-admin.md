@@ -23,7 +23,7 @@ Primary test viewpoint: own-bank administration, staff/merchant management, bank
 9. Verify CBY roles cannot be assigned from this surface.
 10. Open `/merchants`.
 11. Verify merchant CRUD is scoped to Bank A.
-12. Open `/requests`.
+12. Open `/workflows`.
 13. Verify own-bank request portfolio appears across all relevant statuses with read-only management controls.
 14. Search for `REQ-A-ENTRY-A` and `REQ-A-ENTRY-A-2`.
 15. Expected: both Bank A requests are visible.
@@ -43,7 +43,7 @@ Primary test viewpoint: own-bank administration, staff/merchant management, bank
 4. Verify `entry-a`, `entry-a-2`, `reviewer-a`, `reviewer-a-2`, and `swift-bank-a` are not visible.
 5. Open `/merchants`.
 6. Verify merchant CRUD is scoped to Bank B.
-7. Open `/requests`.
+7. Open `/workflows`.
 8. Search for `REQ-B-ENTRY-B` and `REQ-B-ENTRY-B-2`.
 9. Expected: both Bank B requests are visible.
 10. Search for `REQ-A-ENTRY-A` and `REQ-A-ENTRY-A-2`.

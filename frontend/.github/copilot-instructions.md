@@ -48,17 +48,17 @@ Centralize in `constants/statusMap.ts`. Do NOT show CBY internal stages to DATA_
 ### Design tokens
 
 ```ts
-background: '#f5f5f7', surface: '#ffffff', primaryText: '#1d1d1f',
-border: '#d2d2d7', primaryBlue: '#0071e3', approvedGreen: '#34c759',
+background: '#ffffff', surface: '#ffffff', primaryText: '#1c222b',
+border: '#cccccc', primaryBlue: '#0066cc', approvedGreen: '#34c759',
 rejectedRed: '#ff3b30', pendingAmber: '#ff9f0a', votingIndigo: '#5856d6',
 swiftCyan: '#32ade6', lockedGray: '#8e8e93'
 ```
 
-No gradients. No glassmorphism. Card radius: 12px.
+No gradients. No glassmorphism. Card radius: `rounded-lg` (~10px, shadcn default).
 
 ### Support claim heartbeat
 
-Ping `POST /api/workflow/{id}/claim-support-review/heartbeat` every 60 seconds while reviewer is on the page.
+Ping `POST /api/v1/engine-requests/{id}/claim/heartbeat` every 60 seconds while reviewer is on the page.
 
 ### Frontend permissions are UX only
 

@@ -28,14 +28,20 @@ Yemen Flow Hub is an internal Central Bank of Yemen (CBY) regulatory workflow pl
 
 ```text
 DRAFT
-  -> submit -> SUBMITTED
-      -> bank_approve -> BANK_APPROVED
-          -> support_approve -> SUPPORT_APPROVED
-              -> swift_upload -> SWIFT_UPLOADED -> EXECUTIVE_VOTING
-                  -> finalize_approved -> EXECUTIVE_APPROVED
-                      -> issue_customs -> CUSTOMS_ISSUED -> complete -> COMPLETED
-                  -> finalize_rejected -> EXECUTIVE_REJECTED
-          -> support_reject -> SUPPORT_REJECTED
-      -> bank_reject -> BANK_REJECTED
-      -> return_to_entry -> RETURNED_TO_DATA_ENTRY -> submit -> SUBMITTED
+  -> SUBMITTED
+      -> BANK_APPROVED
+          -> SUPPORT_APPROVED
+              -> SWIFT_UPLOADED
+                  -> EXECUTIVE_VOTING_OPEN
+                      -> EXECUTIVE_VOTING_CLOSED
+                          -> EXECUTIVE_APPROVED
+                              -> FX_CONFIRMATION_PENDING
+                                  -> CUSTOMS_DECLARATION_ISSUED -> COMPLETED
+                          -> EXECUTIVE_REJECTED
+          -> SUPPORT_REJECTED
+              -> DRAFT_REJECTED_INTERNAL -> SUBMITTED
+      -> BANK_REJECTED
+      -> BANK_RETURNED -> SUBMITTED
 ```
+
+This is the canonical business-rules status path (see `docs/01-workflow-and-business-rules.md` for the full enum, stage ownership, and business rules). The dynamic workflow engine implements this as a published `WorkflowVersion` made of `WorkflowStage`s and `WorkflowTransition`s, so the concrete stage codes and action names in the database are workflow-version-specific rather than fixed code constants.

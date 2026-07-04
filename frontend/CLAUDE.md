@@ -123,9 +123,9 @@ Frontend permissions are for UX only (hiding actions). Backend is the source of 
 
 When a Support Committee user is on the active review page:
 
-- Send `POST /api/workflow/{id}/claim-support-review/heartbeat` every **60 seconds**
+- Send `POST /api/v1/engine-requests/{id}/claim/heartbeat` every **60 seconds**
 - Stop on page leave / component unmount
-- On claim loss (API 409), redirect user back to queue with notification
+- On claim loss (API 403 `CLAIM_NOT_HELD`), redirect user back to queue with notification
 
 ### Read-only states
 
@@ -168,16 +168,16 @@ Container max: `1600px`. Sidebar: `280px` expanded / `72px` collapsed. Grid: `8p
 ```
 /login
 /dashboard
-/requests
-/requests/new
-/requests/[id]
-/voting
-/voting/[id]
-/customs
-/customs/[id]
-/users          ← CBY Admin only
-/banks          ← CBY Admin only
+/workflows
+/workflows/new
+/workflows/instances/[id]
+/customs          ← legacy alias, still present
+/admin/banks      ← CBY Admin only
+/bank/users       ← Bank Admin only
+/staff            ← CBY Admin only
 ```
+
+The legacy `/requests`, `/requests/new`, `/requests/[id]`, `/voting`, `/voting/[id]`, top-level `/users`, and top-level `/banks` routes no longer exist. Executive voting is presented within `/workflows/instances/[id]` when the request's current stage is a voting stage, not on a separate `/voting` route.
 
 ## Anti-patterns (never generate)
 

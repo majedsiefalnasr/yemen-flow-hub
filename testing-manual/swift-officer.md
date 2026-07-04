@@ -17,11 +17,11 @@ Primary test viewpoint: upload required SWIFT-stage documents after support appr
 2. Verify sidebar includes dashboard, requests, notifications, and settings.
 3. Open `/dashboard`.
 4. Verify the primary queue is waiting for SWIFT upload and does not include bank-wide analytics or decision controls.
-5. Open `/requests`.
+5. Open `/workflows`.
 6. Verify tabs such as pending SWIFT, SWIFT done, completed, rejected, and all.
 7. Open a request in `WAITING_FOR_SWIFT` or equivalent ready state.
 8. Verify request detail shows locked business data and a clear SWIFT-ready banner or upload shortcut.
-9. Open `/requests/[id]/swift`.
+9. On the request detail page (`/workflows/instances/[id]`), locate the document upload section for the SWIFT stage.
 10. Verify both required document slots are shown: SWIFT PDF and external FX confirmation request PDF.
 11. Attempt to submit with no files.
 12. Expected: submit is disabled or blocked with a clear inline reason.
@@ -32,7 +32,7 @@ Primary test viewpoint: upload required SWIFT-stage documents after support appr
 17. Upload the FX confirmation request PDF.
 18. Submit SWIFT stage.
 19. Expected: status becomes `SWIFT_UPLOADED` or the configured voting-ready state, uploaded documents become read-only, and replacement is blocked.
-20. Return to `/requests`.
+20. Return to `/workflows`.
 21. Verify request moves from pending SWIFT to SWIFT done/post-upload tab.
 
 ## Organization-Scope Test

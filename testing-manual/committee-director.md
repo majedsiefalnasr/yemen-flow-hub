@@ -16,7 +16,7 @@ Primary test viewpoint: executive voting governance, tie resolution, final decis
 2. Verify sidebar includes dashboard, requests, external FX confirmation, reports, audit, notifications, and settings.
 3. Open `/dashboard`.
 4. Verify Director work queues prioritize pending voting decisions, sessions ready to close, ties, and external FX confirmation items.
-5. Open `/requests`.
+5. Open `/workflows`.
 6. Verify Director-aware tabs for pending/open/closed voting, approved decisions, rejected decisions, FX pending, completed, and all.
 7. Open a request in `WAITING_FOR_VOTING_OPEN` or equivalent ready-to-open state.
 8. Verify request detail shows voting controls but no support claim, bank decision, or SWIFT upload controls.

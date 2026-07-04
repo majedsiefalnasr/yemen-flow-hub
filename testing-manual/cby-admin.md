@@ -21,7 +21,7 @@ Primary test viewpoint: system governance, users, banks, audit, reports, and rea
 7. Verify bank-managed roles are not incorrectly provisioned as CBY governance roles unless the current admin surface explicitly supports that role assignment.
 8. Open `/admin/entities`.
 9. Verify Bank A and Bank B are visible to CBY Admin, with role coverage and risk indicators.
-10. Open `/requests`.
+10. Open `/workflows`.
 11. Search for the primary request number created by `entry-a`.
 12. Verify all workflow statuses can be filtered and viewed with full canonical labels.
 13. Open request detail.

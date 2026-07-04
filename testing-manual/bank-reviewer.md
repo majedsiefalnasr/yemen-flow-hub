@@ -17,7 +17,7 @@ Primary test viewpoint: bank-side decision gate, segregation of duties, downstre
 2. Verify sidebar includes dashboard, requests, notifications, and settings only.
 3. Open `/dashboard`.
 4. Verify pending review queue and support-rejection queue are prominent.
-5. Open `/requests`.
+5. Open `/workflows`.
 6. Verify tabs such as pending review, support rejected, bank returned, support returned, at CBY, completed, and rejected.
 7. Open the request submitted by `entry-a` in `SUBMITTED`.
 8. Start review if the UI has a separate start action.
@@ -35,7 +35,7 @@ Primary test viewpoint: bank-side decision gate, segregation of duties, downstre
 ## Bank B Mirror Review Scope Test
 
 1. Log out, then log in as `reviewer-b`.
-2. Open `/requests`.
+2. Open `/workflows`.
 3. Search for `REQ-B-ENTRY-B`.
 4. Expected: Bank B submitted/reviewable request is visible.
 5. Search for `REQ-A-ENTRY-A` and `REQ-A-ENTRY-A-2`.

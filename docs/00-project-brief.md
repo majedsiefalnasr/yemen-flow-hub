@@ -527,7 +527,7 @@ Decision logic:
 
 - Laravel 11 API
 - Sanctum Authentication
-- Workflow Service Architecture
+- Dynamic workflow engine: published `WorkflowVersion`s composed of `WorkflowStage`s and transitions, with `stage_permissions` controlling which organization, team, role, or individual user may view/execute each stage — not a static, hardcoded status-transition model
 - Role-based authorization
 - Queue workers
 
