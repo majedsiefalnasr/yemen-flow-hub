@@ -7,13 +7,14 @@ use App\Models\Bank;
 use App\Models\EngineRequest;
 use App\Models\Merchant;
 use App\Models\Organization;
+use App\Models\Role;
 use App\Models\User;
 use App\Models\WorkflowDefinition;
 use App\Models\WorkflowHistoryEntry;
 use App\Models\WorkflowStage;
 use App\Models\WorkflowVersion;
 use Database\Seeders\GovernanceSeeder;
-use Database\Seeders\PermissionSeeder;
+use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -34,7 +35,7 @@ class ComplianceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed([PermissionSeeder::class, GovernanceSeeder::class]);
+        $this->seed([GovernanceSeeder::class, ScreenPermissionSeeder::class]);
 
         $cbyOrg = Organization::where('code', 'national_committee')->first();
         $bankOrg = Organization::where('code', 'commercial_banks')->first();
@@ -47,6 +48,8 @@ class ComplianceTest extends TestCase
             'organization_id' => $cbyOrg->id,
             'is_active' => true,
         ]);
+        $systemAdminRole = Role::query()->where('code', 'system_admin')->firstOrFail();
+        $this->admin->roles()->attach($systemAdminRole->id);
 
         $this->bank = Bank::create(['name' => 'Test Bank', 'code' => 'TST', 'is_active' => true, 'organization_id' => $bankOrg->id]);
 

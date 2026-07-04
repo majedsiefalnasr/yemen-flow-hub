@@ -7,9 +7,10 @@ use App\Jobs\GenerateReportExport;
 use App\Models\Bank;
 use App\Models\Organization;
 use App\Models\ReportExport;
+use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\GovernanceSeeder;
-use Database\Seeders\PermissionSeeder;
+use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
@@ -25,7 +26,7 @@ class ReportExportTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed([PermissionSeeder::class, GovernanceSeeder::class]);
+        $this->seed([GovernanceSeeder::class, ScreenPermissionSeeder::class]);
 
         $cbyOrg = Organization::where('code', 'national_committee')->first();
         $bankOrg = Organization::where('code', 'commercial_banks')->first();
@@ -39,6 +40,8 @@ class ReportExportTest extends TestCase
             'organization_id' => $cbyOrg->id,
             'is_active' => true,
         ]);
+        $systemAdminRole = Role::query()->where('code', 'system_admin')->firstOrFail();
+        $this->admin->roles()->attach($systemAdminRole->id);
 
         $this->bankUser = User::create([
             'name' => 'Entry',

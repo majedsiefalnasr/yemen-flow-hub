@@ -9,7 +9,6 @@ use App\Models\EngineRequest;
 use App\Models\User;
 use Database\Seeders\BankSeeder;
 use Database\Seeders\GovernanceSeeder;
-use Database\Seeders\PermissionSeeder;
 use Database\Seeders\UserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -23,7 +22,7 @@ class PivotRoleGroupPoliciesTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed([PermissionSeeder::class, GovernanceSeeder::class, BankSeeder::class, UserSeeder::class]);
+        $this->seed([GovernanceSeeder::class, BankSeeder::class, UserSeeder::class]);
     }
 
     public function test_committee_director_can_download_customs_declaration_via_pivot(): void
