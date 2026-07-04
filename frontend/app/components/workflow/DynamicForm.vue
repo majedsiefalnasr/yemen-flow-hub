@@ -56,7 +56,7 @@ defineExpose({ validate })
 
 <template>
   <div class="flex flex-col gap-6 py-2">
-    <div v-for="group in fieldGroups" :key="group.id" class="flex flex-col gap-4 py-2">
+    <div v-for="group in fieldGroups" :key="group.id" class="flex flex-col gap-4">
       <h3 class="text-foreground text-sm font-semibold">{{ group.label }}</h3>
       <template v-for="field in group.fields" :key="field.id">
         <DynamicFormField

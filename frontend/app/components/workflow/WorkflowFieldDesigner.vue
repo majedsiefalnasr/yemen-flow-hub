@@ -492,7 +492,7 @@ onMounted(async () => {
           <DialogTitle>إضافة مجموعة</DialogTitle>
           <DialogDescription>تظهر المجموعات كتبويبات في نموذج الطلب.</DialogDescription>
         </DialogHeader>
-        <div class="flex flex-col gap-4 py-2">
+        <div class="flex flex-col gap-4">
           <div class="flex flex-col gap-1.5">
             <Label>الرمز</Label>
             <Input v-model="groupName" placeholder="request_data" dir="ltr" />
@@ -516,7 +516,7 @@ onMounted(async () => {
           <DialogTitle>إضافة حقل</DialogTitle>
           <DialogDescription>عرّف الحقل وإعداداته حسب النوع.</DialogDescription>
         </DialogHeader>
-        <div class="flex flex-col gap-4 py-2">
+        <div class="flex flex-col gap-4">
           <div class="flex flex-col gap-1.5">
             <Label>الرمز</Label>
             <Input v-model="fieldKey" placeholder="amount" dir="ltr" />

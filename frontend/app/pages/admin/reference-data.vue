@@ -698,7 +698,7 @@ onMounted(async () => {
             }}</DialogTitle>
             <DialogDescription>الرمز ثابت بعد الإنشاء، ويمكن تعديل الاسم فقط.</DialogDescription>
           </DialogHeader>
-          <form class="flex flex-col gap-4 py-2" @submit="submitTable">
+          <form class="flex flex-col gap-4" @submit="submitTable">
             <FormField v-slot="{ componentField }" name="key">
               <FormItem>
                 <FormLabel>الرمز *</FormLabel>
@@ -741,7 +741,7 @@ onMounted(async () => {
             }}</DialogTitle>
             <DialogDescription>الرمز ثابت بعد الإنشاء، ويمكن تعديل الاسم فقط.</DialogDescription>
           </DialogHeader>
-          <form class="flex flex-col gap-4 py-2" @submit="submitValue">
+          <form class="flex flex-col gap-4" @submit="submitValue">
             <FormField v-slot="{ componentField }" name="key">
               <FormItem>
                 <FormLabel>الرمز *</FormLabel>

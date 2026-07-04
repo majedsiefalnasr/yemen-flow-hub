@@ -218,7 +218,7 @@ onMounted(() => {
           <DialogDescription>تُشتق صلاحيات الطلبات والدوري من هذه الصفوف.</DialogDescription>
         </DialogHeader>
 
-        <div class="flex flex-col gap-4 py-2">
+        <div class="flex flex-col gap-4">
           <div class="flex flex-col gap-1.5">
             <Label>التسمية الظاهرة</Label>
             <Input v-model="displayLabel" placeholder="مراجعو البنك" />

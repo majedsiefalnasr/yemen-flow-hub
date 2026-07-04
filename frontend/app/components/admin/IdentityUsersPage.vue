@@ -759,7 +759,7 @@ onMounted(async () => {
             </DialogDescription>
           </DialogHeader>
 
-          <form class="flex flex-col gap-4 py-2" @submit="onSubmit">
+          <form class="flex flex-col gap-4" @submit="onSubmit">
             <FormField v-slot="{ componentField }" name="name">
               <FormItem>
                 <FormLabel>الاسم *</FormLabel>
