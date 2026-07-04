@@ -83,7 +83,9 @@ class RoleScreenPermissionController extends Controller
      * When not listed here, a screen shows a single VIEW toggle.
      */
     private const SCREEN_CAPABILITIES = [
-        'merchants' => ['VIEW', 'MANAGE'],
+        'merchants' => ['VIEW', 'MANAGE', 'EXPORT'],
+        'reports' => ['VIEW', 'MANAGE', 'EXPORT'],
+        'audit' => ['VIEW', 'MANAGE', 'EXPORT'],
     ];
 
     /**
