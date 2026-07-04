@@ -2,15 +2,21 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Services\Authorization\PermissionService;
 use App\Services\Workflow\Engine\EngineFinancingLedger;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 
 class FinancingController extends Controller
 {
+    public function __construct(private readonly PermissionService $permissionService) {}
+
     public function utilization(Request $request, EngineFinancingLedger $financingLedgerService)
     {
-        abort_unless($request->user()?->hasPermission('request.create'), 403);
+        abort_unless(
+            $request->user() && $this->permissionService->userHasCapability($request->user(), 'requests', 'CREATE'),
+            403
+        );
 
         $validated = $request->validate([
             'tax_number' => ['required', 'string', 'max:255'],

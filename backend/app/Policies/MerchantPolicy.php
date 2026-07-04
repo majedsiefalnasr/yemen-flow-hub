@@ -4,9 +4,12 @@ namespace App\Policies;
 
 use App\Models\Merchant;
 use App\Models\User;
+use App\Services\Authorization\PermissionService;
 
 class MerchantPolicy
 {
+    public function __construct(private readonly PermissionService $permissionService) {}
+
     public function viewAny(User $user): bool
     {
         return (bool) $user->is_active;
@@ -19,12 +22,12 @@ class MerchantPolicy
 
     public function create(User $user): bool
     {
-        return $user->hasPermission('merchants.manage');
+        return $this->permissionService->userHasCapability($user, 'merchants', 'MANAGE');
     }
 
     public function update(User $user, Merchant $merchant): bool
     {
-        return $user->hasPermission('merchants.manage')
+        return $this->permissionService->userHasCapability($user, 'merchants', 'MANAGE')
             && (! $user->isBankUser() || $user->bank_id === $merchant->bank_id);
     }
 

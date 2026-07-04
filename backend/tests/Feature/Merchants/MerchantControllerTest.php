@@ -6,7 +6,13 @@ use App\Enums\UserRole;
 use App\Models\Bank;
 use App\Models\Merchant;
 use App\Models\Permission;
+use App\Models\Role;
+use App\Models\Screen;
+use App\Models\ScreenPermission;
 use App\Models\User;
+use App\Services\Authorization\PermissionService;
+use Database\Seeders\GovernanceSeeder;
+use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -24,14 +30,22 @@ class MerchantControllerTest extends TestCase
 
     private User $cbyadmin;
 
+    private Role $bankAdminRole;
+
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->seed(GovernanceSeeder::class);
+        $this->seed(ScreenPermissionSeeder::class);
 
         $this->bank = $this->makeBank('YCB');
         $this->otherBank = $this->makeBank('OTH');
         $this->bankAdmin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
         $this->cbyadmin = $this->makeUser(UserRole::CBY_ADMIN, null);
+
+        $this->bankAdminRole = Role::where('code', 'bank_admin')->firstOrFail();
+        $this->bankAdmin->roles()->attach($this->bankAdminRole->id);
 
         $this->seedMerchantsPermission();
     }
@@ -242,6 +256,44 @@ class MerchantControllerTest extends TestCase
             ->postJson('/api/v1/merchants', [])
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['name', 'tax_number']);
+    }
+
+    // ─── screen_permissions gating (MerchantPolicy) ──────────────────────────
+
+    public function test_merchant_create_denied_when_role_lacks_merchants_manage(): void
+    {
+        ScreenPermission::where('role_id', $this->bankAdminRole->id)
+            ->whereHas('screen', fn ($q) => $q->where('key', 'merchants'))
+            ->delete();
+        app(PermissionService::class)->clearScreenPermissionCache($this->bankAdminRole->id);
+
+        $this->actingAs($this->bankAdmin)
+            ->postJson('/api/v1/merchants', [
+                'name' => 'Test Merchant',
+                'tax_number' => '999999999',
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_merchant_create_allowed_when_role_has_merchants_manage(): void
+    {
+        // seedMerchantsPermission() already grants merchants:MANAGE to bank_admin
+        // via ScreenPermissionSeeder; re-assert explicitly so this test documents
+        // and verifies the positive path independent of the seeder default.
+        $screenId = Screen::where('key', 'merchants')->value('id');
+        ScreenPermission::firstOrCreate([
+            'role_id' => $this->bankAdminRole->id,
+            'screen_id' => $screenId,
+            'capability' => 'MANAGE',
+        ]);
+        app(PermissionService::class)->clearScreenPermissionCache($this->bankAdminRole->id);
+
+        $this->actingAs($this->bankAdmin)
+            ->postJson('/api/v1/merchants', [
+                'name' => 'Test Merchant 2',
+                'tax_number' => '888888888',
+            ])
+            ->assertCreated();
     }
 
     // ─── PUT /api/v1/merchants/{id} ──────────────────────────────────────────
