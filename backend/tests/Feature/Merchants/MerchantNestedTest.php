@@ -6,10 +6,10 @@ use App\Enums\UserRole;
 use App\Models\Bank;
 use App\Models\Merchant;
 use App\Models\MerchantCompany;
-use App\Models\Permission;
+use App\Models\Role;
 use App\Models\User;
+use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
@@ -24,6 +24,7 @@ class MerchantNestedTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->seed(ScreenPermissionSeeder::class);
 
         $this->bank = Bank::query()->create(['name' => 'Bank Test', 'code' => 'TST', 'is_active' => true]);
         $this->bankAdmin = User::query()->create([
@@ -34,16 +35,8 @@ class MerchantNestedTest extends TestCase
             'bank_id' => $this->bank->id,
             'is_active' => true,
         ]);
-
-        $permissionId = Permission::query()->insertGetId([
-            'slug' => 'merchants.manage',
-            'name_ar' => 'إدارة المستوردين',
-            'name_en' => 'Manage importers',
-            'group' => 'admin',
-        ]);
-        DB::table('role_permissions')->insert([
-            ['permission_id' => $permissionId, 'role' => UserRole::BANK_ADMIN->value],
-        ]);
+        $bankAdminRole = Role::query()->where('code', 'bank_admin')->firstOrFail();
+        $this->bankAdmin->roles()->attach($bankAdminRole->id);
     }
 
     public function test_create_merchant_with_owners_and_companies(): void

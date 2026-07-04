@@ -86,6 +86,19 @@ class MerchantControllerTest extends TestCase
         ], $overrides));
     }
 
+    /**
+     * UNRESOLVED LEGACY DEPENDENCY (see task-9-audit-report.md): cbyadmin has no
+     * governance role attached and still needs merchants:MANAGE via the legacy
+     * permissions/role_permissions fallback for test_cby_admin_must_provide_bank_id()
+     * and test_cby_admin_creates_for_selected_bank() below. Under the new
+     * screen_permissions model, system_admin (cbyadmin's governance-role
+     * equivalent) is deliberately denied merchants:MANAGE (see
+     * docs/superpowers/specs/2026-07-04-screen-permissions-simplification-design.md),
+     * and no other non-bank-user governance role is granted merchants:MANAGE by
+     * ScreenPermissionSeeder. bank_admin no longer needs this grant -- it now
+     * gets merchants:MANAGE for real via its attached governance role and
+     * ScreenPermissionSeeder, confirmed by removing its legacy row here.
+     */
     private function seedMerchantsPermission(): void
     {
         $permissionId = Permission::query()->insertGetId([
@@ -97,7 +110,6 @@ class MerchantControllerTest extends TestCase
 
         DB::table('role_permissions')->insert([
             ['permission_id' => $permissionId, 'role' => UserRole::CBY_ADMIN->value],
-            ['permission_id' => $permissionId, 'role' => UserRole::BANK_ADMIN->value],
         ]);
     }
 
@@ -277,9 +289,11 @@ class MerchantControllerTest extends TestCase
 
     public function test_merchant_create_allowed_when_role_has_merchants_manage(): void
     {
-        // seedMerchantsPermission() already grants merchants:MANAGE to bank_admin
-        // via ScreenPermissionSeeder; re-assert explicitly so this test documents
-        // and verifies the positive path independent of the seeder default.
+        // bank_admin already gets merchants:MANAGE for real from
+        // ScreenPermissionSeeder (not from seedMerchantsPermission(), which only
+        // grants the legacy CBY_ADMIN fallback -- see its docblock); re-assert
+        // explicitly so this test documents and verifies the positive path
+        // independent of the seeder default.
         $screenId = Screen::where('key', 'merchants')->value('id');
         ScreenPermission::firstOrCreate([
             'role_id' => $this->bankAdminRole->id,

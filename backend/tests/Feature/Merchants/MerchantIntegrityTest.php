@@ -7,10 +7,12 @@ use App\Models\Bank;
 use App\Models\EngineRequest;
 use App\Models\Merchant;
 use App\Models\Permission;
+use App\Models\Role;
 use App\Models\User;
 use App\Models\WorkflowDefinition;
 use App\Models\WorkflowStage;
 use App\Models\WorkflowVersion;
+use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -35,6 +37,7 @@ class MerchantIntegrityTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->seed(ScreenPermissionSeeder::class);
 
         $this->bank = Bank::query()->create(['name' => 'Bank A', 'code' => 'BKA', 'is_active' => true]);
         $this->otherBank = Bank::query()->create(['name' => 'Bank B', 'code' => 'BKB', 'is_active' => true]);
@@ -46,6 +49,9 @@ class MerchantIntegrityTest extends TestCase
             'bank_id' => $this->bank->id,
             'is_active' => true,
         ]);
+        $bankAdminRole = Role::query()->where('code', 'bank_admin')->firstOrFail();
+        $this->bankAdmin->roles()->attach($bankAdminRole->id);
+
         $this->cbyadmin = User::query()->create([
             'name' => 'CBY Admin',
             'email' => 'cby@test.com',
@@ -55,6 +61,17 @@ class MerchantIntegrityTest extends TestCase
             'is_active' => true,
         ]);
 
+        // UNRESOLVED LEGACY DEPENDENCY (see task-9-audit-report.md): cbyadmin
+        // still needs merchants:MANAGE via the legacy permissions/role_permissions
+        // fallback for test_bank_change_allowed_before_first_request() below.
+        // Under the new screen_permissions model, system_admin (cbyadmin's
+        // governance-role equivalent) is deliberately denied merchants:MANAGE
+        // (see docs/superpowers/specs/2026-07-04-screen-permissions-
+        // simplification-design.md), and MerchantController::update() only ever
+        // applies a bank_id change for a `! $user->isBankUser()` actor -- so no
+        // currently-seeded governance role can legitimately reach that code path.
+        // This grant cannot be removed without a production-code/policy decision
+        // that is out of scope for this test-fixture cleanup task.
         $permissionId = Permission::query()->insertGetId([
             'slug' => 'merchants.manage',
             'name_ar' => 'إدارة المستوردين',
@@ -63,7 +80,6 @@ class MerchantIntegrityTest extends TestCase
         ]);
         DB::table('role_permissions')->insert([
             ['permission_id' => $permissionId, 'role' => UserRole::CBY_ADMIN->value],
-            ['permission_id' => $permissionId, 'role' => UserRole::BANK_ADMIN->value],
         ]);
 
         $this->workflow = $this->makeWorkflow();
@@ -207,6 +223,10 @@ class MerchantIntegrityTest extends TestCase
         $merchant = $this->makeMerchant();
         $this->createEngineRequest($merchant, 'CLOSED');
 
+        // NOTE: actor is still cbyadmin here even though it has no governance
+        // role attached (see setUp() comment) -- see the unresolved flag on
+        // test_bank_change_allowed_before_first_request() below for why this
+        // pair could not be fully migrated off the legacy permission system.
         $this->actingAs($this->cbyadmin)->putJson("/api/v1/merchants/{$merchant->id}", [
             'bank_id' => $this->otherBank->id,
             'version' => 1,
@@ -216,6 +236,22 @@ class MerchantIntegrityTest extends TestCase
 
     public function test_bank_change_allowed_before_first_request(): void
     {
+        // UNRESOLVED (see task-9-audit-report.md): MerchantController::update()
+        // only ever applies a bank_id change for `! $user->isBankUser()` actors
+        // (bank users' bank_id is always pinned to $locked->bank_id). Under the
+        // legacy system, CBY_ADMIN got merchants.manage and could reach this
+        // branch. Under screen_permissions, system_admin is deliberately denied
+        // merchants:MANAGE (see docs/superpowers/specs/2026-07-04-screen-
+        // permissions-simplification-design.md), and no other non-bank-user
+        // governance role is granted merchants:MANAGE by ScreenPermissionSeeder.
+        // This test therefore still depends on the legacy permissions/
+        // role_permissions fallback for a real, currently-untestable-otherwise
+        // code path (cross-bank merchant reassignment by a non-bank actor).
+        // Fixing it properly requires a production-code/policy decision (which
+        // governance role, if any, should retain this capability) that is out
+        // of scope for this test-fixture cleanup task. Left calling
+        // $this->cbyadmin, which currently still resolves through the legacy
+        // fallback since PermissionSeeder still runs in setUp().
         $merchant = $this->makeMerchant();
 
         $this->actingAs($this->cbyadmin)->putJson("/api/v1/merchants/{$merchant->id}", [
