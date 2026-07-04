@@ -3,6 +3,7 @@
 namespace App\Services\Authorization;
 
 use App\Enums\UserRole;
+use App\Enums\WorkflowVersionState;
 use App\Models\Permission;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -81,6 +82,7 @@ class PermissionService
             $rows = DB::table('screen_permissions')
                 ->join('screens', 'screens.id', '=', 'screen_permissions.screen_id')
                 ->where('screen_permissions.role_id', $roleId)
+                ->where('screens.key', '!=', 'requests')
                 ->select('screens.key', 'screen_permissions.capability')
                 ->get();
 
@@ -91,6 +93,21 @@ class PermissionService
 
             foreach ($result as $key => $caps) {
                 $result[$key] = array_values(array_unique($caps));
+            }
+
+            $derived = $this->derivedRequestsCapabilities([$roleId])[$roleId];
+            $requestsCaps = [];
+            if ($derived['view']) {
+                $requestsCaps[] = 'VIEW';
+            }
+            if ($derived['add']) {
+                $requestsCaps[] = 'CREATE';
+            }
+            if ($derived['edit']) {
+                $requestsCaps[] = 'UPDATE';
+            }
+            if (! empty($requestsCaps)) {
+                $result['requests'] = $requestsCaps;
             }
 
             ksort($result);
@@ -116,7 +133,7 @@ class PermissionService
         }
 
         $publishedVersionId = DB::table('workflow_versions')
-            ->where('state', \App\Enums\WorkflowVersionState::PUBLISHED->value)
+            ->where('state', WorkflowVersionState::PUBLISHED->value)
             ->orderByDesc('version_number')
             ->value('id');
 

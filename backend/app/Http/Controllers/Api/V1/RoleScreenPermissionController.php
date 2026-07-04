@@ -160,7 +160,7 @@ class RoleScreenPermissionController extends Controller
         }
 
         $validCapabilities = array_column(ScreenCapability::cases(), 'value');
-        $validScreenKeys = Screen::query()->pluck('key')->toArray();
+        $validScreenKeys = Screen::query()->where('key', '!=', 'requests')->pluck('key')->toArray();
 
         $validated = $request->validate([
             'grants' => ['required', 'array'],
@@ -168,7 +168,8 @@ class RoleScreenPermissionController extends Controller
             'grants.*.*' => ['string', Rule::in($validCapabilities)],
         ]);
 
-        // Validate screen keys
+        // Validate screen keys. `requests` is intentionally excluded — its access is
+        // derived from the workflow designer's stage assignments, not manually granted.
         foreach (array_keys($validated['grants']) as $screenKey) {
             if (! in_array($screenKey, $validScreenKeys, true)) {
                 return ApiResponse::validationError(['grants' => ["Unknown screen: {$screenKey}"]]);

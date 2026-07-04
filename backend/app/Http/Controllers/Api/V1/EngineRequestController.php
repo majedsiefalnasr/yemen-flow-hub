@@ -16,7 +16,6 @@ use App\Models\FieldDefinition;
 use App\Models\FieldGroup;
 use App\Models\WorkflowVersion;
 use App\Services\Audit\AuditService;
-use App\Services\Authorization\PermissionService;
 use App\Services\Customs\EngineCustomsService;
 use App\Services\Notifications\EngineNotificationDispatcher;
 use App\Services\Workflow\DuplicateInvoiceChecker;
@@ -84,13 +83,6 @@ class EngineRequestController extends Controller
     public function availableWorkflows(Request $request): JsonResponse
     {
         $user = $request->user();
-
-        if (! app(PermissionService::class)->userHasCapability($user, 'requests', 'CREATE')) {
-            return response()->json([
-                'success' => false,
-                'message' => 'You do not have permission to create requests.',
-            ], 403);
-        }
 
         $versions = WorkflowVersion::query()
             ->where('state', 'PUBLISHED')

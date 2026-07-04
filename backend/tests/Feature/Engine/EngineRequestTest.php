@@ -893,6 +893,10 @@ class EngineRequestTest extends TestCase
 
     public function test_available_workflows_excludes_users_without_create_capability(): void
     {
+        // `requests` capability is now workflow-derived, not gated by a static 403.
+        // A user with no stage assignment on any published workflow simply sees an
+        // empty available-workflows list, not a 403 — the per-version stage filter
+        // is the sole (and correct) gate.
         $noAccessUser = User::create([
             'name' => 'No Access User',
             'email' => 'noaccess@test.com',
@@ -906,7 +910,8 @@ class EngineRequestTest extends TestCase
         $response = $this->actingAs($noAccessUser)
             ->getJson('/api/v1/engine-requests/available-workflows');
 
-        $response->assertForbidden();
+        $response->assertOk();
+        $this->assertSame([], $response->json('data'));
     }
 
     // ── 18.5.10: Form Schema ─────────────────────────────────────────────

@@ -37,18 +37,15 @@ class ScreenPermissionSeeder extends Seeder
         $grants = [
             // ── Commercial Banks ──────────────────────────────────
             'intake' => [
-                'requests' => ['VIEW', 'CREATE'],
                 'merchants' => ['VIEW'],
                 'notifications' => ['VIEW'],
                 'settings' => ['VIEW'],
             ],
             'internal_reviewer' => [
-                'requests' => ['VIEW', 'UPDATE'],
                 'notifications' => ['VIEW'],
                 'settings' => ['VIEW'],
             ],
             'bank_admin' => [
-                'requests' => ['VIEW', 'CREATE'],
                 'merchants' => ['VIEW', 'CREATE', 'UPDATE', 'DELETE', 'MANAGE'],
                 'users' => ['VIEW', 'CREATE', 'UPDATE', 'DELETE', 'MANAGE'],
                 'reports' => ['VIEW'],
@@ -56,35 +53,30 @@ class ScreenPermissionSeeder extends Seeder
                 'settings' => ['VIEW'],
             ],
             'fx_swift' => [
-                'requests' => ['VIEW', 'UPDATE'],
                 'notifications' => ['VIEW'],
                 'settings' => ['VIEW'],
             ],
 
             // ── National Committee ────────────────────────────────
             'support' => [
-                'requests' => ['VIEW', 'UPDATE'],
                 'audit' => ['VIEW'],
                 'reports' => ['VIEW'],
                 'notifications' => ['VIEW'],
                 'settings' => ['VIEW'],
             ],
             'committee_manager' => [
-                'requests' => ['VIEW', 'UPDATE'],
                 'reports' => ['VIEW', 'EXPORT'],
                 'audit' => ['VIEW'],
                 'notifications' => ['VIEW'],
                 'settings' => ['VIEW'],
             ],
             'committee_director' => [
-                'requests' => ['VIEW', 'UPDATE', 'MANAGE'],
                 'reports' => ['VIEW', 'EXPORT'],
                 'audit' => ['VIEW', 'EXPORT'],
                 'notifications' => ['VIEW'],
                 'settings' => ['VIEW'],
             ],
             'fx_confirm' => [
-                'requests' => ['VIEW', 'UPDATE'],
                 'reports' => ['VIEW'],
                 'audit' => ['VIEW'],
                 'notifications' => ['VIEW'],
@@ -100,7 +92,6 @@ class ScreenPermissionSeeder extends Seeder
                 'users' => ['VIEW', 'CREATE', 'UPDATE', 'DELETE', 'MANAGE'],
                 'merchants' => ['VIEW', 'CREATE', 'UPDATE', 'DELETE', 'MANAGE'],
                 'workflow_designer' => ['VIEW', 'CREATE', 'UPDATE', 'DELETE', 'MANAGE'],
-                'requests' => ['VIEW'],
                 'reports' => ['VIEW', 'EXPORT'],
                 'audit' => ['VIEW', 'EXPORT'],
                 'reference_data' => ['VIEW', 'CREATE', 'UPDATE', 'DELETE', 'MANAGE'],

@@ -95,19 +95,13 @@ class ScreenPermissionTest extends TestCase
         $this->actingAs($this->admin)
             ->putJson("/api/v1/roles/{$this->intakeRole->id}/screen-permissions", [
                 'grants' => [
-                    'requests' => ['VIEW', 'CREATE', 'UPDATE'],
                     'reports' => ['VIEW'],
                 ],
             ])
             ->assertOk();
 
-        $grants = ScreenPermission::where('role_id', $this->intakeRole->id)
-            ->join('screens', 'screens.id', '=', 'screen_permissions.screen_id')
-            ->pluck('screen_permissions.capability', 'screens.key')
-            ->toArray();
-
-        // 4 rows: requests(VIEW,CREATE,UPDATE) + reports(VIEW)
-        $this->assertSame(4, ScreenPermission::where('role_id', $this->intakeRole->id)->count());
+        // 1 row: reports(VIEW). `requests` is no longer writable via this endpoint.
+        $this->assertSame(1, ScreenPermission::where('role_id', $this->intakeRole->id)->count());
     }
 
     public function test_get_screen_permissions_reflects_grants(): void
@@ -137,7 +131,10 @@ class ScreenPermissionTest extends TestCase
 
         $data = $response->json('data');
         $this->assertArrayHasKey('screen_permissions', $data);
-        $this->assertArrayHasKey('requests', $data['screen_permissions']);
+        // `requests` is now workflow-derived; it's present only if the role has an
+        // active stage assignment in the published workflow. Assert the key type
+        // instead of presence.
+        $this->assertIsArray($data['screen_permissions']);
     }
 
     // ── AC 2: Gating uses screen_permissions not role codes ───────────────
@@ -185,7 +182,6 @@ class ScreenPermissionTest extends TestCase
         $this->actingAs($this->admin)
             ->putJson("/api/v1/roles/{$this->systemAdminRole->id}/screen-permissions", [
                 'grants' => [
-                    'requests' => ['VIEW'],
                     // deliberately omitting screen_permissions
                 ],
             ])
@@ -202,11 +198,13 @@ class ScreenPermissionTest extends TestCase
             'capability' => 'MANAGE',
         ]);
 
-        // Now removing from system_admin should succeed
+        // Now removing from system_admin should succeed. `grants` must be a non-empty
+        // array (the endpoint's `required` rule rejects `[]`), so keep an unrelated,
+        // harmless grant — the last-admin guard is what this test actually verifies.
         $this->actingAs($this->admin)
             ->putJson("/api/v1/roles/{$this->systemAdminRole->id}/screen-permissions", [
                 'grants' => [
-                    'requests' => ['VIEW'],
+                    'reports' => ['VIEW'],
                 ],
             ])
             ->assertOk();

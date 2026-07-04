@@ -3,6 +3,7 @@
 namespace Tests\Feature\Engine;
 
 use App\Enums\UserRole;
+use App\Enums\WorkflowVersionState;
 use App\Models\Bank;
 use App\Models\Organization;
 use App\Models\Role;
@@ -12,6 +13,7 @@ use Database\Seeders\GovernanceSeeder;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -155,6 +157,25 @@ class EngineGovernanceRbacTest extends TestCase
     {
         $bank = Bank::create(['name' => 'Intake Bank2', 'code' => 'ITB2', 'is_active' => true, 'organization_id' => $this->bankOrg->id]);
         $intake = $this->makeUser('intake2@gov.test', UserRole::DATA_ENTRY, $this->bankOrg, 'intake', 'entry', $bank);
+
+        // `requests` access is now workflow-derived: give the intake role a stage
+        // assignment on a published workflow so it resolves to VIEW access.
+        $intakeRole = Role::where('code', 'intake')->firstOrFail();
+        $definitionId = DB::table('workflow_definitions')->insertGetId([
+            'code' => 'gov_rbac_test_wf', 'name' => 'Gov RBAC Test', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $versionId = DB::table('workflow_versions')->insertGetId([
+            'workflow_definition_id' => $definitionId, 'version_number' => 1,
+            'state' => WorkflowVersionState::PUBLISHED->value, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $stageId = DB::table('workflow_stages')->insertGetId([
+            'workflow_version_id' => $versionId, 'code' => 'intake', 'name' => 'Intake', 'is_initial' => true,
+            'status' => 'ACTIVE', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        DB::table('stage_permissions')->insert([
+            'stage_id' => $stageId, 'role_id' => $intakeRole->id, 'access_level' => 'VIEW',
+            'display_label' => $intakeRole->name, 'created_at' => now(), 'updated_at' => now(),
+        ]);
 
         $response = $this->actingAs($intake)->getJson('/api/auth/me');
 
