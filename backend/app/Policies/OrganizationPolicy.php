@@ -4,9 +4,12 @@ namespace App\Policies;
 
 use App\Models\Organization;
 use App\Models\User;
+use App\Services\Authorization\PermissionService;
 
 class OrganizationPolicy
 {
+    public function __construct(private readonly PermissionService $permissionService) {}
+
     public function before(User $user): ?bool
     {
         return $user->is_active ? null : false;
@@ -14,7 +17,7 @@ class OrganizationPolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->hasPermission('roles.manage');
+        return $this->permissionService->userHasCapability($user, 'roles', 'MANAGE');
     }
 
     public function view(User $user, Organization $organization): bool

@@ -8,6 +8,7 @@ use App\Models\WorkflowAction;
 use Database\Seeders\BankSeeder;
 use Database\Seeders\GovernanceSeeder;
 use Database\Seeders\PermissionSeeder;
+use Database\Seeders\ScreenPermissionSeeder;
 use Database\Seeders\UserSeeder;
 use Database\Seeders\WorkflowActionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -24,7 +25,7 @@ class WorkflowActionTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed([PermissionSeeder::class, GovernanceSeeder::class, WorkflowActionSeeder::class, BankSeeder::class, UserSeeder::class]);
+        $this->seed([PermissionSeeder::class, GovernanceSeeder::class, ScreenPermissionSeeder::class, WorkflowActionSeeder::class, BankSeeder::class, UserSeeder::class]);
         $this->admin = User::query()->where('role', UserRole::CBY_ADMIN->value)->firstOrFail();
         $this->nonAdmin = User::query()->where('role', '!=', UserRole::CBY_ADMIN->value)->firstOrFail();
     }

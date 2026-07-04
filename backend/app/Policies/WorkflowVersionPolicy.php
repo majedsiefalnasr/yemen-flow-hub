@@ -5,12 +5,15 @@ namespace App\Policies;
 use App\Enums\WorkflowVersionState;
 use App\Models\User;
 use App\Models\WorkflowVersion;
+use App\Services\Authorization\PermissionService;
 
 class WorkflowVersionPolicy
 {
+    public function __construct(private readonly PermissionService $permissionService) {}
+
     public function viewAny(User $user): bool
     {
-        return $user->is_active && $user->hasPermission('workflow.design');
+        return $user->is_active && $this->permissionService->userHasCapability($user, 'workflow_designer', 'MANAGE');
     }
 
     public function view(User $user, WorkflowVersion $version): bool

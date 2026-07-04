@@ -6,11 +6,14 @@ use App\Http\Requests\StoreDocumentTypeRequest;
 use App\Http\Requests\UpdateDocumentTypeRequest;
 use App\Http\Resources\DocumentTypeResource;
 use App\Models\DocumentType;
+use App\Services\Authorization\PermissionService;
 use App\Support\ApiResponse;
 use OpenApi\Attributes as OA;
 
 class DocumentTypeController extends Controller
 {
+    public function __construct(private readonly PermissionService $permissionService) {}
+
     #[OA\Get(path: '/api/document-types', tags: ['Documents'], summary: 'List document types', responses: [new OA\Response(response: 200, description: 'Document types retrieved')])]
     public function index()
     {
@@ -39,7 +42,7 @@ class DocumentTypeController extends Controller
     )]
     public function store(StoreDocumentTypeRequest $request)
     {
-        if (! request()->user()->hasPermission('docrules.manage')) {
+        if (! $this->permissionService->userHasCapability($request->user(), 'reference_data', 'MANAGE')) {
             return ApiResponse::forbidden();
         }
 
@@ -51,7 +54,7 @@ class DocumentTypeController extends Controller
     #[OA\Put(path: '/api/document-types/{id}', tags: ['Documents'], summary: 'Update document type', responses: [new OA\Response(response: 200, description: 'Document type updated')])]
     public function update(UpdateDocumentTypeRequest $request, DocumentType $documentType)
     {
-        if (! request()->user()->hasPermission('docrules.manage')) {
+        if (! $this->permissionService->userHasCapability($request->user(), 'reference_data', 'MANAGE')) {
             return ApiResponse::forbidden();
         }
         $documentType->update($request->validated());
@@ -62,7 +65,7 @@ class DocumentTypeController extends Controller
     #[OA\Delete(path: '/api/document-types/{id}', tags: ['Documents'], summary: 'Delete document type', responses: [new OA\Response(response: 200, description: 'Document type deleted')])]
     public function destroy(DocumentType $documentType)
     {
-        if (! request()->user()->hasPermission('docrules.manage')) {
+        if (! $this->permissionService->userHasCapability(request()->user(), 'reference_data', 'MANAGE')) {
             return ApiResponse::forbidden();
         }
         $documentType->delete();

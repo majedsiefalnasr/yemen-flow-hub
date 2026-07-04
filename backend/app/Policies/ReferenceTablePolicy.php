@@ -4,12 +4,15 @@ namespace App\Policies;
 
 use App\Models\ReferenceTable;
 use App\Models\User;
+use App\Services\Authorization\PermissionService;
 
 class ReferenceTablePolicy
 {
+    public function __construct(private readonly PermissionService $permissionService) {}
+
     public function viewAny(User $user): bool
     {
-        return $user->is_active && $user->hasPermission('docrules.manage');
+        return $user->is_active && $this->permissionService->userHasCapability($user, 'reference_data', 'MANAGE');
     }
 
     public function view(User $user, ReferenceTable $referenceTable): bool

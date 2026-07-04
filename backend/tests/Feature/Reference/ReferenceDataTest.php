@@ -9,6 +9,7 @@ use Database\Seeders\BankSeeder;
 use Database\Seeders\GovernanceSeeder;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\ReferenceDataSeeder;
+use Database\Seeders\ScreenPermissionSeeder;
 use Database\Seeders\UserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -24,7 +25,7 @@ class ReferenceDataTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed([PermissionSeeder::class, GovernanceSeeder::class, ReferenceDataSeeder::class, BankSeeder::class, UserSeeder::class]);
+        $this->seed([PermissionSeeder::class, GovernanceSeeder::class, ScreenPermissionSeeder::class, ReferenceDataSeeder::class, BankSeeder::class, UserSeeder::class]);
         $this->admin = User::query()->where('role', UserRole::CBY_ADMIN->value)->firstOrFail();
         $this->nonAdmin = User::query()->where('role', '!=', UserRole::CBY_ADMIN->value)->firstOrFail();
     }
