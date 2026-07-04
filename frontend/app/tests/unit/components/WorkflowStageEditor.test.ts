@@ -53,7 +53,7 @@ function makeVersion(state: 'DRAFT' | 'PUBLISHED' = 'DRAFT') {
 }
 
 async function mountEditor(
-  capabilities: Array<'VIEW' | 'CREATE' | 'UPDATE' | 'DELETE'>,
+  capabilities: Array<'VIEW' | 'MANAGE'>,
   state: 'DRAFT' | 'PUBLISHED' = 'DRAFT',
   stages = [makeStage()],
 ) {
@@ -104,7 +104,7 @@ describe('WorkflowStageEditor', () => {
   })
 
   it('shows add/edit/delete affordances on a DRAFT version for permitted users', async () => {
-    const wrapper = await mountEditor(['VIEW', 'CREATE', 'UPDATE', 'DELETE'])
+    const wrapper = await mountEditor(['VIEW', 'MANAGE'])
 
     expect(buttonByText(wrapper, 'إضافة مرحلة')).toBeDefined()
     expect(buttonByLabel(wrapper, 'تعديل المرحلة')).toBeDefined()
@@ -112,7 +112,7 @@ describe('WorkflowStageEditor', () => {
   })
 
   it('hides mutation affordances on a PUBLISHED (non-DRAFT) version', async () => {
-    const wrapper = await mountEditor(['VIEW', 'CREATE', 'UPDATE', 'DELETE'], 'PUBLISHED')
+    const wrapper = await mountEditor(['VIEW', 'MANAGE'], 'PUBLISHED')
 
     expect(buttonByText(wrapper, 'إضافة مرحلة')).toBeUndefined()
     expect(buttonByLabel(wrapper, 'تعديل المرحلة')).toBeUndefined()

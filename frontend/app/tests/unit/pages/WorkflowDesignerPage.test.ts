@@ -51,7 +51,7 @@ function makeDefinition(overrides = {}) {
 }
 
 async function mountPage(
-  capabilities: Array<'VIEW' | 'CREATE' | 'UPDATE' | 'DELETE'>,
+  capabilities: Array<'VIEW' | 'MANAGE'>,
   definitions = [makeDefinition()],
   extraStubs: Record<string, unknown> = {},
 ) {
@@ -71,7 +71,16 @@ async function mountPage(
   const wrapper = mount(WorkflowDesignerPage, {
     global: {
       plugins: [pinia],
-      stubs: { Teleport: true, NuxtLink: true, ...extraStubs },
+      stubs: {
+        Teleport: true,
+        NuxtLink: true,
+        // Tooltip needs a TooltipProvider ancestor (supplied at app root); render
+        // the trigger slot transparently in isolated mounts.
+        Tooltip: { template: '<div><slot /></div>' },
+        TooltipTrigger: { template: '<div><slot /></div>' },
+        TooltipContent: { template: '<div><slot /></div>' },
+        ...extraStubs,
+      },
     },
   })
   await flushPromises()
@@ -109,8 +118,8 @@ describe('workflow designer page', () => {
     expect(buttonByText(wrapper, 'استنساخ')).toBeUndefined()
   })
 
-  it('shows the clone action on published versions for CREATE users', async () => {
-    const wrapper = await mountPage(['VIEW', 'CREATE'])
+  it('shows the clone action on published versions for MANAGE users', async () => {
+    const wrapper = await mountPage(['VIEW', 'MANAGE'])
 
     expect(buttonByText(wrapper, 'استنساخ')).toBeDefined()
   })
@@ -131,10 +140,10 @@ describe('workflow designer page', () => {
         },
       ],
     })
-    const wrapper = await mountPage(['VIEW', 'CREATE'], [draftDefinition])
+    const wrapper = await mountPage(['VIEW', 'MANAGE'], [draftDefinition])
 
     expect(wrapper.text()).toContain('مسودة')
-    expect(buttonByText(wrapper, 'استنساخ')).toBeUndefined()
+    expect(buttonByText(wrapper, 'استنساخ')?.attributes('disabled')).toBeDefined()
   })
 
   it('shows an empty state when there are no definitions', async () => {

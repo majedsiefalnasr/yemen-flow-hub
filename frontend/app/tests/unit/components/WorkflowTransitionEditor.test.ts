@@ -99,7 +99,7 @@ function makeVersion(state: 'DRAFT' | 'PUBLISHED' = 'DRAFT') {
 }
 
 async function mountEditor(
-  capabilities: Array<'VIEW' | 'CREATE' | 'UPDATE' | 'DELETE'>,
+  capabilities: Array<'VIEW' | 'MANAGE'>,
   state: 'DRAFT' | 'PUBLISHED' = 'DRAFT',
   transitions = [makeTransition()],
 ) {
@@ -116,7 +116,18 @@ async function mountEditor(
 
   const wrapper = mount(WorkflowTransitionEditor, {
     props: { version: makeVersion(state) },
-    global: { plugins: [pinia], stubs: { Teleport: true, NuxtLink: true } },
+    global: {
+      plugins: [pinia],
+      stubs: {
+        Teleport: true,
+        NuxtLink: true,
+        // Tooltip needs a TooltipProvider ancestor (supplied at app root); render
+        // the trigger slot transparently in isolated mounts.
+        Tooltip: { template: '<div><slot /></div>' },
+        TooltipTrigger: { template: '<div><slot /></div>' },
+        TooltipContent: { template: '<div><slot /></div>' },
+      },
+    },
   })
   await flushPromises()
 
@@ -144,14 +155,14 @@ describe('WorkflowTransitionEditor', () => {
     expect(wrapper.text()).toContain('مرحلة ب')
   })
 
-  it('shows add affordance on a DRAFT version for CREATE users', async () => {
-    const wrapper = await mountEditor(['VIEW', 'CREATE'])
+  it('shows add affordance on a DRAFT version for MANAGE users', async () => {
+    const wrapper = await mountEditor(['VIEW', 'MANAGE'])
 
     expect(buttonByText(wrapper, 'إضافة انتقال')).toBeDefined()
   })
 
   it('hides mutation affordances on a PUBLISHED version', async () => {
-    const wrapper = await mountEditor(['VIEW', 'CREATE', 'DELETE'], 'PUBLISHED')
+    const wrapper = await mountEditor(['VIEW', 'MANAGE'], 'PUBLISHED')
 
     expect(buttonByText(wrapper, 'إضافة انتقال')).toBeUndefined()
     expect(buttonByLabel(wrapper, 'حذف الانتقال')).toBeUndefined()

@@ -38,10 +38,7 @@ function makeAction(overrides = {}) {
   }
 }
 
-async function mountCatalog(
-  capabilities: Array<'VIEW' | 'CREATE' | 'UPDATE' | 'DELETE'>,
-  actions = [makeAction()],
-) {
+async function mountCatalog(capabilities: Array<'VIEW' | 'MANAGE'>, actions = [makeAction()]) {
   mockGet.mockResolvedValueOnce({ data: actions, meta: META })
   const pinia = createPinia()
   setActivePinia(pinia)
@@ -96,21 +93,21 @@ describe('WorkflowActionsCatalog', () => {
   })
 
   it('shows create and edit for permitted users', async () => {
-    const wrapper = await mountCatalog(['VIEW', 'CREATE', 'UPDATE'])
+    const wrapper = await mountCatalog(['VIEW', 'MANAGE'])
 
     expect(buttonByText(wrapper, 'إضافة إجراء')).toBeDefined()
     expect(buttonByLabel(wrapper, 'تعديل الإجراء')).toBeDefined()
   })
 
-  it('hides delete for system actions even with DELETE permission', async () => {
-    const wrapper = await mountCatalog(['VIEW', 'DELETE'], [makeAction({ is_system: true })])
+  it('hides delete for system actions even with MANAGE permission', async () => {
+    const wrapper = await mountCatalog(['VIEW', 'MANAGE'], [makeAction({ is_system: true })])
 
     expect(buttonByLabel(wrapper, 'حذف الإجراء')).toBeUndefined()
   })
 
-  it('shows delete for a custom unused action with DELETE permission', async () => {
+  it('shows delete for a custom unused action with MANAGE permission', async () => {
     const wrapper = await mountCatalog(
-      ['VIEW', 'DELETE'],
+      ['VIEW', 'MANAGE'],
       [makeAction({ id: 2, code: 'ESCALATE', is_system: false, is_in_use: false })],
     )
 

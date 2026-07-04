@@ -48,7 +48,7 @@ const VALUE = {
   version: 1,
 }
 
-async function mountPage(capabilities: Array<'VIEW' | 'CREATE' | 'UPDATE' | 'DELETE'>) {
+async function mountPage(capabilities: Array<'VIEW' | 'MANAGE'>) {
   mockGet.mockResolvedValueOnce({ data: [TABLE], meta: META })
   const pinia = createPinia()
   setActivePinia(pinia)
@@ -96,7 +96,7 @@ describe('reference data admin page', () => {
   // the underlying activation/delete-guard behavior through the row action config
   // rather than through portal DOM traversal.
   it('exposes a row action menu trigger and enforces the delete guard for in-use tables', async () => {
-    const wrapper = await mountPage(['VIEW', 'CREATE', 'UPDATE', 'DELETE'])
+    const wrapper = await mountPage(['VIEW', 'MANAGE'])
 
     const menuTrigger = wrapper
       .findAll('button')
@@ -112,7 +112,7 @@ describe('reference data admin page', () => {
     mockPost.mockResolvedValueOnce({
       data: { ...TABLE, is_active: false, version: 2 },
     })
-    const wrapper = await mountPage(['VIEW', 'CREATE', 'UPDATE', 'DELETE'])
+    const wrapper = await mountPage(['VIEW', 'MANAGE'])
     const vm = wrapper.vm as unknown as { toggleTable: (table: typeof TABLE) => Promise<void> }
 
     await vm.toggleTable(TABLE)
@@ -124,7 +124,7 @@ describe('reference data admin page', () => {
   })
 
   it('loads values when a table row is selected', async () => {
-    const wrapper = await mountPage(['VIEW', 'CREATE', 'UPDATE', 'DELETE'])
+    const wrapper = await mountPage(['VIEW', 'MANAGE'])
     mockGet.mockResolvedValueOnce({ data: [VALUE], meta: META })
 
     await wrapper.get('tbody tr').trigger('click')
@@ -145,7 +145,7 @@ describe('reference data admin page', () => {
   })
 
   it('shows a selected table summary after choosing a table', async () => {
-    const wrapper = await mountPage(['VIEW', 'CREATE', 'UPDATE', 'DELETE'])
+    const wrapper = await mountPage(['VIEW', 'MANAGE'])
     mockGet.mockResolvedValueOnce({ data: [VALUE], meta: META })
 
     await wrapper.get('tbody tr').trigger('click')
@@ -159,7 +159,7 @@ describe('reference data admin page', () => {
   })
 
   it('shows the selected table value count metric', async () => {
-    const wrapper = await mountPage(['VIEW', 'CREATE', 'UPDATE', 'DELETE'])
+    const wrapper = await mountPage(['VIEW', 'MANAGE'])
     mockGet.mockResolvedValueOnce({ data: [VALUE], meta: META })
 
     await wrapper.get('tbody tr').trigger('click')

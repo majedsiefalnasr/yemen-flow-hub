@@ -36,7 +36,7 @@ async function mountPanel(state: 'DRAFT' | 'PUBLISHED' = 'DRAFT') {
   const pinia = createPinia()
   setActivePinia(pinia)
   const auth = useAuthStore()
-  auth.screenPermissions = { workflow_designer: ['VIEW', 'CREATE', 'UPDATE'] }
+  auth.screenPermissions = { workflow_designer: ['VIEW', 'MANAGE'] }
 
   const wrapper = mount(WorkflowPublishPanel, {
     props: { version: makeVersion(state) },

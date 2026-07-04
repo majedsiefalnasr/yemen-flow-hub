@@ -74,7 +74,7 @@ function makeVersion(state: 'DRAFT' | 'PUBLISHED' = 'DRAFT'): WorkflowVersion {
 }
 
 async function mountEditor(
-  capabilities: Array<'VIEW' | 'CREATE' | 'UPDATE' | 'DELETE'>,
+  capabilities: Array<'VIEW' | 'MANAGE'>,
   state: 'DRAFT' | 'PUBLISHED' = 'DRAFT',
   permissions = [makePermission()],
 ) {
@@ -93,7 +93,18 @@ async function mountEditor(
 
   const wrapper = mount(StagePermissionEditor, {
     props: { stage: makeStage(), version: makeVersion(state) },
-    global: { plugins: [pinia], stubs: { Teleport: true, NuxtLink: true } },
+    global: {
+      plugins: [pinia],
+      stubs: {
+        Teleport: true,
+        NuxtLink: true,
+        // Tooltip needs a TooltipProvider ancestor (supplied at app root); render
+        // the trigger slot transparently in isolated mounts.
+        Tooltip: { template: '<div><slot /></div>' },
+        TooltipTrigger: { template: '<div><slot /></div>' },
+        TooltipContent: { template: '<div><slot /></div>' },
+      },
+    },
   })
   await flushPromises()
 
@@ -120,14 +131,14 @@ describe('StagePermissionEditor', () => {
     expect(wrapper.text()).toContain('تنفيذ')
   })
 
-  it('shows add affordance for CREATE users on a DRAFT version', async () => {
-    const wrapper = await mountEditor(['VIEW', 'CREATE'])
+  it('shows add affordance for MANAGE users on a DRAFT version', async () => {
+    const wrapper = await mountEditor(['VIEW', 'MANAGE'])
 
     expect(buttonByText(wrapper, 'إضافة صلاحية')).toBeDefined()
   })
 
   it('hides mutation affordances on a PUBLISHED version', async () => {
-    const wrapper = await mountEditor(['VIEW', 'CREATE', 'DELETE'], 'PUBLISHED')
+    const wrapper = await mountEditor(['VIEW', 'MANAGE'], 'PUBLISHED')
 
     expect(buttonByText(wrapper, 'إضافة صلاحية')).toBeUndefined()
     expect(buttonByLabel(wrapper, 'حذف الصلاحية')).toBeUndefined()

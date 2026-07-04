@@ -105,7 +105,7 @@ async function mountMatrix(
   const pinia = createPinia()
   setActivePinia(pinia)
   const auth = useAuthStore()
-  auth.screenPermissions = { workflow_designer: ['VIEW', 'CREATE', 'UPDATE'] }
+  auth.screenPermissions = { workflow_designer: ['VIEW', 'MANAGE'] }
 
   const wrapper = mount(StageFieldRuleMatrix, {
     props: { stage: makeStage(), version: makeVersion(state) },

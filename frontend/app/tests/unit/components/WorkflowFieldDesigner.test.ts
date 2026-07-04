@@ -84,7 +84,7 @@ function makeVersion(state: 'DRAFT' | 'PUBLISHED' = 'DRAFT'): WorkflowVersion {
 }
 
 async function mountDesigner(
-  capabilities: Array<'VIEW' | 'CREATE' | 'UPDATE' | 'DELETE'>,
+  capabilities: Array<'VIEW' | 'MANAGE'>,
   state: 'DRAFT' | 'PUBLISHED' = 'DRAFT',
   groups = [makeGroup()],
 ) {
@@ -100,7 +100,18 @@ async function mountDesigner(
 
   const wrapper = mount(WorkflowFieldDesigner, {
     props: { version: makeVersion(state) },
-    global: { plugins: [pinia], stubs: { Teleport: true, NuxtLink: true } },
+    global: {
+      plugins: [pinia],
+      stubs: {
+        Teleport: true,
+        NuxtLink: true,
+        // Tooltip needs a TooltipProvider ancestor (supplied at app root); render
+        // the trigger slot transparently in isolated mounts.
+        Tooltip: { template: '<div><slot /></div>' },
+        TooltipTrigger: { template: '<div><slot /></div>' },
+        TooltipContent: { template: '<div><slot /></div>' },
+      },
+    },
   })
   await flushPromises()
 
@@ -124,8 +135,8 @@ describe('WorkflowFieldDesigner', () => {
     expect(wrapper.text()).toContain('عملة')
   })
 
-  it('shows add-group and add-field for CREATE users on a DRAFT version', async () => {
-    const wrapper = await mountDesigner(['VIEW', 'CREATE'])
+  it('shows add-group and add-field for MANAGE users on a DRAFT version', async () => {
+    const wrapper = await mountDesigner(['VIEW', 'MANAGE'])
 
     expect(buttonByText(wrapper, 'إضافة مجموعة')).toBeDefined()
     expect(buttonByText(wrapper, 'إضافة حقل')).toBeDefined()
@@ -139,7 +150,7 @@ describe('WorkflowFieldDesigner', () => {
   })
 
   it('locks the designer on a PUBLISHED version', async () => {
-    const wrapper = await mountDesigner(['VIEW', 'CREATE', 'DELETE'], 'PUBLISHED')
+    const wrapper = await mountDesigner(['VIEW', 'MANAGE'], 'PUBLISHED')
 
     expect(buttonByText(wrapper, 'إضافة مجموعة')).toBeUndefined()
     expect(wrapper.text()).toContain('مقفلة')
