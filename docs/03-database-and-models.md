@@ -259,19 +259,21 @@ Stores uploaded request files (replaces the legacy `request_documents` table, wh
 
 ## Fields
 
-| Field         | Type            |
-| ------------- | --------------- |
-| id            | bigint          |
-| request_id    | foreignId       |
-| uploaded_by   | foreignId       |
-| document_type | enum            |
-| original_name | string          |
-| file_name     | string          |
-| mime_type     | string          |
-| file_size     | bigint          |
-| storage_path  | string          |
-| checksum      | string nullable |
-| created_at    | timestamp       |
+| Field         | Type                  |
+| ------------- | --------------------- |
+| id            | bigint                |
+| request_id    | foreignId             |
+| field_id      | foreignId nullable    |
+| uploaded_by   | foreignId             |
+| stage_id      | foreignId             |
+| original_name | string                |
+| path          | string                |
+| mime          | string(50)            |
+| size          | bigint                |
+| checksum      | string(64) nullable   |
+| version       | unsignedInteger       |
+| deleted_at    | timestamp (soft delete) |
+| created_at    | timestamp             |
 
 ---
 
