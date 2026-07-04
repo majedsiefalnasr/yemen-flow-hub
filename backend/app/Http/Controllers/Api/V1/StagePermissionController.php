@@ -10,13 +10,17 @@ use App\Http\Requests\UpdateStagePermissionRequest;
 use App\Http\Resources\StagePermissionResource;
 use App\Models\StagePermission;
 use App\Models\WorkflowStage;
+use App\Services\Authorization\PermissionService;
 use App\Services\Workflow\WorkflowDesignerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class StagePermissionController extends Controller
 {
-    public function __construct(private readonly WorkflowDesignerService $designer) {}
+    public function __construct(
+        private readonly WorkflowDesignerService $designer,
+        private readonly PermissionService $permissionService,
+    ) {}
 
     public function index(WorkflowStage $workflowStage): JsonResponse
     {
@@ -43,6 +47,8 @@ class StagePermissionController extends Controller
             return $this->error($exception->errorCode, $exception->getMessage(), 409);
         }
 
+        $this->permissionService->clearAllScreenPermissionCaches();
+
         return (new StagePermissionResource($permission))->response()->setStatusCode(201);
     }
 
@@ -67,6 +73,8 @@ class StagePermissionController extends Controller
             return $this->error($exception->errorCode, $exception->getMessage(), 409);
         }
 
+        $this->permissionService->clearAllScreenPermissionCaches();
+
         return (new StagePermissionResource($stagePermission))->response();
     }
 
@@ -82,6 +90,8 @@ class StagePermissionController extends Controller
         } catch (WorkflowVersionImmutableException $exception) {
             return $this->error($exception->errorCode, $exception->getMessage(), 409);
         }
+
+        $this->permissionService->clearAllScreenPermissionCaches();
 
         return response()->json(null, 204);
     }

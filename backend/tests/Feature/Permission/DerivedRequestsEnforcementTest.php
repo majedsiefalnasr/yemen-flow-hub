@@ -9,6 +9,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Services\Authorization\PermissionService;
 use Database\Seeders\GovernanceSeeder;
+use Database\Seeders\PermissionSeeder;
 use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -155,5 +156,59 @@ class DerivedRequestsEnforcementTest extends TestCase
                 'grants' => ['requests' => ['VIEW']],
             ])
             ->assertStatus(422);
+    }
+
+    public function test_publishing_workflow_via_endpoint_busts_cache_without_manual_clear(): void
+    {
+        // publish() is guarded by hasPermission('workflow.design'), which is
+        // seeded by PermissionSeeder (not part of this class's shared setUp()).
+        $this->seed(PermissionSeeder::class);
+
+        $org = Organization::where('code', 'commercial_banks')->firstOrFail();
+        $role = Role::create([
+            'organization_id' => $org->id,
+            'code' => 'cache_bust_test_role',
+            'name' => 'Cache Bust Test Role',
+            'is_system' => false,
+            'is_active' => true,
+        ]);
+
+        $adminOrg = Organization::where('code', 'system_administration')->firstOrFail();
+        $admin = User::factory()->create([
+            'organization_id' => $adminOrg->id,
+            'role' => UserRole::CBY_ADMIN,
+        ]);
+
+        $definitionId = DB::table('workflow_definitions')->insertGetId([
+            'code' => 'cache_bust_wf', 'name' => 'Cache Bust Test', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $draftId = DB::table('workflow_versions')->insertGetId([
+            'workflow_definition_id' => $definitionId, 'version_number' => 1, 'version' => 1,
+            'state' => WorkflowVersionState::DRAFT->value, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $stageId = DB::table('workflow_stages')->insertGetId([
+            'workflow_version_id' => $draftId, 'code' => 'intake', 'name' => 'Intake',
+            'is_initial' => true, 'is_final' => true,
+            'status' => 'ACTIVE', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        DB::table('stage_permissions')->insert([
+            'stage_id' => $stageId, 'role_id' => $role->id, 'access_level' => 'EXECUTE',
+            'display_label' => $role->name, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $service = app(PermissionService::class);
+        // Prime the cache with the pre-publish state: no PUBLISHED version exists
+        // yet, so this role has no derived `requests` capability at all.
+        $before = $service->screenPermissionsForGovernanceRole($role->id);
+        $this->assertArrayNotHasKey('requests', $before);
+
+        // Publish via the real endpoint — must bust the cache without a manual clear call.
+        $this->actingAs($admin)
+            ->postJson("/api/v1/workflow-versions/{$draftId}/publish", ['version' => 1])
+            ->assertOk();
+
+        $after = $service->screenPermissionsForGovernanceRole($role->id);
+        $this->assertArrayHasKey('requests', $after);
+        $this->assertContains('CREATE', $after['requests']);
     }
 }

@@ -225,6 +225,20 @@ class PermissionService
         Cache::forget("screen_permissions.role.{$roleId}");
     }
 
+    /**
+     * Clear cached screen-permissions maps for every role. Call this whenever
+     * the published workflow version or its stage_permissions change, since
+     * `requests` capability is derived from that data for all roles at once
+     * (not just one role, unlike a manual grant edit).
+     */
+    public function clearAllScreenPermissionCaches(): void
+    {
+        $roleIds = DB::table('roles')->pluck('id');
+        foreach ($roleIds as $roleId) {
+            $this->clearScreenPermissionCache($roleId);
+        }
+    }
+
     private function legacyScreenPermissionsForUser(User $user): array
     {
         $result = [];

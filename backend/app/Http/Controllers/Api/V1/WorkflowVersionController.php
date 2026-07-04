@@ -12,6 +12,7 @@ use App\Http\Resources\WorkflowVersionResource;
 use App\Models\User;
 use App\Models\WorkflowVersion;
 use App\Services\Audit\AuditService;
+use App\Services\Authorization\PermissionService;
 use App\Services\Notifications\EngineNotificationDispatcher;
 use App\Services\Workflow\WorkflowDesignerService;
 use App\Services\Workflow\WorkflowGraphService;
@@ -25,6 +26,7 @@ class WorkflowVersionController extends Controller
         private readonly WorkflowGraphService $graphService,
         private readonly AuditService $auditService,
         private readonly EngineNotificationDispatcher $notificationDispatcher,
+        private readonly PermissionService $permissionService,
     ) {}
 
     public function show(WorkflowVersion $workflowVersion): WorkflowVersionResource
@@ -121,6 +123,8 @@ class WorkflowVersionController extends Controller
             recipientUserIds: $adminUserIds,
         );
 
+        $this->permissionService->clearAllScreenPermissionCaches();
+
         return (new WorkflowVersionResource($workflowVersion))->response();
     }
 
@@ -147,6 +151,8 @@ class WorkflowVersionController extends Controller
         } catch (WorkflowVersionImmutableException $exception) {
             return $this->error($exception->errorCode, $exception->getMessage(), 409);
         }
+
+        $this->permissionService->clearAllScreenPermissionCaches();
 
         return (new WorkflowVersionResource($workflowVersion))->response();
     }
