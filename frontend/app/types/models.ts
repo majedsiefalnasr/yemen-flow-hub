@@ -128,7 +128,7 @@ export interface DemoUser {
   bank: GovernanceBank | null
 }
 
-export type ScreenCapability = 'VIEW' | 'CREATE' | 'UPDATE' | 'DELETE' | 'EXPORT' | 'MANAGE'
+export type ScreenCapability = 'VIEW' | 'MANAGE' | 'EXPORT'
 export type ScreenPermissions = Record<string, ScreenCapability[]>
 
 export interface AuthMeData {
