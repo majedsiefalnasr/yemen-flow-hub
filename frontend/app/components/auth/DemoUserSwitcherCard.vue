@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import BoringAvatar from '@/components/shared/BoringAvatar.vue'
 import type { DemoUser } from '~/types/models'
 
-const props = defineProps<{
+defineProps<{
   user: DemoUser
 }>()
 
@@ -14,13 +15,11 @@ const emit = defineEmits<{
 defineOptions({
   inheritAttrs: false,
 })
-
-const subLine = props.user.team?.name ?? props.user.organization?.name ?? ''
 </script>
 
 <template>
   <Card
-    class="flex cursor-pointer items-center gap-3 border-0 p-3 shadow transition-shadow hover:shadow-md"
+    class="hover:bg-accent focus-visible:ring-ring flex cursor-pointer flex-row flex-nowrap items-center gap-3 border-0 p-3 text-start shadow transition-all hover:shadow-md focus-visible:ring-2 focus-visible:outline-none"
     role="button"
     tabindex="0"
     :aria-label="`تسجيل الدخول كـ ${user.name}`"
@@ -28,20 +27,24 @@ const subLine = props.user.team?.name ?? props.user.organization?.name ?? ''
     @keydown.enter="emit('select')"
     @keydown.space.prevent="emit('select')"
   >
-    <div class="min-w-0 flex-1 text-start">
+    <BoringAvatar
+      :name="user.name"
+      :identity="user.email"
+      :size="48"
+      square
+      class="size-12 shrink-0 overflow-hidden rounded-lg"
+    />
+
+    <div class="min-w-0 flex-1">
       <p class="text-foreground truncate text-sm leading-tight font-semibold">
         {{ user.name }}
       </p>
-      <p class="text-muted-foreground mt-0.5 truncate text-xs">
+      <p class="text-muted-foreground mt-1 truncate text-xs">
         {{ user.email }}
       </p>
-      <p v-if="subLine" class="text-muted-foreground/70 truncate text-xs">
-        {{ subLine }}
-      </p>
+      <Badge variant="secondary" class="mt-1.5 block max-w-full truncate text-[11px] leading-none">
+        {{ user.role_label }}
+      </Badge>
     </div>
-
-    <Badge variant="secondary" class="shrink-0 text-xs leading-none">
-      {{ user.role_label }}
-    </Badge>
   </Card>
 </template>

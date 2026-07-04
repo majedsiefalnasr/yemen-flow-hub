@@ -12,8 +12,10 @@ import { InputGroup, InputGroupInput, InputGroupAddon } from '@/components/ui/in
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertTitle, AlertDescription, AlertAction } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
 import { Empty, EmptyMedia, EmptyTitle, EmptyDescription } from '@/components/ui/empty'
-import { AlertCircle, Search, Users as UsersIcon } from 'lucide-vue-next'
+import { AlertCircle, Building2, Search, Users as UsersIcon } from 'lucide-vue-next'
 import DemoUserSwitcherCard from '@/components/auth/DemoUserSwitcherCard.vue'
 import { useDemoUsers } from '@/composables/useDemoUsers'
 import { useAuthStore } from '@/stores/auth.store'
@@ -84,7 +86,7 @@ async function handleSelect(user: DemoUser): Promise<void> {
 
 <template>
   <Dialog :open="open" @update:open="(value) => emit('update:open', value)">
-    <DialogContent class="flex max-h-[80dvh] w-full max-w-lg flex-col gap-4">
+    <DialogContent class="flex max-h-[85dvh] w-full flex-col gap-4 sm:max-w-md">
       <DialogHeader>
         <DialogTitle>تبديل المستخدم السريع</DialogTitle>
         <DialogDescription
@@ -99,9 +101,11 @@ async function handleSelect(user: DemoUser): Promise<void> {
         <InputGroupInput v-model="searchQuery" placeholder="ابحث بالاسم أو البريد أو الدور…" />
       </InputGroup>
 
-      <div class="flex-1 space-y-4 overflow-y-auto">
+      <div class="flex-1 space-y-6 overflow-y-auto p-2">
         <template v-if="loading">
-          <Skeleton v-for="n in 4" :key="n" class="h-16 w-full rounded-xl" />
+          <div class="space-y-3">
+            <Skeleton v-for="n in 6" :key="n" class="h-20 w-full rounded-xl" />
+          </div>
         </template>
 
         <Alert v-else-if="error" variant="destructive" role="alert">
@@ -122,16 +126,25 @@ async function handleSelect(user: DemoUser): Promise<void> {
         </Empty>
 
         <template v-else>
-          <div v-for="[groupName, groupUsers] in groupedUsers" :key="groupName" class="space-y-2">
-            <h3 class="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-              {{ groupName }}
-            </h3>
-            <DemoUserSwitcherCard
-              v-for="user in groupUsers"
-              :key="user.id"
-              :user="user"
-              @select="handleSelect(user)"
-            />
+          <div v-for="[groupName, groupUsers] in groupedUsers" :key="groupName" class="space-y-3">
+            <div class="flex items-center gap-2">
+              <Building2 class="text-muted-foreground h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              <h3 class="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                {{ groupName }}
+              </h3>
+              <Badge variant="secondary" class="h-5 shrink-0 px-1.5 text-[10px] leading-none">
+                {{ groupUsers.length }}
+              </Badge>
+              <Separator class="flex-1" />
+            </div>
+            <div class="space-y-2">
+              <DemoUserSwitcherCard
+                v-for="user in groupUsers"
+                :key="user.id"
+                :user="user"
+                @select="handleSelect(user)"
+              />
+            </div>
           </div>
         </template>
       </div>
