@@ -35,7 +35,7 @@ const comment = defineModel<string>('comment', { default: '' })
 
       <template v-else>
         <Button v-if="showClaimButton" class="w-full" :disabled="busy" @click="emit('claim')">
-          بدء المراجعة
+          المتابعة على هذا الطلب
         </Button>
 
         <Alert v-if="claimRequiredButNotHeld" role="status">

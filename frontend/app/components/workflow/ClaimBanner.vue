@@ -15,7 +15,7 @@ defineProps<{
   >
     <Lock class="mt-0.5 h-5 w-5 flex-shrink-0 text-[var(--locked)]" aria-hidden="true" />
     <AlertDescription class="text-sm font-medium text-[var(--locked)]">
-      {{ holderName }} يراجع هذا الطلب الآن
+      {{ holderName }} يعمل على هذا الطلب الآن
     </AlertDescription>
   </Alert>
 </template>
