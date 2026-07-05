@@ -599,4 +599,59 @@ describe('workflows/instances/[id].vue', () => {
       expect(next).not.toHaveBeenCalled()
     })
   })
+
+  describe('beforeunload guard for browser refresh/close', () => {
+    it('sets preventDefault on beforeunload when the wizard has unsaved changes', async () => {
+      const auth = useAuthStore()
+      auth.user = { id: 2 } as ReturnType<typeof useAuthStore>['user']
+      routeQuery = { mode: 'wizard' }
+
+      // `load()` (from the existing onMounted) re-fetches via the mocked `show`
+      // composable and overwrites `store.current` asynchronously, so the fixture
+      // must be set on the mock's resolved value (not just assigned directly to
+      // the store) to survive past the initial render — matching the pattern
+      // used by the claim-banner tests above.
+      mockShow.mockResolvedValue(makeInstance({ created_by: 1, can_execute: true }))
+
+      const wrapper = mount(WorkflowInstanceDetailPage, {
+        global: {
+          stubs: {
+            ...stubs,
+            EngineRequestWizard: {
+              template: '<div data-stub="wizard" />',
+              data: () => ({ hasUnsavedChanges: true }),
+            },
+          },
+        },
+      })
+      await flushPromises()
+      await wrapper.vm.$nextTick()
+
+      const event = new Event('beforeunload', { cancelable: true })
+      const preventDefaultSpy = vi.spyOn(event, 'preventDefault')
+      window.dispatchEvent(event)
+
+      expect(preventDefaultSpy).toHaveBeenCalled()
+
+      // Unmount so this test's listener doesn't leak onto later dispatches in
+      // this file (no other test in this suite unmounts its wrapper either).
+      wrapper.unmount()
+    })
+
+    it('does not call preventDefault on beforeunload when there are no unsaved changes', async () => {
+      mockShow.mockResolvedValue(makeInstance())
+
+      const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
+      await flushPromises()
+      await wrapper.vm.$nextTick()
+
+      const event = new Event('beforeunload', { cancelable: true })
+      const preventDefaultSpy = vi.spyOn(event, 'preventDefault')
+      window.dispatchEvent(event)
+
+      expect(preventDefaultSpy).not.toHaveBeenCalled()
+
+      wrapper.unmount()
+    })
+  })
 })

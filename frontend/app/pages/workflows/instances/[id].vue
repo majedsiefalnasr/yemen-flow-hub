@@ -1,6 +1,6 @@
 <!-- app/pages/workflows/instances/[id].vue -->
 <script setup lang="ts">
-import { computed, ref, toRef } from 'vue'
+import { computed, onMounted, onUnmounted, ref, toRef } from 'vue'
 import { useEngineRequestsStore } from '@/stores/engineRequests.store'
 import { useEngineFormSchema } from '@/composables/useEngineFormSchema'
 import { useEngineRequestActions } from '@/composables/useEngineRequestActions'
@@ -58,7 +58,22 @@ async function load() {
   claimedBy.value = store.current?.claimed_by ?? null
 }
 
-onMounted(load)
+// Native browser guard: warns on hard refresh or tab close when the wizard has
+// unsaved changes, complementing the in-app onBeforeRouteLeave guard below
+// (which only covers in-SPA navigation).
+function handleBeforeUnload(event: BeforeUnloadEvent) {
+  if (!hasUnsavedWizardChanges()) return
+  event.preventDefault()
+}
+
+onMounted(() => {
+  load()
+  window.addEventListener('beforeunload', handleBeforeUnload)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('beforeunload', handleBeforeUnload)
+})
 
 const wizardMode = computed(
   () =>
