@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, nextTick, ref, watch } from 'vue'
+import { computed, onMounted, nextTick, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import { Lock, Pencil, Plus, Trash2, Users } from 'lucide-vue-next'
 import type { StagePermission, WorkflowStage, WorkflowVersion } from '@/types/models'
@@ -59,10 +59,16 @@ const {
   deletePermission,
 } = useStagePermissions()
 const { organizations, fetchOrganizations } = useOrganizations()
-const { roles, fetchRoles } = useGovernanceRoles()
-const { teams, fetchTeams } = useTeams()
+// Two instances each for roles/teams: one unscoped (all orgs) for resolving
+// table labels regardless of which org a row belongs to, one org-scoped for
+// the dialog's cascading selects — sharing one ref would let the dialog's
+// org-filtered fetch permanently narrow the table's lookup after it closes.
+const { roles: allRoles, fetchRoles: fetchAllRoles } = useGovernanceRoles()
+const { roles: dialogRoles, fetchRoles: fetchDialogRoles } = useGovernanceRoles()
+const { teams: allTeams, fetchTeams: fetchAllTeams } = useTeams()
+const { teams: dialogTeams, fetchTeams: fetchDialogTeams } = useTeams()
 
-const editable = props.version.state === 'DRAFT'
+const editable = computed(() => props.version.state === 'DRAFT')
 const dialogOpen = ref(false)
 const editing = ref<StagePermission | null>(null)
 const deleting = ref<StagePermission | null>(null)
@@ -81,17 +87,17 @@ watch(organizationId, (value) => {
   teamId.value = ''
   roleId.value = ''
   if (value) {
-    fetchRoles(Number(value))
-    fetchTeams(Number(value))
+    fetchDialogRoles(Number(value))
+    fetchDialogTeams(Number(value))
   }
 })
 
 const orgName = (id: number | null) =>
   id === null ? 'الكل' : (organizations.value.find((o) => o.id === id)?.name ?? `#${id}`)
 const teamName = (id: number | null) =>
-  id === null ? '—' : (teams.value.find((t) => t.id === id)?.name ?? `#${id}`)
+  id === null ? '—' : (allTeams.value.find((t) => t.id === id)?.name ?? `#${id}`)
 const roleName = (id: number | null) =>
-  id === null ? '—' : (roles.value.find((r) => r.id === id)?.name ?? `#${id}`)
+  id === null ? '—' : (allRoles.value.find((r) => r.id === id)?.name ?? `#${id}`)
 
 function openCreate() {
   editing.value = null
@@ -114,8 +120,8 @@ function openEdit(permission: StagePermission) {
   displayLabel.value = permission.display_label
   formError.value = null
   if (organizationId.value) {
-    fetchRoles(Number(organizationId.value))
-    fetchTeams(Number(organizationId.value))
+    fetchDialogRoles(Number(organizationId.value))
+    fetchDialogTeams(Number(organizationId.value))
   }
   dialogOpen.value = true
   nextTick(() => {
@@ -164,7 +170,8 @@ async function confirmDelete() {
 onMounted(() => {
   fetchPermissions(props.stage.id)
   fetchOrganizations()
-  fetchTeams()
+  fetchAllRoles()
+  fetchAllTeams()
 })
 
 defineExpose({ teamId, roleId })
@@ -301,7 +308,7 @@ defineExpose({ teamId, roleId })
                 ><SelectValue placeholder="اختر الفريق"
               /></SelectTrigger>
               <SelectContent>
-                <SelectItem v-for="team in teams" :key="team.id" :value="String(team.id)">
+                <SelectItem v-for="team in dialogTeams" :key="team.id" :value="String(team.id)">
                   {{ team.name }}
                 </SelectItem>
               </SelectContent>
@@ -313,7 +320,7 @@ defineExpose({ teamId, roleId })
             <Select v-model="roleId" :disabled="!organizationId">
               <SelectTrigger class="w-full"><SelectValue placeholder="اختر الدور" /></SelectTrigger>
               <SelectContent>
-                <SelectItem v-for="role in roles" :key="role.id" :value="String(role.id)">
+                <SelectItem v-for="role in dialogRoles" :key="role.id" :value="String(role.id)">
                   {{ role.name }}
                 </SelectItem>
               </SelectContent>

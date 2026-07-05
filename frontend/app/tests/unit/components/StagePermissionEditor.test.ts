@@ -194,6 +194,18 @@ describe('StagePermissionEditor', () => {
     expect(wrapper.text()).toContain('فريق المراجعة')
   })
 
+  it('resolves the role label in the table without opening a dialog first', async () => {
+    // Regression: role labels must come from an unscoped fetch made on mount,
+    // not only from the org-scoped fetch triggered by opening the add/edit
+    // dialog — otherwise a row's role_id never resolves to a name until an
+    // admin happens to open a dialog for that same organization.
+    const permission = makePermission({ organization_id: 1, team_id: 3, role_id: 2 })
+    const wrapper = await mountEditor(['VIEW'], 'DRAFT', [permission])
+
+    expect(wrapper.text()).toContain('مراجع')
+    expect(wrapper.text()).not.toContain('#2')
+  })
+
   it('shows an edit affordance for MANAGE users on a DRAFT version', async () => {
     const wrapper = await mountEditor(['VIEW', 'MANAGE'])
 
