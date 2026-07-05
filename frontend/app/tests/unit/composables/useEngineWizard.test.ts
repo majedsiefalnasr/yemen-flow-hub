@@ -31,6 +31,27 @@ describe('useEngineWizard', () => {
     expect(w.isLast.value).toBe(true)
   })
 
+  it('saves the draft before advancing to the next step, not after', async () => {
+    const saveDraftCalls: number[] = []
+    let stepAtSaveTime = -1
+
+    const groups = ref([group(1, 10), group(2, 20)])
+
+    const wizard = useEngineWizard(groups, {
+      saveDraft: async (_data) => {
+        stepAtSaveTime = wizard.stepIndex.value
+        saveDraftCalls.push(stepAtSaveTime)
+      },
+      submit: async () => {},
+    })
+
+    await wizard.next({})
+
+    expect(saveDraftCalls).toEqual([0])
+    expect(stepAtSaveTime).toBe(0) // saveDraft ran while still on step 0, before stepIndex advanced to 1
+    expect(wizard.stepIndex.value).toBe(1)
+  })
+
   it('back does not go below zero', () => {
     const groups = ref([group(1, 10)])
     const w = useEngineWizard(groups, { saveDraft: vi.fn(), submit: vi.fn() })
