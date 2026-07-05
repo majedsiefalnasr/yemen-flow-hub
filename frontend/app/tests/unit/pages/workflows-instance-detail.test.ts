@@ -128,6 +128,22 @@ vi.mock('@/composables/useEngineFormSchema', () => ({
   }),
 }))
 
+// `useEngineClaim` (used directly by the page, not stubbed) calls `useApi().post`
+// for `claim()`. Mock the api layer so the wizard-mode claim-prompt test can
+// assert the claim handler was invoked without hitting a real network call.
+const mockApiPost = vi.fn().mockResolvedValue({ success: true, data: { id: 5, claimed_by: 2 } })
+
+vi.mock('@/composables/useApi', () => ({
+  useApi: () => ({
+    get: vi.fn(),
+    post: mockApiPost,
+    put: vi.fn(),
+    patch: vi.fn(),
+    del: vi.fn(),
+    isApiError: () => false,
+  }),
+}))
+
 const stubs = {
   NuxtLink: true,
   DynamicForm: {
@@ -187,6 +203,7 @@ describe('workflows/instances/[id].vue', () => {
     routeQuery = {}
     mockConflictError.value = false
     mockFieldErrors.value = {}
+    mockApiPost.mockClear()
     mockShow.mockResolvedValue({
       id: 5,
       reference: 'ENG-2026-000005',
@@ -273,7 +290,7 @@ describe('workflows/instances/[id].vue', () => {
     const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
     await flushPromises()
     await wrapper.vm.$nextTick()
-    expect(wrapper.text()).toContain('سارة أحمد يراجع هذا الطلب الآن')
+    expect(wrapper.text()).toContain('سارة أحمد يعمل على هذا الطلب الآن')
   })
 
   it('falls back to the generic placeholder when claimed_by_user is null', async () => {
@@ -286,7 +303,7 @@ describe('workflows/instances/[id].vue', () => {
     const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
     await flushPromises()
     await wrapper.vm.$nextTick()
-    expect(wrapper.text()).toContain('مراجع آخر يراجع هذا الطلب الآن')
+    expect(wrapper.text()).toContain('مراجع آخر يعمل على هذا الطلب الآن')
   })
 
   it('renders a stage action panel separate from the form', async () => {
@@ -416,5 +433,75 @@ describe('workflows/instances/[id].vue', () => {
 
     expect(wrapper.find('[data-stub="wizard"]').exists()).toBe(true)
     expect(wrapper.find('[data-stub="data-tabs"]').exists()).toBe(false)
+  })
+
+  it('shows the claim banner and blocks wizard editing when another user holds the claim', async () => {
+    const auth = useAuthStore()
+    auth.user = { id: 2 } as ReturnType<typeof useAuthStore>['user']
+    routeQuery = { mode: 'wizard' }
+
+    mockShow.mockResolvedValue(
+      makeInstance({
+        created_by: 1,
+        can_execute: true,
+        current_stage: {
+          id: 1,
+          code: 'INTAKE',
+          name: 'استلام',
+          is_initial: true,
+          is_final: false,
+          sla_duration_minutes: null,
+          requires_claim: true,
+        },
+        claimed_by: 99,
+        claimed_by_user: { id: 99, name: 'سارة أحمد' },
+      }),
+    )
+
+    const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.text()).toContain('سارة أحمد يعمل على هذا الطلب الآن')
+    expect(wrapper.find('[data-stub="wizard"]').exists()).toBe(false)
+  })
+
+  it('requires an explicit claim before the wizard becomes editable when the stage requires a claim', async () => {
+    const auth = useAuthStore()
+    auth.user = { id: 2 } as ReturnType<typeof useAuthStore>['user']
+    routeQuery = { mode: 'wizard' }
+
+    mockShow.mockResolvedValue(
+      makeInstance({
+        created_by: 1,
+        can_execute: true,
+        current_stage: {
+          id: 1,
+          code: 'INTAKE',
+          name: 'استلام',
+          is_initial: true,
+          is_final: false,
+          sla_duration_minutes: null,
+          requires_claim: true,
+        },
+        claimed_by: null,
+        claimed_by_user: null,
+      }),
+    )
+
+    const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('[data-stub="wizard"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('المتابعة على هذا الطلب')
+
+    const claimButton = wrapper
+      .findAll('button')
+      .find((btn) => btn.text().includes('المتابعة على هذا الطلب'))
+    expect(claimButton).toBeTruthy()
+    await claimButton!.trigger('click')
+
+    expect(mockApiPost).toHaveBeenCalledWith('/api/v1/engine-requests/5/claim')
   })
 })

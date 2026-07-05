@@ -17,6 +17,7 @@ import EngineRequestWizard from '@/components/workflow/EngineRequestWizard.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { useEngineProgress } from '@/composables/useEngineProgress'
 import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -175,16 +176,27 @@ async function onWizardSubmitted() {
 
       <ClaimBanner v-if="heldByOther" :holder-name="claimHolderName ?? 'مراجع آخر'" />
 
-      <!-- Wizard mode: draft creator on the initial stage collects inputs step by step. -->
-      <EngineRequestWizard
-        v-if="wizardMode"
-        :request-id="requestId"
-        :field-groups="fieldGroups"
-        :version="store.current.version"
-        :initial-data="formData"
-        :documents="store.documents"
-        @submitted="onWizardSubmitted"
-      />
+      <!-- Wizard mode: any executor on the initial stage continues the draft step by step. -->
+      <template v-if="wizardMode">
+        <Card v-if="claimRequiredButNotHeld" class="border-0 shadow">
+          <CardContent class="flex flex-col items-start gap-3 p-4">
+            <p class="text-muted-foreground text-sm">
+              يجب متابعة هذا الطلب قبل تعديله لضمان عدم تحرير مستخدمين اثنين للطلب نفسه في الوقت
+              نفسه.
+            </p>
+            <Button :disabled="actionBusy" @click="startReview">المتابعة على هذا الطلب</Button>
+          </CardContent>
+        </Card>
+        <EngineRequestWizard
+          v-else-if="!heldByOther"
+          :request-id="requestId"
+          :field-groups="fieldGroups"
+          :version="store.current.version"
+          :initial-data="formData"
+          :documents="store.documents"
+          @submitted="onWizardSubmitted"
+        />
+      </template>
 
       <!-- View / act mode: two-column detail. -->
       <div v-else class="grid gap-6 lg:grid-cols-[1fr_320px]">
