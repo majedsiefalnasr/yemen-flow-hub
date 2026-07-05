@@ -1,7 +1,16 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { toast } from 'vue-sonner'
-import { ChevronDown, ChevronUp, FolderTree, ListChecks, Lock, Plus, Trash2 } from 'lucide-vue-next'
+import {
+  ChevronDown,
+  ChevronUp,
+  FolderTree,
+  ListChecks,
+  Lock,
+  Pencil,
+  Plus,
+  Trash2,
+} from 'lucide-vue-next'
 import type {
   DynamicFieldSource,
   FieldDefinition,
@@ -82,6 +91,7 @@ const editable = props.version.state === 'DRAFT'
 
 const groupDialogOpen = ref(false)
 const fieldDialogOpen = ref(false)
+const editingField = ref<FieldDefinition | null>(null)
 const deletingField = ref<FieldDefinition | null>(null)
 const deletingGroup = ref<FieldGroup | null>(null)
 const movingGroup = ref(false)
@@ -151,6 +161,7 @@ function openGroupDialog() {
 }
 
 function openFieldDialog(groupId: number | null) {
+  editingField.value = null
   fieldGroupId.value = groupId
   fieldKey.value = ''
   fieldLabel.value = ''
@@ -160,6 +171,23 @@ function openFieldDialog(groupId: number | null) {
   fieldDynamicSource.value = ''
   fieldReferenceTableId.value = ''
   fieldRequired.value = false
+  formError.value = null
+  fieldDialogOpen.value = true
+}
+
+function openEditFieldDialog(field: FieldDefinition) {
+  editingField.value = field
+  fieldGroupId.value = field.field_group_id
+  fieldKey.value = field.key
+  fieldLabel.value = field.label
+  fieldType.value = field.type
+  fieldMinValue.value =
+    field.min_value !== null && field.min_value !== undefined ? String(field.min_value) : ''
+  fieldMaxValue.value =
+    field.max_value !== null && field.max_value !== undefined ? String(field.max_value) : ''
+  fieldDynamicSource.value = field.dynamic_source ?? ''
+  fieldReferenceTableId.value = field.reference_table_id ? String(field.reference_table_id) : ''
+  fieldRequired.value = field.is_required
   formError.value = null
   fieldDialogOpen.value = true
 }
@@ -184,22 +212,28 @@ async function submitField() {
     formError.value = 'المجموعة والرمز والاسم مطلوبة.'
     return
   }
+  const payload = {
+    field_group_id: fieldGroupId.value,
+    key: fieldKey.value,
+    label: fieldLabel.value,
+    type: fieldType.value,
+    min_value: isNumeric.value && fieldMinValue.value ? Number(fieldMinValue.value) : null,
+    max_value: isNumeric.value && fieldMaxValue.value ? Number(fieldMaxValue.value) : null,
+    dynamic_source: isDynamic.value && fieldDynamicSource.value ? fieldDynamicSource.value : null,
+    reference_table_id:
+      needsReferenceTable.value && fieldReferenceTableId.value
+        ? Number(fieldReferenceTableId.value)
+        : null,
+    is_required: fieldRequired.value,
+  }
   try {
-    await createField(props.version.id, {
-      field_group_id: fieldGroupId.value,
-      key: fieldKey.value,
-      label: fieldLabel.value,
-      type: fieldType.value,
-      min_value: isNumeric.value && fieldMinValue.value ? Number(fieldMinValue.value) : null,
-      max_value: isNumeric.value && fieldMaxValue.value ? Number(fieldMaxValue.value) : null,
-      dynamic_source: isDynamic.value && fieldDynamicSource.value ? fieldDynamicSource.value : null,
-      reference_table_id:
-        needsReferenceTable.value && fieldReferenceTableId.value
-          ? Number(fieldReferenceTableId.value)
-          : null,
-      is_required: fieldRequired.value,
-    })
-    toast.success('تمت إضافة الحقل')
+    if (editingField.value) {
+      await updateField(props.version.id, editingField.value, payload)
+      toast.success('تم تحديث الحقل')
+    } else {
+      await createField(props.version.id, payload)
+      toast.success('تمت إضافة الحقل')
+    }
     fieldDialogOpen.value = false
   } catch (cause) {
     formError.value = extractApiErrorMessage(cause, 'تعذّر حفظ الحقل')
@@ -458,6 +492,25 @@ onMounted(async () => {
                           <Button
                             size="icon-sm"
                             variant="ghost"
+                            aria-label="تعديل الحقل"
+                            @click="openEditFieldDialog(field)"
+                          >
+                            <Pencil class="h-3.5 w-3.5" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>تعديل الحقل</TooltipContent>
+                      </Tooltip>
+                    </ScreenGuard>
+                    <ScreenGuard
+                      v-if="editable && !field.is_system"
+                      screen="workflow_designer"
+                      capability="MANAGE"
+                    >
+                      <Tooltip>
+                        <TooltipTrigger as-child>
+                          <Button
+                            size="icon-sm"
+                            variant="ghost"
                             aria-label="حذف الحقل"
                             @click="deletingField = field"
                           >
@@ -513,13 +566,18 @@ onMounted(async () => {
     <Dialog v-model:open="fieldDialogOpen">
       <DialogContent class="max-w-lg">
         <DialogHeader>
-          <DialogTitle>إضافة حقل</DialogTitle>
+          <DialogTitle>{{ editingField ? 'تعديل حقل' : 'إضافة حقل' }}</DialogTitle>
           <DialogDescription>عرّف الحقل وإعداداته حسب النوع.</DialogDescription>
         </DialogHeader>
         <div class="flex flex-col gap-4">
           <div class="flex flex-col gap-1.5">
             <Label>الرمز</Label>
-            <Input v-model="fieldKey" placeholder="amount" dir="ltr" />
+            <Input
+              v-model="fieldKey"
+              placeholder="amount"
+              dir="ltr"
+              :disabled="editingField !== null"
+            />
           </div>
           <div class="flex flex-col gap-1.5">
             <Label>الاسم</Label>
@@ -544,7 +602,7 @@ onMounted(async () => {
 
           <div class="flex flex-col gap-1.5">
             <Label>المجموعة</Label>
-            <Select v-model="fieldGroupId" disabled>
+            <Select v-model="fieldGroupId">
               <SelectTrigger class="w-full"
                 ><SelectValue placeholder="اختر المجموعة"
               /></SelectTrigger>

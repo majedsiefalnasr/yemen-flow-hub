@@ -3,18 +3,48 @@
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { defineComponent, h } from 'vue'
 import type { FieldDefinition, FieldGroup, WorkflowVersion } from '../../../types/models'
 import { useAuthStore } from '../../../stores/auth.store'
 
 const mockGet = vi.fn()
 const mockPost = vi.fn()
 const mockDelete = vi.fn()
+const mockPut = vi.fn()
 
 vi.mock('../../../composables/useApi', () => ({
-  useApi: () => ({ get: mockGet, post: mockPost, del: mockDelete }),
+  useApi: () => ({ get: mockGet, post: mockPost, del: mockDelete, put: mockPut }),
 }))
 
 vi.stubGlobal('extractApiErrorMessage', (_cause: unknown, fallback: string) => fallback)
+
+// shadcn Dialog's DialogContent renders inside a reka-ui DialogPortal, which
+// teleports its content to document.body — @vue/test-utils' mount() wrapper
+// cannot introspect Teleport targets. Per AGENTS.md, Dialog must not be
+// downgraded to raw HTML in the SOURCE component to make tests pass; instead
+// (same technique as DemoUserSwitcherDialog.test.ts) the TEST replaces the
+// shadcn Dialog module with simple passthrough stubs that render their
+// default slots directly into the DOM, no Teleport involved.
+// WorkflowFieldDesigner.vue itself is untouched and keeps using the real
+// `<Dialog>`/`<DialogContent>` API surface.
+function passthrough(name: string) {
+  return defineComponent({
+    name,
+    inheritAttrs: false,
+    setup(_, { slots, attrs }) {
+      return () => h('div', attrs, slots.default?.())
+    },
+  })
+}
+
+vi.mock('../../../components/ui/dialog', () => ({
+  Dialog: passthrough('Dialog'),
+  DialogContent: passthrough('DialogContent'),
+  DialogHeader: passthrough('DialogHeader'),
+  DialogTitle: passthrough('DialogTitle'),
+  DialogDescription: passthrough('DialogDescription'),
+  DialogFooter: passthrough('DialogFooter'),
+}))
 
 const WorkflowFieldDesigner = (
   await import('../../../components/workflow/WorkflowFieldDesigner.vue')
@@ -122,6 +152,10 @@ function buttonByText(wrapper: VueWrapper, text: string) {
   return wrapper.findAll('button').find((b) => b.text().trim().includes(text))
 }
 
+function buttonByLabel(wrapper: VueWrapper, label: string) {
+  return wrapper.findAll('button').find((b) => b.attributes('aria-label') === label)
+}
+
 describe('WorkflowFieldDesigner', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -160,5 +194,28 @@ describe('WorkflowFieldDesigner', () => {
     const wrapper = await mountDesigner(['VIEW'], 'DRAFT', [])
 
     expect(wrapper.text()).toContain('لا توجد مجموعات حقول')
+  })
+
+  it('enables the group select in the add-field dialog', async () => {
+    const wrapper = await mountDesigner(['VIEW', 'MANAGE'])
+    const addFieldButton = buttonByText(wrapper, 'إضافة حقل')
+    await addFieldButton?.trigger('click')
+
+    // The group Select's trigger button must not carry the disabled attribute.
+    const disabledTriggers = wrapper.findAll('button[disabled]')
+    const groupSelectDisabled = disabledTriggers.some((btn) => btn.html().includes('اختر المجموعة'))
+    expect(groupSelectDisabled).toBe(false)
+  })
+
+  it('shows an edit affordance for existing fields', async () => {
+    const wrapper = await mountDesigner(['VIEW', 'MANAGE'])
+
+    expect(buttonByLabel(wrapper, 'تعديل الحقل')).toBeDefined()
+  })
+
+  it('hides field edit affordance on a PUBLISHED version', async () => {
+    const wrapper = await mountDesigner(['VIEW', 'MANAGE'], 'PUBLISHED')
+
+    expect(buttonByLabel(wrapper, 'تعديل الحقل')).toBeUndefined()
   })
 })
