@@ -180,4 +180,16 @@ describe('WorkflowTransitionEditor', () => {
 
     expect(wrapper.text()).toContain('لا توجد انتقالات')
   })
+
+  it('shows an edit affordance for MANAGE users on a DRAFT version', async () => {
+    const wrapper = await mountEditor(['VIEW', 'MANAGE'])
+
+    expect(buttonByLabel(wrapper, 'تعديل الانتقال')).toBeDefined()
+  })
+
+  it('hides edit affordance on a PUBLISHED version', async () => {
+    const wrapper = await mountEditor(['VIEW', 'MANAGE'], 'PUBLISHED')
+
+    expect(buttonByLabel(wrapper, 'تعديل الانتقال')).toBeUndefined()
+  })
 })

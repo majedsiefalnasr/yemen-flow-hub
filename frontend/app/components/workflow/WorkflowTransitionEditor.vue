@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { toast } from 'vue-sonner'
-import { ArrowLeft, GitBranch, Lock, Plus, Trash2 } from 'lucide-vue-next'
+import { ArrowLeft, GitBranch, Lock, Pencil, Plus, Trash2 } from 'lucide-vue-next'
 import type { WorkflowTransition, WorkflowVersion } from '@/types/models'
 import ScreenGuard from '@/components/security/ScreenGuard.vue'
 import {
@@ -65,13 +65,20 @@ import { useWorkflowTransitions } from '@/composables/useWorkflowTransitions'
 
 const props = defineProps<{ version: WorkflowVersion }>()
 
-const { transitions, error, fetchTransitions, createTransition, deleteTransition } =
-  useWorkflowTransitions()
+const {
+  transitions,
+  error,
+  fetchTransitions,
+  createTransition,
+  updateTransition,
+  deleteTransition,
+} = useWorkflowTransitions()
 const { stages, fetchStages } = useWorkflowStages()
 const { actions, fetchActions } = useWorkflowActions()
 
 const editable = props.version.state === 'DRAFT'
 const dialogOpen = ref(false)
+const editing = ref<WorkflowTransition | null>(null)
 const deleting = ref<WorkflowTransition | null>(null)
 
 const fromStageId = ref<string>('')
@@ -89,6 +96,7 @@ const canSubmit = computed(
 )
 
 function openCreate() {
+  editing.value = null
   fromStageId.value = ''
   actionId.value = ''
   toStageId.value = ''
@@ -98,17 +106,37 @@ function openCreate() {
   dialogOpen.value = true
 }
 
+function openEdit(transition: WorkflowTransition) {
+  editing.value = transition
+  fromStageId.value = String(transition.from_stage_id)
+  actionId.value = String(transition.action_id)
+  toStageId.value = String(transition.to_stage_id)
+  requiresComment.value = transition.requires_comment
+  confirmationMessage.value = transition.confirmation_message ?? ''
+  formError.value = null
+  dialogOpen.value = true
+}
+
 async function submit() {
   if (!canSubmit.value) return
   try {
-    await createTransition(props.version.id, {
-      from_stage_id: Number(fromStageId.value),
-      action_id: Number(actionId.value),
-      to_stage_id: Number(toStageId.value),
-      requires_comment: requiresComment.value,
-      confirmation_message: confirmationMessage.value || null,
-    })
-    toast.success('تمت إضافة الانتقال')
+    if (editing.value) {
+      await updateTransition(editing.value, {
+        to_stage_id: Number(toStageId.value),
+        requires_comment: requiresComment.value,
+        confirmation_message: confirmationMessage.value || null,
+      })
+      toast.success('تم تحديث الانتقال')
+    } else {
+      await createTransition(props.version.id, {
+        from_stage_id: Number(fromStageId.value),
+        action_id: Number(actionId.value),
+        to_stage_id: Number(toStageId.value),
+        requires_comment: requiresComment.value,
+        confirmation_message: confirmationMessage.value || null,
+      })
+      toast.success('تمت إضافة الانتقال')
+    }
     dialogOpen.value = false
   } catch (cause) {
     formError.value = extractApiErrorMessage(cause, 'تعذّر حفظ الانتقال')
@@ -203,6 +231,21 @@ onMounted(() => {
                         <Button
                           size="icon-sm"
                           variant="ghost"
+                          aria-label="تعديل الانتقال"
+                          @click="openEdit(transition)"
+                        >
+                          <Pencil class="h-3.5 w-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>تعديل الانتقال</TooltipContent>
+                    </Tooltip>
+                  </ScreenGuard>
+                  <ScreenGuard v-if="editable" screen="workflow_designer" capability="MANAGE">
+                    <Tooltip>
+                      <TooltipTrigger as-child>
+                        <Button
+                          size="icon-sm"
+                          variant="ghost"
                           aria-label="حذف الانتقال"
                           @click="deleting = transition"
                         >
@@ -230,14 +273,14 @@ onMounted(() => {
   <Dialog v-model:open="dialogOpen">
     <DialogContent class="max-w-lg">
       <DialogHeader>
-        <DialogTitle>إضافة انتقال</DialogTitle>
+        <DialogTitle>{{ editing ? 'تعديل انتقال' : 'إضافة انتقال' }}</DialogTitle>
         <DialogDescription>اربط مرحلة المصدر بإجراء ومرحلة الوجهة.</DialogDescription>
       </DialogHeader>
 
       <div class="flex flex-col gap-4">
         <div class="flex flex-col gap-1.5">
           <Label>من المرحلة</Label>
-          <Select v-model="fromStageId">
+          <Select v-model="fromStageId" :disabled="editing !== null">
             <SelectTrigger class="w-full"><SelectValue placeholder="اختر المرحلة" /></SelectTrigger>
             <SelectContent>
               <SelectItem v-for="stage in stages" :key="stage.id" :value="String(stage.id)">
@@ -249,7 +292,7 @@ onMounted(() => {
 
         <div class="flex flex-col gap-1.5">
           <Label>الإجراء</Label>
-          <Select v-model="actionId">
+          <Select v-model="actionId" :disabled="editing !== null">
             <SelectTrigger class="w-full"><SelectValue placeholder="اختر الإجراء" /></SelectTrigger>
             <SelectContent>
               <SelectItem v-for="action in actions" :key="action.id" :value="String(action.id)">
