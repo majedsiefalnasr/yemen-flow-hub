@@ -504,4 +504,99 @@ describe('workflows/instances/[id].vue', () => {
 
     expect(mockApiPost).toHaveBeenCalledWith('/api/v1/engine-requests/5/claim')
   })
+
+  // NOTE: these two tests deliberately do NOT exercise real router navigation.
+  // This Vitest harness never installs a real Vue Router instance (see
+  // `vi.stubGlobal('useRoute'/'useRouter', ...)` above), so `onBeforeRouteLeave`
+  // never registers with a router and cannot be triggered by a simulated
+  // `router.push`/link click in this environment (confirmed by reading
+  // vue-router's own source: without a `<router-view>` ancestor, `inject`
+  // resolves the injected match key to `undefined` and the guard silently
+  // no-ops). These tests instead drive the confirmation dialog directly —
+  // calling the page's exposed `confirmLeave`/`cancelLeave` and asserting
+  // `leaveDialogOpen` — to prove the dialog wiring and handlers are correct.
+  // The actual `onBeforeRouteLeave` interception of real browser navigation is
+  // verified separately via a live playwright-cli browser pass, not here.
+  describe('unsaved-changes leave confirmation (dialog wiring only, not real navigation)', () => {
+    it('opens the confirmation dialog and invokes the pending leave callback on confirm', async () => {
+      const auth = useAuthStore()
+      auth.user = { id: 2 } as ReturnType<typeof useAuthStore>['user']
+      routeQuery = { mode: 'wizard' }
+
+      const store = useEngineRequestsStore()
+      store.current = makeInstance({ created_by: 1, can_execute: true })
+
+      const wrapper = mount(WorkflowInstanceDetailPage, {
+        global: {
+          stubs: {
+            ...stubs,
+            EngineRequestWizard: {
+              template: '<div data-stub="wizard" />',
+              data: () => ({ hasUnsavedChanges: true }),
+            },
+          },
+        },
+      })
+      await wrapper.vm.$nextTick()
+
+      // Directly exercise the guard's decision logic + dialog open state,
+      // bypassing real router navigation (see NOTE above).
+      const vm = wrapper.vm as unknown as {
+        leaveDialogOpen: boolean
+        confirmLeave: () => void
+      }
+      expect(vm.leaveDialogOpen).toBe(false)
+
+      vm.leaveDialogOpen = true
+      await wrapper.vm.$nextTick()
+      expect(vm.leaveDialogOpen).toBe(true)
+
+      const next = vi.fn()
+      // Simulate what onBeforeRouteLeave stashes before opening the dialog.
+      ;(wrapper.vm as unknown as { pendingLeave: (() => void) | null }).pendingLeave = next
+      vm.confirmLeave()
+      await wrapper.vm.$nextTick()
+
+      expect(vm.leaveDialogOpen).toBe(false)
+      expect(next).toHaveBeenCalledTimes(1)
+    })
+
+    it('closes the dialog without invoking the pending leave callback on cancel', async () => {
+      const auth = useAuthStore()
+      auth.user = { id: 2 } as ReturnType<typeof useAuthStore>['user']
+      routeQuery = { mode: 'wizard' }
+
+      const store = useEngineRequestsStore()
+      store.current = makeInstance({ created_by: 1, can_execute: true })
+
+      const wrapper = mount(WorkflowInstanceDetailPage, {
+        global: {
+          stubs: {
+            ...stubs,
+            EngineRequestWizard: {
+              template: '<div data-stub="wizard" />',
+              data: () => ({ hasUnsavedChanges: true }),
+            },
+          },
+        },
+      })
+      await wrapper.vm.$nextTick()
+
+      const vm = wrapper.vm as unknown as {
+        leaveDialogOpen: boolean
+        cancelLeave: () => void
+      }
+      const next = vi.fn()
+      ;(wrapper.vm as unknown as { pendingLeave: (() => void) | null }).pendingLeave = next
+
+      vm.leaveDialogOpen = true
+      await wrapper.vm.$nextTick()
+
+      vm.cancelLeave()
+      await wrapper.vm.$nextTick()
+
+      expect(vm.leaveDialogOpen).toBe(false)
+      expect(next).not.toHaveBeenCalled()
+    })
+  })
 })

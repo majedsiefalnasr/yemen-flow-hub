@@ -31,6 +31,7 @@ const emit = defineEmits<{ submitted: [] }>()
 const store = useEngineRequestsStore()
 const formRef = ref<InstanceType<typeof DynamicForm> | null>(null)
 const formData = ref<Record<string, unknown>>({ ...props.initialData })
+const lastSavedData = ref<Record<string, unknown>>({ ...props.initialData })
 const submitError = ref<string | null>(null)
 
 const groupsRef = toRef(props, 'fieldGroups')
@@ -84,6 +85,7 @@ async function validateThen(action: (data: Record<string, unknown>) => Promise<v
   formData.value = { ...formData.value, ...data }
   try {
     await action(data)
+    lastSavedData.value = { ...formData.value }
   } catch {
     if (!submitError.value) submitError.value = 'تعذر حفظ الخطوة. حاول مرة أخرى.'
   }
@@ -106,6 +108,7 @@ async function onSubmit() {
   submitError.value = null
   try {
     await wizard.finish(formData.value)
+    lastSavedData.value = { ...formData.value }
     emit('submitted')
   } catch {
     if (!submitError.value) submitError.value = 'تعذر إرسال الطلب. حاول مرة أخرى.'
@@ -117,6 +120,14 @@ function onBack() {
 }
 
 const isLastGroup = computed(() => wizard.stepIndex.value === groupCount.value - 1)
+
+// Exposed so the parent page can decide whether to intercept navigation away
+// from an in-progress wizard step (see onBeforeRouteLeave in [id].vue).
+const hasUnsavedChanges = computed(
+  () => JSON.stringify(formData.value) !== JSON.stringify(lastSavedData.value),
+)
+
+defineExpose({ hasUnsavedChanges })
 </script>
 
 <template>

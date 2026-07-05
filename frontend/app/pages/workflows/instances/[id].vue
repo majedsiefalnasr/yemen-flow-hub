@@ -20,6 +20,16 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from '@/components/ui/alert-dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AlertTriangle } from 'lucide-vue-next'
 
@@ -125,6 +135,36 @@ async function onWizardSubmitted() {
   await router.replace({ path: route.path })
   await load()
 }
+
+// Leave-guard: warn before navigating away from an in-progress wizard step
+// with unsaved field data (see EngineRequestWizard's exposed hasUnsavedChanges).
+const wizardRef = ref<InstanceType<typeof EngineRequestWizard> | null>(null)
+const leaveDialogOpen = ref(false)
+let pendingLeave: (() => void) | null = null
+
+function hasUnsavedWizardChanges(): boolean {
+  return wizardMode.value && wizardRef.value?.hasUnsavedChanges === true
+}
+
+onBeforeRouteLeave((_to, _from, next) => {
+  if (!hasUnsavedWizardChanges()) {
+    next()
+    return
+  }
+  leaveDialogOpen.value = true
+  pendingLeave = () => next()
+})
+
+function confirmLeave() {
+  leaveDialogOpen.value = false
+  pendingLeave?.()
+  pendingLeave = null
+}
+
+function cancelLeave() {
+  leaveDialogOpen.value = false
+  pendingLeave = null
+}
 </script>
 
 <template>
@@ -189,6 +229,7 @@ async function onWizardSubmitted() {
         </Card>
         <EngineRequestWizard
           v-else-if="!heldByOther"
+          ref="wizardRef"
           :request-id="requestId"
           :field-groups="fieldGroups"
           :version="store.current.version"
@@ -253,5 +294,21 @@ async function onWizardSubmitted() {
         </aside>
       </div>
     </template>
+
+    <AlertDialog v-model:open="leaveDialogOpen">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>مغادرة الصفحة دون حفظ</AlertDialogTitle>
+          <AlertDialogDescription>
+            لديك بيانات لم تُحفظ في هذه الخطوة. سيتم فقدانها إذا غادرت الصفحة الآن دون المتابعة أو
+            الإرسال.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel @click="cancelLeave">البقاء في الصفحة</AlertDialogCancel>
+          <AlertDialogAction @click="confirmLeave">مغادرة دون حفظ</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>
 </template>

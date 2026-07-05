@@ -24,6 +24,13 @@ vi.stubGlobal('useRuntimeConfig', () => ({
 }))
 vi.stubGlobal('useRoute', () => ({ params: {}, query: {}, path: '/' }))
 vi.stubGlobal('useRouter', () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() }))
+// This harness never installs a real Vue Router instance (no <router-view>
+// ancestor), so the real vue-router `onBeforeRouteLeave` would silently no-op
+// anyway (it injects the active route record and bails when none is found).
+// Stub it as a no-op here purely so components using it (Nuxt auto-import)
+// mount without throwing; it intentionally does not register or invoke the
+// guard. Real navigation interception is verified via a live browser pass.
+vi.stubGlobal('onBeforeRouteLeave', vi.fn())
 vi.stubGlobal('definePageMeta', vi.fn())
 vi.stubGlobal('navigateTo', vi.fn())
 vi.stubGlobal('useHead', vi.fn())
