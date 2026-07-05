@@ -66,10 +66,36 @@ class PermissionService
     }
 
     /**
-     * Derive requests-screen access per role from stage_permissions on the
-     * published workflow version. This is the single source of truth for
-     * `requests` screen capability — used by both the screen-permissions
-     * matrix display and runtime enforcement.
+     * Derive requests-screen access per role from stage_permissions on
+     * currently-published workflow versions. This is the single source of
+     * truth for `requests` screen capability — used by both the
+     * screen-permissions matrix display and runtime enforcement.
+     *
+     * Because at most one WorkflowVersion per WorkflowDefinition can be
+     * PUBLISHED at a time (WorkflowDesignerService::publishVersion() archives
+     * the prior published version of a definition on every new publish),
+     * this iterates every published version across every definition rather
+     * than picking a single "latest" one — a role's access must be evaluated
+     * against ALL live definitions, not just whichever version happens to
+     * sort last.
+     *
+     * Row matching reuses the org+role identity-set semantics of
+     * StagePermissionResolver::rowMatches() (null field = wildcard, AND
+     * within a row, OR across rows) but only for organization_id/role_id,
+     * since a Role's organization_id is always resolvable from the role id
+     * alone (`roles.organization_id` is a required non-null FK).
+     *
+     * Limitation: stage_permissions rows scoped to a team (team_id IS NOT
+     * NULL), with or without a role_id, are NOT resolvable from a role id
+     * alone — a role's members are not confined to one team, so "does this
+     * role match an org+team row" has no single per-role answer that a
+     * role-id-keyed cache (screenPermissionsForGovernanceRole, 1-hour TTL)
+     * can safely store. Such rows are treated as non-matching here,
+     * permanently, by design. This under-counts (false negative) rather
+     * than over-granting, which is the safe default; it only affects what
+     * the frontend chrome shows via /auth/me — StagePermissionResolver
+     * remains the real per-user enforcement gate on every actual
+     * transition/queue endpoint.
      *
      * @param  array<int>  $roleIds
      * @return array<int, array{view: bool, add: bool, edit: bool}>
@@ -90,50 +116,83 @@ class PermissionService
             $result[$roleId] = ['view' => true, 'add' => false, 'edit' => false];
         }
 
-        $publishedVersionId = DB::table('workflow_versions')
+        $roleOrganizations = DB::table('roles')
+            ->whereIn('id', $roleIds)
+            ->pluck('organization_id', 'id');
+
+        $publishedVersionIds = DB::table('workflow_versions')
             ->where('state', WorkflowVersionState::PUBLISHED->value)
-            ->orderByDesc('version_number')
-            ->value('id');
+            ->pluck('id');
 
-        if ($publishedVersionId === null) {
+        if ($publishedVersionIds->isEmpty()) {
             return $result;
         }
 
-        $stageIds = DB::table('workflow_stages')
-            ->where('workflow_version_id', $publishedVersionId)
+        $stages = DB::table('workflow_stages')
+            ->whereIn('workflow_version_id', $publishedVersionIds)
             ->where('status', 'ACTIVE')
-            ->pluck('id', 'id');
+            ->select('id', 'workflow_version_id', 'is_initial')
+            ->get();
 
-        if ($stageIds->isEmpty()) {
+        if ($stages->isEmpty()) {
             return $result;
         }
 
-        $initialStageId = DB::table('workflow_stages')
-            ->where('workflow_version_id', $publishedVersionId)
-            ->where('is_initial', true)
-            ->value('id');
+        $initialStageIds = $stages
+            ->filter(fn ($stage) => (bool) $stage->is_initial)
+            ->pluck('id')
+            ->flip();
 
-        $assignments = DB::table('stage_permissions')
-            ->whereIn('role_id', $roleIds)
-            ->whereIn('stage_id', $stageIds)
-            ->select('role_id', 'stage_id', 'access_level')
-            ->get()
-            ->groupBy('role_id')
-            ->map(fn ($items) => $items->keyBy('stage_id')->map(fn ($item) => $item->access_level))
-            ->all();
+        $permissionRows = DB::table('stage_permissions')
+            ->whereIn('stage_id', $stages->pluck('id'))
+            ->select('stage_id', 'organization_id', 'team_id', 'role_id', 'access_level')
+            ->get();
+
+        if ($permissionRows->isEmpty()) {
+            return $result;
+        }
 
         foreach ($roleIds as $roleId) {
-            $perRole = $assignments[$roleId] ?? collect();
-            if ($perRole->isEmpty()) {
+            $roleOrganizationId = $roleOrganizations[$roleId] ?? null;
+            if ($roleOrganizationId === null) {
                 continue;
             }
 
-            $view = $perRole->isNotEmpty();
-            $edit = $perRole->contains(fn (string $level) => $level === 'EXECUTE');
-            $add = $initialStageId !== null
-                && ($perRole->get($initialStageId) === 'EXECUTE');
+            $view = false;
+            $edit = false;
+            $add = false;
 
-            $result[$roleId] = ['view' => $view, 'add' => $add, 'edit' => $edit];
+            foreach ($permissionRows as $row) {
+                // team_id-scoped rows are not resolvable from a role id alone: a
+                // role's members are not confined to one team, so this method
+                // treats org+team rows as non-matching here by design (see the
+                // docblock above and StagePermissionResolver for the real
+                // per-user enforcement, which does resolve team membership).
+                if ($row->team_id !== null) {
+                    continue;
+                }
+
+                $organizationMatches = $row->organization_id === null || $row->organization_id === $roleOrganizationId;
+                $roleMatches = $row->role_id === null || $row->role_id === $roleId;
+
+                if (! $organizationMatches || ! $roleMatches) {
+                    continue;
+                }
+
+                $view = true;
+
+                if ($row->access_level === 'EXECUTE') {
+                    $edit = true;
+
+                    if ($initialStageIds->has($row->stage_id)) {
+                        $add = true;
+                    }
+                }
+            }
+
+            if ($view) {
+                $result[$roleId] = ['view' => $view, 'add' => $add, 'edit' => $edit];
+            }
         }
 
         return $result;
