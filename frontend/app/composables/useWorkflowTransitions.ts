@@ -53,7 +53,7 @@ export function useWorkflowTransitions() {
     transition: WorkflowTransition,
     payload: { to_stage_id?: number; requires_comment?: boolean; confirmation_message?: string | null },
   ) => {
-    const response = await api.patch<{ data: WorkflowTransition }>(
+    const response = await api.put<{ data: WorkflowTransition }>(
       `/api/v1/workflow-versions/${transition.workflow_version_id}/transitions/${transition.id}`,
       { ...payload, version: transition.version },
     )
