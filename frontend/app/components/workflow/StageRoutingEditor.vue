@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { Users } from 'lucide-vue-next'
 import type { WorkflowStage, WorkflowVersion } from '@/types/models'
 import { Badge } from '@/components/ui/badge'
@@ -22,6 +22,12 @@ async function load() {
 }
 
 onMounted(load)
+
+// Reload when the admin switches to a different workflow version — this
+// component stays mounted across version switches, so onMounted alone would
+// leave the previous version's stages (and their nested permission editors)
+// on screen.
+watch(() => props.version.id, load)
 </script>
 
 <template>

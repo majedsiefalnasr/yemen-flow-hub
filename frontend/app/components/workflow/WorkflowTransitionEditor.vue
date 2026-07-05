@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import { ArrowLeft, GitBranch, Lock, Pencil, Plus, Trash2 } from 'lucide-vue-next'
 import type { WorkflowTransition, WorkflowVersion } from '@/types/models'
@@ -76,7 +76,7 @@ const {
 const { stages, fetchStages } = useWorkflowStages()
 const { actions, fetchActions } = useWorkflowActions()
 
-const editable = props.version.state === 'DRAFT'
+const editable = computed(() => props.version.state === 'DRAFT')
 const dialogOpen = ref(false)
 const editing = ref<WorkflowTransition | null>(null)
 const deleting = ref<WorkflowTransition | null>(null)
@@ -160,6 +160,17 @@ onMounted(() => {
   fetchStages(props.version.id)
   fetchActions()
 })
+
+// Refetch when the admin switches to a different workflow version — this
+// component stays mounted across version switches, so onMounted alone would
+// leave the previous version's transitions/stages on screen.
+watch(
+  () => props.version.id,
+  () => {
+    fetchTransitions(props.version.id)
+    fetchStages(props.version.id)
+  },
+)
 </script>
 
 <template>

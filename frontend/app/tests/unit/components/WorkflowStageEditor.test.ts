@@ -38,9 +38,9 @@ function makeStage(overrides = {}) {
   }
 }
 
-function makeVersion(state: 'DRAFT' | 'PUBLISHED' = 'DRAFT') {
+function makeVersion(state: 'DRAFT' | 'PUBLISHED' = 'DRAFT', id = 7) {
   return {
-    id: 7,
+    id,
     workflow_definition_id: 1,
     version_number: 1,
     state,
@@ -149,5 +149,32 @@ describe('WorkflowStageEditor', () => {
 
     const endSwitch = wrapper.find('#stage-final')
     expect(endSwitch.attributes('disabled')).toBeDefined()
+  })
+
+  it('refetches stages when switching to a different workflow version', async () => {
+    const wrapper = await mountEditor(['VIEW'], 'DRAFT', [makeStage()])
+    expect(mockGet).toHaveBeenCalledTimes(1)
+
+    const otherVersionStage = makeStage({ id: 2, code: 'review', name: 'Review' })
+    mockGet.mockResolvedValueOnce({ data: [otherVersionStage] })
+
+    await wrapper.setProps({ version: makeVersion('DRAFT', 99) })
+    await flushPromises()
+
+    expect(mockGet).toHaveBeenCalledTimes(2)
+    expect(wrapper.text()).toContain('review')
+    expect(wrapper.text()).not.toContain('intake')
+  })
+
+  it('hides mutation affordances immediately after the version prop changes to PUBLISHED', async () => {
+    const wrapper = await mountEditor(['VIEW', 'MANAGE'], 'DRAFT')
+    expect(buttonByText(wrapper, 'إضافة مرحلة')).toBeDefined()
+
+    mockGet.mockResolvedValueOnce({ data: [makeStage()] })
+    await wrapper.setProps({ version: makeVersion('PUBLISHED') })
+    await flushPromises()
+
+    expect(buttonByText(wrapper, 'إضافة مرحلة')).toBeUndefined()
+    expect(wrapper.text()).toContain('مقفلة')
   })
 })

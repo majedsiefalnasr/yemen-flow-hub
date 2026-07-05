@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
@@ -64,7 +64,7 @@ const props = defineProps<{ version: WorkflowVersion }>()
 const { stages, loading, error, fetchStages, createStage, updateStage, deleteStage } =
   useWorkflowStages()
 
-const editable = props.version.state === 'DRAFT'
+const editable = computed(() => props.version.state === 'DRAFT')
 const dialogOpen = ref(false)
 const editing = ref<WorkflowStage | null>(null)
 const deleting = ref<WorkflowStage | null>(null)
@@ -155,6 +155,15 @@ async function confirmDelete() {
 }
 
 onMounted(() => fetchStages(props.version.id))
+
+// Refetch when the admin switches to a different workflow version in the
+// page-level picker — this component stays mounted across version switches
+// (it lives inside a Tabs content slot), so onMounted alone would leave the
+// previous version's stages on screen.
+watch(
+  () => props.version.id,
+  () => fetchStages(props.version.id),
+)
 </script>
 
 <template>

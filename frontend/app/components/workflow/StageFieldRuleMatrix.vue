@@ -26,7 +26,7 @@ const props = defineProps<{ stage: WorkflowStage; version: WorkflowVersion }>()
 const { rules, error, fetchRules, setRule } = useStageFieldRules()
 const { groups, fetchGroups } = useWorkflowFields()
 
-const editable = props.version.state === 'DRAFT'
+const editable = computed(() => props.version.state === 'DRAFT')
 const pendingFieldIds = ref<Set<number>>(new Set())
 
 const fields = computed<FieldDefinition[]>(() => groups.value.flatMap((group) => group.fields))
@@ -51,7 +51,7 @@ async function toggle(
   key: 'is_visible' | 'is_editable' | 'is_required',
   value: boolean,
 ) {
-  if (!editable || isPending(field.id)) return
+  if (!editable.value || isPending(field.id)) return
   pendingFieldIds.value.add(field.id)
   const current = ruleFor(field.id)
   try {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import {
   ChevronDown,
@@ -87,7 +87,7 @@ const {
 } = useWorkflowFields()
 const { referenceTables, fetchReferenceTables } = useReferenceData()
 
-const editable = props.version.state === 'DRAFT'
+const editable = computed(() => props.version.state === 'DRAFT')
 
 const groupDialogOpen = ref(false)
 const fieldDialogOpen = ref(false)
@@ -304,6 +304,14 @@ onMounted(async () => {
   await fetchGroups(props.version.id)
   fetchReferenceTables()
 })
+
+// Refetch when the admin switches to a different workflow version — this
+// component stays mounted across version switches, so onMounted alone would
+// leave the previous version's field groups/fields on screen.
+watch(
+  () => props.version.id,
+  () => fetchGroups(props.version.id),
+)
 </script>
 
 <template>
