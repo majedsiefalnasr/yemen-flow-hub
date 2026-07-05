@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
@@ -28,7 +28,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Switch } from '@/components/ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
@@ -72,6 +71,14 @@ const deleting = ref<WorkflowStage | null>(null)
 const isInitial = ref(false)
 const isFinal = ref(false)
 const requiresClaim = ref(false)
+
+watch(isInitial, (value) => {
+  if (value) isFinal.value = false
+})
+watch(isFinal, (value) => {
+  if (value) isInitial.value = false
+})
+
 // Stage whose field-rule matrix is open in a dialog (null = closed).
 const fieldRulesStage = ref<WorkflowStage | null>(null)
 
@@ -189,7 +196,6 @@ onMounted(() => fetchStages(props.version.id))
         >
           <TableHeader>
             <TableRow class="bg-muted/50 hover:bg-muted/50">
-              <TableHead class="text-right">الترتيب</TableHead>
               <TableHead class="text-right">الرمز</TableHead>
               <TableHead class="text-right">الاسم</TableHead>
               <TableHead class="text-right">النوع</TableHead>
@@ -198,9 +204,6 @@ onMounted(() => fetchStages(props.version.id))
           </TableHeader>
           <TableBody>
             <TableRow v-for="stage in stages" :key="stage.id" class="even:bg-muted/30">
-              <TableCell class="text-muted-foreground font-mono text-xs">
-                {{ stage.sort_order }}
-              </TableCell>
               <TableCell class="text-muted-foreground font-mono text-xs">{{
                 stage.code
               }}</TableCell>
@@ -347,11 +350,11 @@ onMounted(() => fetchStages(props.version.id))
 
         <div class="flex items-center gap-6">
           <div class="flex items-center gap-2">
-            <Checkbox id="stage-initial" v-model="isInitial" />
+            <Switch id="stage-initial" v-model="isInitial" :disabled="isFinal" />
             <Label for="stage-initial">مرحلة البداية</Label>
           </div>
           <div class="flex items-center gap-2">
-            <Checkbox id="stage-final" v-model="isFinal" />
+            <Switch id="stage-final" v-model="isFinal" :disabled="isInitial" />
             <Label for="stage-final">مرحلة النهاية</Label>
           </div>
         </div>

@@ -68,7 +68,7 @@ async function mountEditor(
     global: {
       plugins: [pinia],
       stubs: {
-        Teleport: true,
+        Teleport: { template: '<div><slot /></div>' },
         NuxtLink: true,
         // Tooltip requires a TooltipProvider ancestor supplied at the app root.
         // In isolated mounts we render the trigger's default slot transparently.
@@ -129,5 +129,25 @@ describe('WorkflowStageEditor', () => {
     const wrapper = await mountEditor(['VIEW'], 'DRAFT', [])
 
     expect(wrapper.text()).toContain('لا توجد مراحل')
+  })
+
+  it('does not render the sort-order column', async () => {
+    const wrapper = await mountEditor(['VIEW'])
+
+    expect(wrapper.text()).not.toContain('الترتيب')
+  })
+
+  it('disables the end-stage switch when start-stage is enabled in the create dialog', async () => {
+    const wrapper = await mountEditor(['VIEW', 'MANAGE'])
+    const addButton = buttonByText(wrapper, 'إضافة مرحلة')
+    await addButton?.trigger('click')
+    await flushPromises()
+
+    const startSwitch = wrapper.find('#stage-initial')
+    await startSwitch.trigger('click')
+    await flushPromises()
+
+    const endSwitch = wrapper.find('#stage-final')
+    expect(endSwitch.attributes('disabled')).toBeDefined()
   })
 })
