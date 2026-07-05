@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+import { defineComponent, h } from 'vue'
 import { setActivePinia, createPinia } from 'pinia'
 import WorkflowsNewPage from '@/pages/workflows/new.vue'
 import { useEngineRequestsStore } from '@/stores/engineRequests.store'
@@ -10,6 +11,33 @@ import type { AuthUser } from '@/types/models'
 
 const mockNavigateTo = vi.fn()
 vi.stubGlobal('navigateTo', mockNavigateTo)
+
+// shadcn Dialog's DialogContent renders inside a reka-ui DialogPortal, which
+// teleports its content to document.body — @vue/test-utils' mount() wrapper
+// cannot introspect Teleport targets. Per AGENTS.md, Dialog must not be
+// downgraded to raw HTML in the SOURCE component to make tests pass; instead
+// (same technique as DemoUserSwitcherDialog.test.ts) the TEST replaces the
+// shadcn Dialog module with simple passthrough stubs that render their
+// default slots directly into the DOM, no Teleport involved. new.vue itself
+// is untouched and keeps using the real `<Dialog>`/`<DialogContent>` API.
+function passthrough(name: string) {
+  return defineComponent({
+    name,
+    setup(_, { slots, attrs }) {
+      return () => h('div', attrs, slots.default?.())
+    },
+  })
+}
+
+vi.mock('@/components/ui/dialog', () => ({
+  Dialog: passthrough('Dialog'),
+  DialogContent: passthrough('DialogContent'),
+  DialogHeader: passthrough('DialogHeader'),
+  DialogTitle: passthrough('DialogTitle'),
+  DialogDescription: passthrough('DialogDescription'),
+  DialogFooter: passthrough('DialogFooter'),
+  DialogClose: passthrough('DialogClose'),
+}))
 
 vi.mock('@/composables/useEngineRequests', () => ({
   useEngineRequests: () => ({
@@ -149,5 +177,25 @@ describe('workflows/new.vue', () => {
 
     expect(store.createInstance).toHaveBeenCalledWith({ workflow_version_id: 20, data: {} })
     expect(mockNavigateTo).toHaveBeenCalledWith('/workflows/instances/99?mode=wizard')
+  })
+
+  it('renders the picker inside a dialog and cancel navigates back to the queue', async () => {
+    const store = useEngineRequestsStore()
+    vi.spyOn(store, 'loadAvailableWorkflows').mockImplementation(async () => {
+      store.availableWorkflows = [WF_IMPORT, WF_EXPORT]
+    })
+
+    const wrapper = mount(WorkflowsNewPage)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('اختر مسار العمل')
+
+    const cancelButton = wrapper.findAll('button').find((button) => button.text() === 'إلغاء')
+    expect(cancelButton).toBeTruthy()
+
+    await cancelButton!.trigger('click')
+    await flushPromises()
+
+    expect(mockNavigateTo).toHaveBeenCalledWith('/workflows')
   })
 })
