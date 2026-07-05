@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Enums\WorkflowVersionState;
 use App\Models\Organization;
 use App\Models\Role;
+use App\Models\Team;
 use App\Models\User;
 use App\Services\Authorization\PermissionService;
 use Database\Seeders\GovernanceSeeder;
@@ -210,5 +211,111 @@ class DerivedRequestsEnforcementTest extends TestCase
         $after = $service->screenPermissionsForGovernanceRole($role->id);
         $this->assertArrayHasKey('requests', $after);
         $this->assertContains('CREATE', $after['requests']);
+    }
+
+    public function test_user_scoped_lookup_resolves_team_only_stage_permission_row(): void
+    {
+        $org = Organization::where('code', 'commercial_banks')->firstOrFail();
+        $role = Role::create([
+            'organization_id' => $org->id,
+            'code' => 'team_scoped_test_role',
+            'name' => 'Team Scoped Test Role',
+            'is_system' => false,
+            'is_active' => true,
+        ]);
+        $team = Team::create([
+            'organization_id' => $org->id,
+            'code' => 'team_scoped_test_team',
+            'name' => 'Team Scoped Test Team',
+        ]);
+        $user = User::factory()->create([
+            'organization_id' => $org->id,
+            'role' => UserRole::DATA_ENTRY,
+        ]);
+        $user->roles()->attach($role->id);
+        $user->teams()->attach($team->id);
+
+        $definitionId = DB::table('workflow_definitions')->insertGetId([
+            'code' => 'team_scoped_wf', 'name' => 'Team Scoped Test', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $versionId = DB::table('workflow_versions')->insertGetId([
+            'workflow_definition_id' => $definitionId, 'version_number' => 1,
+            'state' => WorkflowVersionState::PUBLISHED->value, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $stageId = DB::table('workflow_stages')->insertGetId([
+            'workflow_version_id' => $versionId, 'code' => 'intake', 'name' => 'Intake', 'is_initial' => true,
+            'status' => 'ACTIVE', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        // Team-scoped, no role_id — the exact shape that a role-id-only lookup
+        // cannot resolve (see PermissionService::derivedRequestsCapabilities's
+        // documented limitation), but a real per-user lookup must.
+        DB::table('stage_permissions')->insert([
+            'stage_id' => $stageId, 'organization_id' => $org->id, 'team_id' => $team->id,
+            'access_level' => 'EXECUTE', 'display_label' => 'Team Scoped', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $service = app(PermissionService::class);
+
+        // The role-only path still cannot see this row — confirms the documented
+        // limitation remains true and this fix does not change that method.
+        $roleOnly = $service->derivedRequestsCapabilities($user->roles()->pluck('roles.id')->all());
+        foreach ($roleOnly as $caps) {
+            $this->assertFalse($caps['add']);
+        }
+
+        // The user-scoped path (what /auth/me actually calls) must resolve the
+        // team membership and grant CREATE.
+        $sp = $service->screenPermissionsForUser($user);
+        $this->assertArrayHasKey('requests', $sp);
+        $this->assertContains('CREATE', $sp['requests']);
+    }
+
+    public function test_user_scoped_lookup_still_excludes_other_teams_row(): void
+    {
+        $org = Organization::where('code', 'commercial_banks')->firstOrFail();
+        $role = Role::create([
+            'organization_id' => $org->id,
+            'code' => 'other_team_test_role',
+            'name' => 'Other Team Test Role',
+            'is_system' => false,
+            'is_active' => true,
+        ]);
+        $memberTeam = Team::create([
+            'organization_id' => $org->id,
+            'code' => 'member_team_test',
+            'name' => 'Member Team Test',
+        ]);
+        $otherTeam = Team::create([
+            'organization_id' => $org->id,
+            'code' => 'other_team_test',
+            'name' => 'Other Team Test',
+        ]);
+        $user = User::factory()->create([
+            'organization_id' => $org->id,
+            'role' => UserRole::DATA_ENTRY,
+        ]);
+        $user->roles()->attach($role->id);
+        $user->teams()->attach($memberTeam->id);
+
+        $definitionId = DB::table('workflow_definitions')->insertGetId([
+            'code' => 'other_team_wf', 'name' => 'Other Team Test', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $versionId = DB::table('workflow_versions')->insertGetId([
+            'workflow_definition_id' => $definitionId, 'version_number' => 1,
+            'state' => WorkflowVersionState::PUBLISHED->value, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $stageId = DB::table('workflow_stages')->insertGetId([
+            'workflow_version_id' => $versionId, 'code' => 'intake', 'name' => 'Intake', 'is_initial' => true,
+            'status' => 'ACTIVE', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        // Scoped to a team the user does NOT belong to.
+        DB::table('stage_permissions')->insert([
+            'stage_id' => $stageId, 'organization_id' => $org->id, 'team_id' => $otherTeam->id,
+            'access_level' => 'EXECUTE', 'display_label' => 'Other Team', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $service = app(PermissionService::class);
+        $sp = $service->screenPermissionsForUser($user);
+        $this->assertNotContains('CREATE', $sp['requests'] ?? []);
     }
 }

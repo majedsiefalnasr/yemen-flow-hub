@@ -2,15 +2,28 @@
 
 namespace App\Services\Authorization;
 
+use App\Enums\StageAccessLevel;
 use App\Enums\WorkflowVersionState;
+use App\Models\StagePermission;
 use App\Models\User;
+use App\Services\Workflow\StagePermissionResolver;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class PermissionService
 {
+    public function __construct(private readonly StagePermissionResolver $stagePermissionResolver) {}
+
     /**
      * Build screen → capabilities map from screen_permissions table (governance roles).
+     *
+     * The `requests` key is overlaid with a per-user re-derivation
+     * (derivedRequestsCapabilitiesForUser) on top of the role-cached base,
+     * because the role-only cache cannot resolve stage_permissions rows
+     * scoped to a team (see derivedRequestsCapabilities's docblock). A real
+     * user's team memberships are known here, so this overlay recovers
+     * `requests` access for team-scoped rows without changing the role-id
+     * cache's contract or its callers.
      */
     public function screenPermissionsForUser(User $user): array
     {
@@ -20,7 +33,26 @@ class PermissionService
             return [];
         }
 
-        return $this->screenPermissionsForGovernanceRole($governanceRole->id);
+        $result = $this->screenPermissionsForGovernanceRole($governanceRole->id);
+
+        $derived = $this->derivedRequestsCapabilitiesForUser($user);
+        $requestsCaps = [];
+        if ($derived['view']) {
+            $requestsCaps[] = 'VIEW';
+        }
+        if ($derived['add']) {
+            $requestsCaps[] = 'CREATE';
+        }
+        if ($derived['edit']) {
+            $requestsCaps[] = 'UPDATE';
+        }
+
+        if (! empty($requestsCaps)) {
+            $existing = $result['requests'] ?? [];
+            $result['requests'] = array_values(array_unique([...$existing, ...$requestsCaps]));
+        }
+
+        return $result;
     }
 
     public function screenPermissionsForGovernanceRole(int $roleId): array
@@ -192,6 +224,82 @@ class PermissionService
 
             if ($view) {
                 $result[$roleId] = ['view' => $view, 'add' => $add, 'edit' => $edit];
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Derive requests-screen access for one real user from stage_permissions
+     * on currently-published workflow versions, resolving the user's actual
+     * team memberships via StagePermissionResolver — the counterpart to
+     * derivedRequestsCapabilities(), which is role-id-only and therefore
+     * cannot see team-scoped rows. Used only by screenPermissionsForUser();
+     * not cached (identical 1-hour TTL role cache still covers the
+     * non-team-scoped base, so this only runs the extra per-user query when
+     * building /auth/me's response, not on every permission check).
+     *
+     * @return array{view: bool, add: bool, edit: bool}
+     */
+    public function derivedRequestsCapabilitiesForUser(User $user): array
+    {
+        $result = ['view' => false, 'add' => false, 'edit' => false];
+
+        if ($user->hasRoleCode('system_admin')) {
+            $result['view'] = true;
+        }
+
+        $publishedVersionIds = DB::table('workflow_versions')
+            ->where('state', WorkflowVersionState::PUBLISHED->value)
+            ->pluck('id');
+
+        if ($publishedVersionIds->isEmpty()) {
+            return $result;
+        }
+
+        $stages = DB::table('workflow_stages')
+            ->whereIn('workflow_version_id', $publishedVersionIds)
+            ->where('status', 'ACTIVE')
+            ->select('id', 'is_initial')
+            ->get();
+
+        if ($stages->isEmpty()) {
+            return $result;
+        }
+
+        $stageIds = $stages->pluck('id');
+        $initialStageIds = $stages
+            ->filter(fn ($stage) => (bool) $stage->is_initial)
+            ->pluck('id')
+            ->flip();
+
+        $rows = StagePermission::query()->whereIn('stage_id', $stageIds)->get();
+
+        if ($rows->isEmpty()) {
+            return $result;
+        }
+
+        $identity = [
+            'organization_id' => $user->organization_id !== null ? (int) $user->organization_id : null,
+            'team_ids' => $user->teams()->pluck('teams.id')->map(fn ($id) => (int) $id)->all(),
+            'role_ids' => $user->roles()->pluck('roles.id')->map(fn ($id) => (int) $id)->all(),
+            'user_id' => (int) $user->getKey(),
+        ];
+
+        $rowsByStage = $rows->groupBy('stage_id');
+
+        foreach ($rowsByStage as $stageId => $stageRows) {
+            if ($this->stagePermissionResolver->identityMatchesAny($identity, $stageRows, StageAccessLevel::VIEW)) {
+                $result['view'] = true;
+            }
+
+            if ($this->stagePermissionResolver->identityMatchesAny($identity, $stageRows, StageAccessLevel::EXECUTE)) {
+                $result['edit'] = true;
+
+                if ($initialStageIds->has($stageId)) {
+                    $result['add'] = true;
+                }
             }
         }
 
