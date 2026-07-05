@@ -114,6 +114,14 @@ export function useWorkflows() {
     return published
   }
 
+  const deleteVersion = async (version: { id: number }): Promise<void> => {
+    await api.del(`/api/v1/workflow-versions/${version.id}`)
+  }
+
+  const deleteDefinition = async (definition: { id: number }): Promise<void> => {
+    await api.del(`/api/v1/workflow-definitions/${definition.id}`)
+  }
+
   return {
     definitions,
     definitionsMeta,
@@ -124,5 +132,7 @@ export function useWorkflows() {
     cloneVersion,
     validateVersion,
     publishVersion,
+    deleteVersion,
+    deleteDefinition,
   }
 }

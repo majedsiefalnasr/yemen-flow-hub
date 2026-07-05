@@ -30,6 +30,16 @@ import WorkflowPublishPanel from '@/components/workflow/WorkflowPublishPanel.vue
 import StageRoutingEditor from '@/components/workflow/StageRoutingEditor.vue'
 import WorkflowActionsCatalog from '@/components/workflow/WorkflowActionsCatalog.vue'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
@@ -63,8 +73,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { useWorkflows } from '@/composables/useWorkflows'
 
-const { definitions, loading, error, fetchDefinitions, createDefinition, cloneVersion } =
-  useWorkflows()
+const {
+  definitions,
+  loading,
+  error,
+  fetchDefinitions,
+  createDefinition,
+  cloneVersion,
+  deleteVersion,
+  deleteDefinition,
+} = useWorkflows()
 
 // ── Version picker state ────────────────────────────────────────────────
 const selectedDefinitionId = ref<number | null>(null)
@@ -156,9 +174,11 @@ function formatDate(iso: string | null): string {
   return new Intl.DateTimeFormat('ar-EG', { dateStyle: 'medium' }).format(new Date(iso))
 }
 
-// ── Delete dialogs (stubs — Task 6 wires the AlertDialog bodies + API calls) ──
+// ── Delete dialogs ───────────────────────────────────────────────────────
 const deleteVersionDialogOpen = ref(false)
 const deleteDefinitionDialogOpen = ref(false)
+const deletingVersion = ref(false)
+const deletingDefinition = ref(false)
 
 function openDeleteVersionDialog() {
   deleteVersionDialogOpen.value = true
@@ -166,6 +186,36 @@ function openDeleteVersionDialog() {
 
 function openDeleteDefinitionDialog() {
   deleteDefinitionDialogOpen.value = true
+}
+
+async function confirmDeleteVersion() {
+  if (!selectedVersion.value) return
+  deletingVersion.value = true
+  try {
+    await deleteVersion(selectedVersion.value)
+    deleteVersionDialogOpen.value = false
+    toast.success('تم حذف النسخة بنجاح')
+    await fetchDefinitions()
+  } catch (cause) {
+    toast.error(extractApiErrorMessage(cause, 'تعذر حذف النسخة'))
+  } finally {
+    deletingVersion.value = false
+  }
+}
+
+async function confirmDeleteDefinition() {
+  if (!selectedDefinition.value) return
+  deletingDefinition.value = true
+  try {
+    await deleteDefinition(selectedDefinition.value)
+    deleteDefinitionDialogOpen.value = false
+    toast.success('تم حذف مسار العمل بنجاح')
+    await fetchDefinitions()
+  } catch (cause) {
+    toast.error(extractApiErrorMessage(cause, 'تعذر حذف مسار العمل'))
+  } finally {
+    deletingDefinition.value = false
+  }
 }
 
 // Designer tab definitions (label + icon), matching the settings-page nav style.
@@ -527,6 +577,40 @@ onMounted(reload)
           </form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog v-model:open="deleteVersionDialogOpen">
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>حذف النسخة</AlertDialogTitle>
+            <AlertDialogDescription>
+              سيتم حذف النسخة «v{{ selectedVersion?.version_number }}» نهائياً.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction :disabled="deletingVersion" @click="confirmDeleteVersion">
+              تأكيد الحذف
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog v-model:open="deleteDefinitionDialogOpen">
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>حذف مسار العمل</AlertDialogTitle>
+            <AlertDialogDescription>
+              سيتم حذف مسار العمل «{{ selectedDefinition?.name }}» وكل نسخه نهائياً.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction :disabled="deletingDefinition" @click="confirmDeleteDefinition">
+              تأكيد الحذف
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   </ScreenGuard>
 </template>

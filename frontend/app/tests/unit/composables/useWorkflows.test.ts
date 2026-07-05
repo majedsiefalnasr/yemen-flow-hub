@@ -3,9 +3,10 @@ import type { WorkflowVersion } from '../../../types/models'
 
 const mockGet = vi.fn()
 const mockPost = vi.fn()
+const mockDel = vi.fn()
 
 vi.mock('../../../composables/useApi', () => ({
-  useApi: () => ({ get: mockGet, post: mockPost }),
+  useApi: () => ({ get: mockGet, post: mockPost, del: mockDel }),
 }))
 
 // extractApiErrorMessage is a Nuxt auto-import; stub it for the composable under test.
@@ -113,5 +114,27 @@ describe('useWorkflows', () => {
 
     expect(error.value).toBeTruthy()
     expect(definitions.value).toHaveLength(0)
+  })
+
+  describe('deleteVersion', () => {
+    it('calls DELETE on the version endpoint', async () => {
+      mockDel.mockResolvedValueOnce(undefined)
+      const { deleteVersion } = useWorkflows()
+
+      await deleteVersion({ id: 42 })
+
+      expect(mockDel).toHaveBeenCalledWith('/api/v1/workflow-versions/42')
+    })
+  })
+
+  describe('deleteDefinition', () => {
+    it('calls DELETE on the definition endpoint', async () => {
+      mockDel.mockResolvedValueOnce(undefined)
+      const { deleteDefinition } = useWorkflows()
+
+      await deleteDefinition({ id: 7 })
+
+      expect(mockDel).toHaveBeenCalledWith('/api/v1/workflow-definitions/7')
+    })
   })
 })
