@@ -127,4 +127,41 @@ describe('workflows/index.vue', () => {
 
     expect(wrapper.text()).toContain('عرض')
   })
+
+  it('renders the workflow name and version badge', () => {
+    const store = useEngineRequestsStore()
+    store.queue = [
+      {
+        id: 1,
+        reference: 'ENG-001',
+        status: 'ACTIVE',
+        current_stage: { name: 'استلام' },
+        workflow_version: {
+          id: 1,
+          version_number: 2,
+          state: 'PUBLISHED',
+          definition: { id: 1, name: 'تمويل الواردات', code: 'import-financing' },
+        },
+      },
+    ] as any
+
+    const wrapper = mount(WorkflowsIndexPage, {
+      global: { stubs: { NuxtLink: true } },
+    })
+
+    expect(wrapper.text()).toContain('تمويل الواردات v2')
+  })
+
+  it('renders a dash placeholder when workflow_version is missing', () => {
+    const store = useEngineRequestsStore()
+    store.queue = [
+      { id: 1, reference: 'ENG-001', status: 'ACTIVE', current_stage: { name: 'استلام' } },
+    ] as any
+
+    const wrapper = mount(WorkflowsIndexPage, {
+      global: { stubs: { NuxtLink: true } },
+    })
+
+    expect(wrapper.text()).toContain('—')
+  })
 })

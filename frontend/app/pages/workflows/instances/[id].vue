@@ -67,6 +67,13 @@ const graphRef = toRef(store, 'graph')
 const currentRef = toRef(store, 'current')
 const { percent, currentIndex, total } = useEngineProgress(graphRef, currentRef)
 
+// "مسار العمل" (workflow name + version) shown under the page title, so
+// reviewers can tell which workflow definition/version produced this request.
+const workflowLabel = computed(() => {
+  const v = store.current?.workflow_version
+  return v?.definition ? `${v.definition.name} v${v.version_number}` : null
+})
+
 const availableActions = computed(() => {
   if (!store.current?.current_stage || !store.graph) return []
   // Non-executors never see stage actions, even if the graph has outgoing edges.
@@ -120,7 +127,7 @@ async function onWizardSubmitted() {
 </script>
 
 <template>
-  <div class="flex flex-col gap-6 py-2 p-6" dir="rtl">
+  <div class="flex flex-col gap-6 p-6 py-2" dir="rtl">
     <div v-if="store.loading && !store.current">
       <Skeleton class="mb-4 h-8 w-64" />
       <Skeleton class="h-48 w-full" />
@@ -136,6 +143,9 @@ async function onWizardSubmitted() {
           { label: store.current.reference },
         ]"
       />
+      <p v-if="workflowLabel" class="text-muted-foreground -mt-4 mb-2 text-sm">
+        مسار العمل: {{ workflowLabel }}
+      </p>
 
       <EngineStageBanner
         v-if="!wizardMode"

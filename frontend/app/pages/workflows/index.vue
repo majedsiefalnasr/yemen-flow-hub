@@ -24,12 +24,7 @@ import { UserRole } from '@/types/enums'
 import type { EngineRequest } from '@/types/models'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import {
-  Command,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command'
+import { Command, CommandGroup, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -109,7 +104,9 @@ watch(view, () => {
   load()
 })
 
-const rows = computed<EngineRequest[]>(() => (view.value === 'queue' ? store.queue : store.instances))
+const rows = computed<EngineRequest[]>(() =>
+  view.value === 'queue' ? store.queue : store.instances,
+)
 
 // Client-side search across the fields most people scan by.
 const filteredRows = computed(() => {
@@ -213,6 +210,7 @@ const hasActiveFilters = computed(
 
 const COLUMN_LABELS: Record<string, string> = {
   reference: 'المرجع',
+  workflow: 'مسار العمل',
   stage: 'المرحلة الحالية',
   bank: 'البنك',
   merchant: 'المستورد',
@@ -243,10 +241,27 @@ const columns: ColumnDef<EngineRequest>[] = [
       ),
   },
   {
+    id: 'workflow',
+    header: ({ column }) => h(DataTableColumnHeader as any, { column, title: 'مسار العمل' }),
+    accessorFn: (row) => row.workflow_version?.definition?.name ?? '—',
+    filterFn: (row, _id, value: string[]) =>
+      value.includes(row.original.workflow_version?.definition?.name ?? '—'),
+    cell: ({ row }) => {
+      const v = row.original.workflow_version
+      if (!v?.definition) return h('span', { class: 'text-muted-foreground text-sm' }, '—')
+      return h(
+        Badge,
+        { variant: 'outline', class: 'font-normal' },
+        () => `${v.definition!.name} v${v.version_number}`,
+      )
+    },
+  },
+  {
     id: 'stage',
     header: 'المرحلة الحالية',
     accessorFn: (row) => row.current_stage?.name ?? '—',
-    filterFn: (row, _id, value: string[]) => value.includes(row.original.current_stage?.name ?? '—'),
+    filterFn: (row, _id, value: string[]) =>
+      value.includes(row.original.current_stage?.name ?? '—'),
     cell: ({ row }) =>
       h('span', { class: 'text-sm text-foreground' }, row.original.current_stage?.name ?? '—'),
   },
@@ -286,10 +301,8 @@ const columns: ColumnDef<EngineRequest>[] = [
     header: 'الحالة',
     filterFn: (row, _id, value: string[]) => value.includes(row.original.status),
     cell: ({ row }) =>
-      h(
-        Badge,
-        { variant: 'outline', class: statusBadgeClass(row.original.status) },
-        () => statusLabel(row.original.status),
+      h(Badge, { variant: 'outline', class: statusBadgeClass(row.original.status) }, () =>
+        statusLabel(row.original.status),
       ),
   },
   {
@@ -300,10 +313,8 @@ const columns: ColumnDef<EngineRequest>[] = [
     cell: ({ row }) => {
       const badgeClass = slaBadgeClass(row.original.sla_status)
       if (!badgeClass) return h('span', { class: 'text-muted-foreground text-sm' }, '—')
-      return h(
-        Badge,
-        { variant: 'outline', class: badgeClass },
-        () => slaLabel(row.original.sla_status),
+      return h(Badge, { variant: 'outline', class: badgeClass }, () =>
+        slaLabel(row.original.sla_status),
       )
     },
   },
@@ -353,6 +364,14 @@ const columns: ColumnDef<EngineRequest>[] = [
 // ── Export ────────────────────────────────────────────────────────────────────
 const exportCols = [
   { key: 'reference', label: 'المرجع' },
+  {
+    key: 'workflow',
+    label: 'مسار العمل',
+    format: (_v: unknown, row: EngineRequest) => {
+      const v = row.workflow_version
+      return v?.definition ? `${v.definition.name} v${v.version_number}` : '—'
+    },
+  },
   {
     key: 'stage',
     label: 'المرحلة الحالية',
@@ -673,7 +692,8 @@ function handleReset() {
                 </template>
                 <template v-else>
                   القائمة مقصورة على الطلبات والمراحل المصرّح لك بالاطلاع عليها حسب دورك. إن كنت
-                  تتوقع رؤية طلبات ولا تظهر، فقد تكون في مراحل خارج نطاق صلاحياتك؛ راجع مسؤول النظام.
+                  تتوقع رؤية طلبات ولا تظهر، فقد تكون في مراحل خارج نطاق صلاحياتك؛ راجع مسؤول
+                  النظام.
                 </template>
               </EmptyDescription>
               <Button
