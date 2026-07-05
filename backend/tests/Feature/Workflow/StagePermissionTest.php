@@ -7,6 +7,7 @@ use App\Enums\UserRole;
 use App\Enums\WorkflowVersionState;
 use App\Models\Organization;
 use App\Models\Role;
+use App\Models\Team;
 use App\Models\User;
 use App\Models\WorkflowDefinition;
 use App\Models\WorkflowStage;
@@ -55,9 +56,16 @@ class StagePermissionTest extends TestCase
 
     public function test_add_stage_permission_row(): void
     {
+        $team = Team::query()->create([
+            'organization_id' => $this->org->id,
+            'code' => 'reviewers',
+            'name' => 'Reviewers Team',
+        ]);
+
         $response = $this->actingAs($this->admin)
             ->postJson("/api/v1/workflow-stages/{$this->stage->id}/permissions", [
                 'organization_id' => $this->org->id,
+                'team_id' => $team->id,
                 'role_id' => $this->role->id,
                 'access_level' => 'EXECUTE',
                 'display_label' => 'مراجعو البنك',
@@ -68,27 +76,46 @@ class StagePermissionTest extends TestCase
         $this->assertDatabaseHas('stage_permissions', [
             'id' => $response->json('data.id'),
             'stage_id' => $this->stage->id,
+            'team_id' => $team->id,
             'role_id' => $this->role->id,
         ]);
     }
 
-    public function test_row_requires_at_least_one_match_field(): void
+    public function test_row_requires_organization_team_and_role(): void
     {
         $this->actingAs($this->admin)
             ->postJson("/api/v1/workflow-stages/{$this->stage->id}/permissions", [
                 'access_level' => 'VIEW',
                 'display_label' => 'Everyone',
             ])->assertUnprocessable()
-            ->assertJsonValidationErrors('organization_id');
+            ->assertJsonValidationErrors(['organization_id', 'team_id', 'role_id']);
+    }
+
+    public function test_row_requires_team_even_with_organization_and_role(): void
+    {
+        $this->actingAs($this->admin)
+            ->postJson("/api/v1/workflow-stages/{$this->stage->id}/permissions", [
+                'organization_id' => $this->org->id,
+                'role_id' => $this->role->id,
+                'access_level' => 'VIEW',
+                'display_label' => 'Missing team',
+            ])->assertUnprocessable()
+            ->assertJsonValidationErrors('team_id');
     }
 
     public function test_role_must_belong_to_organization(): void
     {
         $otherOrg = Organization::query()->create(['code' => 'OTHER', 'name' => 'Other Org']);
+        $team = Team::query()->create([
+            'organization_id' => $this->org->id,
+            'code' => 'reviewers',
+            'name' => 'Reviewers Team',
+        ]);
 
         $this->actingAs($this->admin)
             ->postJson("/api/v1/workflow-stages/{$this->stage->id}/permissions", [
                 'organization_id' => $otherOrg->id,
+                'team_id' => $team->id,
                 'role_id' => $this->role->id,
                 'access_level' => 'VIEW',
                 'display_label' => 'Mismatch',
@@ -116,6 +143,12 @@ class StagePermissionTest extends TestCase
 
     public function test_mutating_permission_on_published_version_is_rejected(): void
     {
+        $team = Team::query()->create([
+            'organization_id' => $this->org->id,
+            'code' => 'reviewers',
+            'name' => 'Reviewers Team',
+        ]);
+
         $permission = $this->stage->stagePermissions()->create([
             'role_id' => $this->role->id,
             'access_level' => StageAccessLevel::VIEW,
@@ -125,6 +158,8 @@ class StagePermissionTest extends TestCase
 
         $this->actingAs($this->admin)
             ->postJson("/api/v1/workflow-stages/{$this->stage->id}/permissions", [
+                'organization_id' => $this->org->id,
+                'team_id' => $team->id,
                 'role_id' => $this->role->id,
                 'access_level' => 'VIEW',
                 'display_label' => 'Another',
