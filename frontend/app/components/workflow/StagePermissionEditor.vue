@@ -166,6 +166,8 @@ onMounted(() => {
   fetchOrganizations()
   fetchTeams()
 })
+
+defineExpose({ teamId, roleId })
 </script>
 
 <template>

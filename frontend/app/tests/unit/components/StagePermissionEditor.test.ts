@@ -2,6 +2,7 @@
 
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
+import { nextTick } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { StagePermission, WorkflowStage, WorkflowVersion } from '../../../types/models'
 import { useAuthStore } from '../../../stores/auth.store'
@@ -175,5 +176,19 @@ describe('StagePermissionEditor', () => {
     const wrapper = await mountEditor(['VIEW', 'MANAGE'], 'PUBLISHED')
 
     expect(buttonByLabel(wrapper, 'تعديل الصلاحية')).toBeUndefined()
+  })
+
+  it('preserves team and role selections when opening the edit dialog', async () => {
+    const permission = makePermission({ organization_id: 1, team_id: 3, role_id: 2 })
+    const wrapper = await mountEditor(['VIEW', 'MANAGE'], 'DRAFT', [permission])
+
+    const editButton = buttonByLabel(wrapper, 'تعديل الصلاحية')
+    expect(editButton).toBeDefined()
+    await editButton?.trigger('click')
+    await flushPromises()
+    await nextTick()
+
+    expect(wrapper.vm.teamId).toBe(String(permission.team_id))
+    expect(wrapper.vm.roleId).toBe(String(permission.role_id))
   })
 })
