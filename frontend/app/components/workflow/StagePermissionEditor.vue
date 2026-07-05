@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, nextTick, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
-import { Lock, Plus, Trash2, Users } from 'lucide-vue-next'
+import { Lock, Pencil, Plus, Trash2, Users } from 'lucide-vue-next'
 import type { StagePermission, WorkflowStage, WorkflowVersion } from '@/types/models'
 import ScreenGuard from '@/components/security/ScreenGuard.vue'
 import {
@@ -50,14 +50,21 @@ import { useTeams } from '@/composables/useTeams'
 
 const props = defineProps<{ stage: WorkflowStage; version: WorkflowVersion }>()
 
-const { permissions, error, fetchPermissions, createPermission, deletePermission } =
-  useStagePermissions()
+const {
+  permissions,
+  error,
+  fetchPermissions,
+  createPermission,
+  updatePermission,
+  deletePermission,
+} = useStagePermissions()
 const { organizations, fetchOrganizations } = useOrganizations()
 const { roles, fetchRoles } = useGovernanceRoles()
 const { teams, fetchTeams } = useTeams()
 
 const editable = props.version.state === 'DRAFT'
 const dialogOpen = ref(false)
+const editing = ref<StagePermission | null>(null)
 const deleting = ref<StagePermission | null>(null)
 
 const organizationId = ref<string>('')
@@ -67,7 +74,10 @@ const accessLevel = ref<'VIEW' | 'EXECUTE'>('EXECUTE')
 const displayLabel = ref('')
 const formError = ref<string | null>(null)
 
+const suppressCascadeClear = ref(false)
+
 watch(organizationId, (value) => {
+  if (suppressCascadeClear.value) return
   teamId.value = ''
   roleId.value = ''
   if (value) {
@@ -78,10 +88,13 @@ watch(organizationId, (value) => {
 
 const orgName = (id: number | null) =>
   id === null ? 'الكل' : (organizations.value.find((o) => o.id === id)?.name ?? `#${id}`)
+const teamName = (id: number | null) =>
+  id === null ? '—' : (teams.value.find((t) => t.id === id)?.name ?? `#${id}`)
 const roleName = (id: number | null) =>
   id === null ? '—' : (roles.value.find((r) => r.id === id)?.name ?? `#${id}`)
 
 function openCreate() {
+  editing.value = null
   organizationId.value = ''
   teamId.value = ''
   roleId.value = ''
@@ -91,20 +104,45 @@ function openCreate() {
   dialogOpen.value = true
 }
 
+function openEdit(permission: StagePermission) {
+  editing.value = permission
+  suppressCascadeClear.value = true
+  organizationId.value = permission.organization_id ? String(permission.organization_id) : ''
+  teamId.value = permission.team_id ? String(permission.team_id) : ''
+  roleId.value = permission.role_id ? String(permission.role_id) : ''
+  accessLevel.value = permission.access_level
+  displayLabel.value = permission.display_label
+  formError.value = null
+  if (organizationId.value) {
+    fetchRoles(Number(organizationId.value))
+    fetchTeams(Number(organizationId.value))
+  }
+  dialogOpen.value = true
+  nextTick(() => {
+    suppressCascadeClear.value = false
+  })
+}
+
 async function submit() {
-  if (!displayLabel.value || (!organizationId.value && !teamId.value && !roleId.value)) {
-    formError.value = 'حدّد على الأقل جهة أو فريقاً أو دوراً، وأدخل تسمية.'
+  if (!displayLabel.value || !organizationId.value || !teamId.value || !roleId.value) {
+    formError.value = 'الجهة والفريق والدور مطلوبة جميعاً، مع إدخال تسمية.'
     return
   }
+  const payload = {
+    organization_id: Number(organizationId.value),
+    team_id: Number(teamId.value),
+    role_id: Number(roleId.value),
+    access_level: accessLevel.value,
+    display_label: displayLabel.value,
+  }
   try {
-    await createPermission(props.stage.id, {
-      organization_id: organizationId.value ? Number(organizationId.value) : null,
-      team_id: teamId.value ? Number(teamId.value) : null,
-      role_id: roleId.value ? Number(roleId.value) : null,
-      access_level: accessLevel.value,
-      display_label: displayLabel.value,
-    })
-    toast.success('تمت إضافة الصلاحية')
+    if (editing.value) {
+      await updatePermission(editing.value, payload)
+      toast.success('تم تحديث الصلاحية')
+    } else {
+      await createPermission(props.stage.id, payload)
+      toast.success('تمت إضافة الصلاحية')
+    }
     dialogOpen.value = false
   } catch (cause) {
     formError.value = extractApiErrorMessage(cause, 'تعذّر حفظ الصلاحية')
@@ -126,6 +164,7 @@ async function confirmDelete() {
 onMounted(() => {
   fetchPermissions(props.stage.id)
   fetchOrganizations()
+  fetchTeams()
 })
 </script>
 
@@ -160,6 +199,7 @@ onMounted(() => {
           <TableRow class="bg-muted/50 hover:bg-muted/50">
             <TableHead class="text-right">التسمية</TableHead>
             <TableHead class="text-right">الجهة</TableHead>
+            <TableHead class="text-right">الفريق</TableHead>
             <TableHead class="text-right">الدور</TableHead>
             <TableHead class="text-right">المستوى</TableHead>
             <TableHead class="text-left">إجراء</TableHead>
@@ -171,6 +211,7 @@ onMounted(() => {
             <TableCell class="text-muted-foreground">{{
               orgName(permission.organization_id)
             }}</TableCell>
+            <TableCell class="text-muted-foreground">{{ teamName(permission.team_id) }}</TableCell>
             <TableCell class="text-muted-foreground">{{ roleName(permission.role_id) }}</TableCell>
             <TableCell>
               <Badge
@@ -183,6 +224,21 @@ onMounted(() => {
             </TableCell>
             <TableCell class="text-left" @click.stop>
               <div class="flex items-center justify-end gap-0.5">
+                <ScreenGuard v-if="editable" screen="workflow_designer" capability="MANAGE">
+                  <Tooltip>
+                    <TooltipTrigger as-child>
+                      <Button
+                        size="icon-sm"
+                        variant="ghost"
+                        aria-label="تعديل الصلاحية"
+                        @click="openEdit(permission)"
+                      >
+                        <Pencil class="h-3.5 w-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>تعديل الصلاحية</TooltipContent>
+                  </Tooltip>
+                </ScreenGuard>
                 <ScreenGuard v-if="editable" screen="workflow_designer" capability="MANAGE">
                   <Tooltip>
                     <TooltipTrigger as-child>
@@ -214,7 +270,7 @@ onMounted(() => {
     <Dialog v-model:open="dialogOpen">
       <DialogContent class="max-w-lg">
         <DialogHeader>
-          <DialogTitle>إضافة صلاحية مرحلة</DialogTitle>
+          <DialogTitle>{{ editing ? 'تعديل صلاحية مرحلة' : 'إضافة صلاحية مرحلة' }}</DialogTitle>
           <DialogDescription>تُشتق صلاحيات الطلبات والدوري من هذه الصفوف.</DialogDescription>
         </DialogHeader>
 
@@ -225,11 +281,9 @@ onMounted(() => {
           </div>
 
           <div class="flex flex-col gap-1.5">
-            <Label>الجهة</Label>
+            <Label>الجهة *</Label>
             <Select v-model="organizationId">
-              <SelectTrigger class="w-full"
-                ><SelectValue placeholder="اختر الجهة (اختياري)"
-              /></SelectTrigger>
+              <SelectTrigger class="w-full"><SelectValue placeholder="اختر الجهة" /></SelectTrigger>
               <SelectContent>
                 <SelectItem v-for="org in organizations" :key="org.id" :value="String(org.id)">
                   {{ org.name }}
@@ -239,10 +293,10 @@ onMounted(() => {
           </div>
 
           <div class="flex flex-col gap-1.5">
-            <Label>الفريق</Label>
+            <Label>الفريق *</Label>
             <Select v-model="teamId" :disabled="!organizationId">
               <SelectTrigger class="w-full"
-                ><SelectValue placeholder="اختر الفريق (اختياري)"
+                ><SelectValue placeholder="اختر الفريق"
               /></SelectTrigger>
               <SelectContent>
                 <SelectItem v-for="team in teams" :key="team.id" :value="String(team.id)">
@@ -253,11 +307,9 @@ onMounted(() => {
           </div>
 
           <div class="flex flex-col gap-1.5">
-            <Label>الدور</Label>
+            <Label>الدور *</Label>
             <Select v-model="roleId" :disabled="!organizationId">
-              <SelectTrigger class="w-full"
-                ><SelectValue placeholder="اختر الدور (اختياري)"
-              /></SelectTrigger>
+              <SelectTrigger class="w-full"><SelectValue placeholder="اختر الدور" /></SelectTrigger>
               <SelectContent>
                 <SelectItem v-for="role in roles" :key="role.id" :value="String(role.id)">
                   {{ role.name }}

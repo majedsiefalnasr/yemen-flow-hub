@@ -50,6 +50,20 @@ export function useStagePermissions() {
     return response.data
   }
 
+  const updatePermission = async (
+    permission: StagePermission,
+    payload: Partial<StagePermissionPayload>,
+  ) => {
+    const response = await api.put<{ data: StagePermission }>(
+      `/api/v1/workflow-stages/${permission.stage_id}/permissions/${permission.id}`,
+      { ...payload, version: permission.version },
+    )
+    permissions.value = permissions.value.map((item) =>
+      item.id === response.data.id ? response.data : item,
+    )
+    return response.data
+  }
+
   const deletePermission = async (permission: StagePermission) => {
     await api.del(`/api/v1/workflow-stages/${permission.stage_id}/permissions/${permission.id}`)
     permissions.value = permissions.value.filter((item) => item.id !== permission.id)
@@ -61,6 +75,7 @@ export function useStagePermissions() {
     error,
     fetchPermissions,
     createPermission,
+    updatePermission,
     deletePermission,
   }
 }

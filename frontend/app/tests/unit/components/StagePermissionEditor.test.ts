@@ -8,10 +8,11 @@ import { useAuthStore } from '../../../stores/auth.store'
 
 const mockGet = vi.fn()
 const mockPost = vi.fn()
+const mockPut = vi.fn()
 const mockDelete = vi.fn()
 
 vi.mock('../../../composables/useApi', () => ({
-  useApi: () => ({ get: mockGet, post: mockPost, del: mockDelete }),
+  useApi: () => ({ get: mockGet, post: mockPost, put: mockPut, del: mockDelete }),
 }))
 
 vi.stubGlobal('extractApiErrorMessage', (_cause: unknown, fallback: string) => fallback)
@@ -22,13 +23,14 @@ const StagePermissionEditor = (
 
 const ORGS = [{ id: 1, code: 'CBY', name: 'البنك المركزي', is_active: true }]
 const ROLES = [{ id: 2, code: 'REVIEWER', name: 'مراجع', organization_id: 1 }]
+const TEAMS = [{ id: 3, code: 'REVIEW_TEAM', name: 'فريق المراجعة', organization_id: 1 }]
 
 function makePermission(overrides: Partial<StagePermission> = {}): StagePermission {
   return {
     id: 1,
     stage_id: 5,
     organization_id: 1,
-    team_id: null,
+    team_id: 3,
     role_id: 2,
     user_id: null,
     access_level: 'EXECUTE',
@@ -83,7 +85,7 @@ async function mountEditor(
     if (url.includes('workflow-stages')) return Promise.resolve({ data: permissions })
     if (url.includes('organizations')) return Promise.resolve({ data: ORGS, meta: {} })
     if (url.includes('roles')) return Promise.resolve({ data: ROLES })
-    if (url.includes('teams')) return Promise.resolve({ data: [] })
+    if (url.includes('teams')) return Promise.resolve({ data: TEAMS })
     return Promise.resolve({ data: [] })
   })
   const pinia = createPinia()
@@ -155,5 +157,23 @@ describe('StagePermissionEditor', () => {
     const wrapper = await mountEditor(['VIEW'], 'DRAFT', [])
 
     expect(wrapper.text()).toContain('لا توجد صلاحيات')
+  })
+
+  it('shows the team label in the table', async () => {
+    const wrapper = await mountEditor(['VIEW'])
+
+    expect(wrapper.text()).toContain('فريق المراجعة')
+  })
+
+  it('shows an edit affordance for MANAGE users on a DRAFT version', async () => {
+    const wrapper = await mountEditor(['VIEW', 'MANAGE'])
+
+    expect(buttonByLabel(wrapper, 'تعديل الصلاحية')).toBeDefined()
+  })
+
+  it('hides edit affordance on a PUBLISHED version', async () => {
+    const wrapper = await mountEditor(['VIEW', 'MANAGE'], 'PUBLISHED')
+
+    expect(buttonByLabel(wrapper, 'تعديل الصلاحية')).toBeUndefined()
   })
 })
