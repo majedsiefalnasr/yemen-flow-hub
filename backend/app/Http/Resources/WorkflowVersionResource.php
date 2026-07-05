@@ -19,6 +19,9 @@ class WorkflowVersionResource extends JsonResource
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
             'version' => (int) $this->version,
+            'stages_count' => $this->whenCounted('stages'),
+            'transitions_count' => $this->whenCounted('transitions'),
+            'fields_count' => $this->whenCounted('fields'),
         ];
     }
 }

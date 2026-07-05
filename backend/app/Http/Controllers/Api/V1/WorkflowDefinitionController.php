@@ -33,7 +33,7 @@ class WorkflowDefinitionController extends Controller
         $direction = $validated['direction'] ?? 'desc';
 
         $page = WorkflowDefinition::query()
-            ->with(['versions' => fn ($q) => $q->orderByDesc('version_number')])
+            ->with(['versions' => fn ($q) => $q->orderByDesc('version_number')->withCount(['stages', 'transitions', 'fields'])])
             ->when($request->filled('search'), fn ($q) => $q->where(fn ($n) => $n
                 ->where('code', 'like', '%'.$this->escapeLike($request->string('search')->toString()).'%')
                 ->orWhere('name', 'like', '%'.$this->escapeLike($request->string('search')->toString()).'%')))

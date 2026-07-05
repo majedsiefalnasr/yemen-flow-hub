@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class WorkflowVersion extends Model
 {
@@ -53,6 +54,16 @@ class WorkflowVersion extends Model
     public function fieldDefinitions(): HasMany
     {
         return $this->hasMany(FieldDefinition::class, 'workflow_version_id');
+    }
+
+    public function fields(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            FieldDefinition::class,
+            FieldGroup::class,
+            'workflow_version_id',
+            'field_group_id',
+        );
     }
 
     public function isEditable(): bool
