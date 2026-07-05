@@ -229,11 +229,11 @@ function cancelLeave() {
         >
       </Alert>
 
-      <ClaimBanner v-if="heldByOther" :holder-name="claimHolderName ?? 'مراجع آخر'" />
+      <ClaimBanner v-if="heldByOther" :holder-name="claimHolderName ?? 'مستخدم آخر'" />
 
       <!-- Wizard mode: any executor on the initial stage continues the draft step by step. -->
       <template v-if="wizardMode">
-        <Card v-if="claimRequiredButNotHeld" class="border-0 shadow">
+        <Card v-if="claimRequiredButNotHeld && !heldByOther" class="border-0 shadow">
           <CardContent class="flex flex-col items-start gap-3 p-4">
             <p class="text-muted-foreground text-sm">
               يجب متابعة هذا الطلب قبل تعديله لضمان عدم تحرير مستخدمين اثنين للطلب نفسه في الوقت

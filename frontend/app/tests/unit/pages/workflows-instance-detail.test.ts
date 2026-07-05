@@ -303,7 +303,7 @@ describe('workflows/instances/[id].vue', () => {
     const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
     await flushPromises()
     await wrapper.vm.$nextTick()
-    expect(wrapper.text()).toContain('مراجع آخر يعمل على هذا الطلب الآن')
+    expect(wrapper.text()).toContain('مستخدم آخر يعمل على هذا الطلب الآن')
   })
 
   it('renders a stage action panel separate from the form', async () => {
@@ -464,6 +464,13 @@ describe('workflows/instances/[id].vue', () => {
 
     expect(wrapper.text()).toContain('سارة أحمد يعمل على هذا الطلب الآن')
     expect(wrapper.find('[data-stub="wizard"]').exists()).toBe(false)
+
+    // The claim-prompt card/button must not render alongside the banner: it
+    // would be a dead action since someone else already holds the claim.
+    const claimButton = wrapper
+      .findAll('button')
+      .find((btn) => btn.text().includes('المتابعة على هذا الطلب'))
+    expect(claimButton).toBeUndefined()
   })
 
   it('requires an explicit claim before the wizard becomes editable when the stage requires a claim', async () => {
