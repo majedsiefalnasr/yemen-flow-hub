@@ -47,6 +47,7 @@ import {
 } from '@/components/ui/dialog'
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -55,6 +56,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Switch } from '@/components/ui/switch'
 import {
   Table,
   TableBody,
@@ -66,12 +68,22 @@ import {
 import { useWorkflowActions } from '@/composables/useWorkflowActions'
 import { NOT_ELIGIBLE_LABEL_AR } from '@/constants/workflow'
 
-const { actions, loading, error, fetchActions, createAction, updateAction, deleteAction } =
-  useWorkflowActions()
+const {
+  actions,
+  loading,
+  error,
+  fetchActions,
+  createAction,
+  updateAction,
+  setActionActive,
+  deleteAction,
+} = useWorkflowActions()
 
 const dialogOpen = ref(false)
 const editing = ref<WorkflowAction | null>(null)
 const deleting = ref<WorkflowAction | null>(null)
+const isActive = ref(true)
+const togglingActive = ref(false)
 
 const KINDS: WorkflowActionKind[] = [
   'DRAFT',
@@ -108,14 +120,33 @@ const form = useForm({ validationSchema: actionSchema })
 
 function openCreate() {
   editing.value = null
+  isActive.value = true
   form.resetForm({ values: { code: '', name: '', kind: 'CUSTOM' } })
   dialogOpen.value = true
 }
 
 function openEdit(action: WorkflowAction) {
   editing.value = action
+  isActive.value = action.is_active
   form.resetForm({ values: { code: action.code, name: action.name, kind: action.kind } })
   dialogOpen.value = true
+}
+
+async function toggleActive(value: boolean) {
+  if (!editing.value) return
+  const previous = isActive.value
+  isActive.value = value
+  togglingActive.value = true
+  try {
+    const updated = await setActionActive(editing.value, value)
+    editing.value = updated
+    toast.success(value ? 'تم تفعيل الإجراء' : 'تم إلغاء تفعيل الإجراء')
+  } catch (cause) {
+    isActive.value = previous
+    toast.error(extractApiErrorMessage(cause, 'تعذّر تحديث حالة الإجراء'))
+  } finally {
+    togglingActive.value = false
+  }
 }
 
 const onSubmit = form.handleSubmit(async (values) => {
@@ -306,6 +337,16 @@ onMounted(() => fetchActions())
               <FormMessage />
             </FormItem>
           </FormField>
+
+          <div v-if="editing" class="flex items-center gap-3">
+            <Switch
+              id="action-is-active"
+              :model-value="isActive"
+              :disabled="togglingActive"
+              @update:model-value="toggleActive"
+            />
+            <Label for="action-is-active">الإجراء نشط</Label>
+          </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" @click="dialogOpen = false">إلغاء</Button>

@@ -3,6 +3,7 @@
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { defineComponent, h } from 'vue'
 import { useAuthStore } from '../../../stores/auth.store'
 
 const mockGet = vi.fn()
@@ -15,6 +16,34 @@ vi.mock('../../../composables/useApi', () => ({
 }))
 
 vi.stubGlobal('extractApiErrorMessage', (_cause: unknown, fallback: string) => fallback)
+
+// shadcn Dialog's DialogContent renders inside a reka-ui DialogPortal, which
+// teleports its content to document.body — @vue/test-utils' mount() wrapper
+// cannot introspect Teleport targets. Per AGENTS.md, Dialog must not be
+// downgraded to raw HTML in the SOURCE component to make tests pass; instead
+// (same technique as WorkflowFieldDesigner.test.ts) the TEST replaces the
+// shadcn Dialog module with simple passthrough stubs that render their
+// default slots directly into the DOM, no Teleport involved.
+// WorkflowActionsCatalog.vue itself is untouched and keeps using the real
+// `<Dialog>`/`<DialogContent>` API surface.
+function passthrough(name: string) {
+  return defineComponent({
+    name,
+    inheritAttrs: false,
+    setup(_, { slots, attrs }) {
+      return () => h('div', attrs, slots.default?.())
+    },
+  })
+}
+
+vi.mock('../../../components/ui/dialog', () => ({
+  Dialog: passthrough('Dialog'),
+  DialogContent: passthrough('DialogContent'),
+  DialogHeader: passthrough('DialogHeader'),
+  DialogTitle: passthrough('DialogTitle'),
+  DialogDescription: passthrough('DialogDescription'),
+  DialogFooter: passthrough('DialogFooter'),
+}))
 
 const WorkflowActionsCatalog = (
   await import('../../../components/workflow/WorkflowActionsCatalog.vue')
@@ -130,5 +159,25 @@ describe('WorkflowActionsCatalog', () => {
     const wrapper = await mountCatalog(['VIEW'], [makeAction({ is_active: true })])
 
     expect(wrapper.text()).not.toContain('غير نشط')
+  })
+
+  it('toggles is_active via setActionActive when the edit-dialog switch flips', async () => {
+    const action = makeAction({ is_active: true, version: 1 })
+    mockPost.mockResolvedValueOnce({ data: makeAction({ is_active: false, version: 2 }) })
+
+    const wrapper = await mountCatalog(['VIEW', 'MANAGE'], [action])
+    await buttonByLabel(wrapper, 'تعديل الإجراء')?.trigger('click')
+    await flushPromises()
+
+    const toggle = wrapper.find('#action-is-active')
+    expect(toggle.exists()).toBe(true)
+
+    await toggle.trigger('click')
+    await flushPromises()
+
+    expect(mockPost).toHaveBeenCalledWith(
+      '/api/v1/workflow-actions/1/deactivate',
+      expect.objectContaining({ version: 1 }),
+    )
   })
 })
