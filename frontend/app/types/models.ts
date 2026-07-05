@@ -686,6 +686,9 @@ export interface WorkflowVersion {
   created_at: string | null
   updated_at: string | null
   version: number
+  stages_count?: number
+  transitions_count?: number
+  fields_count?: number
 }
 
 export interface WorkflowDefinition {

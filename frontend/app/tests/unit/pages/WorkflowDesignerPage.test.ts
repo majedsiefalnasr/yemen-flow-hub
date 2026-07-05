@@ -199,4 +199,65 @@ describe('workflow designer page', () => {
 
     expect(wrapper.text()).not.toContain('هذه النسخة منشورة أو مؤرشفة، لذلك يمكن عرضها فقط')
   })
+
+  it('renders the designer summary card heading with definition name and code', async () => {
+    const wrapper = await mountPage(['VIEW'])
+
+    const heading = wrapper.find('#designer-summary-heading')
+    expect(heading.exists()).toBe(true)
+    expect(heading.text()).toContain('تمويل الاستيراد')
+    expect(heading.text()).toContain('import_financing')
+  })
+
+  it('shows stage/transition/field counts from the version resource', async () => {
+    const wrapper = await mountPage(
+      ['VIEW'],
+      [
+        makeDefinition({
+          versions: [
+            {
+              id: 10,
+              workflow_definition_id: 1,
+              version_number: 1,
+              state: 'PUBLISHED',
+              is_editable: false,
+              published_at: null,
+              created_at: null,
+              updated_at: null,
+              version: 2,
+              stages_count: 4,
+              transitions_count: 6,
+              fields_count: 12,
+            },
+          ],
+        }),
+      ],
+    )
+
+    expect(wrapper.text()).toContain('4 مراحل')
+    expect(wrapper.text()).toContain('6 انتقالات')
+    expect(wrapper.text()).toContain('12 حقول')
+  })
+
+  it('falls back to zero counts when the version resource omits them', async () => {
+    const wrapper = await mountPage(['VIEW'])
+
+    expect(wrapper.text()).toContain('0 مراحل')
+    expect(wrapper.text()).toContain('0 انتقالات')
+    expect(wrapper.text()).toContain('0 حقول')
+  })
+
+  it('shows the delete-version action and additional-actions menu trigger for MANAGE users', async () => {
+    const wrapper = await mountPage(['VIEW', 'MANAGE'])
+
+    expect(buttonByText(wrapper, 'حذف النسخة')).toBeDefined()
+    expect(wrapper.find('[aria-label="إجراءات إضافية"]').exists()).toBe(true)
+  })
+
+  it('hides the delete-version action and additional-actions menu for VIEW-only users', async () => {
+    const wrapper = await mountPage(['VIEW'])
+
+    expect(buttonByText(wrapper, 'حذف النسخة')).toBeUndefined()
+    expect(wrapper.find('[aria-label="إجراءات إضافية"]').exists()).toBe(false)
+  })
 })

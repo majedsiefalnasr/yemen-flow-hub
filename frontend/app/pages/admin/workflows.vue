@@ -12,6 +12,7 @@ import {
   GitBranch,
   Layers,
   ListTree,
+  MoreHorizontal,
   Plus,
   Tag,
   TextCursorInput,
@@ -32,7 +33,7 @@ import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -41,6 +42,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
@@ -144,6 +151,23 @@ const stateLabels: Record<WorkflowVersion['state'], string> = {
   ARCHIVED: 'مؤرشفة',
 }
 
+function formatDate(iso: string | null): string {
+  if (!iso) return '—'
+  return new Intl.DateTimeFormat('ar-EG', { dateStyle: 'medium' }).format(new Date(iso))
+}
+
+// ── Delete dialogs (stubs — Task 6 wires the AlertDialog bodies + API calls) ──
+const deleteVersionDialogOpen = ref(false)
+const deleteDefinitionDialogOpen = ref(false)
+
+function openDeleteVersionDialog() {
+  deleteVersionDialogOpen.value = true
+}
+
+function openDeleteDefinitionDialog() {
+  deleteDefinitionDialogOpen.value = true
+}
+
 // Designer tab definitions (label + icon), matching the settings-page nav style.
 const designerTabs = [
   { value: 'stages', label: 'المراحل', icon: Layers },
@@ -241,96 +265,136 @@ onMounted(reload)
       </Empty>
 
       <template v-else>
-        <!-- Version picker + action toolbar (flat, no card) -->
-        <div class="border-border flex flex-wrap items-center gap-x-4 gap-y-3 border-b pb-4">
-          <!-- Pickers group -->
-          <div class="flex flex-1 flex-wrap items-center gap-x-4 gap-y-2">
-            <!-- Workflow picker -->
-            <div class="flex min-w-[220px] flex-1 items-center gap-2">
-              <label class="text-muted-foreground shrink-0 text-xs font-medium" for="def-select">
-                مسار العمل
-              </label>
-              <Select
-                :model-value="String(selectedDefinitionId ?? '')"
-                @update:model-value="onDefinitionChange"
-              >
-                <SelectTrigger id="def-select" size="sm" class="flex-1">
-                  <SelectValue placeholder="اختر مسار العمل" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem v-for="def in definitions" :key="def.id" :value="String(def.id)">
-                    {{ def.name }}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+        <!-- Designer summary card: definition/version context, counts, actions -->
+        <Card class="border-0 shadow" aria-labelledby="designer-summary-heading">
+          <CardHeader class="pb-2">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+              <div class="flex flex-1 flex-wrap items-center gap-3">
+                <div class="min-w-[220px]">
+                  <CardTitle id="designer-summary-heading" class="text-base font-semibold">
+                    {{ selectedDefinition?.name ?? 'اختر مسار العمل' }}
+                    <span
+                      v-if="selectedDefinition"
+                      class="text-muted-foreground text-sm font-normal"
+                    >
+                      ({{ selectedDefinition.code }})
+                    </span>
+                  </CardTitle>
+                  <CardDescription class="text-xs">
+                    {{ formatDate(selectedVersion?.created_at ?? null) }}
+                    ·
+                    {{
+                      selectedVersion?.published_at
+                        ? formatDate(selectedVersion.published_at)
+                        : 'غير منشورة'
+                    }}
+                  </CardDescription>
+                </div>
 
-            <!-- Version picker + state badge -->
-            <div class="flex items-center gap-2">
-              <label class="text-muted-foreground shrink-0 text-xs font-medium" for="ver-select">
-                النسخة
-              </label>
-              <Select
-                :model-value="String(selectedVersionId ?? '')"
-                :disabled="!selectedDefinition"
-                @update:model-value="onVersionChange"
-              >
-                <SelectTrigger id="ver-select" size="sm" class="w-24">
-                  <SelectValue placeholder="—" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem
-                    v-for="version in selectedDefinition?.versions ?? []"
-                    :key="version.id"
-                    :value="String(version.id)"
+                <Select
+                  :model-value="String(selectedDefinitionId ?? '')"
+                  @update:model-value="onDefinitionChange"
+                >
+                  <SelectTrigger aria-label="مسار العمل" size="sm" class="w-48">
+                    <SelectValue placeholder="اختر مسار العمل" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem v-for="def in definitions" :key="def.id" :value="String(def.id)">
+                      {{ def.name }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select
+                  :model-value="String(selectedVersionId ?? '')"
+                  :disabled="!selectedDefinition"
+                  @update:model-value="onVersionChange"
+                >
+                  <SelectTrigger aria-label="النسخة" size="sm" class="w-24">
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem
+                      v-for="version in selectedDefinition?.versions ?? []"
+                      :key="version.id"
+                      :value="String(version.id)"
+                    >
+                      v{{ version.version_number }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Badge
+                  v-if="selectedVersion"
+                  :class="stateBadgeClass(selectedVersion.state)"
+                  class="shrink-0"
+                >
+                  {{ stateLabels[selectedVersion.state] }}
+                </Badge>
+              </div>
+
+              <div v-if="selectedVersion" class="flex flex-wrap items-center gap-2">
+                <ButtonGroup>
+                  <Button
+                    :variant="designerView === 'normal' ? 'default' : 'outline'"
+                    size="sm"
+                    @click="designerView = 'normal'"
                   >
-                    v{{ version.version_number }}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              <Badge
-                v-if="selectedVersion"
-                :class="stateBadgeClass(selectedVersion.state)"
-                class="shrink-0"
-              >
-                {{ stateLabels[selectedVersion.state] }}
-              </Badge>
+                    <ListTree class="h-3.5 w-3.5" />
+                    تفصيلي
+                  </Button>
+                  <Button
+                    :variant="designerView === 'canvas' ? 'default' : 'outline'"
+                    size="sm"
+                    @click="designerView = 'canvas'"
+                  >
+                    <GitBranch class="h-3.5 w-3.5" />
+                    لوحة
+                  </Button>
+                </ButtonGroup>
+                <ScreenGuard screen="workflow_designer" capability="MANAGE">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    :disabled="selectedVersion.state !== 'PUBLISHED'"
+                    @click="clone"
+                  >
+                    <Copy class="h-3.5 w-3.5" />
+                    استنساخ
+                  </Button>
+                </ScreenGuard>
+                <ScreenGuard screen="workflow_designer" capability="MANAGE">
+                  <Button variant="outline" size="sm" @click="openDeleteVersionDialog">
+                    حذف النسخة
+                  </Button>
+                </ScreenGuard>
+                <ScreenGuard screen="workflow_designer" capability="MANAGE">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger as-child>
+                      <Button variant="ghost" size="icon" aria-label="إجراءات إضافية">
+                        <MoreHorizontal class="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        class="text-destructive"
+                        @click="openDeleteDefinitionDialog"
+                      >
+                        حذف مسار العمل
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </ScreenGuard>
+              </div>
             </div>
-          </div>
 
-          <!-- Action toolbar (view switch + clone) -->
-          <div v-if="selectedVersion" class="flex flex-wrap items-center gap-2">
-            <ButtonGroup>
-              <Button
-                :variant="designerView === 'normal' ? 'default' : 'outline'"
-                size="sm"
-                @click="designerView = 'normal'"
-              >
-                <ListTree class="h-3.5 w-3.5" />
-                تفصيلي
-              </Button>
-              <Button
-                :variant="designerView === 'canvas' ? 'default' : 'outline'"
-                size="sm"
-                @click="designerView = 'canvas'"
-              >
-                <GitBranch class="h-3.5 w-3.5" />
-                لوحة
-              </Button>
-            </ButtonGroup>
-            <ScreenGuard screen="workflow_designer" capability="MANAGE">
-              <Button
-                variant="outline"
-                size="sm"
-                :disabled="selectedVersion.state !== 'PUBLISHED'"
-                @click="clone"
-              >
-                <Copy class="h-3.5 w-3.5" />
-                استنساخ
-              </Button>
-            </ScreenGuard>
-          </div>
-        </div>
+            <div v-if="selectedVersion" class="text-muted-foreground mt-2 text-xs">
+              {{ selectedVersion.stages_count ?? 0 }} مراحل ·
+              {{ selectedVersion.transitions_count ?? 0 }} انتقالات ·
+              {{ selectedVersion.fields_count ?? 0 }} حقول
+            </div>
+          </CardHeader>
+        </Card>
 
         <!-- Validate + publish panel (full width, own row) -->
         <WorkflowPublishPanel
