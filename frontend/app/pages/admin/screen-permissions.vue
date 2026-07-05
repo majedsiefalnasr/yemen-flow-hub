@@ -152,7 +152,7 @@ async function toggleManual(
 
 // Count colspan for each screen header
 function screenColspan(screen: MatrixScreen): number {
-  return screen.capabilities.length
+  return displayedCaps(screen).length
 }
 
 onMounted(fetchMatrix)
