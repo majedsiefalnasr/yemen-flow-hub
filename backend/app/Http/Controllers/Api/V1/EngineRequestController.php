@@ -112,7 +112,7 @@ class EngineRequestController extends Controller
     {
         $this->authorize('view', $engineRequest);
 
-        $engineRequest->load(['currentStage', 'creator', 'bank', 'merchant', 'claimedBy']);
+        $engineRequest->load(['currentStage', 'creator', 'bank', 'merchant', 'claimedBy', 'workflowVersion.definition']);
 
         $response = [
             'success' => true,
@@ -206,7 +206,7 @@ class EngineRequestController extends Controller
 
         $query = EngineRequest::query()
             ->withStageEntry()
-            ->with(['currentStage', 'bank', 'merchant', 'creator']);
+            ->with(['currentStage', 'bank', 'merchant', 'creator', 'workflowVersion.definition']);
 
         if (! $user->hasRoleCode('system_admin')) {
             $query
@@ -235,7 +235,7 @@ class EngineRequestController extends Controller
             ->active()
             ->forUser($user)
             ->whereIn('engine_requests.current_stage_id', $executeStageIds)
-            ->with(['currentStage', 'bank', 'merchant', 'creator']);
+            ->with(['currentStage', 'bank', 'merchant', 'creator', 'workflowVersion.definition']);
 
         $this->applyFilters($query, $request);
 

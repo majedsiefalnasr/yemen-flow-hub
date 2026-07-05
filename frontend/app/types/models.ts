@@ -886,6 +886,16 @@ export interface EngineRequest {
   status: EngineRequestStatus
   version: number
   workflow_version_id: number
+  workflow_version?: {
+    id: number
+    version_number: number
+    state: WorkflowVersion['state']
+    definition?: {
+      id: number
+      name: string
+      code: string
+    }
+  }
   current_stage: {
     id: number
     code: string

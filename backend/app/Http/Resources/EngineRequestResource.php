@@ -17,6 +17,16 @@ class EngineRequestResource extends JsonResource
             'status' => $this->status,
             'version' => $this->version,
             'workflow_version_id' => $this->workflow_version_id,
+            'workflow_version' => $this->whenLoaded('workflowVersion', fn () => [
+                'id' => $this->workflowVersion->id,
+                'version_number' => (int) $this->workflowVersion->version_number,
+                'state' => $this->workflowVersion->state->value,
+                'definition' => $this->when($this->workflowVersion->relationLoaded('definition'), fn () => [
+                    'id' => $this->workflowVersion->definition->id,
+                    'name' => $this->workflowVersion->definition->name,
+                    'code' => $this->workflowVersion->definition->code,
+                ]),
+            ]),
             'current_stage' => $this->whenLoaded('currentStage', fn () => [
                 'id' => $this->currentStage->id,
                 'code' => $this->currentStage->code,
