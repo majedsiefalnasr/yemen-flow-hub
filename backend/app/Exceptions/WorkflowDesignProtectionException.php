@@ -17,4 +17,14 @@ class WorkflowDesignProtectionException extends RuntimeException
     ) {
         parent::__construct($message);
     }
+
+    public static function versionInUse(): self
+    {
+        return new self('WORKFLOW_VERSION_IN_USE', 'لا يمكن حذف نسخة مرتبطة بطلبات.');
+    }
+
+    public static function definitionInUse(): self
+    {
+        return new self('WORKFLOW_DEFINITION_IN_USE', 'لا يمكن حذف مسار عمل مرتبط بطلبات.');
+    }
 }
