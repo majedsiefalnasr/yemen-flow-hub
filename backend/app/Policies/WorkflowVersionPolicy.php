@@ -56,4 +56,9 @@ class WorkflowVersionPolicy
     {
         return $this->viewAny($user);
     }
+
+    public function delete(User $user, WorkflowVersion $version): bool
+    {
+        return $this->viewAny($user);
+    }
 }

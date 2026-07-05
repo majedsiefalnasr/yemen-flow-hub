@@ -102,8 +102,10 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('workflow-definitions', [WorkflowDefinitionController::class, 'index']);
     Route::post('workflow-definitions', [WorkflowDefinitionController::class, 'store']);
     Route::get('workflow-definitions/{workflowDefinition}', [WorkflowDefinitionController::class, 'show']);
+    Route::delete('workflow-definitions/{workflowDefinition}', [WorkflowDefinitionController::class, 'destroy']);
     Route::get('workflow-versions/{workflowVersion}', [WorkflowVersionController::class, 'show']);
     Route::put('workflow-versions/{workflowVersion}', [WorkflowVersionController::class, 'update']);
+    Route::delete('workflow-versions/{workflowVersion}', [WorkflowVersionController::class, 'destroy']);
     Route::post('workflow-versions/{workflowVersion}/clone', [WorkflowVersionController::class, 'clone']);
     Route::post('workflow-versions/{workflowVersion}/validate', [WorkflowVersionController::class, 'validate']);
     Route::post('workflow-versions/{workflowVersion}/publish', [WorkflowVersionController::class, 'publish']);

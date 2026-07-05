@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Exceptions\WorkflowDesignProtectionException;
 use App\Http\Controllers\Api\Controller;
 use App\Http\Controllers\Concerns\GuardsDesignerInput;
 use App\Http\Requests\StoreWorkflowDefinitionRequest;
@@ -67,5 +68,23 @@ class WorkflowDefinitionController extends Controller
         return (new WorkflowDefinitionResource(
             $definition->load(['versions' => fn ($q) => $q->orderByDesc('version_number')]),
         ))->response()->setStatusCode(201);
+    }
+
+    public function destroy(Request $request, WorkflowDefinition $workflowDefinition): JsonResponse
+    {
+        $this->authorize('delete', $workflowDefinition);
+
+        try {
+            $this->designer->deleteDefinition($request->user(), $workflowDefinition);
+        } catch (WorkflowDesignProtectionException $e) {
+            return $this->error($e->errorCode, $e->getMessage(), 422);
+        }
+
+        return response()->json(null, 204);
+    }
+
+    private function error(string $code, string $message, int $status): JsonResponse
+    {
+        return response()->json(['error' => ['code' => $code, 'message' => $message, 'fields' => (object) [], 'request_id' => request()->header('X-Request-ID')]], $status);
     }
 }

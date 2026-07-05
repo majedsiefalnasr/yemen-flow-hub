@@ -29,4 +29,9 @@ class WorkflowDefinitionPolicy
     {
         return $this->viewAny($user);
     }
+
+    public function delete(User $user, WorkflowDefinition $definition): bool
+    {
+        return $this->viewAny($user);
+    }
 }

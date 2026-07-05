@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\AuditAction;
 use App\Exceptions\StaleResourceException;
+use App\Exceptions\WorkflowDesignProtectionException;
 use App\Exceptions\WorkflowVersionImmutableException;
 use App\Exceptions\WorkflowVersionValidationException;
 use App\Http\Controllers\Api\Controller;
@@ -155,6 +156,19 @@ class WorkflowVersionController extends Controller
         $this->permissionService->clearAllScreenPermissionCaches();
 
         return (new WorkflowVersionResource($workflowVersion))->response();
+    }
+
+    public function destroy(Request $request, WorkflowVersion $workflowVersion): JsonResponse
+    {
+        $this->authorize('delete', $workflowVersion);
+
+        try {
+            $this->designer->deleteVersion($request->user(), $workflowVersion);
+        } catch (WorkflowDesignProtectionException $e) {
+            return $this->error($e->errorCode, $e->getMessage(), 422);
+        }
+
+        return response()->json(null, 204);
     }
 
     private function error(string $code, string $message, int $status): JsonResponse

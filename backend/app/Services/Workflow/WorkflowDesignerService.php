@@ -8,6 +8,7 @@ use App\Exceptions\StaleResourceException;
 use App\Exceptions\WorkflowDesignProtectionException;
 use App\Exceptions\WorkflowVersionImmutableException;
 use App\Exceptions\WorkflowVersionValidationException;
+use App\Models\EngineRequest;
 use App\Models\FieldDefinition;
 use App\Models\FieldGroup;
 use App\Models\StageFieldRule;
@@ -579,6 +580,43 @@ class WorkflowDesignerService
                 $locked,
                 ['before' => $before],
             );
+        });
+    }
+
+    /**
+     * Hard-delete a workflow version. State-agnostic (DRAFT/PUBLISHED/ARCHIVED are
+     * all deletable) — gated only by whether any request is bound to the version.
+     */
+    public function deleteVersion(User $actor, WorkflowVersion $version): void
+    {
+        DB::transaction(function () use ($actor, $version): void {
+            $locked = WorkflowVersion::query()->lockForUpdate()->findOrFail($version->getKey());
+
+            if (EngineRequest::query()->where('workflow_version_id', $locked->getKey())->exists()) {
+                throw WorkflowDesignProtectionException::versionInUse();
+            }
+
+            $this->auditService->log(AuditAction::GOVERNANCE_DELETED, $actor, $locked, ['before' => $locked->toArray()]);
+            $locked->delete();
+        });
+    }
+
+    /**
+     * Hard-delete a workflow definition and its versions. State-agnostic — gated
+     * only by whether any request is bound to any version of the definition.
+     */
+    public function deleteDefinition(User $actor, WorkflowDefinition $definition): void
+    {
+        DB::transaction(function () use ($actor, $definition): void {
+            $locked = WorkflowDefinition::query()->lockForUpdate()->findOrFail($definition->getKey());
+            $versionIds = $locked->versions()->pluck('id');
+
+            if (EngineRequest::query()->whereIn('workflow_version_id', $versionIds)->exists()) {
+                throw WorkflowDesignProtectionException::definitionInUse();
+            }
+
+            $this->auditService->log(AuditAction::GOVERNANCE_DELETED, $actor, $locked, ['before' => $locked->toArray()]);
+            $locked->delete();
         });
     }
 
