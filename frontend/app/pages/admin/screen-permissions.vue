@@ -28,7 +28,6 @@ const REQUEST_CAPS: { cap: 'view' | 'add' | 'edit'; label: string }[] = [
 const CAP_LABELS: Record<string, string> = {
   VIEW: 'عرض',
   MANAGE: 'إدارة',
-  EXPORT: 'تصدير',
 }
 
 const { matrix, loading, saving, error, fetchMatrix, saveRoleGrants } = useScreenPermissionsAdmin()
@@ -40,11 +39,30 @@ const manualScreens = computed(
   () => matrix.value?.screens.filter((s) => s.key !== REQUESTS_KEY) ?? [],
 )
 
+/**
+ * Screens where MANAGE is a real, assignable capability. Only merchants
+ * supports it today — reports/audit never grant MANAGE (no controller or
+ * policy checks it for those screens), so their column stays VIEW-only even
+ * though the backend's capability catalog lists MANAGE for all three.
+ */
+const MANAGEABLE_SCREENS = new Set(['merchants'])
+
+/**
+ * Displayed capability per screen: merchants shows VIEW + MANAGE (MANAGE
+ * grants EXPORT alongside it, no separate switch); reports/audit show VIEW
+ * only (VIEW grants EXPORT alongside it, since neither screen has MANAGE).
+ */
+function displayedCaps(screen: MatrixScreen): ScreenCapability[] {
+  return MANAGEABLE_SCREENS.has(screen.key)
+    ? (['VIEW', 'MANAGE'] as ScreenCapability[])
+    : (['VIEW'] as ScreenCapability[])
+}
+
 // Flat list of all manual column headers: [{ screen, cap, label }]
 const manualColumns = computed(() => {
   const cols: { screen: MatrixScreen; cap: ScreenCapability; label: string }[] = []
   for (const screen of manualScreens.value) {
-    for (const cap of screen.capabilities) {
+    for (const cap of displayedCaps(screen)) {
       cols.push({ screen, cap, label: CAP_LABELS[cap] ?? cap })
     }
   }
@@ -64,14 +82,9 @@ function manualCan(role: MatrixRoleRow, screenKey: string, cap: ScreenCapability
   return roleCaps(role, screenKey).includes(cap)
 }
 
-function isForced(
-  role: MatrixRoleRow,
-  screenKey: string,
-  cap: ScreenCapability,
-  screen: MatrixScreen,
-): boolean {
+function isForced(role: MatrixRoleRow, screenKey: string, cap: ScreenCapability): boolean {
   if (cap !== 'VIEW') return false
-  if (!screen.capabilities.includes('MANAGE' as ScreenCapability)) return false
+  if (!MANAGEABLE_SCREENS.has(screenKey)) return false
   return manualCan(role, screenKey, 'MANAGE' as ScreenCapability)
 }
 
@@ -83,16 +96,30 @@ async function toggleManual(
   screen: MatrixScreen,
 ) {
   let currentCaps = [...(role.manual[screenKey] ?? [])]
+  const hasManage = MANAGEABLE_SCREENS.has(screenKey)
 
   if (enabled) {
     if (!currentCaps.includes(cap)) currentCaps.push(cap)
-    // MANAGE implies VIEW
-    if (cap === 'MANAGE' && !currentCaps.includes('VIEW' as ScreenCapability)) {
-      currentCaps.push('VIEW' as ScreenCapability)
+    if (cap === 'MANAGE') {
+      // MANAGE bundles VIEW + EXPORT (merchants has no separate EXPORT switch)
+      for (const implied of ['VIEW', 'EXPORT'] as ScreenCapability[]) {
+        if (!currentCaps.includes(implied)) currentCaps.push(implied)
+      }
+    } else if (cap === 'VIEW' && !hasManage) {
+      // On MANAGE-less screens (reports/audit), VIEW bundles EXPORT
+      if (!currentCaps.includes('EXPORT' as ScreenCapability)) {
+        currentCaps.push('EXPORT' as ScreenCapability)
+      }
     }
   } else {
     currentCaps = currentCaps.filter((c) => c !== cap)
-    // Removing MANAGE does not remove VIEW (user can still have view-only)
+    if (cap === 'MANAGE') {
+      // Removing MANAGE also removes the EXPORT it granted; VIEW stays if held
+      currentCaps = currentCaps.filter((c) => c !== ('EXPORT' as ScreenCapability))
+    } else if (cap === 'VIEW' && !hasManage) {
+      // Removing VIEW on a MANAGE-less screen also removes the EXPORT it granted
+      currentCaps = currentCaps.filter((c) => c !== ('EXPORT' as ScreenCapability))
+    }
   }
 
   // Filter to only capabilities this screen supports
@@ -292,11 +319,9 @@ onMounted(fetchMatrix)
                     <Switch
                       :model-value="
                         manualCan(role, col.screen.key, col.cap) ||
-                        isForced(role, col.screen.key, col.cap, col.screen)
+                        isForced(role, col.screen.key, col.cap)
                       "
-                      :disabled="
-                        !canEdit || saving || isForced(role, col.screen.key, col.cap, col.screen)
-                      "
+                      :disabled="!canEdit || saving || isForced(role, col.screen.key, col.cap)"
                       :aria-label="`${col.screen.label}، ${col.label}، ${role.name}`"
                       @update:model-value="
                         (v: boolean) => toggleManual(role, col.screen.key, col.cap, v, col.screen)
