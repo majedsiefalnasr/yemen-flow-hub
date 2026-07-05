@@ -113,4 +113,22 @@ describe('WorkflowActionsCatalog', () => {
 
     expect(buttonByLabel(wrapper, 'حذف الإجراء')).toBeDefined()
   })
+
+  it('does not render an active-status column', async () => {
+    const wrapper = await mountCatalog(['VIEW'])
+
+    expect(wrapper.text()).not.toContain('نشط')
+  })
+
+  it('shows inactive badge when action is not active', async () => {
+    const wrapper = await mountCatalog(['VIEW'], [makeAction({ is_active: false })])
+
+    expect(wrapper.text()).toContain('غير نشط')
+  })
+
+  it('does not show inactive badge when action is active', async () => {
+    const wrapper = await mountCatalog(['VIEW'], [makeAction({ is_active: true })])
+
+    expect(wrapper.text()).not.toContain('غير نشط')
+  })
 })

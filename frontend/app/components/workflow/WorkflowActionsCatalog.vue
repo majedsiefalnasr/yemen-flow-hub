@@ -55,7 +55,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Switch } from '@/components/ui/switch'
 import {
   Table,
   TableBody,
@@ -67,16 +66,8 @@ import {
 import { useWorkflowActions } from '@/composables/useWorkflowActions'
 import { NOT_ELIGIBLE_LABEL_AR } from '@/constants/workflow'
 
-const {
-  actions,
-  loading,
-  error,
-  fetchActions,
-  createAction,
-  updateAction,
-  setActionActive,
-  deleteAction,
-} = useWorkflowActions()
+const { actions, loading, error, fetchActions, createAction, updateAction, deleteAction } =
+  useWorkflowActions()
 
 const dialogOpen = ref(false)
 const editing = ref<WorkflowAction | null>(null)
@@ -142,14 +133,6 @@ const onSubmit = form.handleSubmit(async (values) => {
   }
 })
 
-async function toggleActive(action: WorkflowAction) {
-  try {
-    await setActionActive(action, !action.is_active)
-  } catch (cause) {
-    toast.error(extractApiErrorMessage(cause, 'تعذّر تغيير حالة الإجراء'))
-  }
-}
-
 async function confirmDelete() {
   if (!deleting.value) return
   try {
@@ -214,7 +197,6 @@ onMounted(() => fetchActions())
               <TableHead class="text-right">الرمز</TableHead>
               <TableHead class="text-right">الاسم</TableHead>
               <TableHead class="text-right">النوع</TableHead>
-              <TableHead class="text-right">نشط</TableHead>
               <TableHead class="text-left">إجراء</TableHead>
             </TableRow>
           </TableHeader>
@@ -228,17 +210,10 @@ onMounted(() => fetchActions())
                 <div class="flex flex-wrap items-center gap-1">
                   <Badge variant="secondary">{{ kindLabels[action.kind] }}</Badge>
                   <Badge v-if="action.is_system" variant="outline">نظامي</Badge>
+                  <Badge v-if="!action.is_active" variant="outline" class="text-muted-foreground"
+                    >غير نشط</Badge
+                  >
                 </div>
-              </TableCell>
-              <TableCell @click.stop>
-                <ScreenGuard screen="workflow_designer" capability="MANAGE">
-                  <Switch
-                    :model-value="action.is_active"
-                    :disabled="action.is_active && action.is_in_use"
-                    :aria-label="`تبديل حالة ${action.code}`"
-                    @update:model-value="() => toggleActive(action)"
-                  />
-                </ScreenGuard>
               </TableCell>
               <TableCell class="text-left" @click.stop>
                 <div class="flex items-center justify-end gap-0.5">
