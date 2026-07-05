@@ -18,8 +18,8 @@ class StoreStagePermissionRequest extends FormRequest
     {
         return [
             'organization_id' => ['required', 'integer', 'exists:organizations,id'],
-            'team_id' => ['required', 'integer', 'exists:teams,id'],
-            'role_id' => ['required', 'integer', 'exists:roles,id'],
+            'team_id' => ['nullable', 'integer', 'exists:teams,id'],
+            'role_id' => ['nullable', 'integer', 'exists:roles,id'],
             'user_id' => ['nullable', 'integer', 'exists:users,id'],
             'access_level' => ['required', Rule::enum(StageAccessLevel::class)],
             'display_label' => ['required', 'string', 'max:255'],

@@ -17,12 +17,12 @@ class UpdateStagePermissionRequest extends FormRequest
     public function rules(): array
     {
         // The match fields (org/team/role/user) are not required by callers that only
-        // change display_label/access_level, but if any of organization/team/role is
-        // submitted, all three must be submitted together (see StagePermissionConsistency).
+        // change display_label/access_level. Organization is required when submitted;
+        // team/role remain optional scoping refinements (see StagePermissionConsistency).
         return [
             'organization_id' => ['sometimes', 'required', 'integer', 'exists:organizations,id'],
-            'team_id' => ['sometimes', 'required', 'integer', 'exists:teams,id'],
-            'role_id' => ['sometimes', 'required', 'integer', 'exists:roles,id'],
+            'team_id' => ['sometimes', 'nullable', 'integer', 'exists:teams,id'],
+            'role_id' => ['sometimes', 'nullable', 'integer', 'exists:roles,id'],
             'user_id' => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
             'access_level' => ['sometimes', Rule::enum(StageAccessLevel::class)],
             'display_label' => ['sometimes', 'string', 'max:255'],

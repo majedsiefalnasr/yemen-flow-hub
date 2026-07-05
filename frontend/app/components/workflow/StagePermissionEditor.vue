@@ -73,6 +73,8 @@ const dialogOpen = ref(false)
 const editing = ref<StagePermission | null>(null)
 const deleting = ref<StagePermission | null>(null)
 
+const ANY_OPTION = '__ANY__'
+
 const organizationId = ref<string>('')
 const teamId = ref<string>('')
 const roleId = ref<string>('')
@@ -81,6 +83,23 @@ const displayLabel = ref('')
 const formError = ref<string | null>(null)
 
 const suppressCascadeClear = ref(false)
+
+// The Select trigger needs a real item value to render the "any" placeholder
+// state once a prior selection is cleared, since SelectItem cannot use an
+// empty string as its value. teamId/roleId keep '' as the canonical "unset"
+// value everywhere else (openCreate, openEdit, submit, cascade watcher).
+const teamSelectValue = computed({
+  get: () => teamId.value || ANY_OPTION,
+  set: (value: string) => {
+    teamId.value = value === ANY_OPTION ? '' : value
+  },
+})
+const roleSelectValue = computed({
+  get: () => roleId.value || ANY_OPTION,
+  set: (value: string) => {
+    roleId.value = value === ANY_OPTION ? '' : value
+  },
+})
 
 watch(organizationId, (value) => {
   if (suppressCascadeClear.value) return
@@ -130,14 +149,14 @@ function openEdit(permission: StagePermission) {
 }
 
 async function submit() {
-  if (!displayLabel.value || !organizationId.value || !teamId.value || !roleId.value) {
-    formError.value = 'الجهة والفريق والدور مطلوبة جميعاً، مع إدخال تسمية.'
+  if (!displayLabel.value || !organizationId.value) {
+    formError.value = 'الجهة والتسمية مطلوبتان.'
     return
   }
   const payload = {
     organization_id: Number(organizationId.value),
-    team_id: Number(teamId.value),
-    role_id: Number(roleId.value),
+    team_id: teamId.value ? Number(teamId.value) : null,
+    role_id: roleId.value ? Number(roleId.value) : null,
     access_level: accessLevel.value,
     display_label: displayLabel.value,
   }
@@ -302,12 +321,11 @@ defineExpose({ teamId, roleId })
           </div>
 
           <div class="flex flex-col gap-1.5">
-            <Label>الفريق *</Label>
-            <Select v-model="teamId" :disabled="!organizationId">
-              <SelectTrigger class="w-full"
-                ><SelectValue placeholder="اختر الفريق"
-              /></SelectTrigger>
+            <Label>الفريق (اختياري)</Label>
+            <Select v-model="teamSelectValue" :disabled="!organizationId">
+              <SelectTrigger class="w-full"><SelectValue placeholder="كل الفرق" /></SelectTrigger>
               <SelectContent>
+                <SelectItem :value="ANY_OPTION">كل الفرق</SelectItem>
                 <SelectItem v-for="team in dialogTeams" :key="team.id" :value="String(team.id)">
                   {{ team.name }}
                 </SelectItem>
@@ -316,10 +334,11 @@ defineExpose({ teamId, roleId })
           </div>
 
           <div class="flex flex-col gap-1.5">
-            <Label>الدور *</Label>
-            <Select v-model="roleId" :disabled="!organizationId">
-              <SelectTrigger class="w-full"><SelectValue placeholder="اختر الدور" /></SelectTrigger>
+            <Label>الدور (اختياري)</Label>
+            <Select v-model="roleSelectValue" :disabled="!organizationId">
+              <SelectTrigger class="w-full"><SelectValue placeholder="كل الأدوار" /></SelectTrigger>
               <SelectContent>
+                <SelectItem :value="ANY_OPTION">كل الأدوار</SelectItem>
                 <SelectItem v-for="role in dialogRoles" :key="role.id" :value="String(role.id)">
                   {{ role.name }}
                 </SelectItem>

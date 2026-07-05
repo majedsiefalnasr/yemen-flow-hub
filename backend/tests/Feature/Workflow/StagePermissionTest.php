@@ -81,26 +81,31 @@ class StagePermissionTest extends TestCase
         ]);
     }
 
-    public function test_row_requires_organization_team_and_role(): void
+    public function test_row_requires_organization(): void
     {
         $this->actingAs($this->admin)
             ->postJson("/api/v1/workflow-stages/{$this->stage->id}/permissions", [
                 'access_level' => 'VIEW',
                 'display_label' => 'Everyone',
             ])->assertUnprocessable()
-            ->assertJsonValidationErrors(['organization_id', 'team_id', 'role_id']);
+            ->assertJsonValidationErrors(['organization_id']);
     }
 
-    public function test_row_requires_team_even_with_organization_and_role(): void
+    public function test_row_allows_organization_only_without_team_or_role(): void
     {
-        $this->actingAs($this->admin)
+        $response = $this->actingAs($this->admin)
             ->postJson("/api/v1/workflow-stages/{$this->stage->id}/permissions", [
                 'organization_id' => $this->org->id,
-                'role_id' => $this->role->id,
                 'access_level' => 'VIEW',
-                'display_label' => 'Missing team',
-            ])->assertUnprocessable()
-            ->assertJsonValidationErrors('team_id');
+                'display_label' => 'Org-wide access',
+            ])->assertCreated();
+
+        $this->assertDatabaseHas('stage_permissions', [
+            'id' => $response->json('data.id'),
+            'organization_id' => $this->org->id,
+            'team_id' => null,
+            'role_id' => null,
+        ]);
     }
 
     public function test_role_must_belong_to_organization(): void
