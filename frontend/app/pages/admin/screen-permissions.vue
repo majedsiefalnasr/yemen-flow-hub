@@ -290,7 +290,7 @@ onMounted(fetchMatrix)
                 >
                   <div class="flex justify-center">
                     <Switch
-                      :checked="
+                      :model-value="
                         manualCan(role, col.screen.key, col.cap) ||
                         isForced(role, col.screen.key, col.cap, col.screen)
                       "
@@ -298,7 +298,7 @@ onMounted(fetchMatrix)
                         !canEdit || saving || isForced(role, col.screen.key, col.cap, col.screen)
                       "
                       :aria-label="`${col.screen.label}، ${col.label}، ${role.name}`"
-                      @update:checked="
+                      @update:model-value="
                         (v: boolean) => toggleManual(role, col.screen.key, col.cap, v, col.screen)
                       "
                     />
