@@ -347,17 +347,17 @@ onMounted(() => fetchStages(props.version.id))
 
         <div class="flex items-center gap-6">
           <div class="flex items-center gap-2">
-            <Checkbox id="stage-initial" v-model:checked="isInitial" />
+            <Checkbox id="stage-initial" v-model="isInitial" />
             <Label for="stage-initial">مرحلة البداية</Label>
           </div>
           <div class="flex items-center gap-2">
-            <Checkbox id="stage-final" v-model:checked="isFinal" />
+            <Checkbox id="stage-final" v-model="isFinal" />
             <Label for="stage-final">مرحلة النهاية</Label>
           </div>
         </div>
 
         <div class="flex items-center gap-3">
-          <Switch id="stage-requires-claim" v-model:checked="requiresClaim" />
+          <Switch id="stage-requires-claim" v-model="requiresClaim" />
           <Label for="stage-requires-claim">يتطلب مطالبة (قفل مرن)</Label>
         </div>
 

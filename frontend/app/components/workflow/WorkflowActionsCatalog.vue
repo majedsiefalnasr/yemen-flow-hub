@@ -233,10 +233,10 @@ onMounted(() => fetchActions())
               <TableCell @click.stop>
                 <ScreenGuard screen="workflow_designer" capability="MANAGE">
                   <Switch
-                    :checked="action.is_active"
+                    :model-value="action.is_active"
                     :disabled="action.is_active && action.is_in_use"
                     :aria-label="`تبديل حالة ${action.code}`"
-                    @update:checked="() => toggleActive(action)"
+                    @update:model-value="() => toggleActive(action)"
                   />
                 </ScreenGuard>
               </TableCell>

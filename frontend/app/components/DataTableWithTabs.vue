@@ -178,8 +178,8 @@ const prevPage = () => {
             <DropdownMenuContent align="end" class="w-56">
               <template v-for="column in allColumnsVisible" :key="column.key">
                 <DropdownMenuCheckboxItem
-                  :checked="visibleColumns.has(column.key)"
-                  @update:checked="toggleColumnVisibility(column.key)"
+                  :model-value="visibleColumns.has(column.key)"
+                  @update:model-value="toggleColumnVisibility(column.key)"
                 >
                   {{ column.label }}
                 </DropdownMenuCheckboxItem>
@@ -205,9 +205,11 @@ const prevPage = () => {
               <!-- Checkbox column -->
               <TableHead class="w-12">
                 <Checkbox
-                  :checked="selectedRows.size === paginatedData.length && paginatedData.length > 0"
+                  :model-value="
+                    selectedRows.size === paginatedData.length && paginatedData.length > 0
+                  "
                   aria-label="Select all rows"
-                  @update:checked="toggleAllRows"
+                  @update:model-value="toggleAllRows"
                 />
               </TableHead>
 
@@ -238,9 +240,9 @@ const prevPage = () => {
                 <!-- Checkbox -->
                 <TableCell>
                   <Checkbox
-                    :checked="selectedRows.has(row.id)"
+                    :model-value="selectedRows.has(row.id)"
                     :aria-label="`Select row ${row.id}`"
-                    @update:checked="toggleRowSelection(row.id)"
+                    @update:model-value="toggleRowSelection(row.id)"
                   />
                 </TableCell>
 

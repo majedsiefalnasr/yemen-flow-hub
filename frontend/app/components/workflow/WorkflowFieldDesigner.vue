@@ -538,7 +538,7 @@ onMounted(async () => {
           </div>
 
           <div class="flex items-center gap-2">
-            <Checkbox id="field-required" v-model:checked="fieldRequired" />
+            <Checkbox id="field-required" v-model="fieldRequired" />
             <Label for="field-required">حقل مطلوب</Label>
           </div>
 

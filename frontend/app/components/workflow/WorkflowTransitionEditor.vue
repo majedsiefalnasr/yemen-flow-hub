@@ -272,7 +272,7 @@ onMounted(() => {
         </div>
 
         <div class="flex items-center gap-2">
-          <Checkbox id="requires-comment" v-model:checked="requiresComment" />
+          <Checkbox id="requires-comment" v-model="requiresComment" />
           <Label for="requires-comment">يتطلب تعليقاً</Label>
         </div>
 

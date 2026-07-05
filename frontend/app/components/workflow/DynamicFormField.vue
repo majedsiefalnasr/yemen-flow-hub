@@ -100,9 +100,9 @@ function onInput(value: unknown) {
     <div v-else-if="field.type === 'CHECKBOX'" class="flex items-center gap-2">
       <Checkbox
         :id="field.key"
-        :checked="(modelValue as boolean) ?? false"
+        :model-value="(modelValue as boolean) ?? false"
         :disabled="!field.is_editable"
-        @update:checked="onInput"
+        @update:model-value="onInput"
       />
     </div>
 

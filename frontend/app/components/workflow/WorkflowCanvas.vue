@@ -756,11 +756,11 @@ function handleFit() {
           </FormField>
           <div class="flex gap-6">
             <div class="flex items-center gap-2">
-              <Checkbox id="s-init" v-model:checked="stageIsInitial" />
+              <Checkbox id="s-init" v-model="stageIsInitial" />
               <Label for="s-init">مرحلة البداية</Label>
             </div>
             <div class="flex items-center gap-2">
-              <Checkbox id="s-fin" v-model:checked="stageIsFinal" />
+              <Checkbox id="s-fin" v-model="stageIsFinal" />
               <Label for="s-fin">مرحلة النهاية</Label>
             </div>
           </div>
@@ -820,7 +820,7 @@ function handleFit() {
             </Select>
           </div>
           <div class="flex items-center gap-2">
-            <Checkbox id="t-cmt" v-model:checked="transRequiresComment" />
+            <Checkbox id="t-cmt" v-model="transRequiresComment" />
             <Label for="t-cmt">يتطلب تعليق</Label>
           </div>
           <p v-if="transError" class="text-xs text-[var(--severity-red)]" role="alert">

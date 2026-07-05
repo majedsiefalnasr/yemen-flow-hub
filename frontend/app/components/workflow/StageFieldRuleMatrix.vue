@@ -111,30 +111,36 @@ onMounted(() => {
             <TableCell>
               <div class="flex justify-center">
                 <Checkbox
-                  :checked="flag(field.id, 'is_visible')"
+                  :model-value="flag(field.id, 'is_visible')"
                   :disabled="!editable || isPending(field.id)"
                   :aria-label="`ظاهر ${field.key}`"
-                  @update:checked="(v: boolean) => toggle(field, 'is_visible', v)"
+                  @update:model-value="
+                    (v: boolean | 'indeterminate') => toggle(field, 'is_visible', v === true)
+                  "
                 />
               </div>
             </TableCell>
             <TableCell>
               <div class="flex justify-center">
                 <Checkbox
-                  :checked="flag(field.id, 'is_editable')"
+                  :model-value="flag(field.id, 'is_editable')"
                   :disabled="!editable || isPending(field.id)"
                   :aria-label="`قابل للتعديل ${field.key}`"
-                  @update:checked="(v: boolean) => toggle(field, 'is_editable', v)"
+                  @update:model-value="
+                    (v: boolean | 'indeterminate') => toggle(field, 'is_editable', v === true)
+                  "
                 />
               </div>
             </TableCell>
             <TableCell>
               <div class="flex justify-center">
                 <Checkbox
-                  :checked="flag(field.id, 'is_required')"
+                  :model-value="flag(field.id, 'is_required')"
                   :disabled="!editable || isPending(field.id)"
                   :aria-label="`مطلوب ${field.key}`"
-                  @update:checked="(v: boolean) => toggle(field, 'is_required', v)"
+                  @update:model-value="
+                    (v: boolean | 'indeterminate') => toggle(field, 'is_required', v === true)
+                  "
                 />
               </div>
             </TableCell>
