@@ -19,6 +19,7 @@ use App\Models\WorkflowTransition;
 use App\Models\WorkflowVersion;
 use App\Services\Audit\AuditService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Engine-core designer service for Epic 18.4. Owns workflow definitions and their
@@ -343,6 +344,11 @@ class WorkflowDesignerService
             $lockedVersion = WorkflowVersion::query()->lockForUpdate()->findOrFail($version->getKey());
             $this->ensureEditable($lockedVersion);
 
+            $this->guardAgainstDualRoleStage(
+                (bool) ($attributes['is_initial'] ?? false),
+                (bool) ($attributes['is_final'] ?? false),
+            );
+
             $stage = $lockedVersion->stages()->create($attributes)->refresh();
 
             if ($stage->is_initial) {
@@ -371,6 +377,11 @@ class WorkflowDesignerService
             $this->ensureCurrentVersion($locked->version, $expectedVersion);
             $parent = WorkflowVersion::query()->lockForUpdate()->findOrFail($locked->workflow_version_id);
             $this->ensureEditable($parent);
+
+            $this->guardAgainstDualRoleStage(
+                (bool) ($attributes['is_initial'] ?? $locked->is_initial),
+                (bool) ($attributes['is_final'] ?? $locked->is_final),
+            );
 
             $before = $locked->toArray();
             $locked->update([
@@ -583,6 +594,21 @@ class WorkflowDesignerService
             ->where('id', '!=', $keep->getKey())
             ->where('is_initial', true)
             ->update(['is_initial' => false]);
+    }
+
+    /**
+     * A stage cannot be both the workflow's entry point and its terminal point —
+     * a request that both starts and ends at the same stage has no transitions
+     * to traverse. $resolvedInitial/$resolvedFinal are the values the stage WILL
+     * have after the pending create/update is applied.
+     */
+    private function guardAgainstDualRoleStage(bool $resolvedInitial, bool $resolvedFinal): void
+    {
+        if ($resolvedInitial && $resolvedFinal) {
+            throw ValidationException::withMessages([
+                'is_final' => 'A stage cannot be marked as both the initial and final stage.',
+            ]);
+        }
     }
 
     /**

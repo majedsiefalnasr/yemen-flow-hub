@@ -147,6 +147,41 @@ class WorkflowStageTest extends TestCase
         $this->assertDatabaseHas('workflow_stages', ['id' => $second->id, 'is_initial' => true]);
     }
 
+    public function test_stage_cannot_be_both_initial_and_final_on_create(): void
+    {
+        $this->actingAs($this->admin)
+            ->postJson("/api/v1/workflow-versions/{$this->draft->id}/stages", [
+                'code' => 'weird',
+                'name' => 'Weird',
+                'is_initial' => true,
+                'is_final' => true,
+            ])->assertUnprocessable()
+            ->assertJsonValidationErrors('is_final');
+    }
+
+    public function test_stage_cannot_be_both_initial_and_final_on_update(): void
+    {
+        $stage = $this->draft->stages()->create([
+            'code' => 'review',
+            'name' => 'Review',
+            'is_initial' => true,
+        ])->refresh();
+
+        $this->actingAs($this->admin)
+            ->putJson("/api/v1/workflow-versions/{$this->draft->id}/stages/{$stage->id}", [
+                'is_final' => true,
+                'version' => 1,
+            ])->assertUnprocessable()
+            ->assertJsonValidationErrors('is_final');
+
+        $this->assertDatabaseHas('workflow_stages', [
+            'id' => $stage->id,
+            'is_initial' => true,
+            'is_final' => false,
+            'version' => 1,
+        ]);
+    }
+
     public function test_delete_unbound_stage_in_draft(): void
     {
         $stage = $this->draft->stages()->create(['code' => 'temp', 'name' => 'Temp'])->refresh();
