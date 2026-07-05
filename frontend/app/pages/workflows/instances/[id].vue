@@ -53,7 +53,7 @@ const wizardMode = computed(
   () =>
     route.query.mode === 'wizard' &&
     store.current?.current_stage?.is_initial === true &&
-    store.current?.created_by === auth.user?.id,
+    canExecute.value,
 )
 
 // Whether the signed-in user may execute the current stage (server-derived from

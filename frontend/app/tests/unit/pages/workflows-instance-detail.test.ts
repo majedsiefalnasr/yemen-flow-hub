@@ -4,12 +4,17 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 import WorkflowInstanceDetailPage from '@/pages/workflows/instances/[id].vue'
 import { useEngineRequestsStore } from '@/stores/engineRequests.store'
+import { useAuthStore } from '@/stores/auth.store'
 
 const routerReplace = vi.fn().mockResolvedValue(undefined)
 
+// Mutable so individual tests can opt into `?mode=wizard` without affecting
+// the rest of the suite, which relies on the default empty query.
+let routeQuery: Record<string, string> = {}
+
 vi.stubGlobal('useRoute', () => ({
   params: { id: '5' },
-  query: {},
+  query: routeQuery,
   path: '/workflows/instances/5',
 }))
 vi.stubGlobal('useRouter', () => ({ replace: routerReplace }))
@@ -134,6 +139,7 @@ const stubs = {
   EngineRequestDataTabs: { template: '<div data-stub="data-tabs" />' },
   EngineOrgProcessRail: { template: '<div data-stub="org-rail" />' },
   EngineQuickInfo: { template: '<div data-stub="quick-info" />' },
+  EngineRequestWizard: { template: '<div data-stub="wizard" />' },
 }
 
 function makeInstance(overrides: Record<string, unknown> = {}) {
@@ -178,6 +184,7 @@ function makeInstance(overrides: Record<string, unknown> = {}) {
 describe('workflows/instances/[id].vue', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
+    routeQuery = {}
     mockConflictError.value = false
     mockFieldErrors.value = {}
     mockShow.mockResolvedValue({
@@ -392,5 +399,22 @@ describe('workflows/instances/[id].vue', () => {
 
     expect(wrapper.text()).toContain('يجب مطالبة هذه المرحلة قبل تنفيذ الإجراء')
     expect(wrapper.find('button:disabled').exists()).toBe(true)
+  })
+
+  it('renders the wizard for a non-creator user with execute access on the initial stage', async () => {
+    const auth = useAuthStore()
+    auth.user = { id: 2 } as ReturnType<typeof useAuthStore>['user']
+    routeQuery = { mode: 'wizard' }
+
+    const store = useEngineRequestsStore()
+    // created_by (1) intentionally differs from the signed-in user (2): a
+    // teammate other than the original creator, but still an executor.
+    store.current = makeInstance({ created_by: 1, can_execute: true })
+
+    const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('[data-stub="wizard"]').exists()).toBe(true)
+    expect(wrapper.find('[data-stub="data-tabs"]').exists()).toBe(false)
   })
 })
