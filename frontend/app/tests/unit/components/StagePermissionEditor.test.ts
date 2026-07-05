@@ -2,7 +2,7 @@
 
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { nextTick } from 'vue'
+import { defineComponent, h, nextTick } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { StagePermission, WorkflowStage, WorkflowVersion } from '../../../types/models'
 import { useAuthStore } from '../../../stores/auth.store'
@@ -17,6 +17,34 @@ vi.mock('../../../composables/useApi', () => ({
 }))
 
 vi.stubGlobal('extractApiErrorMessage', (_cause: unknown, fallback: string) => fallback)
+
+// shadcn Dialog's DialogContent renders inside a reka-ui DialogPortal, which
+// teleports its content to document.body — @vue/test-utils' mount() wrapper
+// cannot introspect Teleport targets. Per AGENTS.md, Dialog must not be
+// downgraded to raw HTML in the SOURCE component to make tests pass; instead
+// (same technique as WorkflowFieldDesigner.test.ts) the TEST replaces the
+// shadcn Dialog module with simple passthrough stubs that render their
+// default slots directly into the DOM, no Teleport involved.
+// StagePermissionEditor.vue itself is untouched and keeps using the real
+// `<Dialog>`/`<DialogContent>` API surface.
+function passthrough(name: string) {
+  return defineComponent({
+    name,
+    inheritAttrs: false,
+    setup(_, { slots, attrs }) {
+      return () => h('div', attrs, slots.default?.())
+    },
+  })
+}
+
+vi.mock('../../../components/ui/dialog', () => ({
+  Dialog: passthrough('Dialog'),
+  DialogContent: passthrough('DialogContent'),
+  DialogHeader: passthrough('DialogHeader'),
+  DialogTitle: passthrough('DialogTitle'),
+  DialogDescription: passthrough('DialogDescription'),
+  DialogFooter: passthrough('DialogFooter'),
+}))
 
 const StagePermissionEditor = (
   await import('../../../components/workflow/StagePermissionEditor.vue')
@@ -190,5 +218,26 @@ describe('StagePermissionEditor', () => {
 
     expect(wrapper.vm.teamId).toBe(String(permission.team_id))
     expect(wrapper.vm.roleId).toBe(String(permission.role_id))
+  })
+
+  it('sends a PUT with organization_id, team_id, and role_id when saving an edited permission', async () => {
+    const permission = makePermission({ organization_id: 1, team_id: 3, role_id: 2, version: 1 })
+    mockPut.mockResolvedValueOnce({ data: makePermission({ version: 2 }) })
+
+    const wrapper = await mountEditor(['VIEW', 'MANAGE'], 'DRAFT', [permission])
+    await buttonByLabel(wrapper, 'تعديل الصلاحية')?.trigger('click')
+    await flushPromises()
+    await nextTick()
+
+    await buttonByText(wrapper, 'حفظ')?.trigger('click')
+    await flushPromises()
+
+    expect(mockPut).toHaveBeenCalledTimes(1)
+    const [, body] = mockPut.mock.calls[0] as [string, Record<string, unknown>]
+    expect(body).toMatchObject({
+      organization_id: permission.organization_id,
+      team_id: permission.team_id,
+      role_id: permission.role_id,
+    })
   })
 })

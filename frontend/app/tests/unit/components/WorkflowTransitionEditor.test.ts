@@ -3,17 +3,47 @@
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { defineComponent, h } from 'vue'
 import { useAuthStore } from '../../../stores/auth.store'
 
 const mockGet = vi.fn()
 const mockPost = vi.fn()
+const mockPut = vi.fn()
 const mockDelete = vi.fn()
 
 vi.mock('../../../composables/useApi', () => ({
-  useApi: () => ({ get: mockGet, post: mockPost, del: mockDelete }),
+  useApi: () => ({ get: mockGet, post: mockPost, put: mockPut, del: mockDelete }),
 }))
 
 vi.stubGlobal('extractApiErrorMessage', (_cause: unknown, fallback: string) => fallback)
+
+// shadcn Dialog's DialogContent renders inside a reka-ui DialogPortal, which
+// teleports its content to document.body — @vue/test-utils' mount() wrapper
+// cannot introspect Teleport targets. Per AGENTS.md, Dialog must not be
+// downgraded to raw HTML in the SOURCE component to make tests pass; instead
+// (same technique as WorkflowFieldDesigner.test.ts) the TEST replaces the
+// shadcn Dialog module with simple passthrough stubs that render their
+// default slots directly into the DOM, no Teleport involved.
+// WorkflowTransitionEditor.vue itself is untouched and keeps using the real
+// `<Dialog>`/`<DialogContent>` API surface.
+function passthrough(name: string) {
+  return defineComponent({
+    name,
+    inheritAttrs: false,
+    setup(_, { slots, attrs }) {
+      return () => h('div', attrs, slots.default?.())
+    },
+  })
+}
+
+vi.mock('../../../components/ui/dialog', () => ({
+  Dialog: passthrough('Dialog'),
+  DialogContent: passthrough('DialogContent'),
+  DialogHeader: passthrough('DialogHeader'),
+  DialogTitle: passthrough('DialogTitle'),
+  DialogDescription: passthrough('DialogDescription'),
+  DialogFooter: passthrough('DialogFooter'),
+}))
 
 const WorkflowTransitionEditor = (
   await import('../../../components/workflow/WorkflowTransitionEditor.vue')
@@ -191,5 +221,23 @@ describe('WorkflowTransitionEditor', () => {
     const wrapper = await mountEditor(['VIEW', 'MANAGE'], 'PUBLISHED')
 
     expect(buttonByLabel(wrapper, 'تعديل الانتقال')).toBeUndefined()
+  })
+
+  it('sends a PUT with a locked from_stage_id/action_id when saving an edited transition', async () => {
+    const transition = makeTransition({ version: 1 })
+    mockPut.mockResolvedValueOnce({ data: makeTransition({ version: 2 }) })
+
+    const wrapper = await mountEditor(['VIEW', 'MANAGE'], 'DRAFT', [transition])
+    await buttonByLabel(wrapper, 'تعديل الانتقال')?.trigger('click')
+    await flushPromises()
+
+    await buttonByText(wrapper, 'حفظ')?.trigger('click')
+    await flushPromises()
+
+    expect(mockPut).toHaveBeenCalledTimes(1)
+    const [url, body] = mockPut.mock.calls[0] as [string, Record<string, unknown>]
+    expect(url).toBe('/api/v1/workflow-versions/7/transitions/1')
+    expect(body).not.toHaveProperty('from_stage_id')
+    expect(body).not.toHaveProperty('action_id')
   })
 })

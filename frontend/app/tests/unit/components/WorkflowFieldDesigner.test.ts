@@ -37,8 +37,20 @@ function passthrough(name: string) {
   })
 }
 
+// Dialog only renders its slot while `open` is true, mirroring the real
+// component's behavior — this keeps multiple sibling dialogs (add-group vs.
+// edit-field) from both being present in the DOM at once when only one is
+// actually open.
+const DialogStub = defineComponent({
+  name: 'Dialog',
+  props: { open: { type: Boolean, default: false } },
+  setup(props, { slots }) {
+    return () => (props.open ? h('div', slots.default?.()) : null)
+  },
+})
+
 vi.mock('../../../components/ui/dialog', () => ({
-  Dialog: passthrough('Dialog'),
+  Dialog: DialogStub,
   DialogContent: passthrough('DialogContent'),
   DialogHeader: passthrough('DialogHeader'),
   DialogTitle: passthrough('DialogTitle'),
@@ -217,5 +229,23 @@ describe('WorkflowFieldDesigner', () => {
     const wrapper = await mountDesigner(['VIEW', 'MANAGE'], 'PUBLISHED')
 
     expect(buttonByLabel(wrapper, 'تعديل الحقل')).toBeUndefined()
+  })
+
+  it('sends a PUT with the field version when saving an edited field', async () => {
+    const field = makeField({ version: 1 })
+    mockPut.mockResolvedValueOnce({ data: makeField({ version: 2 }) })
+
+    const wrapper = await mountDesigner(['VIEW', 'MANAGE'], 'DRAFT', [
+      makeGroup({ fields: [field] }),
+    ])
+    await buttonByLabel(wrapper, 'تعديل الحقل')?.trigger('click')
+    await flushPromises()
+
+    await buttonByText(wrapper, 'حفظ')?.trigger('click')
+    await flushPromises()
+
+    expect(mockPut).toHaveBeenCalledTimes(1)
+    const [, body] = mockPut.mock.calls[0] as [string, Record<string, unknown>]
+    expect(body).toMatchObject({ version: field.version })
   })
 })
