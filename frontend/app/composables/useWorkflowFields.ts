@@ -106,7 +106,7 @@ export function useWorkflowFields() {
   ) => {
     const response = await api.put<{ data: FieldDefinition }>(
       `/api/v1/workflow-versions/${versionId}/fields/${field.id}`,
-      payload,
+      { ...payload, version: field.version },
     )
     const updated = response.data
     // Remove from old group, insert into new group (or same group if only other
