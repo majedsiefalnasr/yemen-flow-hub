@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Empty, EmptyTitle } from '@/components/ui/empty'
 import PageHeader from '@/components/layout/PageHeader.vue'
-import { AlertCircle, Check, Info, SlidersHorizontal, Workflow, X } from 'lucide-vue-next'
+import { AlertCircle, Info, SlidersHorizontal, Workflow } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import type { MatrixRoleRow, MatrixScreen } from '@/composables/useScreenPermissionsAdmin'
 
@@ -18,12 +18,11 @@ definePageMeta({
   requiredCapability: 'VIEW',
 })
 
+// `requests` is a real Screen row (seeded for backward-compatible lookups),
+// but it is not manually grantable: its access is now derived from
+// stage_permissions in the workflow designer, and the update() endpoint
+// rejects grants targeting it. Exclude it from the manual/grantable columns.
 const REQUESTS_KEY = 'requests'
-const REQUEST_CAPS: { cap: 'view' | 'add' | 'edit'; label: string }[] = [
-  { cap: 'view', label: 'عرض' },
-  { cap: 'add', label: 'إنشاء' },
-  { cap: 'edit', label: 'تنفيذ' },
-]
 
 const CAP_LABELS: Record<string, string> = {
   VIEW: 'عرض',
@@ -162,7 +161,7 @@ onMounted(fetchMatrix)
   <div class="mx-auto max-w-[1600px] space-y-6 py-2">
     <PageHeader
       title="صلاحيات ظهور الشاشات"
-      subtitle="مصفوفة واحدة: كل دور في صف، وكل شاشة في مجموعة أعمدة. صلاحيات الطلبات مشتقة من مصمم سير العمل."
+      subtitle="صلاحيات شاشات النظام حسب الدور"
       :breadcrumbs="[{ label: 'الرئيسية', to: '/dashboard' }, { label: 'صلاحيات الشاشات' }]"
     >
       <template #actions>
@@ -177,23 +176,15 @@ onMounted(fetchMatrix)
       <CardContent class="flex items-start gap-3">
         <Info class="text-primary mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
         <div class="text-muted-foreground text-sm leading-relaxed">
-          مسؤول النظام يملك كل الصلاحيات تلقائيًا (غير معروض). صلاحيات شاشة
-          <strong class="text-foreground">الطلبات</strong> مشتقة إلزاميًا من إسنادات المراحل في مصمم
-          سير العمل وتظهر للعرض فقط. الشاشات العامة (الإعدادات، الإشعارات) وشاشات الإدارة الحصرية لا
-          تظهر في هذه المصفوفة لأنها غير قابلة للتخصيص.
+          مسؤول النظام يملك كل الصلاحيات تلقائيًا (غير معروض). الشاشات العامة (الإعدادات، الإشعارات)
+          وشاشات الإدارة الحصرية لا تظهر في هذه المصفوفة لأنها غير قابلة للتخصيص. لعرض صلاحيات
+          الطلبات لمؤسسة أو فريق أو دور معيّن، راجع تبويب «سير العملية التنظيمية» في مصمم مسارات
+          العمل.
         </div>
       </CardContent>
     </Card>
 
     <div class="text-muted-foreground mb-3 flex flex-wrap items-center gap-4 text-xs">
-      <span class="flex items-center gap-1.5">
-        <Check class="h-3.5 w-3.5 text-[var(--success)]" />
-        مفعّلة (مشتقة)
-      </span>
-      <span class="flex items-center gap-1.5">
-        <X class="text-muted-foreground/40 h-3.5 w-3.5" />
-        غير مفعّلة
-      </span>
       <span class="flex items-center gap-1.5">
         <SlidersHorizontal class="h-3.5 w-3.5" />
         مفتاح قابل للتبديل (يدوي)
@@ -206,7 +197,7 @@ onMounted(fetchMatrix)
       <AlertDescription>{{ error }}</AlertDescription>
     </Alert>
 
-    <Card class="overflow-hidden border-0 shadow py-0">
+    <Card class="overflow-hidden border-0 py-0 shadow">
       <CardContent class="p-0">
         <div v-if="loading" class="space-y-2 p-4">
           <Skeleton v-for="n in 6" :key="n" class="h-10 w-full rounded-md" />
@@ -230,19 +221,6 @@ onMounted(fetchMatrix)
                   الدور
                 </th>
                 <th
-                  scope="colgroup"
-                  :colspan="REQUEST_CAPS.length"
-                  class="border-border border-s px-4 py-2.5 text-center font-semibold"
-                >
-                  <div class="flex flex-col items-center gap-1">
-                    <span class="text-foreground">الطلبات</span>
-                    <Badge variant="secondary" class="gap-1 text-[9px] font-normal">
-                      <Workflow class="h-2.5 w-2.5" />
-                      مشتقة من المصمم
-                    </Badge>
-                  </div>
-                </th>
-                <th
                   v-for="screen in manualScreens"
                   :key="screen.key"
                   scope="colgroup"
@@ -256,14 +234,6 @@ onMounted(fetchMatrix)
                 </th>
               </tr>
               <tr class="bg-muted/20 text-muted-foreground text-xs">
-                <th
-                  v-for="c in REQUEST_CAPS"
-                  :key="`requests-${c.cap}`"
-                  scope="col"
-                  class="border-border w-24 border-s px-4 py-2 text-center font-medium"
-                >
-                  {{ c.label }}
-                </th>
                 <th
                   v-for="col in manualColumns"
                   :key="`head-${col.screen.key}-${col.cap}`"
@@ -294,22 +264,6 @@ onMounted(fetchMatrix)
                     </Badge>
                   </div>
                 </th>
-                <td
-                  v-for="c in REQUEST_CAPS"
-                  :key="`cell-requests-${role.id}-${c.cap}`"
-                  class="border-border border-s px-4 py-3 text-center"
-                >
-                  <span class="sr-only">
-                    الطلبات، {{ c.label }}، {{ role.name }}:
-                    {{ role.requests[c.cap] ? 'ممنوحة' : 'غير ممنوحة' }}
-                  </span>
-                  <Check
-                    v-if="role.requests[c.cap]"
-                    class="mx-auto h-4 w-4 text-[var(--success)]"
-                    aria-hidden="true"
-                  />
-                  <X v-else class="text-muted-foreground/40 mx-auto h-4 w-4" aria-hidden="true" />
-                </td>
                 <td
                   v-for="col in manualColumns"
                   :key="`cell-${role.id}-${col.screen.key}-${col.cap}`"

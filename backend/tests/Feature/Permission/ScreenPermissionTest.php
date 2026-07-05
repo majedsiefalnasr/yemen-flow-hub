@@ -233,6 +233,19 @@ class ScreenPermissionTest extends TestCase
         $this->assertNotContains('system_admin', $roleCodes);
     }
 
+    // ── Matrix no longer surfaces a role-keyed `requests` capability ─────
+
+    public function test_matrix_response_never_includes_a_requests_key(): void
+    {
+        $response = $this->actingAs($this->admin)
+            ->getJson('/api/v1/screen-permissions/matrix')
+            ->assertOk();
+
+        foreach ($response->json('data.roles') as $role) {
+            $this->assertArrayNotHasKey('requests', $role);
+        }
+    }
+
     // ── Merchants MANAGE carve-out: system_admin is always denied ────────
 
     public function test_system_admin_never_has_merchants_manage_even_if_granted(): void

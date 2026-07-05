@@ -52,11 +52,12 @@ class RoleScreenPermissionController extends Controller
      * Consolidated role × screen matrix for the screen-permissions page.
      *
      * - Returns every active, non-platform-admin role with its manual grants
-     *   (from screen_permissions) and its DERIVED requests access (computed
-     *   from stage_permissions on the published workflow version).
-     * - The requests screen is read-only: a role can VIEW it when assigned to
-     *   any stage, ADD (create) when it can EXECUTE the initial stage, and
-     *   EDIT (act) when it can EXECUTE any stage.
+     *   (from screen_permissions).
+     * - Request access is no longer represented here: stage permissions can be
+     *   org-only or org+team scoped with no role required, so a role-keyed
+     *   matrix cell can no longer correctly represent request access. Inspect
+     *   request access for a specific org/team/role via the workflow
+     *   designer's stage-assignment view instead.
      */
     /**
      * Screens all users access unconditionally (not customizable).
@@ -132,8 +133,6 @@ class RoleScreenPermissionController extends Controller
             ->map(fn ($items) => $items->groupBy('key')->map(fn ($caps) => $caps->pluck('capability')->unique()->values()->all()))
             ->all();
 
-        $derived = $this->permissionService->derivedRequestsCapabilities($roles->pluck('id')->all());
-
         $rows = $roles->map(fn (Role $role) => [
             'id' => $role->id,
             'code' => $role->code,
@@ -141,7 +140,6 @@ class RoleScreenPermissionController extends Controller
             'organization_id' => $role->organization_id,
             'organization_name' => $organizationNames->get($role->organization_id),
             'is_system' => $role->is_system,
-            'requests' => $derived[$role->id] ?? ['view' => false, 'add' => false, 'edit' => false],
             'manual' => $manualGrants[$role->id] ?? [],
         ])->values();
 

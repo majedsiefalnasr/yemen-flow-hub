@@ -13,14 +13,7 @@ interface RoleGrants {
   grants: Record<string, ScreenCapability[]>
 }
 
-/** Derived requests-screen access returned by the matrix endpoint (read-only). */
-export interface RequestsAccess {
-  view: boolean
-  add: boolean
-  edit: boolean
-}
-
-/** One row in the consolidated matrix: a role with its derived + manual access. */
+/** One row in the consolidated matrix: a role with its manual screen access. */
 export interface MatrixRoleRow {
   id: number
   code: string
@@ -28,7 +21,6 @@ export interface MatrixRoleRow {
   organization_id: number
   organization_name: string | null
   is_system: boolean
-  requests: RequestsAccess
   manual: Record<string, ScreenCapability[]>
 }
 
