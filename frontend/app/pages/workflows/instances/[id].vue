@@ -16,6 +16,7 @@ import EngineQuickInfo from '@/components/workflow/EngineQuickInfo.vue'
 import EngineTimeline from '@/components/workflow/EngineTimeline.vue'
 import EngineActionsRail from '@/components/workflow/EngineActionsRail.vue'
 import EngineRequestWizard from '@/components/workflow/EngineRequestWizard.vue'
+import EngineFxConfirmationPanel from '@/components/workflow/EngineFxConfirmationPanel.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { useEngineProgress } from '@/composables/useEngineProgress'
 import { Card, CardContent } from '@/components/ui/card'
@@ -117,10 +118,7 @@ const showClaimButton = computed(
 )
 const claimHolderName = computed(() => store.current?.claimed_by_user?.name ?? null)
 const canAct = computed(
-  () =>
-    canExecute.value &&
-    !claimLost.value &&
-    (!stageRequiresClaim.value || isHeldByMe.value),
+  () => canExecute.value && !claimLost.value && (!stageRequiresClaim.value || isHeldByMe.value),
 )
 const claimRequiredButNotHeld = computed(
   () => canExecute.value && stageRequiresClaim.value && !isHeldByMe.value,
@@ -283,11 +281,7 @@ async function confirmAbandonDraft() {
         </AlertDescription>
         <div class="mt-3 flex flex-wrap gap-2">
           <Button size="sm" variant="outline" @click="returnToQueue">العودة إلى الطابور</Button>
-          <Button
-            v-if="stageRequiresClaim && !heldByOther"
-            size="sm"
-            @click="startReview"
-          >
+          <Button v-if="stageRequiresClaim && !heldByOther" size="sm" @click="startReview">
             محاولة المتابعة مجدداً
           </Button>
         </div>
@@ -370,6 +364,14 @@ async function confirmAbandonDraft() {
           />
 
           <EngineQuickInfo :request="store.current" />
+
+          <EngineFxConfirmationPanel
+            v-if="store.current.fx_panel?.visible"
+            :request-id="requestId"
+            :capabilities="store.current.fx_panel"
+            :declaration="store.current.customs_declaration ?? null"
+            @refresh="load"
+          />
         </aside>
       </div>
     </template>

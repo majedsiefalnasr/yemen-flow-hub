@@ -337,12 +337,20 @@ export interface DuplicateWarning {
 export interface CustomsDeclarationSummary {
   id: number
   declaration_number: string
-  issued_at: string
+  issued_at: string | null
   issued_by: number | null
   issuer: { id: number; name: string } | null
   signed_fx_doc_uploaded_at?: string | null
   signed_fx_doc_uploaded_by?: number | null
   has_signed_fx_doc?: boolean
+}
+
+/** Capability flags returned by the engine for the FX confirmation panel. */
+export interface EngineFxPanelCapabilities {
+  visible: boolean
+  can_upload_signed_fx: boolean
+  can_download_declaration: boolean
+  can_download_signed_fx: boolean
 }
 
 export interface CustomsDeclaration {
@@ -955,11 +963,11 @@ export interface EngineRequest {
   can_execute?: boolean
   created_by: number
   creator: { id: number; name: string } | null
+  customs_declaration?: CustomsDeclarationSummary | null
+  fx_panel?: EngineFxPanelCapabilities | null
   created_at: string | null
   updated_at: string | null
 }
-
-// Engine duplicate-invoice warning shape (distinct from the legacy
 // DuplicateWarning): returned under `warnings` by create/transition/show.
 export interface EngineDuplicateWarning {
   code: string
