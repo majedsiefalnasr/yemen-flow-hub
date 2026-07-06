@@ -5,6 +5,7 @@ namespace App\Services\Workflow\Engine;
 use App\Exceptions\FinancingLimitExceededException;
 use App\Exceptions\FinancingLockTimeoutException;
 use App\Models\EngineRequest;
+use App\Support\InvoiceKey;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -103,7 +104,7 @@ class EngineFinancingLedger
 
     public static function normalizeKey(string $value): string
     {
-        return trim($value);
+        return InvoiceKey::normalize($value);
     }
 
     /**

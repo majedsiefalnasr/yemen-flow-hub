@@ -11,6 +11,7 @@ class DuplicateInvoiceChecker
      */
     public function check(string $invoiceNumber, ?int $excludeRequestId = null): ?array
     {
+        // TODO(WP-7/R5s2): switch duplicate matching to InvoiceKey normalization with masking/backfill.
         if (trim($invoiceNumber) === '') {
             return null;
         }

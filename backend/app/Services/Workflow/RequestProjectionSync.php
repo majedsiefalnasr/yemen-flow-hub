@@ -53,6 +53,7 @@ class RequestProjectionSync
         return match ($column) {
             'amount', 'request_percentage' => is_numeric($value) ? (string) $value : null,
             'currency' => is_scalar($value) ? mb_substr((string) $value, 0, 10) : null,
+            // TODO(WP-7/R5s2): upgrade invoice projection through InvoiceKey after backfill.
             'invoice_number' => is_scalar($value) ? mb_substr((string) $value, 0, 100) : null,
             default => $value,
         };
