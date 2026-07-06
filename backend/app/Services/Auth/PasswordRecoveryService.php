@@ -7,6 +7,7 @@ use App\Enums\NotificationType;
 use App\Models\User;
 use App\Services\Audit\AuditService;
 use App\Services\Notifications\SendEmailNotification;
+use App\Support\PasswordPolicy;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -15,7 +16,10 @@ class PasswordRecoveryService
 {
     private const CODE_LENGTH = 6;
 
-    public function __construct(private readonly AuditService $auditService) {}
+    public function __construct(
+        private readonly AuditService $auditService,
+        private readonly SessionInvalidationService $sessionInvalidationService,
+    ) {}
 
     public function genericMessage(): string
     {
@@ -35,6 +39,13 @@ class PasswordRecoveryService
         }
 
         $ttlSeconds = max(60, (int) config('account_recovery.otp_ttl_seconds', 600));
+        $key = $this->cacheKey($email);
+        $existing = Cache::get($key);
+
+        if (is_array($existing) && (int) ($existing['expires_at'] ?? 0) > now()->timestamp) {
+            return;
+        }
+
         $otp = $this->generateCode();
         $issuanceId = (string) Str::uuid();
 
@@ -80,7 +91,8 @@ class PasswordRecoveryService
             'password_changed_at' => now(),
         ])->save();
 
-        $user->tokens()->delete();
+        PasswordPolicy::recordHistory($user);
+        $this->sessionInvalidationService->invalidate($user);
 
         $this->auditService->log(
             AuditAction::PASSWORD_RESET,

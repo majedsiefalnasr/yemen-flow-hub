@@ -242,7 +242,12 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::post('profile/mfa/setup', [ProfileController::class, 'setupTotp']);
     Route::post('profile/mfa/setup/verify', [ProfileController::class, 'verifyTotpSetup']);
     Route::post('profile/mfa/disable', [ProfileController::class, 'disableTotp']);
-    Route::post('profile/mfa/disable-with-password', [ProfileController::class, 'disableTotpWithPassword']);
+    Route::post('profile/mfa/recovery-codes/regenerate', [ProfileController::class, 'regenerateRecoveryCodes']);
+    Route::post('profile/mfa/step-up/initiate', [ProfileController::class, 'initiateStepUp']);
+    Route::post('profile/mfa/step-up/verify', [ProfileController::class, 'verifyStepUp']);
+    Route::get('profile/sessions', [ProfileController::class, 'listSessions']);
+    Route::delete('profile/sessions/{tokenId}', [ProfileController::class, 'revokeSession']);
+    Route::post('profile/sessions/revoke-all', [ProfileController::class, 'revokeAllSessions']);
     Route::post('profile/change-password', [ProfileController::class, 'changePassword'])->middleware('throttle:3,60');
     Route::post('profile/change-temporary-password', [ProfileController::class, 'changeTemporaryPassword'])->middleware('throttle:5,1');
     Route::get('settings', [SettingsController::class, 'show']);

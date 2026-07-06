@@ -50,6 +50,11 @@ class ApiResponse
         return self::error('Validation failed.', $errors, 422);
     }
 
+    public static function stepUpRequired(string $message = 'Fresh MFA verification is required for this action.'): JsonResponse
+    {
+        return self::forbidden($message, 'STEP_UP_REQUIRED');
+    }
+
     public static function lockedOut(
         string $message = 'Account is temporarily locked due to too many failed attempts.',
         ?int $retryAfter = null

@@ -53,7 +53,6 @@ export const useProfile = () => {
 
   const updateProfile = async (data: {
     name: string
-    email: string
     phone?: string
     avatar_variant?: string
   }): Promise<boolean> => {
@@ -62,7 +61,6 @@ export const useProfile = () => {
     const body = {
       ...data,
       name: data.name.trim(),
-      email: data.email.trim(),
       phone: data.phone?.replace(/\s+/g, '') || null,
     }
 
@@ -213,32 +211,82 @@ export const useProfile = () => {
     }
   }
 
-  /**
-   * Disable TOTP using password as fallback — for when the user cannot access their authenticator app.
-   */
-  const disableTotpWithPassword = async (password: string): Promise<boolean> => {
+  const verifyStepUp = async (code: string, challengeId?: string): Promise<boolean> => {
     error.value = null
     try {
-      const response = await $fetch<ApiResponse<AuthUser>>(
-        '/api/profile/mfa/disable-with-password',
+      await $fetch<ApiResponse<void>>('/api/profile/mfa/step-up/verify', {
+        method: 'POST',
+        baseURL,
+        credentials: 'include',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          ...xsrfHeaders(),
+        },
+        body: { code, ...(challengeId ? { challenge_id: challengeId } : {}) },
+      })
+      return true
+    } catch (err: any) {
+      error.value = err.data?.message || 'رمز التحقق غير صحيح'
+      return false
+    }
+  }
+
+  const initiateStepUp = async (): Promise<{ challenge_id: string | null; method: string } | null> => {
+    error.value = null
+    try {
+      const response = await $fetch<ApiResponse<{ challenge_id: string | null; method: string }>>(
+        '/api/profile/mfa/step-up/initiate',
         {
           method: 'POST',
           baseURL,
           credentials: 'include',
-          headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-            ...xsrfHeaders(),
-          },
-          body: { password },
+          headers: { Accept: 'application/json', ...xsrfHeaders() },
         },
       )
-      profile.value = response.data
-      if (auth.user) auth.user.totp_enabled = false
+      return response.data
+    } catch (err: any) {
+      error.value = err.data?.message || 'تعذّر بدء التحقق الإضافي'
+      return null
+    }
+  }
+
+  const revokeAllSessions = async (): Promise<boolean> => {
+    error.value = null
+    try {
+      await $fetch<ApiResponse<void>>('/api/profile/sessions/revoke-all', {
+        method: 'POST',
+        baseURL,
+        credentials: 'include',
+        headers: { Accept: 'application/json', ...xsrfHeaders() },
+      })
       return true
     } catch (err: any) {
-      error.value = err.data?.message || 'كلمة المرور غير صحيحة'
+      error.value = err.data?.message || 'تعذّر إنهاء الجلسات'
       return false
+    }
+  }
+
+  const regenerateRecoveryCodes = async (): Promise<string[] | null> => {
+    error.value = null
+    try {
+      const response = await $fetch<ApiResponse<{ recovery_codes: string[] }>>(
+        '/api/profile/mfa/recovery-codes/regenerate',
+        {
+          method: 'POST',
+          baseURL,
+          credentials: 'include',
+          headers: { Accept: 'application/json', ...xsrfHeaders() },
+        },
+      )
+      return response.data.recovery_codes
+    } catch (err: any) {
+      if (err.data?.error_code === 'STEP_UP_REQUIRED') {
+        error.value = 'STEP_UP_REQUIRED'
+      } else {
+        error.value = err.data?.message || 'تعذّر إنشاء رموز الاستعادة'
+      }
+      return null
     }
   }
 
@@ -328,7 +376,10 @@ export const useProfile = () => {
     setupTotp,
     verifyTotpSetup,
     disableTotp,
-    disableTotpWithPassword,
+    verifyStepUp,
+    initiateStepUp,
+    revokeAllSessions,
+    regenerateRecoveryCodes,
     setPin,
     disablePin,
     changePassword,

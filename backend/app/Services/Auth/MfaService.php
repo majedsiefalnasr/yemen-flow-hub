@@ -53,6 +53,43 @@ class MfaService
         return $code;
     }
 
+    /**
+     * Return an existing live challenge when present (no email re-send spam).
+     *
+     * @return array{otp: string, sent: bool, reused: bool}
+     */
+    public function generateOrReuse(string $email): array
+    {
+        $email = strtolower($email);
+        $key = $this->cacheKey($email);
+        $challenge = Cache::get($key);
+
+        if (is_array($challenge)
+            && is_string($challenge['otp'] ?? null)
+            && (int) ($challenge['expires_at'] ?? 0) > now()->timestamp) {
+            return [
+                'otp' => $challenge['otp'],
+                'sent' => false,
+                'reused' => true,
+            ];
+        }
+
+        $otp = $this->generate($email);
+
+        return [
+            'otp' => $otp,
+            'sent' => true,
+            'reused' => false,
+        ];
+    }
+
+    public function remainingRecoveryCodeCount(User $user): int
+    {
+        $hashes = $user->totp_recovery_codes;
+
+        return is_array($hashes) ? count($hashes) : 0;
+    }
+
     public function sendOtpEmail(User $user, string $otp, int $ttlMinutes): void
     {
         $issuanceId = $this->getIssuanceId($user->email);

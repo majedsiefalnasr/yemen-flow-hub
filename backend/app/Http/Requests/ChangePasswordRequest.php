@@ -2,9 +2,13 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\AuditAction;
+use App\Services\Audit\AuditService;
 use App\Support\PasswordPolicy;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 
 class ChangePasswordRequest extends FormRequest
 {
@@ -32,8 +36,9 @@ class ChangePasswordRequest extends FormRequest
                 ...PasswordPolicy::rules(),
                 'confirmed',
                 function ($attribute, $value, $fail) {
-                    if (Hash::check($value, $this->user()->password)) {
-                        $fail('The new password must be different from the current password.');
+                    $errors = PasswordPolicy::validate($this->user(), $value, 'password');
+                    if ($errors !== []) {
+                        $fail($errors['password'] ?? 'The password does not meet policy requirements.');
                     }
                 },
             ],
@@ -46,5 +51,20 @@ class ChangePasswordRequest extends FormRequest
             ...PasswordPolicy::messages(),
             'password.confirmed' => 'The password confirmation does not match.',
         ];
+    }
+
+    protected function failedValidation(Validator $validator): void
+    {
+        $user = $this->user();
+        if ($user !== null) {
+            app(AuditService::class)->log(
+                AuditAction::PASSWORD_CHANGE_FAILED,
+                $user,
+                $user,
+                ['reason' => 'validation_failed', 'fields' => array_keys($validator->errors()->toArray())]
+            );
+        }
+
+        throw new ValidationException($validator);
     }
 }

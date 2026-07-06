@@ -144,6 +144,9 @@ class PasswordRecoveryTest extends TestCase
         ];
 
         $this->postJson('/api/auth/password/reset', $payload)->assertOk();
+
+        $payload['password'] = 'Another9Pass';
+        $payload['password_confirmation'] = 'Another9Pass';
         $this->postJson('/api/auth/password/reset', $payload)->assertUnprocessable()
             ->assertJsonValidationErrors(['otp']);
     }

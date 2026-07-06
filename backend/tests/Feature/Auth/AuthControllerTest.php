@@ -66,6 +66,11 @@ class AuthControllerTest extends TestCase
         return $prefix.':'.strtolower($email).'|'.$ip;
     }
 
+    private function accountLockoutKey(string $prefix, string $email): string
+    {
+        return $prefix.'_account:'.strtolower($email);
+    }
+
     // --- AC-1: IP rate limit ---
 
     public function test_login_allows_5_attempts_per_minute(): void
@@ -97,14 +102,16 @@ class AuthControllerTest extends TestCase
 
     // --- AC-2: Account lockout ---
 
-    public function test_account_locks_after_10_consecutive_email_failures(): void
+    public function test_account_locks_after_5_consecutive_email_failures(): void
     {
         $email = 'lockme@example.com';
         $failKey = $this->lockoutKey('login_fail', $email);
+        $accountKey = $this->accountLockoutKey('login_fail', $email);
         $this->makeUser(['email' => $email]);
 
-        for ($i = 0; $i < 10; $i++) {
+        for ($i = 0; $i < 5; $i++) {
             RateLimiter::hit($failKey, 15 * 60);
+            RateLimiter::hit($accountKey, 15 * 60);
         }
 
         $response = $this->postJson('/api/auth/login', ['email' => $email, 'password' => 'wrong']);
@@ -120,8 +127,9 @@ class AuthControllerTest extends TestCase
         $failKey = $this->lockoutKey('login_fail', $email);
         $this->makeUser(['email' => $email]);
 
-        for ($i = 0; $i < 10; $i++) {
+        for ($i = 0; $i < 5; $i++) {
             RateLimiter::hit($failKey, 15 * 60);
+            RateLimiter::hit($this->accountLockoutKey('login_fail', $email), 15 * 60);
         }
 
         $response = $this->postJson('/api/auth/login', ['email' => $email, 'password' => 'any']);
@@ -132,12 +140,12 @@ class AuthControllerTest extends TestCase
         $this->assertGreaterThan(0, (int) $response->headers->get('Retry-After'));
     }
 
-    public function test_rotating_ips_cannot_lock_password_login_for_victim_source(): void
+    public function test_rotating_ips_lock_account_after_five_failures(): void
     {
         $email = 'victim@example.com';
         $this->makeUser(['email' => $email]);
 
-        for ($i = 0; $i < 10; $i++) {
+        for ($i = 0; $i < 5; $i++) {
             $this->withServerVariables(['REMOTE_ADDR' => "10.0.0.{$i}"])
                 ->postJson('/api/auth/login', ['email' => $email, 'password' => 'wrong'])
                 ->assertStatus(422);
@@ -145,8 +153,8 @@ class AuthControllerTest extends TestCase
 
         $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.10'])
             ->postJson('/api/auth/login', ['email' => $email, 'password' => 'password'])
-            ->assertStatus(200)
-            ->assertJsonPath('success', true);
+            ->assertStatus(429)
+            ->assertJsonPath('error_code', 'ACCOUNT_LOCKED');
     }
 
     public function test_pin_lockout_uses_source_ip_and_returns_retry_after(): void
@@ -159,8 +167,9 @@ class AuthControllerTest extends TestCase
             'pin_code_hash' => Hash::make('125812'),
         ]);
 
-        for ($i = 0; $i < 10; $i++) {
+        for ($i = 0; $i < 5; $i++) {
             RateLimiter::hit($failKey, 15 * 60);
+            RateLimiter::hit($this->accountLockoutKey('login_pin_fail', $email), 15 * 60);
         }
 
         $response = $this->postJson('/api/auth/login-pin', ['email' => $email, 'pin' => '000000']);
@@ -215,8 +224,9 @@ class AuthControllerTest extends TestCase
         $failKey = $this->lockoutKey('login_fail', $email);
         $this->makeUser(['email' => $email]);
 
-        for ($i = 0; $i < 10; $i++) {
+        for ($i = 0; $i < 5; $i++) {
             RateLimiter::hit($failKey, 15 * 60);
+            RateLimiter::hit($this->accountLockoutKey('login_fail', $email), 15 * 60);
         }
 
         $this->postJson('/api/auth/login', ['email' => $email, 'password' => 'any']);
@@ -253,11 +263,11 @@ class AuthControllerTest extends TestCase
         $failKey = $this->lockoutKey('login_fail', $email);
         $this->makeUser(['email' => $email]);
 
-        for ($i = 0; $i < 5; $i++) {
+        for ($i = 0; $i < 4; $i++) {
             RateLimiter::hit($failKey, 15 * 60);
         }
 
-        $this->assertEquals(5, RateLimiter::attempts($failKey));
+        $this->assertEquals(4, RateLimiter::attempts($failKey));
 
         $this->postJson('/api/auth/login', ['email' => $email, 'password' => 'password']);
 

@@ -141,7 +141,6 @@ const {
   setupTotp,
   verifyTotpSetup,
   disableTotp,
-  disableTotpWithPassword,
   setPin: savePinOnServer,
   disablePin: disablePinOnServer,
   changePassword,
@@ -301,13 +300,7 @@ function removeTrustedDevice(id: string) {
 }
 
 // ── MFA / Authenticator setup ──────────────────────────────────────────────────
-type MfaDialogStage =
-  | 'intro'
-  | 'scan'
-  | 'verify'
-  | 'backup-codes'
-  | 'disable-verify'
-  | 'disable-with-password'
+type MfaDialogStage = 'intro' | 'scan' | 'verify' | 'backup-codes' | 'disable-verify'
 
 const mfaDialogOpen = ref(false)
 const mfaDialogStage = ref<MfaDialogStage>('intro')
@@ -317,7 +310,6 @@ const isMfaActionLoading = ref(false)
 const liveMfaSecret = ref<string | null>(null)
 const liveMfaUri = ref<string | null>(null)
 const liveMfaBackupCodes = ref<string[]>([])
-const mfaDisablePassword = ref('')
 
 const mfaQrSvg = computed(() => {
   if (!liveMfaUri.value) return null
@@ -337,31 +329,8 @@ function openMfaSetup() {
 function openMfaDisable() {
   mfaDialogStage.value = 'disable-verify'
   mfaVerifyCode.value = ''
-  mfaDisablePassword.value = ''
   mfaSetupError.value = null
   mfaDialogOpen.value = true
-}
-
-async function confirmMfaDisableWithPassword() {
-  if (!mfaDisablePassword.value) {
-    mfaSetupError.value = 'الرجاء إدخال كلمة المرور'
-    return
-  }
-  isMfaActionLoading.value = true
-  mfaSetupError.value = null
-  try {
-    const ok = await disableTotpWithPassword(mfaDisablePassword.value)
-    if (!ok) throw new Error('invalid')
-    totpEnabled.value = false
-    mfaEnabled.value = false
-    mfaDialogOpen.value = false
-    toast.success('تم تعطيل تطبيق المصادقة')
-  } catch {
-    mfaSetupError.value = 'كلمة المرور غير صحيحة.'
-    mfaDisablePassword.value = ''
-  } finally {
-    isMfaActionLoading.value = false
-  }
 }
 
 function copyMfaSecret() {
@@ -474,7 +443,6 @@ async function saveProfile() {
   // unknown field and silently drop the avatar choice.
   const ok = await updateProfile({
     name: profileForm.name.trim(),
-    email: authStore.user.email,
     phone: profileForm.phone.trim() || undefined,
     avatar_variant: avatarVariantDraft.value,
   })
@@ -788,7 +756,9 @@ function savePersonalNotifications() {
               <div class="space-y-2">
                 <Label for="profile-email">البريد الإلكتروني</Label>
                 <Input id="profile-email" :model-value="user?.email ?? ''" disabled />
-                <p class="text-muted-foreground text-xs">لا يمكن تغيير البريد الإلكتروني من هنا.</p>
+                <p class="text-muted-foreground text-xs">
+                  البريد للقراءة فقط. للتغيير، تواصل مع مسؤول النظام.
+                </p>
               </div>
               <div class="space-y-2">
                 <Label for="profile-phone">رقم الهاتف</Label>
@@ -1717,70 +1687,6 @@ function savePersonalNotifications() {
                         >إلغاء</Button
                       >
                     </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      class="text-muted-foreground text-xs"
-                      @click="
-                        () => {
-                          mfaSetupError = null
-                          mfaDialogStage = 'disable-with-password'
-                        }
-                      "
-                    >
-                      لا أملك وصولاً إلى تطبيق المصادقة
-                    </Button>
-                  </DialogFooter>
-                </template>
-
-                <template v-else-if="mfaDialogStage === 'disable-with-password'">
-                  <DialogHeader>
-                    <DialogTitle>تعطيل المصادقة بكلمة المرور</DialogTitle>
-                    <DialogDescription
-                      >أدخل كلمة المرور الخاصة بحسابك لتعطيل تطبيق المصادقة</DialogDescription
-                    >
-                  </DialogHeader>
-                  <div
-                    v-if="mfaSetupError"
-                    class="border-destructive/40 bg-destructive/10 text-destructive rounded-md border p-3 text-sm"
-                    role="alert"
-                  >
-                    {{ mfaSetupError }}
-                  </div>
-                  <div class="space-y-2 py-2">
-                    <Label for="mfa-disable-pwd">كلمة المرور</Label>
-                    <Input
-                      id="mfa-disable-pwd"
-                      v-model="mfaDisablePassword"
-                      type="password"
-                      :disabled="isMfaActionLoading"
-                      placeholder="أدخل كلمة مرورك"
-                      autofocus
-                      @keydown.enter="confirmMfaDisableWithPassword"
-                    />
-                  </div>
-                  <DialogFooter class="gap-2">
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      :disabled="isMfaActionLoading || !mfaDisablePassword"
-                      @click="confirmMfaDisableWithPassword"
-                    >
-                      <X class="ms-1 h-4 w-4" />تعطيل
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      :disabled="isMfaActionLoading"
-                      @click="
-                        () => {
-                          mfaSetupError = null
-                          mfaDialogStage = 'disable-verify'
-                        }
-                      "
-                      >رجوع</Button
-                    >
                   </DialogFooter>
                 </template>
 

@@ -58,7 +58,7 @@ describe('useProfile — updateProfile()', () => {
     mockAuth.user = null
   })
 
-  it('sends PUT /api/profile with name, email, phone', async () => {
+  it('sends PUT /api/profile with name and phone only', async () => {
     mockFetch.mockResolvedValueOnce({
       success: true,
       data: { ...SAMPLE_PROFILE, name: 'علي سالم' },
@@ -66,7 +66,6 @@ describe('useProfile — updateProfile()', () => {
     const { updateProfile } = useProfile()
     const result = await updateProfile({
       name: 'علي سالم',
-      email: 'ali@cby.gov.ye',
       phone: '+967111000111',
     })
     expect(result).toBe(true)
@@ -74,7 +73,7 @@ describe('useProfile — updateProfile()', () => {
       '/api/profile',
       expect.objectContaining({
         method: 'PUT',
-        body: { name: 'علي سالم', email: 'ali@cby.gov.ye', phone: '+967111000111' },
+        body: { name: 'علي سالم', phone: '+967111000111' },
       }),
     )
   })
@@ -84,7 +83,6 @@ describe('useProfile — updateProfile()', () => {
     const { updateProfile } = useProfile()
     const result = await updateProfile({
       name: ' علي سالم ',
-      email: ' ali@cby.gov.ye ',
       phone: ' +967 77 000 111 ',
     })
     expect(result).toBe(true)
@@ -92,7 +90,7 @@ describe('useProfile — updateProfile()', () => {
       '/api/profile',
       expect.objectContaining({
         method: 'PUT',
-        body: { name: 'علي سالم', email: 'ali@cby.gov.ye', phone: '+96777000111' },
+        body: { name: 'علي سالم', phone: '+96777000111' },
       }),
     )
   })
@@ -100,7 +98,7 @@ describe('useProfile — updateProfile()', () => {
   it('normalizes blank phone to null before saving', async () => {
     mockFetch.mockResolvedValueOnce({ success: true, data: { ...SAMPLE_PROFILE, phone: null } })
     const { updateProfile } = useProfile()
-    const result = await updateProfile({ name: 'علي سالم', email: 'ali@cby.gov.ye', phone: '   ' })
+    const result = await updateProfile({ name: 'علي سالم', phone: '   ' })
     expect(result).toBe(true)
     expect(mockFetch).toHaveBeenCalledWith(
       '/api/profile',
@@ -117,7 +115,6 @@ describe('useProfile — updateProfile()', () => {
     const { updateProfile } = useProfile()
     const result = await updateProfile({
       name: 'علي سالم',
-      email: SAMPLE_PROFILE.email,
       avatar_variant: 'ring',
     })
     expect(result).toBe(true)
@@ -127,7 +124,7 @@ describe('useProfile — updateProfile()', () => {
   it('returns false and sets error on API failure', async () => {
     mockFetch.mockRejectedValueOnce({ data: { message: 'Validation failed' } })
     const { error, updateProfile } = useProfile()
-    const result = await updateProfile({ name: 'Test', email: 'test@test.com' })
+    const result = await updateProfile({ name: 'Test' })
     expect(result).toBe(false)
     expect(error.value).toBe('Validation failed')
   })
