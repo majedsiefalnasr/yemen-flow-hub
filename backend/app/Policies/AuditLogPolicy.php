@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\AuditLog;
 use App\Models\User;
+use App\Services\Authorization\DataScope;
 use App\Services\Authorization\PermissionService;
 
 class AuditLogPolicy
@@ -12,11 +13,19 @@ class AuditLogPolicy
 
     public function viewAny(User $user): bool
     {
-        return $this->permissionService->userHasCapability($user, 'audit', 'VIEW');
+        if (! $this->permissionService->userHasCapability($user, 'audit', 'VIEW')) {
+            return false;
+        }
+
+        if ($user->isSystemAdmin()) {
+            return true;
+        }
+
+        return DataScope::forUser($user)->systemWide;
     }
 
     public function view(User $user, AuditLog $auditLog): bool
     {
-        return $this->permissionService->userHasCapability($user, 'audit', 'VIEW');
+        return $this->viewAny($user);
     }
 }

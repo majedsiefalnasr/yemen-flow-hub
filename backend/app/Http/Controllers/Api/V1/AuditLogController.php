@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\DTOs\Authorization\DataScopeContext;
 use App\Enums\AuditAction;
 use App\Http\Controllers\Api\Controller;
 use App\Http\Resources\V1\AuditLogResource;
 use App\Models\AuditLog;
 use App\Services\Audit\AuditService;
+use App\Services\Authorization\DataScope;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -19,9 +21,17 @@ class AuditLogController extends Controller
     {
         $this->authorize('viewAny', AuditLog::class);
 
+        $scope = DataScope::forUser($request->user());
+        if ($request->user()->isSystemAdmin()) {
+            $scope = new DataScopeContext(systemWide: true);
+        }
+
         $query = AuditLog::query()
-            ->with(['user', 'actorRole'])
-            ->when($request->filled('user'), fn ($q) => $q->where('user_id', $request->integer('user')))
+            ->with(['user', 'actorRole']);
+
+        DataScope::applyTo($query, $scope);
+
+        $query->when($request->filled('user'), fn ($q) => $q->where('user_id', $request->integer('user')))
             ->when($request->filled('role'), fn ($q) => $q->where('actor_role_id', $request->integer('role')))
             ->when($request->filled('event'), fn ($q) => $q->where('action', $request->string('event')))
             ->when(! $request->filled('event'), fn ($q) => $q->whereNotIn('action', [AuditAction::LOGIN->value, AuditAction::LOGOUT->value]))
@@ -50,6 +60,18 @@ class AuditLogController extends Controller
     {
         $this->authorize('view', $auditLog);
 
+        $scope = DataScope::forUser($request->user());
+        if ($request->user()->isSystemAdmin()) {
+            $scope = new DataScopeContext(systemWide: true);
+        }
+
+        // Ensure the specific log is within scope
+        if (! $scope->systemWide) {
+            // Audit logs don't have bank_id yet, so for now non-systemWide users see nothing.
+            // This matches the policy-level restriction.
+            abort(403);
+        }
+
         $auditLog->load(['user', 'actorRole', 'engineRequest']);
 
         return response()->json([
@@ -61,9 +83,17 @@ class AuditLogController extends Controller
     {
         $this->authorize('viewAny', AuditLog::class);
 
+        $scope = DataScope::forUser($request->user());
+        if ($request->user()->isSystemAdmin()) {
+            $scope = new DataScopeContext(systemWide: true);
+        }
+
         $query = AuditLog::query()
-            ->with(['user', 'actorRole'])
-            ->when($request->filled('user'), fn ($q) => $q->where('user_id', $request->integer('user')))
+            ->with(['user', 'actorRole']);
+
+        DataScope::applyTo($query, $scope);
+
+        $query->when($request->filled('user'), fn ($q) => $q->where('user_id', $request->integer('user')))
             ->when($request->filled('role'), fn ($q) => $q->where('actor_role_id', $request->integer('role')))
             ->when($request->filled('event'), fn ($q) => $q->where('action', $request->string('event')))
             ->when($request->filled('entity'), fn ($q) => $q->where('subject_type', 'like', '%'.class_basename($request->string('entity')).'%'))
