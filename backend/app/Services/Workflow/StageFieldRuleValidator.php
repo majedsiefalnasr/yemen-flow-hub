@@ -24,7 +24,8 @@ use Illuminate\Support\Collection;
  *
  * Enforcement:
  *  - required (only when $enforceRequired): a visible+required field must have a
- *    non-empty value.
+ *    non-empty value; required FILE fields additionally need ≥1 non-deleted
+ *    document linked to the field on the same request (D10-N2 / F-7).
  *  - hidden: a non-visible field must NOT be present in the submitted data.
  *  - read-only: a non-editable field's submitted value must equal the previously
  *    stored value (no silent edits).
@@ -117,6 +118,20 @@ class StageFieldRuleValidator
 
             if ($error = $this->checkConstraints($field, $value, $actor, $request, $previous)) {
                 $errors[$field->key] = $error;
+
+                continue;
+            }
+
+            $type = $field->type instanceof FieldType ? $field->type : null;
+
+            if (
+                $enforceRequired
+                && $isRequired
+                && $type === FieldType::FILE
+                && $request !== null
+                && ! $this->hasLinkedFileEvidence($field, $request)
+            ) {
+                $errors[$field->key] = 'An uploaded document is required for this field.';
             }
         }
 
@@ -182,6 +197,30 @@ class StageFieldRuleValidator
         }
 
         return null;
+    }
+
+    /**
+     * F-7: at stage exit, required FILE fields need server-side evidence — at least
+     * one non-deleted document on the same request, linked via field_id, matching
+     * mime/size constraints. Client metadata or unlinked uploads do not count.
+     */
+    private function hasLinkedFileEvidence(FieldDefinition $field, EngineRequest $request): bool
+    {
+        $documents = EngineRequestDocument::query()
+            ->where('request_id', $request->id)
+            ->where('field_id', $field->id)
+            ->get();
+
+        foreach ($documents as $document) {
+            if (
+                $this->mimeAllowedForField((string) $document->mime, $field)
+                && $this->sizeAllowedForField((int) $document->size, $field)
+            ) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function validateFileReferences(
