@@ -2,6 +2,7 @@
 
 namespace App\Services\Notifications;
 
+use App\Enums\OrganizationClassification;
 use App\Jobs\DispatchNotification;
 use App\Models\User;
 use App\Models\WorkflowStage;
@@ -32,7 +33,7 @@ class EngineNotificationDispatcher
             entityType: 'engine_request',
             entityId: $requestId,
             actionUrl: $this->engineRequestActionUrl($requestId),
-            recipientUserIds: $userIds,
+            recipientUserIds: $this->scopeRecipientsForRequest($requestId, $userIds),
         );
     }
 
@@ -58,7 +59,7 @@ class EngineNotificationDispatcher
             entityType: 'engine_request',
             entityId: $requestId,
             actionUrl: $this->engineRequestActionUrl($requestId),
-            recipientUserIds: $this->resolveAuditViewers(),
+            recipientUserIds: $this->scopeRecipientsForRequest($requestId, $this->resolveAuditViewers()),
         );
     }
 
@@ -84,7 +85,7 @@ class EngineNotificationDispatcher
             entityType: 'engine_request',
             entityId: $requestId,
             actionUrl: $this->engineRequestActionUrl($requestId),
-            recipientUserIds: $this->resolveAuditViewers(),
+            recipientUserIds: $this->scopeRecipientsForRequest($requestId, $this->resolveAuditViewers()),
         );
     }
 
@@ -148,12 +149,49 @@ class EngineNotificationDispatcher
     }
 
     /**
+     * Scope the recipient list based on the request's bank and the user's organization
+     * classification (WP-7 S-6).
+     *
+     * - NATIONAL_COMMITTEE: platform-wide oversight (receives all).
+     * - BANKING_SECTOR: own-org only (receives only if user.bank_id matches request.bank_id).
+     *
+     * @param  int[]  $recipientUserIds
+     * @return int[]
+     */
+    private function scopeRecipientsForRequest(int $requestId, array $recipientUserIds): array
+    {
+        if (empty($recipientUserIds)) {
+            return [];
+        }
+
+        $requestBankId = DB::table('engine_requests')
+            ->where('id', $requestId)
+            ->value('bank_id');
+
+        return User::query()
+            ->whereIn('users.id', $recipientUserIds)
+            ->join('organizations', 'organizations.id', '=', 'users.organization_id')
+            ->where(function ($q) use ($requestBankId) {
+                // NC classification sees everything
+                $q->where('organizations.classification', OrganizationClassification::NATIONAL_COMMITTEE->value)
+                    // BANKING_SECTOR classification sees only their own bank's requests
+                    ->orWhere(function ($sub) use ($requestBankId) {
+                        $sub->where('organizations.classification', OrganizationClassification::BANKING_SECTOR->value)
+                            ->whereNotNull('users.bank_id')
+                            ->where('users.bank_id', $requestBankId);
+                    });
+            })
+            ->pluck('users.id')
+            ->toArray();
+    }
+
+    /**
      * Resolve active users in any role that holds VIEW on the `audit` screen — the
      * oversight audience for compliance and SLA signals (data-driven, not role codes).
      *
      * @return int[]
      */
-    private function resolveAuditViewers(): array
+    protected function resolveAuditViewers(): array
     {
         $roleIds = DB::table('screen_permissions')
             ->join('screens', 'screens.id', '=', 'screen_permissions.screen_id')
@@ -173,7 +211,7 @@ class EngineNotificationDispatcher
             ->toArray();
     }
 
-    private function dispatchAfterCommit(
+    protected function dispatchAfterCommit(
         string $type,
         string $severity,
         string $title,
