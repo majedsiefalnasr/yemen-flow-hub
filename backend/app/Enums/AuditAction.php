@@ -16,6 +16,8 @@ enum AuditAction: string
     case DOCUMENT_UPLOADED = 'DOCUMENT_UPLOADED';
     case DOCUMENT_DOWNLOADED = 'DOCUMENT_DOWNLOADED';
     case DOCUMENT_DELETED = 'DOCUMENT_DELETED';
+    case DOCUMENT_SCAN_BLOCKED = 'DOCUMENT_SCAN_BLOCKED';
+    case DOCUMENT_CHECKSUM_MISMATCH = 'DOCUMENT_CHECKSUM_MISMATCH';
     case SWIFT_UPLOADED = 'SWIFT_UPLOADED';
     case CUSTOMS_ISSUED = 'CUSTOMS_ISSUED';
     case FX_CONFIRMATION_UPLOADED = 'FX_CONFIRMATION_UPLOADED';
@@ -70,6 +72,8 @@ enum AuditAction: string
             self::DOCUMENT_UPLOADED => 'Document Uploaded / رفع مستند',
             self::DOCUMENT_DOWNLOADED => 'Document Downloaded / تنزيل مستند',
             self::DOCUMENT_DELETED => 'Document Deleted / حذف مستند',
+            self::DOCUMENT_SCAN_BLOCKED => 'Document Scan Blocked / حظر تنزيل مستند بسبب الفحص',
+            self::DOCUMENT_CHECKSUM_MISMATCH => 'Document Checksum Mismatch / عدم تطابق تجزئة المستند',
             self::SWIFT_UPLOADED => 'SWIFT Uploaded / رفع سويفت',
             self::CUSTOMS_ISSUED => 'Customs Issued / إصدار الجمارك',
             self::FX_CONFIRMATION_UPLOADED => 'FX Confirmation Uploaded / رفع وثيقة المصارفة الخارجية',

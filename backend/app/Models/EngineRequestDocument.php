@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\DocumentScanStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -22,6 +23,7 @@ class EngineRequestDocument extends Model
         'mime',
         'size',
         'checksum',
+        'scan_status',
         'version',
     ];
 
@@ -30,6 +32,7 @@ class EngineRequestDocument extends Model
         return [
             'size' => 'integer',
             'version' => 'integer',
+            'scan_status' => DocumentScanStatus::class,
         ];
     }
 

@@ -2,17 +2,25 @@
 
 namespace Tests\Feature\Engine;
 
+use App\Enums\DocumentScanStatus;
 use App\Enums\StageAccessLevel;
 use App\Enums\UserRole;
 use App\Models\Bank;
 use App\Models\EngineRequest;
+use App\Models\EngineRequestDocument;
+use App\Models\Organization;
+use App\Models\Role;
 use App\Models\StagePermission;
+use App\Models\Team;
 use App\Models\User;
 use App\Models\WorkflowDefinition;
 use App\Models\WorkflowStage;
 use App\Models\WorkflowVersion;
+use Database\Seeders\GovernanceSeeder;
+use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -36,9 +44,14 @@ class EngineDocumentTest extends TestCase
     {
         parent::setUp();
         Storage::fake('private');
+        $this->seed([GovernanceSeeder::class, ScreenPermissionSeeder::class]);
 
-        $this->bankA = Bank::create(['name' => 'Bank A', 'code' => 'BKA', 'is_active' => true]);
-        $this->bankB = Bank::create(['name' => 'Bank B', 'code' => 'BKB', 'is_active' => true]);
+        $bankOrg = Organization::where('code', 'commercial_banks')->firstOrFail();
+        $entryRole = Role::where('code', 'intake')->firstOrFail();
+        $entryTeam = Team::where('code', 'entry')->firstOrFail();
+
+        $this->bankA = Bank::create(['name' => 'Bank A', 'code' => 'BKA', 'is_active' => true, 'organization_id' => $bankOrg->id]);
+        $this->bankB = Bank::create(['name' => 'Bank B', 'code' => 'BKB', 'is_active' => true, 'organization_id' => $bankOrg->id]);
 
         $this->owner = User::create([
             'name' => 'Owner',
@@ -46,8 +59,11 @@ class EngineDocumentTest extends TestCase
             'password' => bcrypt('pass'),
             'role' => UserRole::DATA_ENTRY,
             'bank_id' => $this->bankA->id,
+            'organization_id' => $bankOrg->id,
             'is_active' => true,
         ]);
+        $this->owner->teams()->attach($entryTeam);
+        $this->owner->roles()->attach($entryRole);
 
         $this->outsider = User::create([
             'name' => 'Outsider',
@@ -55,8 +71,11 @@ class EngineDocumentTest extends TestCase
             'password' => bcrypt('pass'),
             'role' => UserRole::DATA_ENTRY,
             'bank_id' => $this->bankB->id,
+            'organization_id' => $bankOrg->id,
             'is_active' => true,
         ]);
+        $this->outsider->teams()->attach($entryTeam);
+        $this->outsider->roles()->attach($entryRole);
 
         $def = WorkflowDefinition::create(['code' => 'DOC_WF', 'name' => 'Doc WF', 'is_active' => true]);
         $this->version = WorkflowVersion::create([
@@ -79,7 +98,8 @@ class EngineDocumentTest extends TestCase
 
         StagePermission::create([
             'stage_id' => $this->stage->id,
-            'user_id' => $this->owner->id,
+            'organization_id' => $bankOrg->id,
+            'role_id' => $entryRole->id,
             'access_level' => StageAccessLevel::EXECUTE,
             'display_label' => 'Owner Exec',
             'version' => 1,
@@ -187,5 +207,81 @@ class EngineDocumentTest extends TestCase
         $this->actingAs($this->owner)
             ->get("/api/v1/engine-requests/{$requestB->id}/documents/{$docId}/download")
             ->assertNotFound();
+    }
+
+    public function test_upload_sets_scan_status_clean_when_enforcement_deferred(): void
+    {
+        Config::set('workflow.document_scan_enforced', false);
+        $request = $this->makeRequest();
+        $docId = $this->uploadDoc($request, 'scan_deferred.pdf');
+
+        $this->assertDatabaseHas('engine_request_documents', [
+            'id' => $docId,
+            'scan_status' => DocumentScanStatus::Clean->value,
+        ]);
+    }
+
+    public function test_upload_sets_scan_status_pending_when_enforcement_enabled(): void
+    {
+        Config::set('workflow.document_scan_enforced', true);
+        $request = $this->makeRequest();
+        $docId = $this->uploadDoc($request, 'scan_pending.pdf');
+
+        $this->assertDatabaseHas('engine_request_documents', [
+            'id' => $docId,
+            'scan_status' => DocumentScanStatus::Pending->value,
+        ]);
+    }
+
+    public function test_download_blocked_when_scan_pending_and_enforcement_enabled(): void
+    {
+        Config::set('workflow.document_scan_enforced', true);
+        $request = $this->makeRequest();
+        $docId = $this->uploadDoc($request, 'pending_scan.pdf');
+
+        $this->actingAs($this->owner)
+            ->get("/api/v1/engine-requests/{$request->id}/documents/{$docId}/download")
+            ->assertForbidden()
+            ->assertJsonPath('error_code', 'DOCUMENT_SCAN_BLOCKED')
+            ->assertJsonPath('scan_status', DocumentScanStatus::Pending->value);
+
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'DOCUMENT_SCAN_BLOCKED',
+            'workflow_instance_id' => $request->id,
+        ]);
+    }
+
+    public function test_download_allowed_when_scan_clean_and_enforcement_enabled(): void
+    {
+        Config::set('workflow.document_scan_enforced', true);
+        $request = $this->makeRequest();
+        $docId = $this->uploadDoc($request, 'clean_scan.pdf');
+
+        EngineRequestDocument::query()->whereKey($docId)->update([
+            'scan_status' => DocumentScanStatus::Clean->value,
+        ]);
+
+        $this->actingAs($this->owner)
+            ->get("/api/v1/engine-requests/{$request->id}/documents/{$docId}/download")
+            ->assertOk();
+    }
+
+    public function test_download_blocked_on_checksum_mismatch(): void
+    {
+        $request = $this->makeRequest();
+        $docId = $this->uploadDoc($request, 'integrity.pdf');
+
+        $document = EngineRequestDocument::query()->findOrFail($docId);
+        Storage::disk('private')->put($document->path, 'tampered-bytes');
+
+        $this->actingAs($this->owner)
+            ->get("/api/v1/engine-requests/{$request->id}/documents/{$docId}/download")
+            ->assertForbidden()
+            ->assertJsonPath('error_code', 'DOCUMENT_CHECKSUM_MISMATCH');
+
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'DOCUMENT_CHECKSUM_MISMATCH',
+            'workflow_instance_id' => $request->id,
+        ]);
     }
 }

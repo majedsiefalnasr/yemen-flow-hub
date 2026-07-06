@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\Controller;
 use App\Models\EngineRequest;
 use App\Models\EngineRequestDocument;
 use App\Services\Audit\AuditService;
+use App\Services\Documents\EngineRequestDocumentIntegrityService;
 use App\Services\Workflow\EngineClaimService;
 use App\Services\Workflow\StageFieldOutputFilter;
 use Illuminate\Http\JsonResponse;
@@ -19,6 +20,7 @@ class EngineRequestDocumentController extends Controller
     public function __construct(
         private AuditService $auditService,
         private EngineClaimService $claimService,
+        private EngineRequestDocumentIntegrityService $documentIntegrity,
         private StageFieldOutputFilter $outputFilter,
     ) {}
 
@@ -51,6 +53,7 @@ class EngineRequestDocumentController extends Controller
             'mime' => $file->getMimeType(),
             'size' => $file->getSize(),
             'checksum' => hash_file('sha256', $file->getRealPath()),
+            'scan_status' => $this->documentIntegrity->scanStatusForNewUpload(),
         ]);
 
         $this->auditService->log(
@@ -105,6 +108,12 @@ class EngineRequestDocumentController extends Controller
         if (! Storage::disk('private')->exists($document->path)) {
             abort(404);
         }
+
+        $this->documentIntegrity->assertDownloadAllowed(
+            $document,
+            $request->user(),
+            $engineRequest->id,
+        );
 
         $this->auditService->log(
             AuditAction::DOCUMENT_DOWNLOADED,
