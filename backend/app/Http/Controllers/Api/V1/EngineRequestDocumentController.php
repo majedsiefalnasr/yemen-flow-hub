@@ -8,6 +8,7 @@ use App\Models\EngineRequest;
 use App\Models\EngineRequestDocument;
 use App\Services\Audit\AuditService;
 use App\Services\Workflow\EngineClaimService;
+use App\Services\Workflow\StageFieldOutputFilter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -18,6 +19,7 @@ class EngineRequestDocumentController extends Controller
     public function __construct(
         private AuditService $auditService,
         private EngineClaimService $claimService,
+        private StageFieldOutputFilter $outputFilter,
     ) {}
 
     public function uploadDocument(Request $request, EngineRequest $engineRequest): JsonResponse
@@ -66,15 +68,24 @@ class EngineRequestDocumentController extends Controller
         ], 201);
     }
 
-    public function listDocuments(EngineRequest $engineRequest): JsonResponse
+    public function listDocuments(Request $request, EngineRequest $engineRequest): JsonResponse
     {
         $this->authorize('view', $engineRequest);
 
-        $docs = $engineRequest->documents()->with(['uploader', 'stage', 'field'])->get();
+        $engineRequest->loadMissing('currentStage');
+
+        $docs = $engineRequest->documents()
+            ->with(['uploader', 'stage', 'field'])
+            ->get()
+            ->filter(fn (EngineRequestDocument $doc) => $this->outputFilter->canViewerAccessFieldLinkedDocument(
+                $engineRequest,
+                $doc,
+                $request->user(),
+            ));
 
         return response()->json([
             'success' => true,
-            'data' => $docs->map(fn ($d) => $this->documentResource($d)),
+            'data' => $docs->map(fn ($d) => $this->documentResource($d))->values(),
         ]);
     }
 
@@ -83,6 +94,11 @@ class EngineRequestDocumentController extends Controller
         $this->authorize('view', $engineRequest);
 
         if ((int) $document->request_id !== (int) $engineRequest->id) {
+            abort(404);
+        }
+
+        $engineRequest->loadMissing('currentStage');
+        if (! $this->outputFilter->canViewerAccessFieldLinkedDocument($engineRequest, $document, $request->user())) {
             abort(404);
         }
 

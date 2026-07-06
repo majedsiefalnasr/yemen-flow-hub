@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Enums\StageAccessLevel;
+use App\Services\Workflow\StageFieldOutputFilter;
 use App\Services\Workflow\StagePermissionResolver;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -60,7 +61,7 @@ class EngineRequestResource extends JsonResource
                 'id' => $this->merchant->id,
                 'name' => $this->merchant->name,
             ]),
-            'data' => $this->data,
+            'data' => app(StageFieldOutputFilter::class)->filterRequestData($this->resource, $request->user()),
             'amount' => $this->amount,
             'currency' => $this->currency,
             'invoice_number' => $this->invoice_number,

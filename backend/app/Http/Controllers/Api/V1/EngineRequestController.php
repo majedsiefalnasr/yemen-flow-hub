@@ -7,7 +7,6 @@ use App\Http\Controllers\Api\Controller;
 use App\Http\Requests\StoreEngineRequestRequest;
 use App\Http\Resources\EngineRequestResource;
 use App\Models\EngineRequest;
-use App\Models\FieldDefinition;
 use App\Models\FieldGroup;
 use App\Models\User;
 use App\Models\WorkflowVersion;
@@ -17,6 +16,7 @@ use App\Services\Workflow\DuplicateInvoiceChecker;
 use App\Services\Workflow\DynamicFieldOptionsResolver;
 use App\Services\Workflow\EngineRequestService;
 use App\Services\Workflow\EngineTransitionService;
+use App\Services\Workflow\StageFieldOutputFilter;
 use App\Services\Workflow\StagePermissionResolver;
 use App\Services\Workflow\WorkflowGraphService;
 use App\Support\EngineRequestListQuery;
@@ -35,6 +35,7 @@ class EngineRequestController extends Controller
         private WorkflowGraphService $graphService,
         private EngineNotificationDispatcher $notificationDispatcher,
         private EngineRequestListQuery $listQuery,
+        private StageFieldOutputFilter $outputFilter,
     ) {}
 
     // ── 18.5.1: Create ──────────────────────────────────────────────────
@@ -137,11 +138,7 @@ class EngineRequestController extends Controller
         $this->authorize('view', $engineRequest);
 
         $stage = $engineRequest->currentStage;
-        $fields = FieldDefinition::query()
-            ->where('workflow_version_id', $engineRequest->workflow_version_id)
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->get();
+        $fields = $this->outputFilter->visibleFieldsForStage($engineRequest->workflow_version_id, $stage);
         $rulesByFieldId = $stage->stageFieldRules()->get()->keyBy('field_id');
         $groups = FieldGroup::query()
             ->where('workflow_version_id', $engineRequest->workflow_version_id)
