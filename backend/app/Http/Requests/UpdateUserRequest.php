@@ -4,6 +4,8 @@ namespace App\Http\Requests;
 
 use App\Enums\AvatarVariant;
 use App\Enums\UserRole;
+use App\Support\PasswordPolicy;
+use App\Support\RoleCodes;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Enum;
 
@@ -13,11 +15,11 @@ class UpdateUserRequest extends ApiFormRequest
     {
         $actor = $this->user();
         $target = $this->route('user');
-        if (! $actor?->hasRoleCode('bank_admin')) {
+        if (! $actor?->hasRoleCode(RoleCodes::BANK_ADMIN)) {
             return true;
         }
 
-        if (! $target || $target->bank_id !== $actor->bank_id || ! $target->hasAnyRoleCode(['intake', 'internal_reviewer'])) {
+        if (! $target || $target->bank_id !== $actor->bank_id || ! $target->hasAnyRoleCode(RoleCodes::BANK_ADMIN_MANAGED)) {
             return false;
         }
 
@@ -38,7 +40,7 @@ class UpdateUserRequest extends ApiFormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($userId)],
-            'password' => ['nullable', 'string', 'min:8', 'regex:/[A-Z]/', 'regex:/[a-z]/', 'regex:/[0-9]/'],
+            'password' => ['nullable', ...PasswordPolicy::rules()],
             'role' => ['required', new Enum(UserRole::class)],
             'bank_id' => ['nullable', 'integer', 'exists:banks,id'],
             'is_active' => ['required', 'boolean'],
@@ -69,7 +71,7 @@ class UpdateUserRequest extends ApiFormRequest
                 $validator->errors()->add('bank_id', 'bank_id must be null for CBY roles.');
             }
 
-            if ($this->user()?->hasRoleCode('bank_admin')) {
+            if ($this->user()?->hasRoleCode(RoleCodes::BANK_ADMIN)) {
                 if (! $role->isBankAdminManageable()) {
                     $validator->errors()->add('role', 'BANK_ADMIN can only manage DATA_ENTRY and BANK_REVIEWER users.');
                 }

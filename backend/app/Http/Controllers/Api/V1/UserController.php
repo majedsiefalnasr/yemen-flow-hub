@@ -16,6 +16,8 @@ use App\Models\User;
 use App\Rules\RoleBelongsToOrganization;
 use App\Services\Audit\AuditService;
 use App\Services\Auth\SessionInvalidationService;
+use App\Support\PasswordPolicy;
+use App\Support\RoleCodes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -34,7 +36,7 @@ class UserController extends Controller
         $this->authorize('viewAny', User::class);
         $actor = $request->user();
         $page = User::query()->with(['organization', 'teams.organization', 'roles.organization', 'bank.organization'])
-            ->when($actor->hasRoleCode('bank_admin'), fn ($q) => $q->where('bank_id', $actor->bank_id))
+            ->when($actor->hasRoleCode(RoleCodes::BANK_ADMIN), fn ($q) => $q->where('bank_id', $actor->bank_id))
             ->when($request->filled('organization_id'), fn ($q) => $q->where('organization_id', $request->integer('organization_id')))
             ->when($request->filled('team_id'), fn ($q) => $q->whereHas('teams', fn ($t) => $t->whereKey($request->integer('team_id'))))
             ->when($request->filled('role_id'), fn ($q) => $q->whereHas('roles', fn ($r) => $r->whereKey($request->integer('role_id'))))
@@ -150,11 +152,8 @@ class UserController extends Controller
     {
         $this->authorize('resetPassword', $user);
         $data = $request->validate([
-            'password' => ['required', 'string', 'min:8', 'regex:/[A-Z]/', 'regex:/[a-z]/', 'regex:/[0-9]/', 'confirmed'],
-        ], [
-            'password.min' => 'Password must be at least 8 characters long.',
-            'password.regex' => 'Password must contain uppercase letters, lowercase letters, and numbers.',
-        ]);
+            'password' => ['required', ...PasswordPolicy::rules(), 'confirmed'],
+        ], PasswordPolicy::messages());
         $user->forceFill(['password' => Hash::make($data['password']), 'must_change_password' => true])->save();
         $this->sessionInvalidationService->invalidate($user);
         $this->auditService->log(AuditAction::PASSWORD_RESET, $request->user(), $user);
@@ -189,14 +188,11 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', Rule::unique('users', 'email')->ignore($user)],
             'phone' => ['nullable', 'string', 'max:50'],
-            'password' => [$user ? 'nullable' : 'required', 'string', 'min:8', 'regex:/[A-Z]/', 'regex:/[a-z]/', 'regex:/[0-9]/'],
+            'password' => [$user ? 'nullable' : 'required', ...PasswordPolicy::rules()],
             'is_active' => ['sometimes', 'boolean'],
             'mfa_enabled' => ['sometimes', 'boolean'],
             'version' => [$user ? 'required' : 'sometimes', 'integer'],
-        ], [
-            'password.min' => 'Password must be at least 8 characters long.',
-            'password.regex' => 'Password must contain uppercase letters, lowercase letters, and numbers.',
-        ]);
+        ], PasswordPolicy::messages());
 
         $organization = Organization::query()->findOrFail($organizationId);
         if ($organization->code === 'commercial_banks') {
@@ -213,17 +209,17 @@ class UserController extends Controller
     private function legacyRoleFor(string $roleCode): string
     {
         return match ($roleCode) {
-            'intake' => UserRole::DATA_ENTRY->value,
-            'internal_reviewer' => UserRole::BANK_REVIEWER->value,
-            'bank_admin' => UserRole::BANK_ADMIN->value,
-            'fx_swift' => UserRole::SWIFT_OFFICER->value,
-            'support' => UserRole::SUPPORT_COMMITTEE->value,
-            'system_admin' => UserRole::CBY_ADMIN->value,
-            'committee_manager' => UserRole::COMMITTEE_DIRECTOR->value,
-            // fx_confirm has no legacy equivalent; map to the least-privileged
+            RoleCodes::INTAKE => UserRole::DATA_ENTRY->value,
+            RoleCodes::INTERNAL_REVIEWER => UserRole::BANK_REVIEWER->value,
+            RoleCodes::BANK_ADMIN => UserRole::BANK_ADMIN->value,
+            RoleCodes::FX_SWIFT => UserRole::SWIFT_OFFICER->value,
+            RoleCodes::SUPPORT => UserRole::SUPPORT_COMMITTEE->value,
+            RoleCodes::SYSTEM_ADMIN => UserRole::CBY_ADMIN->value,
+            RoleCodes::COMMITTEE_MANAGER => UserRole::COMMITTEE_DIRECTOR->value,
+            // FX_CONFIRM has no legacy equivalent; map to the least-privileged
             // committee role (voter, not director) during the transition rather
             // than granting Director legacy semantics.
-            'fx_confirm' => UserRole::EXECUTIVE_MEMBER->value,
+            RoleCodes::FX_CONFIRM => UserRole::EXECUTIVE_MEMBER->value,
             // Fail closed: an unmapped role code must NOT silently inherit the
             // CBY_ADMIN super-role. Reject the assignment instead.
             default => throw new UnmappedRoleException($roleCode),

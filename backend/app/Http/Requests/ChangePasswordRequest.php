@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Support\PasswordPolicy;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Hash;
 
@@ -28,12 +29,8 @@ class ChangePasswordRequest extends FormRequest
             ],
             'password' => [
                 'required',
-                'string',
-                'min:8',
+                ...PasswordPolicy::rules(),
                 'confirmed',
-                'regex:/[A-Z]/', // At least one uppercase letter
-                'regex:/[a-z]/', // At least one lowercase letter
-                'regex:/[0-9]/', // At least one digit
                 function ($attribute, $value, $fail) {
                     if (Hash::check($value, $this->user()->password)) {
                         $fail('The new password must be different from the current password.');
@@ -46,9 +43,8 @@ class ChangePasswordRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'password.min' => 'Password must be at least 8 characters long.',
+            ...PasswordPolicy::messages(),
             'password.confirmed' => 'The password confirmation does not match.',
-            'password.regex' => 'Password must contain uppercase letters, lowercase letters, and numbers.',
         ];
     }
 }

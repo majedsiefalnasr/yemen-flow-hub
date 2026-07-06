@@ -10,6 +10,8 @@ use App\Models\User;
 use App\Services\Audit\AuditService;
 use App\Services\Auth\SessionInvalidationService;
 use App\Support\ApiResponse;
+use App\Support\PasswordPolicy;
+use App\Support\RoleCodes;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use OpenApi\Attributes as OA;
@@ -37,13 +39,13 @@ class UserController extends Controller
         $users = User::query()
             ->with('bank')
             ->when(
-                $actor->hasRoleCode('bank_admin'),
+                $actor->hasRoleCode(RoleCodes::BANK_ADMIN),
                 fn ($q) => $q->where('bank_id', $actor->bank_id)
-                    ->whereHas('roles', fn ($rq) => $rq->whereIn('code', ['intake', 'internal_reviewer']))
+                    ->whereHas('roles', fn ($rq) => $rq->whereIn('code', RoleCodes::BANK_ADMIN_MANAGED))
             )
             ->when(request()->filled('role'), fn ($q) => $q->where('role', request('role')))
             ->when(
-                request()->filled('bank_id') && ! $actor->hasRoleCode('bank_admin'),
+                request()->filled('bank_id') && ! $actor->hasRoleCode(RoleCodes::BANK_ADMIN),
                 fn ($q) => $q->where('bank_id', request('bank_id'))
             )
             ->when(request()->has('is_active'), fn ($q) => $q->where('is_active', filter_var(request('is_active'), FILTER_VALIDATE_BOOL)))
@@ -184,11 +186,8 @@ class UserController extends Controller
         $this->authorize('resetPassword', $user);
 
         $validated = $request->validate([
-            'password' => ['required', 'string', 'min:8', 'confirmed', 'regex:/[A-Z]/', 'regex:/[a-z]/', 'regex:/[0-9]/'],
-        ], [
-            'password.min' => 'Password must be at least 8 characters long.',
-            'password.regex' => 'Password must contain uppercase letters, lowercase letters, and numbers.',
-        ]);
+            'password' => ['required', ...PasswordPolicy::rules(), 'confirmed'],
+        ], PasswordPolicy::messages());
 
         $user->forceFill([
             'password' => Hash::make($validated['password']),

@@ -14,6 +14,7 @@ use App\Services\Auth\MfaService;
 use App\Services\Auth\PasswordRecoveryService;
 use App\Services\Authorization\PermissionService;
 use App\Support\ApiResponse;
+use App\Support\PasswordPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -303,11 +304,8 @@ class AuthController extends Controller
         $validated = $request->validate([
             'email' => ['required', 'string', 'email'],
             'otp' => ['required', 'string', 'size:6', 'regex:/^[0-9]{6}$/'],
-            'password' => ['required', 'string', 'min:8', 'confirmed', 'regex:/[A-Z]/', 'regex:/[a-z]/', 'regex:/[0-9]/'],
-        ], [
-            'password.min' => 'Password must be at least 8 characters long.',
-            'password.regex' => 'Password must contain uppercase letters, lowercase letters, and numbers.',
-        ]);
+            'password' => ['required', ...PasswordPolicy::rules(), 'confirmed'],
+        ], PasswordPolicy::messages());
 
         if (! $this->passwordRecoveryService->reset(
             $validated['email'],

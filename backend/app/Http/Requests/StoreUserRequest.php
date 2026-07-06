@@ -4,6 +4,8 @@ namespace App\Http\Requests;
 
 use App\Enums\AvatarVariant;
 use App\Enums\UserRole;
+use App\Support\PasswordPolicy;
+use App\Support\RoleCodes;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Enum;
 
@@ -12,7 +14,7 @@ class StoreUserRequest extends ApiFormRequest
     public function authorize(): bool
     {
         $actor = $this->user();
-        if (! $actor?->hasRoleCode('bank_admin')) {
+        if (! $actor?->hasRoleCode(RoleCodes::BANK_ADMIN)) {
             return true;
         }
 
@@ -31,7 +33,7 @@ class StoreUserRequest extends ApiFormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:8', 'regex:/[A-Z]/', 'regex:/[a-z]/', 'regex:/[0-9]/'],
+            'password' => ['required', ...PasswordPolicy::rules()],
             'role' => ['required', new Enum(UserRole::class)],
             'bank_id' => ['nullable', 'integer', 'exists:banks,id'],
             'is_active' => ['sometimes', 'boolean'],
@@ -62,7 +64,7 @@ class StoreUserRequest extends ApiFormRequest
                 $validator->errors()->add('bank_id', 'bank_id must be null for CBY roles.');
             }
 
-            if ($this->user()?->hasRoleCode('bank_admin')) {
+            if ($this->user()?->hasRoleCode(RoleCodes::BANK_ADMIN)) {
                 if (! $role->isBankAdminManageable()) {
                     $validator->errors()->add('role', 'BANK_ADMIN can only manage DATA_ENTRY and BANK_REVIEWER users.');
                 }

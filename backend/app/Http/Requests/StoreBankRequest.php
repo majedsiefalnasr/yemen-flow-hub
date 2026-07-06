@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\Bank;
+use App\Support\PasswordPolicy;
 use Illuminate\Validation\Rule;
 
 class StoreBankRequest extends ApiFormRequest
@@ -33,15 +34,14 @@ class StoreBankRequest extends ApiFormRequest
             'is_active' => ['sometimes', 'boolean'],
             'admin_name' => ['required', 'string', 'max:255'],
             'admin_email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
-            'admin_password' => ['required', 'string', 'min:8', 'regex:/[A-Z]/', 'regex:/[a-z]/', 'regex:/[0-9]/'],
+            'admin_password' => ['required', ...PasswordPolicy::rules()],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'admin_password.min' => 'Password must be at least 8 characters long.',
-            'admin_password.regex' => 'Password must contain uppercase letters, lowercase letters, and numbers.',
+            ...PasswordPolicy::messages('admin_password'),
         ];
     }
 }

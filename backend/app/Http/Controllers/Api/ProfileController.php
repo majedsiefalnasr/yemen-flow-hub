@@ -13,6 +13,7 @@ use App\Services\Auth\MfaService;
 use App\Services\Settings\AdminSettingsService;
 use App\Support\ApiResponse;
 use App\Support\EngineRequestReadModel;
+use App\Support\PasswordPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -386,11 +387,8 @@ class ProfileController extends Controller
     public function changeTemporaryPassword(Request $request)
     {
         $validated = $request->validate([
-            'password' => ['required', 'string', 'min:8', 'confirmed', 'regex:/[A-Z]/', 'regex:/[a-z]/', 'regex:/[0-9]/'],
-        ], [
-            'password.min' => 'Password must be at least 8 characters long.',
-            'password.regex' => 'Password must contain uppercase letters, lowercase letters, and numbers.',
-        ]);
+            'password' => ['required', ...PasswordPolicy::rules(), 'confirmed'],
+        ], PasswordPolicy::messages());
 
         /** @var User $user */
         $user = $request->user();

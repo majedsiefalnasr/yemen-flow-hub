@@ -15,6 +15,8 @@ use App\Models\Team;
 use App\Models\User;
 use App\Services\Audit\AuditService;
 use App\Support\ApiResponse;
+use App\Support\PasswordPolicy;
+use App\Support\RoleCodes;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -40,7 +42,7 @@ class BankController extends Controller
         $perPage = max(1, min(request()->integer('per_page', 20), 200));
         $banks = Bank::query()
             ->with('bankAdmin.bank')
-            ->when($actor->hasAnyRoleCode(['intake', 'internal_reviewer', 'bank_admin', 'fx_swift']), fn ($q) => $q->where('id', $actor->bank_id))
+            ->when($actor->hasAnyRoleCode(RoleCodes::BANK_ROLES), fn ($q) => $q->where('id', $actor->bank_id))
             ->when(request()->filled('search'), function ($q) {
                 $s = request('search');
                 $q->where(fn ($x) => $x->where('name_ar', 'like', "%{$s}%")
@@ -103,8 +105,8 @@ class BankController extends Controller
             ]);
 
             $organization = Organization::query()->where('code', 'commercial_banks')->firstOrFail();
-            $team = Team::query()->where('organization_id', $organization->id)->where('code', 'bank_admin')->firstOrFail();
-            $role = Role::query()->where('organization_id', $organization->id)->where('code', 'bank_admin')->firstOrFail();
+            $team = Team::query()->where('organization_id', $organization->id)->where('code', RoleCodes::BANK_ADMIN)->firstOrFail();
+            $role = Role::query()->where('organization_id', $organization->id)->where('code', RoleCodes::BANK_ADMIN)->firstOrFail();
 
             $admin->forceFill([
                 'organization_id' => $organization->id,
@@ -188,20 +190,17 @@ class BankController extends Controller
     {
         $this->authorize('update', $bank);
 
-        if (! $request->user()?->hasRoleCode('system_admin')) {
+        if (! $request->user()?->hasRoleCode(RoleCodes::SYSTEM_ADMIN)) {
             return ApiResponse::forbidden('Only CBY Admin can reset Bank Admin credentials.');
         }
 
         $validated = $request->validate([
-            'password' => ['required', 'string', 'min:8', 'confirmed', 'regex:/[A-Z]/', 'regex:/[a-z]/', 'regex:/[0-9]/'],
-        ], [
-            'password.min' => 'Password must be at least 8 characters long.',
-            'password.regex' => 'Password must contain uppercase letters, lowercase letters, and numbers.',
-        ]);
+            'password' => ['required', ...PasswordPolicy::rules(), 'confirmed'],
+        ], PasswordPolicy::messages());
 
         $admin = User::query()
             ->where('bank_id', $bank->id)
-            ->whereHas('roles', fn ($q) => $q->where('code', 'bank_admin'))
+            ->whereHas('roles', fn ($q) => $q->where('code', RoleCodes::BANK_ADMIN))
             ->orderBy('id')
             ->first();
 
