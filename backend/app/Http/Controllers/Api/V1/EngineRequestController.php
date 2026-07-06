@@ -132,7 +132,7 @@ class EngineRequestController extends Controller
         return response()->json($response);
     }
 
-    public function formSchema(EngineRequest $engineRequest): JsonResponse
+    public function formSchema(Request $request, EngineRequest $engineRequest): JsonResponse
     {
         $this->authorize('view', $engineRequest);
 
@@ -153,9 +153,9 @@ class EngineRequestController extends Controller
 
         $fieldsByGroup = $fields->groupBy('field_group_id');
 
-        $data = $groups->map(function ($group) use ($fieldsByGroup, $rulesByFieldId, $optionsResolver): array {
+        $data = $groups->map(function ($group) use ($fieldsByGroup, $rulesByFieldId, $optionsResolver, $request, $engineRequest): array {
             $groupFields = ($fieldsByGroup->get($group->id) ?? collect())
-                ->map(function ($field) use ($rulesByFieldId, $optionsResolver): array {
+                ->map(function ($field) use ($rulesByFieldId, $optionsResolver, $request, $engineRequest): array {
                     $rule = $rulesByFieldId->get($field->id);
 
                     return [
@@ -179,7 +179,7 @@ class EngineRequestController extends Controller
                         'is_visible' => $rule?->is_visible ?? true,
                         'is_editable' => $rule?->is_editable ?? true,
                         'is_required' => $rule?->is_required ?? (bool) $field->is_required,
-                        'dynamic_options' => $field->dynamic_source !== null ? $optionsResolver->resolve($field) : null,
+                        'dynamic_options' => $field->dynamic_source !== null ? $optionsResolver->resolve($field, $request->user(), $engineRequest) : null,
                     ];
                 })
                 ->values();

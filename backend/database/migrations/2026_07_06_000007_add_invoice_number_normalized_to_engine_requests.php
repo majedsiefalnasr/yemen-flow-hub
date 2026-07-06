@@ -15,11 +15,13 @@ return new class extends Migration
 
         // Backfill: apply trim + uppercase + collapse-spaces normalization to existing rows.
         // REGEXP_REPLACE requires MySQL 8.0+ / MariaDB 10.0+, which is the project minimum.
-        DB::statement(
-            "UPDATE engine_requests
-             SET invoice_number_normalized = TRIM(REGEXP_REPLACE(UPPER(invoice_number), '\\\\s+', ' '))
-             WHERE invoice_number IS NOT NULL AND invoice_number != ''"
-        );
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement(
+                "UPDATE engine_requests
+                 SET invoice_number_normalized = TRIM(REGEXP_REPLACE(UPPER(invoice_number), '\\\\s+', ' '))
+                 WHERE invoice_number IS NOT NULL AND invoice_number != ''"
+            );
+        }
     }
 
     public function down(): void

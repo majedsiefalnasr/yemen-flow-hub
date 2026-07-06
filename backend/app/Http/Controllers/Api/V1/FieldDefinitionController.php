@@ -89,11 +89,11 @@ class FieldDefinitionController extends Controller
     /**
      * Resolve the selectable options for a DYNAMIC_SELECT field (DI-5).
      */
-    public function options(WorkflowVersion $workflowVersion, FieldDefinition $fieldDefinition): JsonResponse
+    public function options(Request $request, WorkflowVersion $workflowVersion, FieldDefinition $fieldDefinition): JsonResponse
     {
         $this->authorize('view', $fieldDefinition);
 
-        return response()->json(['data' => $this->options->resolve($fieldDefinition)]);
+        return response()->json(['data' => $this->options->resolve($fieldDefinition, $request->user())]);
     }
 
     private function error(string $code, string $message, int $status): JsonResponse
