@@ -4,6 +4,7 @@ namespace Tests\Unit\Workflow;
 
 use App\Models\FieldDefinition;
 use App\Models\StageFieldRule;
+use App\Services\Workflow\DynamicFieldOptionsResolver;
 use App\Services\Workflow\StageFieldRuleValidator;
 use Illuminate\Support\Collection;
 use PHPUnit\Framework\TestCase;
@@ -15,7 +16,7 @@ class StageFieldRuleValidatorTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->validator = new StageFieldRuleValidator;
+        $this->validator = new StageFieldRuleValidator(new DynamicFieldOptionsResolver);
     }
 
     private function field(int $id, string $key, bool $baseRequired = false): FieldDefinition
@@ -219,5 +220,40 @@ class StageFieldRuleValidatorTest extends TestCase
         // field not present in data at all — no constraint error
         $ok = $this->validator->validateData($fields, collect([]), [], []);
         $this->assertEmpty($ok);
+    }
+
+    public function test_static_select_rejects_unknown_value(): void
+    {
+        $fields = collect([
+            $this->fieldWith(1, 'coverage', [
+                'type' => 'SELECT',
+                'options' => [
+                    ['value' => 'full', 'label' => 'Full'],
+                    ['value' => 'partial', 'label' => 'Partial'],
+                ],
+            ]),
+        ]);
+        $rules = collect([]);
+
+        $errors = $this->validator->validateData($fields, $rules, ['coverage' => 'invalid'], []);
+        $this->assertArrayHasKey('coverage', $errors);
+
+        $ok = $this->validator->validateData($fields, $rules, ['coverage' => 'full'], []);
+        $this->assertArrayNotHasKey('coverage', $ok);
+    }
+
+    public function test_static_select_accepts_valid_value(): void
+    {
+        $fields = collect([
+            $this->fieldWith(1, 'coverage', [
+                'type' => 'SELECT',
+                'options' => [
+                    ['value' => 'full', 'label' => 'Full'],
+                ],
+            ]),
+        ]);
+
+        $ok = $this->validator->validateData($fields, collect([]), ['coverage' => 'full'], []);
+        $this->assertSame([], $ok);
     }
 }

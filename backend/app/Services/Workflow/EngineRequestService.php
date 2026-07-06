@@ -49,6 +49,7 @@ class EngineRequestService
             $data['data'] ?? [],
             [],
             false,
+            $actor,
         );
         if ($fieldErrors !== []) {
             throw EngineException::stageFieldsInvalid($fieldErrors);

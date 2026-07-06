@@ -3,8 +3,10 @@
 namespace App\Services\Workflow;
 
 use App\Enums\FieldType;
+use App\Models\EngineRequest;
 use App\Models\FieldDefinition;
 use App\Models\StageFieldRule;
+use App\Models\User;
 use App\Models\WorkflowStage;
 use Illuminate\Support\Collection;
 
@@ -29,6 +31,10 @@ use Illuminate\Support\Collection;
  */
 class StageFieldRuleValidator
 {
+    public function __construct(
+        private DynamicFieldOptionsResolver $optionsResolver,
+    ) {}
+
     /**
      * DB-backed entry: load the stage's rules + the version's fields, then validate.
      *
@@ -39,13 +45,15 @@ class StageFieldRuleValidator
         array $data,
         array $previousData = [],
         bool $enforceRequired = false,
+        ?User $actor = null,
+        ?EngineRequest $request = null,
     ): array {
         $fields = FieldDefinition::query()
             ->where('workflow_version_id', $stage->workflow_version_id)
             ->get();
         $rules = $stage->stageFieldRules()->get()->keyBy('field_id');
 
-        return $this->validateData($fields, $rules, $data, $previousData, $enforceRequired);
+        return $this->validateData($fields, $rules, $data, $previousData, $enforceRequired, $actor, $request);
     }
 
     /**
@@ -61,6 +69,8 @@ class StageFieldRuleValidator
         array $data,
         array $previousData = [],
         bool $enforceRequired = false,
+        ?User $actor = null,
+        ?EngineRequest $request = null,
     ): array {
         $errors = [];
 
@@ -101,7 +111,7 @@ class StageFieldRuleValidator
                 continue;
             }
 
-            if ($error = $this->checkConstraints($field, $value)) {
+            if ($error = $this->checkConstraints($field, $value, $actor, $request)) {
                 $errors[$field->key] = $error;
             }
         }
@@ -109,9 +119,19 @@ class StageFieldRuleValidator
         return $errors;
     }
 
-    private function checkConstraints(FieldDefinition $field, mixed $value): ?string
-    {
+    private function checkConstraints(
+        FieldDefinition $field,
+        mixed $value,
+        ?User $actor = null,
+        ?EngineRequest $request = null,
+    ): ?string {
         $type = $field->type instanceof FieldType ? $field->type : null;
+
+        if (in_array($type, [FieldType::SELECT, FieldType::DYNAMIC_SELECT], true)) {
+            if ($error = $this->validateSelectMembership($field, $value, $type, $actor, $request)) {
+                return $error;
+            }
+        }
 
         // Regex pattern (text/textarea fields)
         if ($field->regex_pattern !== null && is_string($value) && $value !== '') {
@@ -179,6 +199,85 @@ class StageFieldRuleValidator
         }
 
         return null;
+    }
+
+    private function validateSelectMembership(
+        FieldDefinition $field,
+        mixed $value,
+        FieldType $type,
+        ?User $actor,
+        ?EngineRequest $request,
+    ): ?string {
+        if ($field->multiple && is_array($value)) {
+            foreach ($value as $item) {
+                if ($error = $this->selectValueNotAllowed($field, $item, $type, $actor, $request)) {
+                    return $error;
+                }
+            }
+
+            return null;
+        }
+
+        return $this->selectValueNotAllowed($field, $value, $type, $actor, $request);
+    }
+
+    private function selectValueNotAllowed(
+        FieldDefinition $field,
+        mixed $value,
+        FieldType $type,
+        ?User $actor,
+        ?EngineRequest $request,
+    ): ?string {
+        $allowedValues = $this->allowedSelectValues($field, $type, $actor, $request);
+
+        if ($allowedValues === []) {
+            return 'The selected value is not a valid option.';
+        }
+
+        if (! $this->valueInOptionSet($value, $allowedValues)) {
+            return 'The selected value is not a valid option.';
+        }
+
+        return null;
+    }
+
+    /**
+     * @return list<int|string>
+     */
+    private function allowedSelectValues(
+        FieldDefinition $field,
+        FieldType $type,
+        ?User $actor,
+        ?EngineRequest $request,
+    ): array {
+        if ($type === FieldType::SELECT) {
+            return collect($field->options ?? [])
+                ->pluck('value')
+                ->all();
+        }
+
+        if ($actor === null) {
+            return [];
+        }
+
+        return array_column(
+            $this->optionsResolver->resolve($field, $actor, $request),
+            'value',
+        );
+    }
+
+    /**
+     * @param  list<int|string>  $allowedValues
+     */
+    private function valueInOptionSet(mixed $value, array $allowedValues): bool
+    {
+        foreach ($allowedValues as $allowed) {
+            if ($value === $allowed || (string) $value === (string) $allowed) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function isEmpty(mixed $value): bool

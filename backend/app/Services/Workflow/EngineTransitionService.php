@@ -76,6 +76,8 @@ class EngineTransitionService
                 $mergedData,
                 $request->data ?? [],
                 true,
+                $user,
+                $request,
             );
             if ($fieldErrors !== []) {
                 throw EngineException::stageFieldsInvalid($fieldErrors);
@@ -179,6 +181,8 @@ class EngineTransitionService
                 $mergedData,
                 $request->data ?? [],
                 false,
+                $user,
+                $request,
             );
             if ($fieldErrors !== []) {
                 throw EngineException::stageFieldsInvalid($fieldErrors);
