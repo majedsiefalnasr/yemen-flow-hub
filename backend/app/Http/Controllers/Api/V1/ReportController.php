@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Api\Controller;
 use App\Models\EngineRequest;
 use App\Models\WorkflowHistoryEntry;
+use App\Services\Authorization\DataScope;
 use App\Services\Authorization\PermissionService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -191,6 +192,8 @@ class ReportController extends Controller
             ? '(julianday(h2.created_at) - julianday(h1.created_at)) * 24'
             : 'TIMESTAMPDIFF(HOUR, h1.created_at, h2.created_at)';
 
+        $scope = DataScope::forUser($request->user());
+
         $rows = DB::table('workflow_history as h1')
             ->join('workflow_stages as ws', 'ws.id', '=', 'h1.to_stage_id')
             ->join('engine_requests as er', 'er.id', '=', 'h1.request_id')
@@ -198,7 +201,13 @@ class ReportController extends Controller
                 $join->on('h2.request_id', '=', 'h1.request_id')
                     ->whereRaw('h2.id = (SELECT MIN(h3.id) FROM workflow_history h3 WHERE h3.request_id = h1.request_id AND h3.created_at > h1.created_at)');
             })
-            ->when($request->user()?->bank_id !== null, fn ($q) => $q->where('er.bank_id', $request->user()->bank_id))
+            ->when(! $scope->systemWide, function ($q) use ($scope) {
+                if ($scope->ownBankId !== null) {
+                    return $q->where('er.bank_id', $scope->ownBankId);
+                }
+
+                return $q->whereRaw('1 = 0');
+            })
             ->when($request->filled('from'), fn ($q) => $q->whereDate('h1.created_at', '>=', $request->string('from')))
             ->when($request->filled('to'), fn ($q) => $q->whereDate('h1.created_at', '<=', $request->string('to')))
             ->when($request->filled('bank'), fn ($q) => $q->where('er.bank_id', $request->integer('bank')))
@@ -297,10 +306,8 @@ class ReportController extends Controller
 
     private function applyScope(Request $request, $query): void
     {
-        $user = $request->user();
-        if ($user && $user->bank_id !== null) {
-            $query->where('engine_requests.bank_id', $user->bank_id);
-        }
+        $scope = DataScope::forUser($request->user());
+        DataScope::applyTo($query, $scope, 'engine_requests.bank_id');
     }
 
     private function applyFilters(Request $request, $query): void

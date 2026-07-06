@@ -6,6 +6,7 @@ use App\Enums\AuditAction;
 use App\Models\EngineRequest;
 use App\Models\ReportExport;
 use App\Services\Audit\AuditService;
+use App\Services\Authorization\DataScope;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -23,7 +24,7 @@ class GenerateReportExport implements ShouldQueue
 
     public function handle(AuditService $auditService): void
     {
-        $export = ReportExport::find($this->exportId);
+        $export = ReportExport::with(['requester.organization'])->find($this->exportId);
         if ($export === null || $export->status !== 'PENDING') {
             return;
         }
@@ -35,13 +36,16 @@ class GenerateReportExport implements ShouldQueue
             $query = EngineRequest::query()
                 ->with(['bank:id,name', 'currentStage:id,code,name', 'merchant:id,name']);
 
-            // Enforce the requester's bank scope. The job runs detached from the request
-            // auth context, so scope is taken from the stored requester and cannot be
-            // widened by the filters payload (a bank-scoped user never receives other
-            // banks' rows even with no bank filter).
+            // Enforce the requester's data scope. The job runs detached from the request
+            // auth context, so scope is re-derived from the stored requester and cannot
+            // be widened by the filters payload.
             $requester = $export->requester;
-            if ($requester && $requester->bank_id !== null) {
-                $query->where('bank_id', $requester->bank_id);
+            if ($requester) {
+                $scope = DataScope::forUser($requester);
+                DataScope::applyTo($query, $scope);
+            } else {
+                // If no requester, default to matching nothing for safety.
+                $query->whereRaw('1 = 0');
             }
 
             if (! empty($filters['bank'])) {
@@ -100,6 +104,10 @@ class GenerateReportExport implements ShouldQueue
                 'export_id' => $export->id,
                 'report_type' => $export->report_type,
                 'row_count' => $rows->count(),
+                'organization_id' => $auditor?->organization_id,
+                'classification' => $auditor?->organization?->classification,
+                'filters' => $export->filters,
+                'format' => $export->format,
             ]);
         } catch (\Throwable $e) {
             $export->update(['status' => 'FAILED']);

@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\AuditAction;
 use App\Http\Controllers\Api\Controller;
 use App\Jobs\GenerateReportExport;
 use App\Models\ReportExport;
+use App\Services\Audit\AuditService;
 use App\Services\Authorization\PermissionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -12,11 +14,15 @@ use Illuminate\Support\Facades\Storage;
 
 class ReportExportController extends Controller
 {
-    public function __construct(private readonly PermissionService $permissionService) {}
+    public function __construct(
+        private readonly PermissionService $permissionService,
+        private readonly AuditService $auditService
+    ) {}
 
     public function store(Request $request): JsonResponse
     {
         abort_unless($this->permissionService->userHasCapability($request->user(), 'reports', 'VIEW'), 403);
+        abort_unless($this->permissionService->userHasCapability($request->user(), 'reports', 'EXPORT'), 403);
 
         $validated = $request->validate([
             'report_type' => ['required', 'string', 'in:summary,requests-over-time,by-workflow-stage,by-bank,by-merchant,by-sector,by-currency,stage-duration,sla,team-performance'],
@@ -32,6 +38,15 @@ class ReportExportController extends Controller
             'filters' => $validated['filters'] ?? [],
             'format' => $validated['format'] ?? 'csv',
             'status' => 'PENDING',
+        ]);
+
+        $this->auditService->log(AuditAction::REPORT_EXPORT_CREATED, $request->user(), null, [
+            'export_id' => $export->id,
+            'report_type' => $export->report_type,
+            'filters' => $export->filters,
+            'format' => $export->format,
+            'organization_id' => $request->user()->organization_id,
+            'classification' => $request->user()->organization?->classification,
         ]);
 
         GenerateReportExport::dispatch($export->id);
@@ -55,6 +70,7 @@ class ReportExportController extends Controller
     public function download(Request $request, ReportExport $reportExport): mixed
     {
         abort_unless($this->permissionService->userHasCapability($request->user(), 'reports', 'VIEW'), 403);
+        abort_unless($this->permissionService->userHasCapability($request->user(), 'reports', 'EXPORT'), 403);
 
         if ((int) $reportExport->requested_by !== (int) $request->user()->id) {
             abort(403);
@@ -69,6 +85,13 @@ class ReportExportController extends Controller
         if (! Storage::disk('private')->exists($reportExport->file_path)) {
             abort(404);
         }
+
+        $this->auditService->log(AuditAction::REPORT_EXPORT_DOWNLOADED, $request->user(), null, [
+            'export_id' => $reportExport->id,
+            'report_type' => $reportExport->report_type,
+            'organization_id' => $request->user()->organization_id,
+            'classification' => $request->user()->organization?->classification,
+        ]);
 
         return Storage::disk('private')->download(
             $reportExport->file_path,
