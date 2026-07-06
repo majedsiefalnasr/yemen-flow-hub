@@ -110,7 +110,11 @@ class StagePermissionTest extends TestCase
 
     public function test_role_must_belong_to_organization(): void
     {
-        $otherOrg = Organization::query()->create(['code' => 'OTHER', 'name' => 'Other Org']);
+        $otherOrg = Organization::query()->create([
+            'code' => 'OTHER',
+            'name' => 'Other Org',
+            'classification' => \App\Enums\OrganizationClassification::OTHER,
+        ]);
         $team = Team::query()->create([
             'organization_id' => $this->org->id,
             'code' => 'reviewers',

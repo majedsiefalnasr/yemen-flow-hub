@@ -108,30 +108,30 @@ class AudienceResolutionTest extends TestCase
         $this->assertSame([], $this->resolveExecuteHolders());
     }
 
-    public function test_inactive_role_and_team_still_match_until_wp7(): void
+    public function test_inactive_role_and_team_do_not_match(): void
     {
         $this->team = Team::query()->create([
             'organization_id' => $this->org->id,
-            'code' => 'inactive_wp0_team',
-            'name' => 'Inactive WP0 Team',
+            'code' => 'inactive_wp7_team',
+            'name' => 'Inactive WP7 Team',
             'is_active' => false,
         ]);
         $this->role = Role::query()->create([
             'organization_id' => $this->org->id,
-            'code' => 'inactive_wp0_role',
-            'name' => 'Inactive WP0 Role',
+            'code' => 'inactive_wp7_role',
+            'name' => 'Inactive WP7 Role',
             'is_active' => false,
         ]);
         $user = $this->user('inactive-pivots@example.test', team: true, role: true);
 
-        // @see WP-7 D8-N1 inactive team/role pivots currently still match.
-        $this->assertAudience(['inactive-pivots@example.test'], [
+        // Inactive team/role pivots must NOT match (WP-7 S-10).
+        $this->assertAudience([], [
             'organization_id' => $this->org->id,
             'team_id' => $this->team->id,
             'role_id' => $this->role->id,
         ]);
 
-        $this->assertTrue(app(StagePermissionResolver::class)->userCanAccessStage($user, $this->stage, StageAccessLevel::EXECUTE));
+        $this->assertFalse(app(StagePermissionResolver::class)->userCanAccessStage($user, $this->stage, StageAccessLevel::EXECUTE));
     }
 
     /**
