@@ -43,15 +43,35 @@ final class FieldDefinitionConstraintValidator
             }
         }
 
-        $type = $attributes['type'] ?? null;
-        if ($type === FieldType::SELECT->value || $type === FieldType::SELECT) {
+        $type = self::resolveType($attributes['type'] ?? null);
+        if ($type === FieldType::SELECT) {
             $optionErrors = self::validateSelectOptions($attributes['options'] ?? null);
             if ($optionErrors !== null) {
                 $errors['options'] = $optionErrors;
             }
         }
 
+        if ($type !== null && array_key_exists('default_value', $attributes)) {
+            $defaultError = TypedFieldValueValidator::validateDefaultValue(
+                $type,
+                $attributes['default_value'],
+                $attributes,
+            );
+            if ($defaultError !== null) {
+                $errors['default_value'] = $defaultError;
+            }
+        }
+
         return $errors;
+    }
+
+    private static function resolveType(mixed $type): ?FieldType
+    {
+        if ($type instanceof FieldType) {
+            return $type;
+        }
+
+        return is_string($type) ? FieldType::tryFrom($type) : null;
     }
 
     private static function validateSelectOptions(mixed $options): ?string

@@ -306,4 +306,40 @@ class StageFieldRuleValidatorTest extends TestCase
         );
         $this->assertSame([], $ok);
     }
+
+    public function test_date_field_rejects_invalid_format(): void
+    {
+        $fields = collect([
+            $this->fieldWith(1, 'invoice_date', ['type' => 'DATE']),
+        ]);
+
+        $errors = $this->validator->validateData($fields, collect([]), ['invoice_date' => '06/25/2026'], []);
+        $this->assertArrayHasKey('invoice_date', $errors);
+
+        $ok = $this->validator->validateData($fields, collect([]), ['invoice_date' => '2026-06-25'], []);
+        $this->assertArrayNotHasKey('invoice_date', $ok);
+    }
+
+    public function test_date_field_rejects_invalid_calendar_date(): void
+    {
+        $fields = collect([
+            $this->fieldWith(1, 'invoice_date', ['type' => 'DATE']),
+        ]);
+
+        $errors = $this->validator->validateData($fields, collect([]), ['invoice_date' => '2026-02-30'], []);
+        $this->assertArrayHasKey('invoice_date', $errors);
+    }
+
+    public function test_checkbox_field_rejects_non_boolean_value(): void
+    {
+        $fields = collect([
+            $this->fieldWith(1, 'agree', ['type' => 'CHECKBOX']),
+        ]);
+
+        $errors = $this->validator->validateData($fields, collect([]), ['agree' => 'yes'], []);
+        $this->assertArrayHasKey('agree', $errors);
+
+        $ok = $this->validator->validateData($fields, collect([]), ['agree' => false], []);
+        $this->assertArrayNotHasKey('agree', $ok);
+    }
 }

@@ -9,6 +9,7 @@ use App\Models\FieldDefinition;
 use App\Models\StageFieldRule;
 use App\Models\User;
 use App\Models\WorkflowStage;
+use App\Support\TypedFieldValueValidator;
 use Illuminate\Support\Collection;
 
 /**
@@ -135,6 +136,10 @@ class StageFieldRuleValidator
             if ($error = $this->validateSelectMembership($field, $value, $type, $actor, $request, $previousValue)) {
                 return $error;
             }
+        }
+
+        if ($type !== null && ($error = TypedFieldValueValidator::validateRuntimeValue($type, $value))) {
+            return $error;
         }
 
         // Regex pattern (text/textarea fields)

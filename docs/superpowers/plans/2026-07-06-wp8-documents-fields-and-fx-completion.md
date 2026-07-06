@@ -18,7 +18,7 @@
 
 ---
 
-### Task 1: F-1 Bank-scoped merchant/company options
+### Task 1: F-1 Bank-scoped merchant/company options [completed]
 
 Modify `DynamicFieldOptionsResolver` to accept actor + request bank context; apply `DataScope` for MERCHANTS/MERCHANT_COMPANIES.
 Tests: bank user sees own-bank only; NC on request sees request bank.
@@ -39,7 +39,7 @@ Commit: `feat(workflow): grandfather deactivated dynamic option values (WP-8 F-3
 FILE values reference `EngineRequestDocument` id; reject client metadata-only.
 Commit: `feat(workflow): bind FILE fields to server documents (WP-8 F-4)`
 
-### Task 5: F-5 Typed value validation
+### Task 5: F-5 Typed value validation [completed]
 
 DATE ISO-8601, CHECKBOX boolean, default_value per type.
 Commit: `feat(workflow): validate typed field values at save and transition (WP-8 F-5)`
