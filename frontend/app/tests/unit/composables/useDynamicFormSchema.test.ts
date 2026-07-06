@@ -10,6 +10,7 @@ function baseField(overrides: Partial<ResolvedFieldGroup['fields'][number]>) {
   return {
     id: 1,
     key: 'field_key',
+    semantic_tag: null,
     label: 'حقل',
     type: 'TEXT' as const,
     placeholder: null,

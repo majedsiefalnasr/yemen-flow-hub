@@ -1008,6 +1008,7 @@ export interface AvailableWorkflow {
 export interface ResolvedFieldDefinition {
   id: number
   key: string
+  semantic_tag: FieldSemanticTag | null
   label: string
   type: FieldType
   placeholder: string | null

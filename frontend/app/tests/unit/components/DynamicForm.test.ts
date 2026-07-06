@@ -26,6 +26,7 @@ const groups: ResolvedFieldGroup[] = [
       {
         id: 1,
         key: 'invoice_amount',
+        semantic_tag: null,
         label: 'مبلغ الفاتورة',
         type: 'NUMBER',
         placeholder: null,

@@ -6,6 +6,7 @@ function field(overrides: Partial<ResolvedFieldDefinition>): ResolvedFieldDefini
   return {
     id: 1,
     key: 'k',
+    semantic_tag: null,
     label: 'Field',
     type: 'TEXT',
     placeholder: null,

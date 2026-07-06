@@ -3,9 +3,12 @@ import { computed, ref, toRef } from 'vue'
 import type { ResolvedFieldGroup, EngineRequestDocument } from '@/types/models'
 import { useEngineRequestsStore } from '@/stores/engineRequests.store'
 import { useEngineWizard } from '@/composables/useEngineWizard'
+import { useFinancingLedger } from '@/composables/useFinancingLedger'
 import { extractApiErrorCode } from '@/utils/apiErrors'
+import { findFieldKeyBySemanticTag, groupHasSemanticTag } from '@/utils/findFieldKeyBySemanticTag'
 import DynamicForm from '@/components/workflow/DynamicForm.vue'
 import EngineRequestDataTabs from '@/components/workflow/EngineRequestDataTabs.vue'
+import FinancingUtilizationBar from '@/components/workflow/FinancingUtilizationBar.vue'
 import {
   Stepper,
   StepperItem,
@@ -77,6 +80,50 @@ const stepperSteps = computed(() => [
 ])
 
 const stepGroups = computed(() => (wizard.currentGroup.value ? [wizard.currentGroup.value] : []))
+
+// Locate the tax-number/invoice-number fields by their WP-4 semantic tag
+// (never a hardcoded field key) so the financing advisory bar works for any
+// workflow schema that tags these fields, and stays hidden for workflows
+// that don't.
+const taxNumberKey = computed(() =>
+  findFieldKeyBySemanticTag(props.fieldGroups, 'MERCHANT_TAX_NUMBER'),
+)
+const invoiceNumberKey = computed(() =>
+  findFieldKeyBySemanticTag(props.fieldGroups, 'INVOICE_NUMBER'),
+)
+const hasFinancingFields = computed(
+  () => taxNumberKey.value !== null && invoiceNumberKey.value !== null,
+)
+
+const taxNumber = computed(() => {
+  if (!taxNumberKey.value) return null
+  const value = formData.value[taxNumberKey.value]
+  return typeof value === 'string' ? value : null
+})
+const invoiceNumber = computed(() => {
+  if (!invoiceNumberKey.value) return null
+  const value = formData.value[invoiceNumberKey.value]
+  return typeof value === 'string' ? value : null
+})
+
+const financingLedger = useFinancingLedger({
+  taxNumber,
+  invoiceNumber,
+  excludeRequestId: computed(() => props.requestId),
+})
+
+// Show the bar only on the field-group step that actually holds one of the
+// tagged fields — it stays hidden on other steps and on the review step,
+// and never renders at all for workflows without financing fields.
+const showFinancingBar = computed(
+  () =>
+    !onReview.value &&
+    hasFinancingFields.value &&
+    (wizard.currentGroup.value
+      ? groupHasSemanticTag(wizard.currentGroup.value, 'MERCHANT_TAX_NUMBER') ||
+        groupHasSemanticTag(wizard.currentGroup.value, 'INVOICE_NUMBER')
+      : false),
+)
 
 async function validateThen(action: (data: Record<string, unknown>) => Promise<void>) {
   submitError.value = null
@@ -192,17 +239,31 @@ defineExpose({ hasUnsavedChanges })
     </Card>
 
     <!-- Field-group step: editable form for the current group. -->
-    <Card v-else class="border-0 shadow">
-      <CardContent class="p-4">
-        <DynamicForm
-          ref="formRef"
-          v-model="formData"
-          :field-groups="stepGroups"
-          mode="edit"
-          :request-id="requestId"
-        />
-      </CardContent>
-    </Card>
+    <template v-else>
+      <!-- Financing utilization advisory: shown only on the step holding the
+           tagged tax-number/invoice-number fields, never for workflows
+           without them (WP-8 F-17). -->
+      <FinancingUtilizationBar
+        v-if="showFinancingBar"
+        :used-percent="financingLedger.usedPercent.value"
+        :remaining-percent="financingLedger.remainingPercent.value"
+        :blocked="financingLedger.blocked.value"
+        :loading="financingLedger.loading.value"
+        :error="financingLedger.error.value"
+      />
+
+      <Card class="border-0 shadow">
+        <CardContent class="p-4">
+          <DynamicForm
+            ref="formRef"
+            v-model="formData"
+            :field-groups="stepGroups"
+            mode="edit"
+            :request-id="requestId"
+          />
+        </CardContent>
+      </Card>
+    </template>
 
     <Alert v-if="submitError" variant="destructive" role="alert">
       <AlertTriangle class="h-4 w-4" />
