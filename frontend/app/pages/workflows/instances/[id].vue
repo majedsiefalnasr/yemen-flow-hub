@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, toRef } from 'vue'
 import { toast } from 'vue-sonner'
+import { extractApiErrorCode } from '@/utils/apiErrors'
 import { useEngineRequestsStore } from '@/stores/engineRequests.store'
 import { useEngineFormSchema } from '@/composables/useEngineFormSchema'
 import { useEngineRequestActions } from '@/composables/useEngineRequestActions'
@@ -46,7 +47,8 @@ const { executeAction, conflictError } = useEngineRequestActions()
 
 const auth = useAuthStore()
 const currentUserId = computed(() => auth.user?.id ?? null)
-const { claim, isHeldByMe, heldByOther, claimedBy } = useEngineClaim(requestId, currentUserId)
+const { claim, isHeldByMe, heldByOther, claimedBy, claimLost, markClaimLost, resetClaimLost } =
+  useEngineClaim(requestId, currentUserId)
 
 const formData = ref<Record<string, unknown>>({})
 const comment = ref('')
@@ -114,13 +116,32 @@ const showClaimButton = computed(
   () => canExecute.value && stageRequiresClaim.value && isUnclaimed.value && !heldByOther.value,
 )
 const claimHolderName = computed(() => store.current?.claimed_by_user?.name ?? null)
-const canAct = computed(() => canExecute.value && (!stageRequiresClaim.value || isHeldByMe.value))
+const canAct = computed(
+  () =>
+    canExecute.value &&
+    !claimLost.value &&
+    (!stageRequiresClaim.value || isHeldByMe.value),
+)
 const claimRequiredButNotHeld = computed(
   () => canExecute.value && stageRequiresClaim.value && !isHeldByMe.value,
 )
 
 async function startReview() {
-  await claim()
+  resetClaimLost()
+  try {
+    await claim()
+  } catch {
+    toast.error('تعذّرت المتابعة — قد يكون الطلب مطالباً من مستخدم آخر')
+  }
+}
+
+function returnToQueue() {
+  router.push('/workflows')
+}
+
+function onClaimLost(code: string) {
+  markClaimLost(code)
+  toast.error('فُقدت مطالبة هذا الطلب أو انتهت صلاحيتها')
 }
 
 async function runAction(transitionId: number, requiresComment: boolean) {
@@ -139,8 +160,10 @@ async function runAction(transitionId: number, requiresComment: boolean) {
     )
     comment.value = ''
     await load()
-  } catch {
-    // conflictError / fieldErrors already surfaced by the composable
+  } catch (err) {
+    if (extractApiErrorCode(err) === 'CLAIM_NOT_HELD') {
+      onClaimLost('CLAIM_NOT_HELD')
+    }
   } finally {
     actionBusy.value = false
   }
@@ -251,8 +274,27 @@ async function confirmAbandonDraft() {
 
       <ClaimBanner v-if="heldByOther" :holder-name="claimHolderName ?? 'مستخدم آخر'" />
 
+      <Alert v-if="claimLost" variant="destructive" role="alert">
+        <AlertTriangle class="h-4 w-4" />
+        <AlertTitle>فُقدت مطالبة الطلب</AlertTitle>
+        <AlertDescription>
+          انتهت صلاحية مطالبتك أو انتقل الطلب إلى مرحلة أخرى. لا يمكنك تعديل الطلب أو تنفيذ إجراءات
+          عليه حالياً.
+        </AlertDescription>
+        <div class="mt-3 flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" @click="returnToQueue">العودة إلى الطابور</Button>
+          <Button
+            v-if="stageRequiresClaim && !heldByOther"
+            size="sm"
+            @click="startReview"
+          >
+            محاولة المتابعة مجدداً
+          </Button>
+        </div>
+      </Alert>
+
       <!-- Wizard mode: any executor on the initial stage continues the draft step by step. -->
-      <template v-if="wizardMode">
+      <template v-if="wizardMode && !claimLost">
         <Card v-if="claimRequiredButNotHeld && !heldByOther" class="border-0 shadow">
           <CardContent class="flex flex-col items-start gap-3 p-4">
             <p class="text-muted-foreground text-sm">
@@ -272,6 +314,7 @@ async function confirmAbandonDraft() {
           :documents="store.documents"
           @submitted="onWizardSubmitted"
           @abandon="abandonDialogOpen = true"
+          @claim-lost="onClaimLost"
         />
       </template>
 

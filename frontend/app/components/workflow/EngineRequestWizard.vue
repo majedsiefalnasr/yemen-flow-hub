@@ -3,6 +3,7 @@ import { computed, ref, toRef } from 'vue'
 import type { ResolvedFieldGroup, EngineRequestDocument } from '@/types/models'
 import { useEngineRequestsStore } from '@/stores/engineRequests.store'
 import { useEngineWizard } from '@/composables/useEngineWizard'
+import { extractApiErrorCode } from '@/utils/apiErrors'
 import DynamicForm from '@/components/workflow/DynamicForm.vue'
 import EngineRequestDataTabs from '@/components/workflow/EngineRequestDataTabs.vue'
 import {
@@ -26,7 +27,7 @@ const props = defineProps<{
   documents?: EngineRequestDocument[]
 }>()
 
-const emit = defineEmits<{ submitted: []; abandon: [] }>()
+const emit = defineEmits<{ submitted: []; abandon: []; 'claim-lost': [code: string] }>()
 
 const store = useEngineRequestsStore()
 const formRef = ref<InstanceType<typeof DynamicForm> | null>(null)
@@ -86,7 +87,12 @@ async function validateThen(action: (data: Record<string, unknown>) => Promise<v
   try {
     await action(data)
     lastSavedData.value = { ...formData.value }
-  } catch {
+  } catch (err) {
+    const code = extractApiErrorCode(err)
+    if (code === 'CLAIM_NOT_HELD') {
+      emit('claim-lost', code)
+      return
+    }
     if (!submitError.value) submitError.value = 'تعذر حفظ الخطوة. حاول مرة أخرى.'
   }
 }
@@ -110,7 +116,12 @@ async function onSubmit() {
     await wizard.finish(formData.value)
     lastSavedData.value = { ...formData.value }
     emit('submitted')
-  } catch {
+  } catch (err) {
+    const code = extractApiErrorCode(err)
+    if (code === 'CLAIM_NOT_HELD') {
+      emit('claim-lost', code)
+      return
+    }
     if (!submitError.value) submitError.value = 'تعذر إرسال الطلب. حاول مرة أخرى.'
   }
 }

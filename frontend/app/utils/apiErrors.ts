@@ -10,6 +10,11 @@ export function extractApiErrorMessage(err: unknown, fallback: string): string {
   return data?.error?.message ?? data?.message ?? fallback
 }
 
+export function extractApiErrorCode(err: unknown): string | null {
+  const data = (err as { data?: { error_code?: string; error?: { code?: string } } })?.data
+  return data?.error_code ?? data?.error?.code ?? null
+}
+
 export function extractApiFieldErrors(err: unknown): Record<string, string | undefined> {
   const errors = (err as { data?: ApiError })?.data?.errors ?? {}
   return Object.fromEntries(

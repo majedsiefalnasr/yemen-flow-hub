@@ -72,6 +72,12 @@ class EngineRequestResource extends JsonResource
             ]),
             'claimed_at' => $this->claimed_at?->toISOString(),
             'claim_expires_at' => $this->claim_expires_at?->toISOString(),
+            'is_claimed_by_other' => $this->when(
+                $request->user() !== null,
+                fn (): bool => $this->isClaimed()
+                    && $this->claimed_by !== null
+                    && (int) $this->claimed_by !== (int) $request->user()->id,
+            ),
             'created_by' => $this->created_by,
             'creator' => $this->whenLoaded('creator', fn () => [
                 'id' => $this->creator->id,

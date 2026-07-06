@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\Controller;
 use App\Models\EngineRequest;
 use App\Models\EngineRequestDocument;
 use App\Services\Audit\AuditService;
+use App\Services\Workflow\EngineClaimService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -14,11 +15,16 @@ use Illuminate\Validation\Rule;
 
 class EngineRequestDocumentController extends Controller
 {
-    public function __construct(private AuditService $auditService) {}
+    public function __construct(
+        private AuditService $auditService,
+        private EngineClaimService $claimService,
+    ) {}
 
     public function uploadDocument(Request $request, EngineRequest $engineRequest): JsonResponse
     {
         $this->authorize('execute', $engineRequest);
+        $engineRequest->loadMissing('currentStage');
+        $this->claimService->ensureClaimHeld($engineRequest, $request->user());
 
         $request->validate([
             'file' => ['required', 'file', 'mimes:pdf', 'max:10240'],
@@ -98,6 +104,8 @@ class EngineRequestDocumentController extends Controller
     public function deleteDocument(Request $request, EngineRequest $engineRequest, EngineRequestDocument $document): JsonResponse
     {
         $this->authorize('execute', $engineRequest);
+        $engineRequest->loadMissing('currentStage');
+        $this->claimService->ensureClaimHeld($engineRequest, $request->user());
 
         if ((int) $document->request_id !== (int) $engineRequest->id) {
             abort(404);

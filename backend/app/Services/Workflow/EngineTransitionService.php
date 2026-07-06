@@ -29,6 +29,7 @@ class EngineTransitionService
         private AuditService $auditService,
         private StageHookRegistry $hookRegistry,
         private EngineNotificationDispatcher $notificationDispatcher,
+        private EngineClaimService $claimService,
     ) {}
 
     public function execute(
@@ -90,6 +91,10 @@ class EngineTransitionService
             ])->save();
 
             $this->projectionSync->sync($request);
+
+            if ($transition->fromStage->requires_claim && $request->claimed_by !== null) {
+                $this->claimService->releaseForStageChange($request, $user);
+            }
 
             $correlationId = (string) Str::uuid();
 
@@ -166,6 +171,8 @@ class EngineTransitionService
                 throw EngineException::stageExecutionForbidden();
             }
 
+            $this->claimService->ensureClaimHeld($request, $user);
+
             $mergedData = array_merge($request->data ?? [], $data);
             $fieldErrors = $this->fieldRuleValidator->validateStage(
                 $request->currentStage,
@@ -233,6 +240,7 @@ class EngineTransitionService
                 'claimed_by' => null,
                 'claimed_at' => null,
                 'claim_expires_at' => null,
+                'claim_stage_id' => null,
             ])->save();
 
             $this->projectionSync->sync($request);

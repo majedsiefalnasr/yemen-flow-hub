@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Exceptions\EngineException;
 use App\Models\AuditLog;
 use App\Models\User;
+use App\Models\WorkflowStage;
 use App\Services\Workflow\EngineClaimService;
 use App\Services\Workflow\EngineTransitionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -110,14 +111,65 @@ class EngineClaimLifecycleTest extends TestCase
 
         app(EngineClaimService::class)->claim($request->fresh(), $holder);
 
-        // @see WP-5 D9-N2 currently, draft save on a requires_claim stage by a non-holder succeeds.
-        $draftSaved = app(EngineTransitionService::class)->saveDraft($request->fresh(), ['note' => 'peer edit'], $request->fresh()->version, $peer);
-        $this->assertSame('peer edit', $draftSaved->data['note']);
+        try {
+            app(EngineTransitionService::class)->saveDraft($request->fresh(), ['note' => 'peer edit'], $request->fresh()->version, $peer);
+            $this->fail('Draft save by non-holder should be rejected on a requires_claim stage.');
+        } catch (EngineException $exception) {
+            $this->assertSame('CLAIM_NOT_HELD', $exception->render()->getData(true)['error_code']);
+            $this->assertSame(403, $exception->render()->getStatusCode());
+        }
 
         $transitioned = app(EngineTransitionService::class)->execute($request->fresh(), $transitionId, null, [], $request->fresh()->version, $holder);
         $this->assertNotNull($transitioned);
 
-        // @see WP-5 D9-N1 currently, successful transitions leave claim fields in place.
-        $this->assertSame($holder->id, $request->fresh()->claimed_by);
+        $fresh = $request->fresh();
+        $this->assertNull($fresh->claimed_by);
+        $this->assertNull($fresh->claimed_at);
+        $this->assertNull($fresh->claim_expires_at);
+        $this->assertNull($fresh->claim_stage_id);
+        $this->assertSame(
+            'stage_changed',
+            AuditLog::query()->where('action', 'CLAIM_RELEASED')->latest('id')->first()?->metadata['reason'] ?? null,
+        );
+    }
+
+    public function test_heartbeat_after_sweep_returns_403(): void
+    {
+        $service = app(EngineClaimService::class);
+        ['request' => $request, 'executor' => $holder] = EngineWorkflowFactory::seedClaimStageWithTransition();
+
+        $service->claim($request, $holder);
+        $request->fresh()->forceFill(['claim_expires_at' => now()->subMinute()])->save();
+        $service->releaseExpired($request->fresh());
+
+        try {
+            $service->heartbeat($request->fresh(), $holder);
+            $this->fail('Heartbeat after sweep should be rejected.');
+        } catch (EngineException $exception) {
+            $this->assertSame('CLAIM_NOT_HELD', $exception->render()->getData(true)['error_code']);
+        }
+    }
+
+    public function test_heartbeat_after_stage_change_returns_403(): void
+    {
+        $service = app(EngineClaimService::class);
+        ['request' => $request, 'executor' => $holder]
+            = EngineWorkflowFactory::seedClaimStageWithTransition();
+
+        $service->claim($request, $holder);
+        $fresh = $request->fresh();
+        $staleStageId = $fresh->claim_stage_id;
+        $otherStageId = WorkflowStage::query()
+            ->where('workflow_version_id', $fresh->workflow_version_id)
+            ->where('id', '!=', $staleStageId)
+            ->value('id');
+        $fresh->forceFill(['current_stage_id' => $otherStageId])->save();
+
+        try {
+            $service->heartbeat($request->fresh(), $holder);
+            $this->fail('Heartbeat after stage change should be rejected.');
+        } catch (EngineException $exception) {
+            $this->assertSame('CLAIM_NOT_HELD', $exception->render()->getData(true)['error_code']);
+        }
     }
 }

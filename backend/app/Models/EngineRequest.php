@@ -23,6 +23,7 @@ class EngineRequest extends Model
         'claimed_by',
         'claimed_at',
         'claim_expires_at',
+        'claim_stage_id',
         'bank_id',
         'merchant_id',
         'data',

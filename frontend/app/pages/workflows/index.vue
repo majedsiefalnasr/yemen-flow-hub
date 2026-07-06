@@ -180,6 +180,10 @@ function openInstance(id: number) {
   router.push(`/workflows/instances/${id}`)
 }
 
+function isQueueRowClaimedByOther(row: EngineRequest): boolean {
+  return view.value === 'queue' && row.is_claimed_by_other === true
+}
+
 // ── Filter option lists, derived from the currently loaded rows ───────────────
 const statusFilterOptions = [
   { label: 'نشط', value: 'ACTIVE' },
@@ -350,20 +354,36 @@ const columns: ColumnDef<EngineRequest>[] = [
     id: 'actions',
     header: '',
     enableHiding: false,
-    cell: ({ row }) =>
-      h(
-        Button,
-        {
-          size: 'sm',
-          variant: 'outline',
-          class: 'h-8',
-          onClick: (e: Event) => {
-            e.stopPropagation()
-            openInstance(row.original.id)
+    cell: ({ row }) => {
+      const claimedByOther = isQueueRowClaimedByOther(row.original)
+      return h('div', { class: 'flex items-center gap-2' }, [
+        claimedByOther
+          ? h(
+              Badge,
+              {
+                variant: 'outline',
+                class:
+                  'border-[var(--locked-gray)]/30 bg-[var(--locked-gray)]/10 text-[var(--locked-gray)] whitespace-nowrap',
+              },
+              () => 'مطالب بواسطة مستخدم آخر',
+            )
+          : null,
+        h(
+          Button,
+          {
+            size: 'sm',
+            variant: 'outline',
+            class: 'h-8',
+            disabled: claimedByOther,
+            onClick: (e: Event) => {
+              e.stopPropagation()
+              if (!claimedByOther) openInstance(row.original.id)
+            },
           },
-        },
-        () => 'عرض',
-      ),
+          () => 'عرض',
+        ),
+      ])
+    },
   },
 ]
 

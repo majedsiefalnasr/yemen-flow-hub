@@ -947,6 +947,7 @@ export interface EngineRequest {
   sla_status: string | null
   claimed_by: number | null
   claimed_by_user: { id: number; name: string } | null
+  is_claimed_by_other?: boolean
   claimed_at: string | null
   claim_expires_at: string | null
   // Whether the signed-in user may execute the current stage. Present only on

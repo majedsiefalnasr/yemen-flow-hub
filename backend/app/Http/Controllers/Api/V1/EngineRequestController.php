@@ -229,7 +229,7 @@ class EngineRequestController extends Controller
             ->active()
             ->forUser($user)
             ->whereIn('engine_requests.current_stage_id', $executeStageIds)
-            ->with(['currentStage', 'bank', 'merchant', 'creator', 'workflowVersion.definition']);
+            ->with(['currentStage', 'bank', 'merchant', 'creator', 'claimedBy', 'workflowVersion.definition']);
 
         $this->listQuery->applyFilters($query, $request);
 

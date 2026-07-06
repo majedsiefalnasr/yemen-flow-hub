@@ -74,7 +74,7 @@ Executive voting is executed as a stage transition/action on the generic engine 
 
 ### Support claim TTL
 
-- TTL: 15 minutes by default (`config('workflow.support_claim_ttl_minutes')`), tracked in the `claim_expires_at` column on `engine_requests` and mirrored in a cache key (`engine_claim:{request_id}`) by `EngineClaimService`
+- TTL: 15 minutes by default (`config('workflow.support_claim_ttl_minutes')`), tracked in the `claim_expires_at` column on `engine_requests` (DB is the sole source of truth)
 - Claim endpoint: `POST /api/engine-requests/{id}/claim`
 - Heartbeat endpoint extends TTL: `POST /api/engine-requests/{id}/claim/heartbeat`
 - Release endpoint: `DELETE /api/engine-requests/{id}/claim`

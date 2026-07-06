@@ -77,4 +77,20 @@ describe('useEngineClaim', () => {
     await vi.advanceTimersByTimeAsync(60_000)
     expect(mockPost).toHaveBeenCalledTimes(2)
   })
+
+  it('sets claimLost and stops heartbeat when heartbeat returns CLAIM_NOT_HELD', async () => {
+    mockPost
+      .mockResolvedValueOnce({ success: true, data: { id: 1, claimed_by: 7 } })
+      .mockRejectedValueOnce({ data: { error_code: 'CLAIM_NOT_HELD' } })
+
+    const { claim, heartbeat, claimLost, isHeldByMe } = useEngineClaim(ref(1), ref(7))
+
+    await claim()
+    await expect(heartbeat()).rejects.toBeTruthy()
+    expect(claimLost.value).toBe(true)
+    expect(isHeldByMe.value).toBe(false)
+
+    await vi.advanceTimersByTimeAsync(60_000)
+    expect(mockPost).toHaveBeenCalledTimes(2)
+  })
 })

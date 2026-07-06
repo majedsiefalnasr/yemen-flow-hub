@@ -6,6 +6,7 @@ use App\Enums\StageAccessLevel;
 use App\Enums\UserRole;
 use App\Enums\WorkflowVersionState;
 use App\Models\EngineRequest;
+use App\Models\Organization;
 use App\Models\StagePermission;
 use App\Models\User;
 use App\Models\WorkflowAction;
@@ -13,6 +14,7 @@ use App\Models\WorkflowDefinition;
 use App\Models\WorkflowStage;
 use App\Models\WorkflowTransition;
 use App\Models\WorkflowVersion;
+use Database\Seeders\GovernanceSeeder;
 use Illuminate\Support\Str;
 
 /**
@@ -55,7 +57,7 @@ class EngineWorkflowFactory
             'version' => 1,
         ]);
 
-        $creator = User::factory()->create();
+        $creator = self::createExecutorUser();
 
         return EngineRequest::create([
             'workflow_version_id' => $version->id,
@@ -113,7 +115,7 @@ class EngineWorkflowFactory
             'version' => 1,
         ]);
 
-        $executor = User::factory()->create();
+        $executor = self::createExecutorUser();
 
         StagePermission::create([
             'stage_id' => $claimStage->id,
@@ -163,7 +165,7 @@ class EngineWorkflowFactory
      */
     public static function executorPeer(User $a, EngineRequest $request): User
     {
-        $peer = User::factory()->create();
+        $peer = self::createExecutorUser();
 
         StagePermission::create([
             'stage_id' => $request->current_stage_id,
@@ -210,5 +212,23 @@ class EngineWorkflowFactory
         ]);
 
         return ['admin' => $admin, 'stage' => $stage];
+    }
+
+    private static function createExecutorUser(): User
+    {
+        self::ensureGovernance();
+
+        $organization = Organization::query()->where('code', 'national_committee')->firstOrFail();
+
+        return User::factory()->create(['organization_id' => $organization->id]);
+    }
+
+    private static function ensureGovernance(): void
+    {
+        if (Organization::query()->where('code', 'national_committee')->exists()) {
+            return;
+        }
+
+        (new GovernanceSeeder)->run();
     }
 }

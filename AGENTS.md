@@ -336,7 +336,7 @@ Tool prefixes vary by client:
 - Claim: `POST /api/v1/engine-requests/{id}/claim`
 - Heartbeat: frontend must ping `POST /api/v1/engine-requests/{id}/claim/heartbeat` every **60 seconds**
 - Release: `DELETE /api/v1/engine-requests/{id}/claim`
-- TTL managed via `claim_expires_at` on `engine_requests`, mirrored in cache key: `engine_claim:{request_id}`
+- TTL managed via `claim_expires_at` on `engine_requests` (DB is the sole source of truth)
 
 ---
 
