@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Enums\DynamicFieldSource;
 use App\Enums\FieldType;
 use App\Models\WorkflowVersion;
+use App\Support\FieldDefinitionConstraintValidator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -56,6 +57,8 @@ class StoreFieldDefinitionRequest extends FormRequest
         return [
             function (Validator $validator): void {
                 if ($this->input('type') !== FieldType::DYNAMIC_SELECT->value) {
+                    $this->validateFieldConstraints($validator);
+
                     return;
                 }
 
@@ -75,7 +78,16 @@ class StoreFieldDefinitionRequest extends FormRequest
                         'A REFERENCE_DATA dynamic source requires a reference_table_id.',
                     );
                 }
+
+                $this->validateFieldConstraints($validator);
             },
         ];
+    }
+
+    private function validateFieldConstraints(Validator $validator): void
+    {
+        foreach (FieldDefinitionConstraintValidator::validate($this->all()) as $field => $message) {
+            $validator->errors()->add($field, $message);
+        }
     }
 }

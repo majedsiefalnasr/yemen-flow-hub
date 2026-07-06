@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Enums\AuditAction;
 use App\Models\FieldDefinition;
 use App\Services\Audit\AuditService;
+use App\Support\FieldDefinitionConstraintValidator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -58,6 +59,17 @@ class UpdateFieldDefinitionRequest extends FormRequest
                     ['reason' => 'field_definition_key_change_attempt', 'attempted_key' => $this->input('key')],
                 );
                 $validator->errors()->add('key', 'The field key is immutable. Change it in a new version.');
+            },
+            function (Validator $validator): void {
+                $field = $this->route('fieldDefinition');
+                if (! $field instanceof FieldDefinition) {
+                    return;
+                }
+
+                $payload = array_merge($field->toArray(), $this->all());
+                foreach (FieldDefinitionConstraintValidator::validate($payload) as $fieldKey => $message) {
+                    $validator->errors()->add($fieldKey, $message);
+                }
             },
         ];
     }

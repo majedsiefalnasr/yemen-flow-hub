@@ -6,7 +6,6 @@ use App\Enums\FieldType;
 use App\Enums\OrganizationClassification;
 use App\Enums\StageAccessLevel;
 use App\Models\Organization;
-use App\Models\User;
 use App\Models\WorkflowAction;
 use App\Models\WorkflowVersion;
 
@@ -19,13 +18,17 @@ use App\Models\WorkflowVersion;
  */
 class WorkflowVersionValidator
 {
+    public function __construct(
+        private readonly WorkflowPublishRulePack $rulePack,
+    ) {}
+
     /**
      * @return array<int, array{code: string, target: string, message: string}>
      */
     public function validate(WorkflowVersion $version): array
     {
-        $stages = $version->stages()->with('stagePermissions')->get();
-        $transitions = $version->transitions()->get();
+        $stages = $version->stages()->with(['stagePermissions', 'stageFieldRules.field'])->get();
+        $transitions = $version->transitions()->with(['action', 'fromStage', 'toStage'])->get();
         $fields = $version->fieldDefinitions()->get();
 
         $errors = [];
@@ -85,9 +88,8 @@ class WorkflowVersionValidator
             }
         }
 
-        // ── Non-final stages need ≥1 outgoing transition AND ≥1 active executor ─
+        // ── Non-final stages need ≥1 outgoing transition (executor depth in rule pack) ─
         $transitionsByFrom = $transitions->groupBy('from_stage_id');
-        $activeUserIds = User::query()->where('is_active', true)->pluck('id')->all();
         foreach ($stages as $stage) {
             if ($stage->is_final) {
                 continue;
@@ -98,14 +100,6 @@ class WorkflowVersionValidator
                 $errors[] = $this->error('STAGE_NO_OUTGOING_TRANSITION', "stage:{$stage->code}", "Non-final stage '{$stage->code}' has no outgoing transition.");
             } elseif ($outgoing->every(fn ($transition) => $transition->to_stage_id === $stage->id)) {
                 $errors[] = $this->error('STAGE_ONLY_SELF_LOOP', "stage:{$stage->code}", "Non-final stage '{$stage->code}' has only self-loop transitions; the workflow can never advance past it.");
-            }
-
-            $hasExecutor = $stage->stagePermissions->contains(
-                fn ($permission) => $permission->access_level === StageAccessLevel::EXECUTE
-                    && ($permission->user_id === null || in_array($permission->user_id, $activeUserIds, true)),
-            );
-            if (! $hasExecutor) {
-                $errors[] = $this->error('STAGE_NO_EXECUTOR', "stage:{$stage->code}", "Non-final stage '{$stage->code}' has no executor (an EXECUTE stage permission for an active user/role/team).");
             }
         }
 
@@ -142,7 +136,7 @@ class WorkflowVersionValidator
             }
         }
 
-        return $errors;
+        return array_merge($errors, $this->rulePack->validate($version, $stages, $transitions, $fields));
     }
 
     /**

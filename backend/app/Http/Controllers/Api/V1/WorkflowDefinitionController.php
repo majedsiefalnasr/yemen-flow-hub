@@ -6,6 +6,7 @@ use App\Exceptions\WorkflowDesignProtectionException;
 use App\Http\Controllers\Api\Controller;
 use App\Http\Controllers\Concerns\GuardsDesignerInput;
 use App\Http\Requests\StoreWorkflowDefinitionRequest;
+use App\Http\Requests\UpdateWorkflowDefinitionRequest;
 use App\Http\Resources\WorkflowDefinitionResource;
 use App\Models\WorkflowDefinition;
 use App\Services\Workflow\WorkflowDesignerService;
@@ -68,6 +69,21 @@ class WorkflowDefinitionController extends Controller
         return (new WorkflowDefinitionResource(
             $definition->load(['versions' => fn ($q) => $q->orderByDesc('version_number')]),
         ))->response()->setStatusCode(201);
+    }
+
+    public function update(UpdateWorkflowDefinitionRequest $request, WorkflowDefinition $workflowDefinition): JsonResponse
+    {
+        $this->authorize('update', $workflowDefinition);
+
+        $definition = $this->designer->updateDefinition(
+            $request->user(),
+            $workflowDefinition,
+            collect($request->validated())->except('version')->all(),
+        );
+
+        return (new WorkflowDefinitionResource(
+            $definition->load(['versions' => fn ($q) => $q->orderByDesc('version_number')]),
+        ))->response();
     }
 
     public function destroy(Request $request, WorkflowDefinition $workflowDefinition): JsonResponse

@@ -10,8 +10,10 @@ use App\Http\Controllers\Concerns\GuardsDesignerInput;
 use App\Http\Requests\StoreWorkflowStageRequest;
 use App\Http\Requests\UpdateWorkflowStageRequest;
 use App\Http\Resources\WorkflowStageResource;
+use App\Models\StagePermission;
 use App\Models\WorkflowStage;
 use App\Models\WorkflowVersion;
+use App\Services\Workflow\StagePermissionAudience;
 use App\Services\Workflow\WorkflowDesignerService;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -22,7 +24,10 @@ class WorkflowStageController extends Controller
 {
     use GuardsDesignerInput;
 
-    public function __construct(private readonly WorkflowDesignerService $designer) {}
+    public function __construct(
+        private readonly WorkflowDesignerService $designer,
+        private readonly StagePermissionAudience $audience,
+    ) {}
 
     public function index(WorkflowVersion $workflowVersion): JsonResponse
     {
@@ -37,6 +42,25 @@ class WorkflowStageController extends Controller
         $this->authorize('view', $workflowStage);
 
         return new WorkflowStageResource($workflowStage);
+    }
+
+    public function effectiveExecutors(WorkflowStage $workflowStage): JsonResponse
+    {
+        $this->authorize('view', $workflowStage);
+
+        $permissions = $workflowStage->stagePermissions()->orderBy('id')->get();
+        $rows = $permissions->map(fn (StagePermission $permission) => [
+            'id' => $permission->id,
+            'access_level' => $permission->access_level?->value,
+            'matched_users' => $this->audience->matchCountForPermission($permission),
+        ]);
+
+        return response()->json([
+            'data' => [
+                'total_executors' => count($this->audience->executeHolderIds($workflowStage)),
+                'permissions' => $rows->values()->all(),
+            ],
+        ]);
     }
 
     public function store(StoreWorkflowStageRequest $request, WorkflowVersion $workflowVersion): JsonResponse

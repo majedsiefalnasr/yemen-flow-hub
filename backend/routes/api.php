@@ -105,6 +105,7 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('workflow-definitions', [WorkflowDefinitionController::class, 'index']);
     Route::post('workflow-definitions', [WorkflowDefinitionController::class, 'store']);
     Route::get('workflow-definitions/{workflowDefinition}', [WorkflowDefinitionController::class, 'show']);
+    Route::put('workflow-definitions/{workflowDefinition}', [WorkflowDefinitionController::class, 'update']);
     Route::delete('workflow-definitions/{workflowDefinition}', [WorkflowDefinitionController::class, 'destroy']);
     Route::get('workflow-versions/{workflowVersion}', [WorkflowVersionController::class, 'show']);
     Route::put('workflow-versions/{workflowVersion}', [WorkflowVersionController::class, 'update']);
@@ -119,6 +120,7 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('workflow-versions/{workflowVersion}/stages/{workflowStage}', [WorkflowStageController::class, 'show']);
     Route::put('workflow-versions/{workflowVersion}/stages/{workflowStage}', [WorkflowStageController::class, 'update']);
     Route::delete('workflow-versions/{workflowVersion}/stages/{workflowStage}', [WorkflowStageController::class, 'destroy']);
+    Route::get('workflow-stages/{workflowStage}/effective-executors', [WorkflowStageController::class, 'effectiveExecutors']);
     Route::get('workflow-actions', [WorkflowActionController::class, 'index']);
     Route::post('workflow-actions', [WorkflowActionController::class, 'store']);
     Route::get('workflow-actions/{workflowAction}', [WorkflowActionController::class, 'show']);

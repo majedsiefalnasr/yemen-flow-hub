@@ -2,13 +2,16 @@
 
 namespace App\Services\Workflow;
 
+use App\Enums\WorkflowTransitionType;
 use App\Models\WorkflowVersion;
 
 /**
  * Builds a {nodes, edges} graph fully derived from a version's stages +
  * transitions (FR-WD8). No graph table. The same shape is reused by the per-request
- * graph in Epic 18.5 (FR-REQ8). Node `display_label` (when set on a stage
- * permission) provides contextual naming.
+ * graph in Epic 18.5 (FR-REQ8).
+ *
+ * Node display_label resolution (L-8): stage name when set, otherwise the first
+ * permission row with a display_label ordered by id.
  */
 class WorkflowGraphService
 {
@@ -20,24 +23,28 @@ class WorkflowGraphService
         $stages = $version->stages()->orderBy('sort_order')->orderBy('id')->get();
         $transitions = $version->transitions()->with('action:id,code,name')->get();
 
-        // One display_label per stage (first permission row that has one) for
-        // contextual naming, without a parallel routing source.
-        $stageLabels = $version->stages()
-            ->with(['stagePermissions:id,stage_id,display_label'])
+        $stagesWithPermissions = $version->stages()
+            ->with(['stagePermissions' => fn ($q) => $q->orderBy('id')])
             ->get()
-            ->mapWithKeys(fn ($stage) => [
-                $stage->id => $stage->stagePermissions->pluck('display_label')->filter()->first(),
-            ]);
+            ->keyBy('id');
 
-        $nodes = $stages->map(fn ($stage): array => [
-            'id' => $stage->id,
-            'code' => $stage->code,
-            'name' => $stage->name,
-            'display_label' => $stageLabels[$stage->id] ?? null,
-            'is_initial' => (bool) $stage->is_initial,
-            'is_final' => (bool) $stage->is_final,
-            'sort_order' => (int) $stage->sort_order,
-        ])->values()->all();
+        $nodes = $stages->map(function ($stage) use ($stagesWithPermissions): array {
+            $permissions = $stagesWithPermissions->get($stage->id)?->stagePermissions ?? collect();
+            $permissionLabel = $permissions->pluck('display_label')->filter()->first();
+            $displayLabel = trim((string) $stage->name) !== ''
+                ? $stage->name
+                : $permissionLabel;
+
+            return [
+                'id' => $stage->id,
+                'code' => $stage->code,
+                'name' => $stage->name,
+                'display_label' => $displayLabel,
+                'is_initial' => (bool) $stage->is_initial,
+                'is_final' => (bool) $stage->is_final,
+                'sort_order' => (int) $stage->sort_order,
+            ];
+        })->values()->all();
 
         $edges = $transitions->map(fn ($transition): array => [
             'id' => $transition->id,
@@ -47,7 +54,8 @@ class WorkflowGraphService
             'action_code' => $transition->action?->code,
             'action_name' => $transition->action?->name,
             'requires_comment' => (bool) $transition->requires_comment,
-            'is_self_loop' => $transition->from_stage_id === $transition->to_stage_id,
+            'is_self_loop' => (bool) $transition->is_self_loop,
+            'transition_type' => $transition->transition_type?->value ?? WorkflowTransitionType::FORWARD->value,
             'is_return' => $this->isReturnEdge($transition, $stages),
         ])->values()->all();
 
@@ -55,11 +63,19 @@ class WorkflowGraphService
     }
 
     /**
-     * A "return" edge points back to an earlier stage (lower sort_order) — i.e. a
-     * correction/return path rather than forward progress.
+     * L-7: explicit RETURN type wins; sort-order heuristic is display fallback only.
      */
     private function isReturnEdge($transition, $stages): bool
     {
+        if ($transition->transition_type === WorkflowTransitionType::RETURN) {
+            return true;
+        }
+
+        if ($transition->transition_type !== null
+            && $transition->transition_type !== WorkflowTransitionType::FORWARD) {
+            return false;
+        }
+
         if ($transition->from_stage_id === $transition->to_stage_id) {
             return false;
         }

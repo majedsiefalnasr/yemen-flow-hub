@@ -56,4 +56,39 @@ class StagePermissionAudience
 
         return $query->pluck('id')->toArray();
     }
+
+    /**
+     * Count active users matching a single EXECUTE permission row (authoring feedback).
+     */
+    public function matchCountForPermission(StagePermission $permission): int
+    {
+        if ($permission->access_level !== StageAccessLevel::EXECUTE) {
+            return 0;
+        }
+
+        if ($permission->organization_id === null
+            && $permission->role_id === null
+            && $permission->team_id === null
+            && $permission->user_id === null) {
+            return 0;
+        }
+
+        $query = User::query()->where('is_active', true)->whereNotNull('organization_id');
+        $query->where(function ($sub) use ($permission) {
+            if ($permission->organization_id !== null) {
+                $sub->where('organization_id', $permission->organization_id);
+            }
+            if ($permission->role_id !== null) {
+                $sub->whereHas('roles', fn ($rq) => $rq->where('roles.id', $permission->role_id));
+            }
+            if ($permission->team_id !== null) {
+                $sub->whereHas('teams', fn ($tq) => $tq->where('teams.id', $permission->team_id));
+            }
+            if ($permission->user_id !== null) {
+                $sub->where('users.id', $permission->user_id);
+            }
+        });
+
+        return (int) $query->count();
+    }
 }

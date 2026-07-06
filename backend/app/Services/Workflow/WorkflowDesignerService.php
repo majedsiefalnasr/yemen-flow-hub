@@ -3,6 +3,8 @@
 namespace App\Services\Workflow;
 
 use App\Enums\AuditAction;
+use App\Enums\WorkflowActionKind;
+use App\Enums\WorkflowTransitionType;
 use App\Enums\WorkflowVersionState;
 use App\Exceptions\StaleResourceException;
 use App\Exceptions\WorkflowDesignProtectionException;
@@ -14,6 +16,7 @@ use App\Models\FieldGroup;
 use App\Models\StageFieldRule;
 use App\Models\StagePermission;
 use App\Models\User;
+use App\Models\WorkflowAction;
 use App\Models\WorkflowDefinition;
 use App\Models\WorkflowStage;
 use App\Models\WorkflowTransition;
@@ -61,6 +64,27 @@ class WorkflowDesignerService
         });
     }
 
+    public function updateDefinition(User $actor, WorkflowDefinition $definition, array $attributes): WorkflowDefinition
+    {
+        return DB::transaction(function () use ($actor, $definition, $attributes): WorkflowDefinition {
+            $locked = WorkflowDefinition::query()->lockForUpdate()->findOrFail($definition->getKey());
+            $before = $locked->only(['name', 'description', 'version']);
+            $locked->update([
+                'name' => $attributes['name'] ?? $locked->name,
+                'description' => $attributes['description'] ?? $locked->description,
+                'version' => $locked->version + 1,
+            ]);
+            $this->auditService->log(
+                AuditAction::GOVERNANCE_UPDATED,
+                $actor,
+                $locked,
+                ['before' => $before, 'after' => $locked->only(['name', 'description', 'version'])],
+            );
+
+            return $locked->refresh();
+        });
+    }
+
     /**
      * Edit a DRAFT version. PUBLISHED/ARCHIVED versions reject edits.
      */
@@ -102,8 +126,8 @@ class WorkflowDesignerService
         return DB::transaction(function () use ($actor, $version): WorkflowVersion {
             $source = WorkflowVersion::query()->lockForUpdate()->findOrFail($version->getKey());
 
-            if ($source->state !== WorkflowVersionState::PUBLISHED) {
-                throw new WorkflowVersionImmutableException('Only PUBLISHED versions can be cloned to a new DRAFT.');
+            if (! in_array($source->state, [WorkflowVersionState::PUBLISHED, WorkflowVersionState::ARCHIVED], true)) {
+                throw new WorkflowVersionImmutableException('Only PUBLISHED or ARCHIVED versions can be cloned to a new DRAFT.');
             }
 
             $nextNumber = (int) WorkflowVersion::query()
@@ -202,6 +226,10 @@ class WorkflowDesignerService
                 'to_stage_id' => $stageIdMap[$transition->to_stage_id],
                 'requires_comment' => $transition->requires_comment,
                 'confirmation_message' => $transition->confirmation_message,
+                'is_default_submit' => $transition->is_default_submit,
+                'is_self_loop' => $transition->is_self_loop,
+                'transition_type' => $transition->transition_type,
+                'is_destructive' => $transition->is_destructive,
             ]);
         }
 
@@ -303,9 +331,9 @@ class WorkflowDesignerService
     /**
      * Archive a PUBLISHED version.
      */
-    public function archiveVersion(User $actor, WorkflowVersion $version, int $expectedVersion): WorkflowVersion
+    public function archiveVersion(User $actor, WorkflowVersion $version, int $expectedVersion, ?string $reason = null): WorkflowVersion
     {
-        return $this->transitionState($actor, $version, WorkflowVersionState::ARCHIVED, $expectedVersion);
+        return $this->transitionState($actor, $version, WorkflowVersionState::ARCHIVED, $expectedVersion, $reason);
     }
 
     private function transitionState(
@@ -313,8 +341,9 @@ class WorkflowDesignerService
         WorkflowVersion $version,
         WorkflowVersionState $target,
         int $expectedVersion,
+        ?string $reason = null,
     ): WorkflowVersion {
-        return DB::transaction(function () use ($actor, $version, $target, $expectedVersion): WorkflowVersion {
+        return DB::transaction(function () use ($actor, $version, $target, $expectedVersion, $reason): WorkflowVersion {
             $locked = WorkflowVersion::query()->lockForUpdate()->findOrFail($version->getKey());
             $this->ensureCurrentVersion($locked->version, $expectedVersion);
             $this->ensureValidStateTransition($locked->state, $target);
@@ -329,7 +358,7 @@ class WorkflowDesignerService
                 AuditAction::GOVERNANCE_UPDATED,
                 $actor,
                 $locked,
-                ['before' => $before, 'after' => $locked->only(['state', 'published_at', 'version'])],
+                ['before' => $before, 'after' => $locked->only(['state', 'published_at', 'version']), 'reason' => $reason ?? $target->value],
             );
 
             return $locked->refresh();
@@ -472,6 +501,7 @@ class WorkflowDesignerService
             $lockedVersion = WorkflowVersion::query()->lockForUpdate()->findOrFail($version->getKey());
             $this->ensureEditable($lockedVersion);
 
+            $attributes = $this->normalizeTransitionAttributes($lockedVersion, $attributes);
             $transition = $lockedVersion->transitions()->create($attributes)->refresh();
             $this->auditService->log(
                 AuditAction::GOVERNANCE_CREATED,
@@ -497,6 +527,10 @@ class WorkflowDesignerService
             $this->ensureEditable($parent);
 
             $before = $locked->toArray();
+            $attributes = $this->normalizeTransitionAttributes($parent, array_merge(
+                $locked->only(['from_stage_id', 'to_stage_id', 'action_id']),
+                $attributes,
+            ));
             $locked->update([
                 ...$attributes,
                 'version' => $locked->version + 1,
@@ -597,13 +631,17 @@ class WorkflowDesignerService
     }
 
     /**
-     * Hard-delete a workflow version. State-agnostic (DRAFT/PUBLISHED/ARCHIVED are
-     * all deletable) — gated only by whether any request is bound to the version.
+     * Hard-delete a workflow version. DRAFT/ARCHIVED only when request-free;
+     * PUBLISHED versions are archive-only.
      */
     public function deleteVersion(User $actor, WorkflowVersion $version): void
     {
         DB::transaction(function () use ($actor, $version): void {
             $locked = WorkflowVersion::query()->lockForUpdate()->findOrFail($version->getKey());
+
+            if ($locked->state === WorkflowVersionState::PUBLISHED) {
+                throw WorkflowDesignProtectionException::publishedNotDeletable();
+            }
 
             if (EngineRequest::query()->where('workflow_version_id', $locked->getKey())->exists()) {
                 throw WorkflowDesignProtectionException::versionInUse();
@@ -615,8 +653,7 @@ class WorkflowDesignerService
     }
 
     /**
-     * Hard-delete a workflow definition and its versions. State-agnostic — gated
-     * only by whether any request is bound to any version of the definition.
+     * Soft-delete a workflow definition when no published/archived/request-linked versions remain.
      */
     public function deleteDefinition(User $actor, WorkflowDefinition $definition): void
     {
@@ -626,6 +663,13 @@ class WorkflowDesignerService
 
             if (EngineRequest::query()->whereIn('workflow_version_id', $versionIds)->exists()) {
                 throw WorkflowDesignProtectionException::definitionInUse();
+            }
+
+            $hasPublishedOrArchived = $locked->versions()
+                ->whereIn('state', [WorkflowVersionState::PUBLISHED, WorkflowVersionState::ARCHIVED])
+                ->exists();
+            if ($hasPublishedOrArchived) {
+                throw WorkflowDesignProtectionException::definitionHasPublishedVersions();
             }
 
             $this->auditService->log(AuditAction::GOVERNANCE_DELETED, $actor, $locked, ['before' => $locked->toArray()]);
@@ -670,6 +714,42 @@ class WorkflowDesignerService
     {
         if (! (bool) ($attributes['is_final'] ?? false)) {
             $attributes['final_outcome'] = null;
+        }
+
+        return $attributes;
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     * @return array<string, mixed>
+     */
+    private function normalizeTransitionAttributes(WorkflowVersion $version, array $attributes): array
+    {
+        $fromStageId = (int) ($attributes['from_stage_id'] ?? 0);
+        $toStageId = (int) ($attributes['to_stage_id'] ?? 0);
+        if ($fromStageId > 0 && $toStageId > 0 && $fromStageId === $toStageId) {
+            $attributes['is_self_loop'] = true;
+        }
+
+        if (isset($attributes['action_id'])) {
+            $action = WorkflowAction::query()->find($attributes['action_id']);
+            if ($action !== null && ! isset($attributes['transition_type'])) {
+                $attributes['transition_type'] = match ($action->kind) {
+                    WorkflowActionKind::REJECT => WorkflowTransitionType::REJECT,
+                    WorkflowActionKind::CLOSE => WorkflowTransitionType::CLOSE,
+                    default => WorkflowTransitionType::FORWARD,
+                };
+            }
+        }
+
+        $initial = $version->stages()->where('is_initial', true)->first();
+        if ($initial !== null && $fromStageId === (int) $initial->id) {
+            $outgoingCount = $version->transitions()->where('from_stage_id', $initial->id)->count();
+            if ($outgoingCount === 0 && ! array_key_exists('is_default_submit', $attributes)) {
+                $attributes['is_default_submit'] = true;
+            }
+        } elseif (! ($attributes['is_default_submit'] ?? false)) {
+            $attributes['is_default_submit'] = false;
         }
 
         return $attributes;

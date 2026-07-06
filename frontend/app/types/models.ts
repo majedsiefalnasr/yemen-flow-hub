@@ -756,6 +756,10 @@ export interface WorkflowTransition {
   to_stage_id: number
   requires_comment: boolean
   confirmation_message: string | null
+  is_default_submit: boolean
+  is_self_loop: boolean
+  transition_type: 'FORWARD' | 'RETURN' | 'REJECT' | 'CLOSE' | 'CUSTOM'
+  is_destructive: boolean
   created_at: string | null
   updated_at: string | null
   version: number

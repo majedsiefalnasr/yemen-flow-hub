@@ -25,7 +25,7 @@ class UpdateStagePermissionRequest extends FormRequest
             'organization_id' => ['sometimes', 'required', 'integer', 'exists:organizations,id'],
             'team_id' => ['sometimes', 'nullable', 'integer', 'exists:teams,id'],
             'role_id' => ['sometimes', 'nullable', 'integer', 'exists:roles,id'],
-            'user_id' => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
+            'user_id' => ['prohibited'],
             'access_level' => ['sometimes', Rule::enum(StageAccessLevel::class)],
             'display_label' => ['sometimes', 'string', 'max:255'],
             'version' => ['required', 'integer', 'min:1'],

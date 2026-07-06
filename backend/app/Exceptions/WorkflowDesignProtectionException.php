@@ -27,4 +27,14 @@ class WorkflowDesignProtectionException extends RuntimeException
     {
         return new self('WORKFLOW_DEFINITION_IN_USE', 'لا يمكن حذف مسار عمل مرتبط بطلبات.');
     }
+
+    public static function publishedNotDeletable(): self
+    {
+        return new self('PUBLISHED_NOT_DELETABLE', 'Published workflow versions cannot be deleted; archive instead.');
+    }
+
+    public static function definitionHasPublishedVersions(): self
+    {
+        return new self('DEFINITION_HAS_PUBLISHED_VERSIONS', 'Workflow definitions with published or archived versions cannot be deleted.');
+    }
 }

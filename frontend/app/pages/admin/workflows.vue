@@ -82,6 +82,7 @@ const {
   cloneVersion,
   deleteVersion,
   deleteDefinition,
+  archiveVersion,
 } = useWorkflows()
 
 // ── Version picker state ────────────────────────────────────────────────
@@ -177,8 +178,41 @@ function formatDate(iso: string | null): string {
 // ── Delete dialogs ───────────────────────────────────────────────────────
 const deleteVersionDialogOpen = ref(false)
 const deleteDefinitionDialogOpen = ref(false)
+const archiveVersionDialogOpen = ref(false)
+const archivingVersion = ref(false)
 const deletingVersion = ref(false)
 const deletingDefinition = ref(false)
+
+const isLastPublishedVersion = computed(() => {
+  if (!selectedDefinition.value || !selectedVersion.value) return false
+  if (selectedVersion.value.state !== 'PUBLISHED') return false
+  return selectedDefinition.value.versions.filter((v) => v.state === 'PUBLISHED').length === 1
+})
+
+function openArchiveVersionDialog() {
+  archiveVersionDialogOpen.value = true
+}
+
+async function confirmArchiveVersion() {
+  if (!selectedVersion.value) return
+  archivingVersion.value = true
+  try {
+    const result = await archiveVersion(selectedVersion.value)
+    archiveVersionDialogOpen.value = false
+    if (result.warnings.some((warning) => warning.code === 'LAST_PUBLISHED_ARCHIVED')) {
+      toast.warning(
+        'تمت أرشفة آخر نسخة منشورة. لن يُنشأ طلب جديد على هذا المسار حتى نشر نسخة أخرى.',
+      )
+    } else {
+      toast.success('تمت أرشفة النسخة بنجاح')
+    }
+    await fetchDefinitions()
+  } catch (cause) {
+    toast.error(extractApiErrorMessage(cause, 'تعذر أرشفة النسخة'))
+  } finally {
+    archivingVersion.value = false
+  }
+}
 
 function openDeleteVersionDialog() {
   deleteVersionDialogOpen.value = true
@@ -406,11 +440,21 @@ onMounted(reload)
                   <Button
                     variant="outline"
                     size="sm"
-                    :disabled="selectedVersion.state !== 'PUBLISHED'"
+                    :disabled="!['PUBLISHED', 'ARCHIVED'].includes(selectedVersion.state)"
                     @click="clone"
                   >
                     <Copy class="h-3.5 w-3.5" />
                     استنساخ
+                  </Button>
+                </ScreenGuard>
+                <ScreenGuard screen="workflow_designer" capability="MANAGE">
+                  <Button
+                    v-if="selectedVersion.state === 'PUBLISHED'"
+                    variant="outline"
+                    size="sm"
+                    @click="openArchiveVersionDialog"
+                  >
+                    أرشفة النسخة
                   </Button>
                 </ScreenGuard>
                 <ScreenGuard screen="workflow_designer" capability="MANAGE">
@@ -577,6 +621,31 @@ onMounted(reload)
           </form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog v-model:open="archiveVersionDialogOpen">
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>أرشفة النسخة المنشورة</AlertDialogTitle>
+            <AlertDialogDescription>
+              <template v-if="isLastPublishedVersion">
+                هذه هي آخر نسخة منشورة لمسار العمل «{{ selectedDefinition?.name }}». بعد الأرشفة لن
+                يُنشأ طلب جديد على هذا المسار حتى نشر نسخة أخرى. الطلبات الجارية على النسخة المثبتة
+                تستمر دون تأثر.
+              </template>
+              <template v-else>
+                سيتم أرشفة النسخة «v{{ selectedVersion?.version_number }}» مع الإبقاء على الطلبات
+                المرتبطة بها.
+              </template>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction :disabled="archivingVersion" @click="confirmArchiveVersion">
+              تأكيد الأرشفة
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog v-model:open="deleteVersionDialogOpen">
         <AlertDialogContent>

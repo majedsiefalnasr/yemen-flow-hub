@@ -122,6 +122,46 @@ export function useWorkflows() {
     await api.del(`/api/v1/workflow-definitions/${definition.id}`)
   }
 
+  const archiveVersion = async (
+    version: WorkflowVersion,
+    reason?: string,
+  ): Promise<{ version: WorkflowVersion; warnings: Array<{ code: string; message: string }> }> => {
+    const response = await api.post<{
+      data: WorkflowVersion
+      meta?: { warnings?: Array<{ code: string; message: string }> }
+    }>(`/api/v1/workflow-versions/${version.id}/archive`, {
+      version: version.version,
+      reason,
+    })
+    const archived = response.data
+    definitions.value = definitions.value.map((definition) =>
+      definition.id === archived.workflow_definition_id
+        ? {
+            ...definition,
+            versions: definition.versions.map((v) => (v.id === archived.id ? archived : v)),
+          }
+        : definition,
+    )
+
+    return {
+      version: archived,
+      warnings: response.meta?.warnings ?? [],
+    }
+  }
+
+  const updateDefinition = async (
+    definition: WorkflowDefinition,
+    payload: { name?: string; description?: string | null },
+  ) => {
+    const response = await api.put<{ data: WorkflowDefinition }>(
+      `/api/v1/workflow-definitions/${definition.id}`,
+      { ...payload, version: definition.version },
+    )
+    const updated = response.data
+    definitions.value = definitions.value.map((item) => (item.id === updated.id ? updated : item))
+    return updated
+  }
+
   return {
     definitions,
     definitionsMeta,
@@ -134,5 +174,7 @@ export function useWorkflows() {
     publishVersion,
     deleteVersion,
     deleteDefinition,
+    archiveVersion,
+    updateDefinition,
   }
 }

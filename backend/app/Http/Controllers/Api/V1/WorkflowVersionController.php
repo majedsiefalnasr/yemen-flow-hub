@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\AuditAction;
+use App\Enums\WorkflowVersionState;
 use App\Exceptions\StaleResourceException;
 use App\Exceptions\WorkflowDesignProtectionException;
 use App\Exceptions\WorkflowVersionImmutableException;
@@ -144,10 +145,24 @@ class WorkflowVersionController extends Controller
     public function archive(Request $request, WorkflowVersion $workflowVersion): JsonResponse
     {
         $this->authorize('archive', $workflowVersion);
-        $validated = $request->validate(['version' => ['required', 'integer', 'min:1']]);
+        $validated = $request->validate([
+            'version' => ['required', 'integer', 'min:1'],
+            'reason' => ['sometimes', 'nullable', 'string', 'max:500'],
+        ]);
+
+        $isLastPublished = $workflowVersion->state === WorkflowVersionState::PUBLISHED
+            && WorkflowVersion::query()
+                ->where('workflow_definition_id', $workflowVersion->workflow_definition_id)
+                ->where('state', WorkflowVersionState::PUBLISHED)
+                ->count() === 1;
 
         try {
-            $workflowVersion = $this->designer->archiveVersion($request->user(), $workflowVersion, $validated['version']);
+            $workflowVersion = $this->designer->archiveVersion(
+                $request->user(),
+                $workflowVersion,
+                $validated['version'],
+                $validated['reason'] ?? null,
+            );
         } catch (StaleResourceException) {
             return $this->error('STALE_RESOURCE', 'The workflow version was modified by another user.', 409);
         } catch (WorkflowVersionImmutableException $exception) {
@@ -156,7 +171,17 @@ class WorkflowVersionController extends Controller
 
         $this->permissionService->clearAllScreenPermissionCaches();
 
-        return (new WorkflowVersionResource($workflowVersion))->response();
+        $payload = ['data' => (new WorkflowVersionResource($workflowVersion))->resolve()];
+        if ($isLastPublished) {
+            $payload['meta'] = [
+                'warnings' => [[
+                    'code' => 'LAST_PUBLISHED_ARCHIVED',
+                    'message' => 'This was the only published version. New request creation will stop for this workflow definition until another version is published.',
+                ]],
+            ];
+        }
+
+        return response()->json($payload);
     }
 
     public function destroy(Request $request, WorkflowVersion $workflowVersion): JsonResponse
