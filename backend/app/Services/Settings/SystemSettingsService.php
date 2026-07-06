@@ -6,6 +6,7 @@ use App\Enums\AuditAction;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Services\Audit\AuditService;
+use App\Support\RoleCodes;
 use Illuminate\Auth\Access\AuthorizationException;
 
 class SystemSettingsService
@@ -38,7 +39,7 @@ class SystemSettingsService
     public function saveSection(User $user, string $section, array $data, ?string $subsection = null): array
     {
         // Check authorization
-        if (! $user->hasRoleCode('system_admin')) {
+        if (! $user->hasRoleCode(RoleCodes::SYSTEM_ADMIN)) {
             throw new AuthorizationException('Only administrators can modify system settings.');
         }
 

@@ -6,6 +6,7 @@ use App\Enums\StageAccessLevel;
 use App\Models\EngineRequest;
 use App\Models\User;
 use App\Services\Workflow\StagePermissionResolver;
+use App\Support\RoleCodes;
 
 class EngineRequestPolicy
 {
@@ -15,7 +16,7 @@ class EngineRequestPolicy
 
     public function view(User $user, EngineRequest $request): bool
     {
-        if ($user->hasRoleCode('system_admin')) {
+        if ($user->hasRoleCode(RoleCodes::SYSTEM_ADMIN)) {
             return true;
         }
 

@@ -7,6 +7,7 @@ use App\Http\Resources\AuditLogResource;
 use App\Models\AuditLog;
 use App\Services\Audit\AuditService;
 use App\Support\ApiResponse;
+use App\Support\RoleCodes;
 use Illuminate\Http\JsonResponse;
 use OpenApi\Attributes as OA;
 
@@ -18,7 +19,7 @@ class AuditController extends Controller
 
     private function isAuditAuthorized(): bool
     {
-        return request()->user()->hasAnyRoleCode(['system_admin', 'committee_director']);
+        return request()->user()->hasAnyRoleCode([RoleCodes::SYSTEM_ADMIN, RoleCodes::COMMITTEE_DIRECTOR]);
     }
 
     private function forbiddenAuditResponse(string $reason): JsonResponse

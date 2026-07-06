@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\Bank;
 use App\Models\User;
+use App\Support\RoleCodes;
 
 class BankPolicy
 {
@@ -16,24 +17,24 @@ class BankPolicy
     {
         return (bool) $user->is_active
             && (
-                $user->hasRoleCode('system_admin')
-                || ($user->hasAnyRoleCode(['intake', 'internal_reviewer', 'bank_admin', 'fx_swift']) && $user->bank_id === $bank->id)
+                $user->hasRoleCode(RoleCodes::SYSTEM_ADMIN)
+                || ($user->hasAnyRoleCode(RoleCodes::BANK_ROLES) && $user->bank_id === $bank->id)
             );
     }
 
     public function create(User $user): bool
     {
-        return $user->hasRoleCode('system_admin');
+        return $user->hasRoleCode(RoleCodes::SYSTEM_ADMIN);
     }
 
     public function update(User $user, Bank $bank): bool
     {
-        return $user->hasRoleCode('system_admin')
-            || ($user->hasRoleCode('bank_admin') && $user->bank_id === $bank->id);
+        return $user->hasRoleCode(RoleCodes::SYSTEM_ADMIN)
+            || ($user->hasRoleCode(RoleCodes::BANK_ADMIN) && $user->bank_id === $bank->id);
     }
 
     public function delete(User $user, Bank $bank): bool
     {
-        return $user->hasRoleCode('system_admin');
+        return $user->hasRoleCode(RoleCodes::SYSTEM_ADMIN);
     }
 }

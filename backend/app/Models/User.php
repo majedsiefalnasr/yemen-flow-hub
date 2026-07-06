@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\UserRole;
+use App\Support\RoleCodes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -126,10 +127,10 @@ class User extends Authenticatable
     public function isSystemAdmin(): bool
     {
         if ($this->relationLoaded('roles')) {
-            return $this->roles->contains('code', 'system_admin');
+            return $this->roles->contains('code', RoleCodes::SYSTEM_ADMIN);
         }
 
-        return $this->roles()->where('code', 'system_admin')->exists();
+        return $this->roles()->where('code', RoleCodes::SYSTEM_ADMIN)->exists();
     }
 
     public function hasRoleCode(string $code): bool

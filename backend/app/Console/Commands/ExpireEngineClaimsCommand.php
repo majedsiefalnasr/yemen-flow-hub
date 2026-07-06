@@ -6,6 +6,7 @@ use App\Models\EngineRequest;
 use App\Models\User;
 use App\Services\Notifications\EngineNotificationDispatcher;
 use App\Services\Workflow\EngineClaimService;
+use App\Support\RoleCodes;
 use Illuminate\Console\Command;
 
 class ExpireEngineClaimsCommand extends Command
@@ -47,7 +48,7 @@ class ExpireEngineClaimsCommand extends Command
     private function resolveCbyAdminIds(): array
     {
         return User::query()
-            ->whereHas('roles', fn ($q) => $q->where('code', 'system_admin'))
+            ->whereHas('roles', fn ($q) => $q->where('code', RoleCodes::SYSTEM_ADMIN))
             ->where('is_active', true)
             ->pluck('id')
             ->toArray();

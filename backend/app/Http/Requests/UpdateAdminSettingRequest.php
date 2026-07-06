@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Support\RoleCodes;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateAdminSettingRequest extends FormRequest
@@ -10,7 +11,7 @@ class UpdateAdminSettingRequest extends FormRequest
     {
         $user = $this->user();
 
-        return $user !== null && $user->hasRoleCode('system_admin');
+        return $user !== null && $user->hasRoleCode(RoleCodes::SYSTEM_ADMIN);
     }
 
     public function rules(): array

@@ -17,6 +17,7 @@ use App\Services\Authorization\PermissionService;
 use App\Services\Notifications\EngineNotificationDispatcher;
 use App\Services\Workflow\WorkflowDesignerService;
 use App\Services\Workflow\WorkflowGraphService;
+use App\Support\RoleCodes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -113,7 +114,7 @@ class WorkflowVersionController extends Controller
         $definition = $workflowVersion->workflowDefinition;
         $adminUserIds = User::query()
             ->where('is_active', true)
-            ->whereHas('roles', fn ($q) => $q->where('code', 'system_admin'))
+            ->whereHas('roles', fn ($q) => $q->where('code', RoleCodes::SYSTEM_ADMIN))
             ->pluck('id')
             ->toArray();
 

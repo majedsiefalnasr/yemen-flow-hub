@@ -7,6 +7,7 @@ use App\Models\Bank;
 use App\Models\EngineRequest;
 use App\Services\Audit\AuditService;
 use App\Support\ApiResponse;
+use App\Support\RoleCodes;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
@@ -149,7 +150,7 @@ class ReportController extends Controller
     public function workflow()
     {
         $user = request()->user();
-        if (! $user->hasAnyRoleCode(['system_admin', 'support', 'committee_manager', 'committee_director'])) {
+        if (! $user->hasAnyRoleCode(RoleCodes::OVERSIGHT_ROLES)) {
             $this->auditService->log(AuditAction::AUTHORIZATION_FAILURE, $user, null, [
                 'bank_id' => $user->bank_id,
                 'path' => request()->path(),
@@ -289,7 +290,7 @@ class ReportController extends Controller
     public function voting()
     {
         $user = request()->user();
-        if (! $user->hasAnyRoleCode(['system_admin', 'support', 'committee_manager', 'committee_director'])) {
+        if (! $user->hasAnyRoleCode(RoleCodes::OVERSIGHT_ROLES)) {
             $this->auditService->log(AuditAction::AUTHORIZATION_FAILURE, $user, null, [
                 'bank_id' => $user->bank_id,
                 'path' => request()->path(),
@@ -333,8 +334,8 @@ class ReportController extends Controller
     {
         $user = request()->user();
 
-        $isBankReportingUser = $user->hasAnyRoleCode(['intake', 'internal_reviewer', 'bank_admin']);
-        $isCbyAdmin = $user->hasRoleCode('system_admin');
+        $isBankReportingUser = $user->hasAnyRoleCode([RoleCodes::INTAKE, RoleCodes::INTERNAL_REVIEWER, RoleCodes::BANK_ADMIN]);
+        $isCbyAdmin = $user->hasRoleCode(RoleCodes::SYSTEM_ADMIN);
 
         if (! $isBankReportingUser && ! $isCbyAdmin) {
             $this->auditService->log(AuditAction::AUTHORIZATION_FAILURE, $user, null, [
@@ -444,7 +445,7 @@ class ReportController extends Controller
     public function exportWorkflow(Request $request)
     {
         $user = $request->user();
-        if (! $user->hasAnyRoleCode(['system_admin', 'support', 'committee_manager', 'committee_director'])) {
+        if (! $user->hasAnyRoleCode(RoleCodes::OVERSIGHT_ROLES)) {
             $this->auditService->log(AuditAction::AUTHORIZATION_FAILURE, $user, null, [
                 'path' => $request->path(),
                 'reason' => 'workflow export requires CBY role',
@@ -505,8 +506,8 @@ class ReportController extends Controller
     public function exportBank(Request $request)
     {
         $user = $request->user();
-        $isBankReportingUser = $user->hasAnyRoleCode(['intake', 'internal_reviewer', 'bank_admin']);
-        $isCbyAdmin = $user->hasRoleCode('system_admin');
+        $isBankReportingUser = $user->hasAnyRoleCode([RoleCodes::INTAKE, RoleCodes::INTERNAL_REVIEWER, RoleCodes::BANK_ADMIN]);
+        $isCbyAdmin = $user->hasRoleCode(RoleCodes::SYSTEM_ADMIN);
 
         if (! $isBankReportingUser && ! $isCbyAdmin) {
             $this->auditService->log(AuditAction::AUTHORIZATION_FAILURE, $user, null, [

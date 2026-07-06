@@ -8,6 +8,7 @@ use App\Models\CustomsDeclaration;
 use App\Models\EngineRequest;
 use App\Models\User;
 use App\Services\Audit\AuditService;
+use App\Support\RoleCodes;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -22,7 +23,7 @@ class EngineCustomsService
      */
     public function uploadSignedFxDoc(EngineRequest $request, User $uploader, UploadedFile $file): CustomsDeclaration
     {
-        if (! $uploader->hasRoleCode('committee_director')) {
+        if (! $uploader->hasRoleCode(RoleCodes::COMMITTEE_DIRECTOR)) {
             throw new CustomsException('Only committee director can upload signed FX confirmation documents.');
         }
 

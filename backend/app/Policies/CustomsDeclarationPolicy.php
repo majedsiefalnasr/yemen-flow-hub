@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\CustomsDeclaration;
 use App\Models\User;
+use App\Support\RoleCodes;
 
 class CustomsDeclarationPolicy
 {
@@ -11,15 +12,15 @@ class CustomsDeclarationPolicy
     {
         $bankId = $this->resolveBankId($declaration);
 
-        if ($bankId === null && ! $user->hasAnyRoleCode(['committee_director', 'system_admin'])) {
+        if ($bankId === null && ! $user->hasAnyRoleCode([RoleCodes::COMMITTEE_DIRECTOR, RoleCodes::SYSTEM_ADMIN])) {
             return false;
         }
 
-        if ($user->hasAnyRoleCode(['committee_director', 'system_admin'])) {
+        if ($user->hasAnyRoleCode([RoleCodes::COMMITTEE_DIRECTOR, RoleCodes::SYSTEM_ADMIN])) {
             return true;
         }
 
-        if ($user->hasRoleCode('internal_reviewer')) {
+        if ($user->hasRoleCode(RoleCodes::INTERNAL_REVIEWER)) {
             return $user->bank_id !== null && $user->bank_id === $bankId;
         }
 
@@ -35,11 +36,11 @@ class CustomsDeclarationPolicy
         $bankId = $this->resolveBankId($declaration);
         $isSameBank = $user->bank_id !== null && $user->bank_id === $bankId;
 
-        if ($user->hasAnyRoleCode(['intake', 'internal_reviewer', 'bank_admin'])) {
+        if ($user->hasAnyRoleCode([RoleCodes::INTAKE, RoleCodes::INTERNAL_REVIEWER, RoleCodes::BANK_ADMIN])) {
             return $isSameBank;
         }
 
-        return $user->hasAnyRoleCode(['support', 'committee_manager', 'committee_director', 'system_admin']);
+        return $user->hasAnyRoleCode(RoleCodes::OVERSIGHT_ROLES);
     }
 
     private function resolveBankId(CustomsDeclaration $declaration): ?int

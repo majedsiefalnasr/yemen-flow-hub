@@ -3,42 +3,43 @@
 namespace App\Policies;
 
 use App\Models\User;
+use App\Support\RoleCodes;
 
 class UserPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasRoleCode('system_admin')
-            || ($user->hasRoleCode('bank_admin') && $user->bank_id !== null);
+        return $user->hasRoleCode(RoleCodes::SYSTEM_ADMIN)
+            || ($user->hasRoleCode(RoleCodes::BANK_ADMIN) && $user->bank_id !== null);
     }
 
     public function view(User $user, User $model): bool
     {
-        return $user->hasRoleCode('system_admin')
+        return $user->hasRoleCode(RoleCodes::SYSTEM_ADMIN)
             || $this->canManageOwnBankUser($user, $model);
     }
 
     public function create(User $user): bool
     {
-        return $user->hasRoleCode('system_admin')
-            || ($user->hasRoleCode('bank_admin') && $user->bank_id !== null);
+        return $user->hasRoleCode(RoleCodes::SYSTEM_ADMIN)
+            || ($user->hasRoleCode(RoleCodes::BANK_ADMIN) && $user->bank_id !== null);
     }
 
     public function update(User $user, User $model): bool
     {
-        return $user->hasRoleCode('system_admin')
+        return $user->hasRoleCode(RoleCodes::SYSTEM_ADMIN)
             || $this->canManageOwnBankUser($user, $model);
     }
 
     public function delete(User $user, User $model): bool
     {
-        return $user->hasRoleCode('system_admin')
+        return $user->hasRoleCode(RoleCodes::SYSTEM_ADMIN)
             || $this->canManageOwnBankUser($user, $model);
     }
 
     public function cbyAdmin(User $user): bool
     {
-        return $user->hasRoleCode('system_admin');
+        return $user->hasRoleCode(RoleCodes::SYSTEM_ADMIN);
     }
 
     public function resetPassword(User $user, User $model): bool
@@ -47,8 +48,14 @@ class UserPolicy
             return false;
         }
 
-        if ($user->hasRoleCode('system_admin')) {
-            return $model->hasAnyRoleCode(['system_admin', 'support', 'committee_manager', 'committee_director', 'bank_admin']);
+        if ($user->hasRoleCode(RoleCodes::SYSTEM_ADMIN)) {
+            return $model->hasAnyRoleCode([
+                RoleCodes::SYSTEM_ADMIN,
+                RoleCodes::SUPPORT,
+                RoleCodes::COMMITTEE_MANAGER,
+                RoleCodes::COMMITTEE_DIRECTOR,
+                RoleCodes::BANK_ADMIN,
+            ]);
         }
 
         return $this->canManageOwnBankUser($user, $model);
@@ -57,20 +64,20 @@ class UserPolicy
     public function resetMfa(User $user, User $model): bool
     {
         return $user->id !== $model->id
-            && ($user->hasRoleCode('system_admin') || $this->canManageOwnBankUser($user, $model));
+            && ($user->hasRoleCode(RoleCodes::SYSTEM_ADMIN) || $this->canManageOwnBankUser($user, $model));
     }
 
     public function resetPin(User $user, User $model): bool
     {
         return $user->id !== $model->id
-            && ($user->hasRoleCode('system_admin') || $this->canManageOwnBankUser($user, $model));
+            && ($user->hasRoleCode(RoleCodes::SYSTEM_ADMIN) || $this->canManageOwnBankUser($user, $model));
     }
 
     private function canManageOwnBankUser(User $actor, User $target): bool
     {
-        return $actor->hasRoleCode('bank_admin')
+        return $actor->hasRoleCode(RoleCodes::BANK_ADMIN)
             && $actor->bank_id !== null
             && $target->bank_id === $actor->bank_id
-            && $target->hasAnyRoleCode(['intake', 'internal_reviewer']);
+            && $target->hasAnyRoleCode(RoleCodes::BANK_ADMIN_MANAGED);
     }
 }

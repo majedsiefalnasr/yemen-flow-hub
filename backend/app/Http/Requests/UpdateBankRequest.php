@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Support\RoleCodes;
 use Illuminate\Validation\Rule;
 
 class UpdateBankRequest extends ApiFormRequest
@@ -30,7 +31,7 @@ class UpdateBankRequest extends ApiFormRequest
     {
         $bankId = $this->route('bank')?->id;
 
-        if ($this->user()?->hasRoleCode('bank_admin')) {
+        if ($this->user()?->hasRoleCode(RoleCodes::BANK_ADMIN)) {
             return [
                 'name' => ['required', 'string', 'max:255', Rule::unique('banks', 'name')->ignore($bankId)],
                 'code' => ['prohibited'],

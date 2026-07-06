@@ -8,6 +8,7 @@ use App\Models\CustomsDeclaration;
 use App\Models\User;
 use App\Support\ApiResponse;
 use App\Support\EngineRequestReadModel;
+use App\Support\RoleCodes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
@@ -89,7 +90,7 @@ class SearchController extends Controller
 
     private function searchUsers(User $user, string $query): array
     {
-        if (! $user->hasAnyRoleCode(['system_admin', 'bank_admin'])) {
+        if (! $user->hasAnyRoleCode([RoleCodes::SYSTEM_ADMIN, RoleCodes::BANK_ADMIN])) {
             return [];
         }
 
@@ -102,13 +103,13 @@ class SearchController extends Controller
                     ->orWhere('email', 'like', $like);
             });
 
-        if ($user->hasRoleCode('bank_admin')) {
+        if ($user->hasRoleCode(RoleCodes::BANK_ADMIN)) {
             if (! $user->bank_id) {
                 return [];
             }
 
             $userQuery->where('bank_id', $user->bank_id)
-                ->whereHas('roles', fn ($q) => $q->whereIn('code', ['intake', 'internal_reviewer']));
+                ->whereHas('roles', fn ($q) => $q->whereIn('code', RoleCodes::BANK_ADMIN_MANAGED));
         }
 
         return UserResource::collection(
@@ -118,7 +119,7 @@ class SearchController extends Controller
 
     private function searchBanks(User $user, string $query): array
     {
-        if (! $user->hasRoleCode('system_admin')) {
+        if (! $user->hasRoleCode(RoleCodes::SYSTEM_ADMIN)) {
             return [];
         }
 
@@ -149,7 +150,7 @@ class SearchController extends Controller
             ->with(['engineRequest'])
             ->where('declaration_number', 'like', $like);
 
-        if ($user->hasAnyRoleCode(['intake', 'internal_reviewer', 'bank_admin'])) {
+        if ($user->hasAnyRoleCode([RoleCodes::INTAKE, RoleCodes::INTERNAL_REVIEWER, RoleCodes::BANK_ADMIN])) {
             $customsQuery->whereHas('engineRequest', fn ($q) => $q->where('bank_id', $user->bank_id));
         }
 

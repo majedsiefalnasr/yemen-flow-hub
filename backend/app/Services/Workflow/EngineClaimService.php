@@ -7,6 +7,7 @@ use App\Exceptions\EngineException;
 use App\Models\EngineRequest;
 use App\Models\User;
 use App\Services\Audit\AuditService;
+use App\Support\RoleCodes;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -70,7 +71,7 @@ class EngineClaimService
     {
         return DB::transaction(function () use ($request, $user) {
             $locked = EngineRequest::lockForUpdate()->findOrFail($request->id);
-            $isAdmin = $user->hasRoleCode('system_admin');
+            $isAdmin = $user->hasRoleCode(RoleCodes::SYSTEM_ADMIN);
             if (! $isAdmin && $locked->claimed_by !== $user->id) {
                 throw EngineException::claimNotHeld();
             }

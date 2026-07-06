@@ -7,6 +7,7 @@ use App\Enums\WorkflowVersionState;
 use App\Models\StagePermission;
 use App\Models\User;
 use App\Services\Workflow\StagePermissionResolver;
+use App\Support\RoleCodes;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -141,7 +142,7 @@ class PermissionService
 
         $systemAdminRoleIds = DB::table('roles')
             ->whereIn('id', $roleIds)
-            ->where('code', 'system_admin')
+            ->where('code', RoleCodes::SYSTEM_ADMIN)
             ->pluck('id');
 
         foreach ($systemAdminRoleIds as $roleId) {
@@ -246,7 +247,7 @@ class PermissionService
     {
         $result = ['view' => false, 'add' => false, 'edit' => false];
 
-        if ($user->hasRoleCode('system_admin')) {
+        if ($user->hasRoleCode(RoleCodes::SYSTEM_ADMIN)) {
             $result['view'] = true;
         }
 
@@ -318,7 +319,7 @@ class PermissionService
      */
     public function userHasCapability(User $user, string $screenKey, string $capability): bool
     {
-        if ($screenKey === 'merchants' && $capability === 'MANAGE' && $user->hasRoleCode('system_admin')) {
+        if ($screenKey === 'merchants' && $capability === 'MANAGE' && $user->hasRoleCode(RoleCodes::SYSTEM_ADMIN)) {
             return false;
         }
 

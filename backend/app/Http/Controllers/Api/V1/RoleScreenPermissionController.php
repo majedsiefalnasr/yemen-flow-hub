@@ -12,6 +12,7 @@ use App\Services\Audit\AuditService;
 use App\Services\Authorization\PermissionService;
 use App\Services\Notifications\EngineNotificationDispatcher;
 use App\Support\ApiResponse;
+use App\Support\RoleCodes;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -113,7 +114,7 @@ class RoleScreenPermissionController extends Controller
 
         $roles = Role::query()
             ->where('is_active', true)
-            ->where('code', '!=', 'system_admin')
+            ->where('code', '!=', RoleCodes::SYSTEM_ADMIN)
             ->orderBy('organization_id')
             ->orderBy('name')
             ->get(['id', 'code', 'name', 'organization_id', 'is_system']);
