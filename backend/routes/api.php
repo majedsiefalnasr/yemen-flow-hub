@@ -22,9 +22,9 @@ use App\Http\Controllers\Api\V1\EngineFxConfirmationController;
 use App\Http\Controllers\Api\V1\EngineRequestClaimController;
 use App\Http\Controllers\Api\V1\EngineRequestController;
 use App\Http\Controllers\Api\V1\EngineRequestDocumentController;
-use App\Http\Controllers\Api\V1\GovernanceImpactController;
 use App\Http\Controllers\Api\V1\FieldDefinitionController;
 use App\Http\Controllers\Api\V1\FieldGroupController;
+use App\Http\Controllers\Api\V1\GovernanceImpactController;
 use App\Http\Controllers\Api\V1\MerchantController as V1MerchantController;
 use App\Http\Controllers\Api\V1\NotificationInboxController;
 use App\Http\Controllers\Api\V1\OrganizationController;
@@ -185,6 +185,7 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('engine-requests/{engineRequest}/documents', [EngineRequestDocumentController::class, 'listDocuments']);
     Route::post('engine-requests/{engineRequest}/documents', [EngineRequestDocumentController::class, 'uploadDocument'])->middleware('throttle:10,1');
     Route::get('engine-requests/{engineRequest}/documents/{document}/download', [EngineRequestDocumentController::class, 'downloadDocument']);
+    Route::post('engine-requests/{engineRequest}/documents/{document}/replace', [EngineRequestDocumentController::class, 'replaceDocument'])->middleware('throttle:10,1');
     Route::delete('engine-requests/{engineRequest}/documents/{document}', [EngineRequestDocumentController::class, 'deleteDocument']);
     Route::post('engine-requests/{engineRequest}/fx-confirmation-signed', [EngineFxConfirmationController::class, 'uploadSignedFx'])->middleware('throttle:10,1');
     Route::get('engine-requests/{engineRequest}/customs-declaration/download', [EngineFxConfirmationController::class, 'downloadCustomsDeclaration']);

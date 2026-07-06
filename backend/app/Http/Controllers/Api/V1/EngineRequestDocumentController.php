@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\AuditAction;
+use App\Enums\DocumentStatus;
 use App\Http\Controllers\Api\Controller;
 use App\Models\EngineRequest;
 use App\Models\EngineRequestDocument;
 use App\Services\Audit\AuditService;
 use App\Services\Documents\EngineRequestDocumentIntegrityService;
+use App\Services\Documents\EngineRequestDocumentReplacementService;
 use App\Services\Workflow\EngineClaimService;
 use App\Services\Workflow\StageFieldOutputFilter;
 use Illuminate\Http\JsonResponse;
@@ -21,6 +23,7 @@ class EngineRequestDocumentController extends Controller
         private AuditService $auditService,
         private EngineClaimService $claimService,
         private EngineRequestDocumentIntegrityService $documentIntegrity,
+        private EngineRequestDocumentReplacementService $documentReplacement,
         private StageFieldOutputFilter $outputFilter,
     ) {}
 
@@ -54,6 +57,7 @@ class EngineRequestDocumentController extends Controller
             'size' => $file->getSize(),
             'checksum' => hash_file('sha256', $file->getRealPath()),
             'scan_status' => $this->documentIntegrity->scanStatusForNewUpload(),
+            'status' => DocumentStatus::Active,
         ]);
 
         $this->auditService->log(
@@ -157,6 +161,32 @@ class EngineRequestDocumentController extends Controller
         return response()->json(['success' => true, 'message' => 'Document deleted.']);
     }
 
+    public function replaceDocument(Request $request, EngineRequest $engineRequest, EngineRequestDocument $document): JsonResponse
+    {
+        $this->authorize('execute', $engineRequest);
+        $engineRequest->loadMissing('currentStage');
+        $this->claimService->ensureClaimHeld($engineRequest, $request->user());
+
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:pdf', 'max:10240'],
+            'reason' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $replacement = $this->documentReplacement->replace(
+            $engineRequest,
+            $document,
+            $request->file('file'),
+            $request->user(),
+            $request->input('reason'),
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Document replaced successfully.',
+            'data' => $this->documentResource($replacement),
+        ], 201);
+    }
+
     private function documentResource(EngineRequestDocument $doc): array
     {
         return [
@@ -167,6 +197,10 @@ class EngineRequestDocumentController extends Controller
             'original_name' => $doc->original_name,
             'mime' => $doc->mime,
             'size' => $doc->size,
+            'version' => $doc->version,
+            'status' => ($doc->status ?? DocumentStatus::Active)->value,
+            'is_active' => $doc->isActive(),
+            'superseded_by' => $doc->superseded_by,
             'uploaded_by' => $doc->relationLoaded('uploader') && $doc->uploader
                 ? ['id' => $doc->uploader->id, 'name' => $doc->uploader->name]
                 : $doc->uploaded_by,

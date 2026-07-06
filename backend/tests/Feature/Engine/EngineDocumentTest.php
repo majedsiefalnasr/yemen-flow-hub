@@ -3,6 +3,7 @@
 namespace Tests\Feature\Engine;
 
 use App\Enums\DocumentScanStatus;
+use App\Enums\DocumentStatus;
 use App\Enums\StageAccessLevel;
 use App\Enums\UserRole;
 use App\Models\Bank;
@@ -283,5 +284,127 @@ class EngineDocumentTest extends TestCase
             'action' => 'DOCUMENT_CHECKSUM_MISMATCH',
             'workflow_instance_id' => $request->id,
         ]);
+    }
+
+    public function test_replace_marks_old_document_superseded_and_links_replacement(): void
+    {
+        $request = $this->makeRequest();
+        $docId = $this->uploadDoc($request, 'original.pdf');
+
+        $replacementFile = UploadedFile::fake()->create('replacement.pdf', 120, 'application/pdf');
+        $response = $this->actingAs($this->owner)->postJson(
+            "/api/v1/engine-requests/{$request->id}/documents/{$docId}/replace",
+            ['file' => $replacementFile, 'reason' => 'Corrected invoice']
+        );
+
+        $response->assertCreated()
+            ->assertJsonPath('data.is_active', true)
+            ->assertJsonPath('data.version', 2);
+
+        $replacementId = $response->json('data.id');
+
+        $this->assertDatabaseHas('engine_request_documents', [
+            'id' => $docId,
+            'status' => DocumentStatus::Superseded->value,
+            'superseded_by' => $replacementId,
+        ]);
+
+        $this->assertDatabaseHas('engine_request_documents', [
+            'id' => $replacementId,
+            'status' => DocumentStatus::Active->value,
+            'version' => 2,
+        ]);
+
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'DOCUMENT_REPLACED',
+            'workflow_instance_id' => $request->id,
+        ]);
+    }
+
+    public function test_replace_works_for_prior_stage_document_when_delete_is_locked(): void
+    {
+        $bankOrg = Organization::where('code', 'commercial_banks')->firstOrFail();
+        $entryRole = Role::where('code', 'intake')->firstOrFail();
+
+        $priorStage = WorkflowStage::create([
+            'workflow_version_id' => $this->version->id,
+            'code' => 'REVIEW',
+            'name' => 'Review',
+            'sort_order' => 2,
+            'is_initial' => false,
+            'is_final' => false,
+            'version' => 1,
+        ]);
+
+        StagePermission::create([
+            'stage_id' => $priorStage->id,
+            'organization_id' => $bankOrg->id,
+            'role_id' => $entryRole->id,
+            'access_level' => StageAccessLevel::EXECUTE,
+            'display_label' => 'Owner Exec Review',
+            'version' => 1,
+        ]);
+
+        $request = $this->makeRequest();
+        $docId = $this->uploadDoc($request, 'prior_stage.pdf');
+
+        $request->update(['current_stage_id' => $priorStage->id]);
+
+        $this->actingAs($this->owner)
+            ->deleteJson("/api/v1/engine-requests/{$request->id}/documents/{$docId}")
+            ->assertUnprocessable()
+            ->assertJsonPath('error_code', 'DOCUMENT_LOCKED');
+
+        $replacementFile = UploadedFile::fake()->create('updated.pdf', 100, 'application/pdf');
+        $this->actingAs($this->owner)->postJson(
+            "/api/v1/engine-requests/{$request->id}/documents/{$docId}/replace",
+            ['file' => $replacementFile]
+        )->assertCreated();
+
+        $this->assertDatabaseHas('engine_request_documents', [
+            'id' => $docId,
+            'status' => DocumentStatus::Superseded->value,
+        ]);
+    }
+
+    public function test_cannot_replace_already_superseded_document(): void
+    {
+        $request = $this->makeRequest();
+        $docId = $this->uploadDoc($request, 'first.pdf');
+
+        $firstReplacement = UploadedFile::fake()->create('second.pdf', 100, 'application/pdf');
+        $this->actingAs($this->owner)->postJson(
+            "/api/v1/engine-requests/{$request->id}/documents/{$docId}/replace",
+            ['file' => $firstReplacement]
+        )->assertCreated();
+
+        $secondReplacement = UploadedFile::fake()->create('third.pdf', 100, 'application/pdf');
+        $this->actingAs($this->owner)->postJson(
+            "/api/v1/engine-requests/{$request->id}/documents/{$docId}/replace",
+            ['file' => $secondReplacement]
+        )
+            ->assertUnprocessable()
+            ->assertJsonPath('error_code', 'DOCUMENT_NOT_REPLACEABLE');
+    }
+
+    public function test_list_includes_superseded_documents_with_status(): void
+    {
+        $request = $this->makeRequest();
+        $docId = $this->uploadDoc($request, 'listed.pdf');
+
+        $replacementFile = UploadedFile::fake()->create('listed_replacement.pdf', 100, 'application/pdf');
+        $this->actingAs($this->owner)->postJson(
+            "/api/v1/engine-requests/{$request->id}/documents/{$docId}/replace",
+            ['file' => $replacementFile]
+        )->assertCreated();
+
+        $response = $this->actingAs($this->owner)
+            ->getJson("/api/v1/engine-requests/{$request->id}/documents")
+            ->assertOk()
+            ->assertJsonCount(2, 'data');
+
+        $statuses = collect($response->json('data'))->pluck('status')->all();
+        $this->assertContains(DocumentStatus::Active->value, $statuses);
+        $this->assertContains(DocumentStatus::Superseded->value, $statuses);
     }
 }

@@ -209,6 +209,7 @@ class StageFieldRuleValidator
         $documents = EngineRequestDocument::query()
             ->where('request_id', $request->id)
             ->where('field_id', $field->id)
+            ->active()
             ->get();
 
         foreach ($documents as $document) {
@@ -245,6 +246,10 @@ class StageFieldRuleValidator
 
             if ($document === null) {
                 return 'The referenced document was not found for this request.';
+            }
+
+            if (! $document->isActive()) {
+                return 'The referenced document is no longer active.';
             }
 
             if ($document->field_id !== null && (int) $document->field_id !== (int) $field->id) {
