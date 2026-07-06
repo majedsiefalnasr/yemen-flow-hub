@@ -8,6 +8,8 @@ use App\Models\User;
 use App\Support\ApiResponse;
 use App\Support\EngineRequestReadModel;
 use App\Support\RoleCodes;
+use App\Services\Authorization\DataScope;
+use App\DTOs\Authorization\DataScopeContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
@@ -16,26 +18,26 @@ class DashboardStatsService
 {
     public function stats(User $user): JsonResponse
     {
+        $scope = $this->getScope($user);
 
         return match (true) {
-            $user->hasRoleCode(RoleCodes::INTAKE) => $this->dataEntryStats($user),
-            $user->hasRoleCode(RoleCodes::INTERNAL_REVIEWER) => $this->bankReviewerStats($user),
-            $user->hasRoleCode(RoleCodes::BANK_ADMIN) => $this->bankAdminStats($user),
-            $user->hasRoleCode(RoleCodes::SUPPORT) => $this->supportCommitteeStats($user),
-            $user->hasRoleCode(RoleCodes::FX_SWIFT) => $this->swiftOfficerStats($user),
-            $user->hasRoleCode(RoleCodes::COMMITTEE_MANAGER) => $this->executiveMemberStats($user),
-            $user->hasRoleCode(RoleCodes::COMMITTEE_DIRECTOR) => $this->committeeDirectorStats($user),
-            $user->hasRoleCode(RoleCodes::SYSTEM_ADMIN) => $this->cbyadminStats(),
+            $user->hasRoleCode(RoleCodes::INTAKE) => $this->dataEntryStats($user, $scope),
+            $user->hasRoleCode(RoleCodes::INTERNAL_REVIEWER) => $this->bankReviewerStats($user, $scope),
+            $user->hasRoleCode(RoleCodes::BANK_ADMIN) => $this->bankAdminStats($user, $scope),
+            $user->hasRoleCode(RoleCodes::SUPPORT) => $this->supportCommitteeStats($user, $scope),
+            $user->hasRoleCode(RoleCodes::FX_SWIFT) => $this->swiftOfficerStats($user, $scope),
+            $user->hasRoleCode(RoleCodes::COMMITTEE_MANAGER) => $this->executiveMemberStats($user, $scope),
+            $user->hasRoleCode(RoleCodes::COMMITTEE_DIRECTOR) => $this->committeeDirectorStats($user, $scope),
+            $user->hasRoleCode(RoleCodes::SYSTEM_ADMIN) => $this->cbyadminStats($user, $scope),
             default => ApiResponse::success([], 'Dashboard stats retrieved.'),
         };
     }
 
-    private function bankAdminStats($user): JsonResponse
+    private function bankAdminStats($user, DataScopeContext $scope): JsonResponse
     {
         $asOf = CarbonImmutable::now();
-        $bankId = $user->bank_id ? (int) $user->bank_id : null;
 
-        if ($bankId === null) {
+        if (! $scope->systemWide && $scope->ownBankId === null) {
             return ApiResponse::success(
                 $this->emptyBankAdminStats($asOf),
                 'Dashboard stats retrieved.'
@@ -43,17 +45,20 @@ class DashboardStatsService
         }
 
         $base = EngineRequestReadModel::queryFor($user);
+        DataScope::applyTo($base, $scope);
 
         $total = (clone $base)->count();
         $pending = (clone $base)->where(EngineRequestReadModel::bucket('pending_bank_review'))->count();
         $approved = (clone $base)->where(EngineRequestReadModel::bucket('completed'))->count();
         $rejected = (clone $base)->where(EngineRequestReadModel::bucket('rejected'))->count();
         $atCby = (clone $base)->where(EngineRequestReadModel::bucket('at_cby'))->count();
-        $activeUsers = User::query()
-            ->where('bank_id', $bankId)
+
+        $activeUsersQuery = User::query()
             ->whereHas('roles', fn ($q) => $q->whereIn('code', RoleCodes::BANK_ADMIN_MANAGED))
-            ->where('is_active', true)
-            ->count();
+            ->where('is_active', true);
+
+        DataScope::applyTo($activeUsersQuery, $scope, 'users.bank_id');
+        $activeUsers = $activeUsersQuery->count();
 
         $totalFinancedAmount = (float) (clone $base)
             ->where(EngineRequestReadModel::bucket('completed'))
@@ -64,7 +69,7 @@ class DashboardStatsService
             ->limit(10)
             ->get();
 
-        $monthlyRequests = $this->bankMonthlyRequests($user, $asOf);
+        $monthlyRequests = $this->bankMonthlyRequests($user, $asOf, $scope);
 
         return ApiResponse::success([
             // New Story 6.3.2 fields
@@ -83,7 +88,7 @@ class DashboardStatsService
         ], 'Dashboard stats retrieved.');
     }
 
-    private function bankMonthlyRequests(User $user, CarbonImmutable $asOf): array
+    private function bankMonthlyRequests(User $user, CarbonImmutable $asOf, DataScopeContext $scope): array
     {
         $timezone = config('app.timezone', 'UTC');
         $anchorMonth = $asOf->setTimezone($timezone)->startOfMonth();
@@ -97,7 +102,10 @@ class DashboardStatsService
         $counts = array_fill_keys($monthKeys, 0);
 
         // Group in app layer using UTC to avoid DB/session timezone drift at month boundaries.
-        $createdAtValues = EngineRequestReadModel::queryFor($user)
+        $query = EngineRequestReadModel::queryFor($user);
+        DataScope::applyTo($query, $scope);
+
+        $createdAtValues = $query
             ->where('engine_requests.created_at', '>=', $windowStart)
             ->pluck('engine_requests.created_at');
 
@@ -153,9 +161,10 @@ class DashboardStatsService
         return $months;
     }
 
-    private function dataEntryStats($user)
+    private function dataEntryStats($user, DataScopeContext $scope)
     {
         $base = EngineRequestReadModel::queryFor($user);
+        DataScope::applyTo($base, $scope);
 
         $draft = (clone $base)->where(EngineRequestReadModel::bucket('draft'))->count();
         // Draft-rejected-internal has no dedicated engine bucket; DRAFT_REJECTED_INTERNAL
@@ -202,9 +211,10 @@ class DashboardStatsService
         ], 'Dashboard stats retrieved.');
     }
 
-    private function bankReviewerStats($user)
+    private function bankReviewerStats($user, DataScopeContext $scope)
     {
         $base = EngineRequestReadModel::queryFor($user);
+        DataScope::applyTo($base, $scope);
 
         $pendingReview = (clone $base)->where(EngineRequestReadModel::bucket('pending_bank_review'))->count();
         $atCby = (clone $base)->where(EngineRequestReadModel::bucket('at_cby'))->count();
@@ -244,13 +254,15 @@ class DashboardStatsService
     // SUPPORT_COMMITTEE is CBY-global by institutional design: committee members review
     // requests from all banks. No bank_id filter is applied here — this is intentional
     // governance behaviour, not a missing tenant scope.
-    private function supportCommitteeStats(User $user): JsonResponse
+    private function supportCommitteeStats(User $user, DataScopeContext $scope): JsonResponse
     {
         // The support queue is active work parked on the SUPPORT stage: a request
         // that has closed or been rejected has left the stage and must not appear
         // here, so the stage bucket is scoped to ACTIVE.
-        $base = EngineRequestReadModel::queryFor($user)
-            ->where(EngineRequestReadModel::bucket('support_queue'))
+        $base = EngineRequestReadModel::queryFor($user);
+        DataScope::applyTo($base, $scope);
+
+        $base->where(EngineRequestReadModel::bucket('support_queue'))
             ->active();
 
         $waitingForClaim = (clone $base)->whereNull('engine_requests.claimed_by')->count();
@@ -269,7 +281,10 @@ class DashboardStatsService
         // The engine has no support_approved_at column during coexistence, so this
         // keys on terminal completion (status CLOSED) within the window as the
         // best-available throughput signal.
-        $recentlyApproved = EngineRequestReadModel::queryFor($user)
+        $recentlyApprovedQuery = EngineRequestReadModel::queryFor($user);
+        DataScope::applyTo($recentlyApprovedQuery, $scope);
+
+        $recentlyApproved = $recentlyApprovedQuery
             ->where(EngineRequestReadModel::bucket('completed'))
             ->where('engine_requests.updated_at', '>=', now()->subDays(7))
             ->count();
@@ -290,9 +305,10 @@ class DashboardStatsService
     }
 
     // SWIFT_OFFICER is bank-scoped: sees only their bank's requests.
-    private function swiftOfficerStats(User $user): JsonResponse
+    private function swiftOfficerStats(User $user, DataScopeContext $scope): JsonResponse
     {
         $base = EngineRequestReadModel::queryFor($user);
+        DataScope::applyTo($base, $scope);
 
         // The pending SWIFT queue is active work parked on the FX stage; a request
         // that has closed or been rejected has left the stage and must not appear.
@@ -353,15 +369,18 @@ class DashboardStatsService
     }
 
     // EXECUTIVE_MEMBER: global CBY view — no org scope
-    private function executiveMemberStats(User $user): JsonResponse
+    private function executiveMemberStats(User $user, DataScopeContext $scope): JsonResponse
     {
         return ApiResponse::success($this->executiveVotingStats($user), 'Dashboard stats retrieved.');
     }
 
     // COMMITTEE_DIRECTOR: global CBY view — no org scope
-    private function committeeDirectorStats(User $user): JsonResponse
+    private function committeeDirectorStats(User $user, DataScopeContext $scope): JsonResponse
     {
-        $fxQueue = EngineRequestReadModel::queryFor($user)
+        $fxQueueQuery = EngineRequestReadModel::queryFor($user);
+        DataScope::applyTo($fxQueueQuery, $scope);
+
+        $fxQueue = $fxQueueQuery
             ->where(EngineRequestReadModel::bucket('fx_confirmation_pending'))
             ->orderBy('updated_at')
             ->orderBy('id')
@@ -411,9 +430,10 @@ class DashboardStatsService
     }
 
     // CBY_ADMIN: full-system visibility across all banks
-    private function cbyadminStats(): JsonResponse
+    private function cbyadminStats(User $user, DataScopeContext $scope): JsonResponse
     {
-        $base = EngineRequestReadModel::queryFor(request()->user());
+        $base = EngineRequestReadModel::queryFor($user);
+        DataScope::applyTo($base, $scope);
 
         $total = (clone $base)->count();
         $approved = (clone $base)->where(EngineRequestReadModel::bucket('completed'))->count();
@@ -433,15 +453,15 @@ class DashboardStatsService
             'approved' => $approved,
             'in_process' => $inProcess,
             'rejected' => $rejected,
-            'compliance_alerts' => $this->complianceAlerts(),
-            'most_active_banks' => $this->mostActiveBanks(),
-            'monthly_requests' => $this->cbyadminMonthlyRequests(CarbonImmutable::now()),
-            'category_distribution' => $this->cbyadminCategoryDistribution(),
+            'compliance_alerts' => $this->complianceAlerts($user, $scope),
+            'most_active_banks' => $this->mostActiveBanks($user, $scope),
+            'monthly_requests' => $this->cbyadminMonthlyRequests($user, CarbonImmutable::now(), $scope),
+            'category_distribution' => $this->cbyadminCategoryDistribution($user, $scope),
             'recent_requests' => EngineRequestReadModel::resourceCollection($recentRequests),
         ], 'Dashboard stats retrieved.');
     }
 
-    private function cbyadminMonthlyRequests(CarbonImmutable $asOf): array
+    private function cbyadminMonthlyRequests(User $user, CarbonImmutable $asOf, DataScopeContext $scope): array
     {
         $timezone = config('app.timezone', 'UTC');
         $anchorMonth = $asOf->setTimezone($timezone)->startOfMonth();
@@ -455,11 +475,17 @@ class DashboardStatsService
         $submitted = array_fill_keys($monthKeys, 0);
         $approved = array_fill_keys($monthKeys, 0);
 
-        $rows = EngineRequestReadModel::queryFor(request()->user())
-            ->where('engine_requests.created_at', '>=', $windowStart)
-            ->get(['engine_requests.created_at', 'engine_requests.status']);
+        $rowsQuery = EngineRequestReadModel::queryFor($user);
+        DataScope::applyTo($rowsQuery, $scope);
 
-        $approvedIds = EngineRequestReadModel::queryFor(request()->user())
+        $rows = $rowsQuery
+            ->where('engine_requests.created_at', '>=', $windowStart)
+            ->get(['engine_requests.id', 'engine_requests.created_at', 'engine_requests.status']);
+
+        $approvedIdsQuery = EngineRequestReadModel::queryFor($user);
+        DataScope::applyTo($approvedIdsQuery, $scope);
+
+        $approvedIds = $approvedIdsQuery
             ->where('engine_requests.created_at', '>=', $windowStart)
             ->where(EngineRequestReadModel::bucket('completed'))
             ->pluck('engine_requests.id')
@@ -486,13 +512,16 @@ class DashboardStatsService
         );
     }
 
-    private function cbyadminCategoryDistribution(): array
+    private function cbyadminCategoryDistribution(User $user, DataScopeContext $scope): array
     {
         // Category distribution by commodity_type field (if available), falling back to currency grouping
         // as a meaningful operational segmentation visible in the CBY_ADMIN dashboard.
         $colors = ['#0066cc', '#1b5e20', '#f57f17', '#c62828', '#5856d6', '#32ade6'];
 
-        $groups = EngineRequestReadModel::queryFor(request()->user())
+        $query = EngineRequestReadModel::queryFor($user);
+        DataScope::applyTo($query, $scope);
+
+        $groups = $query
             ->select([])
             ->selectRaw('engine_requests.currency as label, COUNT(*) as `count`')
             ->groupBy('engine_requests.currency')
@@ -510,14 +539,15 @@ class DashboardStatsService
         return $groups;
     }
 
-    private function complianceAlerts(): array
+    private function complianceAlerts(User $user, DataScopeContext $scope): array
     {
-        $user = request()->user();
-
         // Duplicate suppliers: the engine has no dedicated supplier_name projection
         // column (supplier identity now lives on merchant/data payload), so this
         // surfaces duplicate merchants among non-draft requests instead.
-        $duplicateSuppliers = EngineRequestReadModel::queryFor($user)
+        $duplicateSuppliersQuery = EngineRequestReadModel::queryFor($user);
+        DataScope::applyTo($duplicateSuppliersQuery, $scope);
+
+        $duplicateSuppliers = $duplicateSuppliersQuery
             ->whereDoesntHave('currentStage', fn ($q) => $q->whereIn('workflow_stages.code', ['CREATE']))
             ->whereNotNull('engine_requests.merchant_id')
             ->join('merchants', 'merchants.id', '=', 'engine_requests.merchant_id')
@@ -533,7 +563,10 @@ class DashboardStatsService
             ->all();
 
         // USD requests exceeding $1,000,000 that are not closed/rejected
-        $highAmountRequests = EngineRequestReadModel::queryFor($user)
+        $highAmountRequestsQuery = EngineRequestReadModel::queryFor($user);
+        DataScope::applyTo($highAmountRequestsQuery, $scope);
+
+        $highAmountRequests = $highAmountRequestsQuery
             ->where('engine_requests.currency', 'USD')
             ->where('engine_requests.amount', '>', 1_000_000)
             ->where(EngineRequestReadModel::bucket('active'))
@@ -552,7 +585,10 @@ class DashboardStatsService
 
         // Stale pending: not draft, not closed/rejected, not at the final FX-confirmation
         // hand-off stage, updated > 14 days ago.
-        $stalePendingRequests = EngineRequestReadModel::queryFor($user)
+        $stalePendingRequestsQuery = EngineRequestReadModel::queryFor($user);
+        DataScope::applyTo($stalePendingRequestsQuery, $scope);
+
+        $stalePendingRequests = $stalePendingRequestsQuery
             ->where(EngineRequestReadModel::bucket('active'))
             ->whereDoesntHave('currentStage', fn ($q) => $q->whereIn('workflow_stages.code', ['CREATE', 'FX_CONFIRM', 'FINAL']))
             ->where('engine_requests.updated_at', '<', now()->subDays(14))
@@ -575,16 +611,19 @@ class DashboardStatsService
         ];
     }
 
-    private function mostActiveBanks(): array
+    private function mostActiveBanks(User $user, DataScopeContext $scope): array
     {
-        return Bank::query()
+        $query = Bank::query()
             ->select('banks.id as bank_id', 'banks.name as bank_name')
             ->selectRaw('COUNT(engine_requests.id) as request_count')
             ->leftJoin('engine_requests', 'engine_requests.bank_id', '=', 'banks.id')
             ->groupBy('banks.id', 'banks.name')
             ->orderByDesc('request_count')
-            ->limit(5)
-            ->get()
+            ->limit(5);
+
+        DataScope::applyTo($query, $scope, 'banks.id');
+
+        return $query->get()
             ->map(fn ($row) => [
                 'bank_id' => $row->bank_id,
                 'bank_name' => $row->bank_name,
@@ -592,5 +631,16 @@ class DashboardStatsService
             ])
             ->values()
             ->all();
+    }
+
+    private function getScope(User $user): DataScopeContext
+    {
+        $scope = DataScope::forUser($user);
+
+        if ($user->isSystemAdmin()) {
+            return new DataScopeContext(systemWide: true);
+        }
+
+        return $scope;
     }
 }

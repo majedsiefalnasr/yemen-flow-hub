@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Support\EngineRequestStatus;
+use App\Services\Authorization\DataScope;
+use App\DTOs\Authorization\DataScopeContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -115,11 +117,13 @@ class EngineRequest extends Model
 
     public function scopeForUser(Builder $query, User $user): Builder
     {
-        if ($user->bank_id !== null) {
-            return $query->where('engine_requests.bank_id', $user->bank_id);
+        $scope = DataScope::forUser($user);
+
+        if ($user->isSystemAdmin()) {
+            $scope = new DataScopeContext(systemWide: true);
         }
 
-        return $query;
+        return DataScope::applyTo($query, $scope, 'engine_requests.bank_id');
     }
 
     /**
