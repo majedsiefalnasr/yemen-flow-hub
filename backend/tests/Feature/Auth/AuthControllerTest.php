@@ -656,6 +656,8 @@ class AuthControllerTest extends TestCase
 
     public function test_switch_demo_role_returns_403_when_feature_disabled(): void
     {
+        config(['demo.allow_role_switch' => false]);
+
         $actor = $this->makeUser(['email' => 'actor@example.com']);
 
         $response = $this->actingAs($actor)->postJson('/api/auth/switch-demo-role', [

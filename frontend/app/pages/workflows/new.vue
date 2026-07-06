@@ -1,6 +1,6 @@
 <!-- app/pages/workflows/new.vue -->
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { useEngineRequestsStore } from '@/stores/engineRequests.store'
 import { useScreenPermissions } from '@/composables/useScreenPermissions'
 import PageHeader from '@/components/layout/PageHeader.vue'

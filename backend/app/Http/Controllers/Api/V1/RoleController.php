@@ -107,7 +107,7 @@ class RoleController extends Controller
             $role,
             $request->user(),
             fn (): ?JsonResponse => $role->isProtected()
-                ? $this->error('ROLE_PROTECTED', 'System roles cannot be deactivated.', 422)
+                ? $this->error('ROLE_CODE_PROTECTED', 'System roles cannot be deactivated.', 422)
                 : null,
         );
         if ($blocked !== null) {
@@ -128,7 +128,11 @@ class RoleController extends Controller
             $role,
             $request->user(),
             function () use ($role): ?JsonResponse {
-                if ($role->isProtected() || $role->users()->exists()) {
+                if ($role->isProtected()) {
+                    return $this->error('ROLE_CODE_PROTECTED', 'Role cannot be deleted.', 422);
+                }
+
+                if ($role->users()->exists()) {
                     return $this->error('ROLE_PROTECTED', 'Role cannot be deleted.', 422);
                 }
 

@@ -11,7 +11,7 @@ export function useGovernanceImpact() {
   const api = useApi()
   const loading = ref(false)
   const error = ref<string | null>(null)
-  const impact = ref<GovernanceImpactPayload | BankLifecycleImpactPayload | null>(null)
+  const impact = ref<GovernanceImpactPayload | null>(null)
 
   const fetchImpact = async (
     entityType: GovernanceEntityType,
@@ -35,14 +35,13 @@ export function useGovernanceImpact() {
     }
   }
 
-  const fetchBankImpact = async (bankId: number) => {
+  const fetchBankImpact = async (bankId: number): Promise<BankLifecycleImpactPayload> => {
     loading.value = true
     error.value = null
     try {
       const response = await api.get<{ data: BankLifecycleImpactPayload }>(
         `/api/v1/banks/${bankId}/lifecycle-impact`,
       )
-      impact.value = response.data
       return response.data
     } catch (cause: unknown) {
       impact.value = null
