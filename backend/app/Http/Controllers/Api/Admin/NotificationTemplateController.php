@@ -167,7 +167,7 @@ class NotificationTemplateController extends Controller
             'amount' => '1,000,000',
             'currency' => 'USD',
             'status' => 'معتمد',
-            'action_url' => 'https://app.yemenflowhub.ye/requests/YFH-2026-000123',
+            'action_url' => 'https://app.yemenflowhub.ye/workflows/instances/123',
             'user_name' => 'مدير النظام',
         ];
     }

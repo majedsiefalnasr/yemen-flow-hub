@@ -34,7 +34,14 @@ class UpdateStagePermissionRequest extends FormRequest
     {
         return [
             function (Validator $validator): void {
-                StagePermissionConsistency::check($validator, $this->all());
+                $permission = $this->route('stagePermission');
+
+                StagePermissionConsistency::check($validator, [
+                    'organization_id' => $this->has('organization_id') ? $this->input('organization_id') : $permission?->organization_id,
+                    'team_id' => $this->has('team_id') ? $this->input('team_id') : $permission?->team_id,
+                    'role_id' => $this->has('role_id') ? $this->input('role_id') : $permission?->role_id,
+                    'user_id' => $this->has('user_id') ? $this->input('user_id') : $permission?->user_id,
+                ]);
             },
         ];
     }

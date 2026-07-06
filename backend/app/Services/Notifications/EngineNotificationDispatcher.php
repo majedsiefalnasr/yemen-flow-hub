@@ -28,7 +28,7 @@ class EngineNotificationDispatcher
             body: "انتقل الطلب من {$fromStageName} إلى {$toStageName}",
             entityType: 'engine_request',
             entityId: $requestId,
-            actionUrl: "/requests/{$requestId}",
+            actionUrl: $this->engineRequestActionUrl($requestId),
             recipientUserIds: $userIds,
         );
     }
@@ -54,7 +54,7 @@ class EngineNotificationDispatcher
             body: "رقم الفاتورة {$invoiceNumber} مطابق لطلبات قائمة: {$refs}",
             entityType: 'engine_request',
             entityId: $requestId,
-            actionUrl: "/requests/{$requestId}",
+            actionUrl: $this->engineRequestActionUrl($requestId),
             recipientUserIds: $this->resolveAuditViewers(),
         );
     }
@@ -80,7 +80,7 @@ class EngineNotificationDispatcher
             body: "المرحلة: {$stageName}",
             entityType: 'engine_request',
             entityId: $requestId,
-            actionUrl: "/requests/{$requestId}",
+            actionUrl: $this->engineRequestActionUrl($requestId),
             recipientUserIds: $this->resolveAuditViewers(),
         );
     }
@@ -137,6 +137,11 @@ class EngineNotificationDispatcher
         array $recipientUserIds,
     ): void {
         $this->dispatchAfterCommit($type, $severity, $title, $body, $entityType, $entityId, $actionUrl, $recipientUserIds);
+    }
+
+    public function engineRequestActionUrl(int $requestId): string
+    {
+        return "/workflows/instances/{$requestId}";
     }
 
     /**

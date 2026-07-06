@@ -65,7 +65,11 @@ class ProfileController extends Controller
                     'ip_address' => $login->ip_address,
                     'user_agent' => $login->user_agent,
                 ])->values(),
-                'active_sessions_count' => $user->tokens()->whereNull('last_used_at')->orWhere('last_used_at', '>', now()->subHours(24))->count(),
+                'active_sessions_count' => $user->tokens()
+                    ->where(fn ($query) => $query
+                        ->whereNull('last_used_at')
+                        ->orWhere('last_used_at', '>', now()->subHours(24)))
+                    ->count(),
             ]),
             'Profile retrieved.'
         );

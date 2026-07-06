@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Enums\AuditAction;
 use App\Services\Audit\AuditService;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class UpdateReferenceTableRequest extends FormRequest
@@ -19,7 +20,7 @@ class UpdateReferenceTableRequest extends FormRequest
         $referenceTable = $this->route('reference_table');
 
         return [
-            'key' => ['sometimes', 'string'],
+            'key' => ['sometimes', 'string', Rule::prohibitedIf(fn () => $this->input('key') !== $referenceTable->key)],
             'label' => ['required', 'string', 'max:255'],
             'sort_order' => ['sometimes', 'integer', 'min:0'],
             'version' => ['required', 'integer', 'min:1'],

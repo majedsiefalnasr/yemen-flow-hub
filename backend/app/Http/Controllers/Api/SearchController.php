@@ -149,7 +149,7 @@ class SearchController extends Controller
             ->with(['engineRequest'])
             ->where('declaration_number', 'like', $like);
 
-        if ($user->hasAnyRoleCode(['intake', 'internal_reviewer', 'bank_admin', 'fx_swift'])) {
+        if ($user->hasAnyRoleCode(['intake', 'internal_reviewer', 'bank_admin'])) {
             $customsQuery->whereHas('engineRequest', fn ($q) => $q->where('bank_id', $user->bank_id));
         }
 

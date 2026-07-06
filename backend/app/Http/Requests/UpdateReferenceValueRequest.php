@@ -21,7 +21,7 @@ class UpdateReferenceValueRequest extends FormRequest
 
         return [
             'reference_table_id' => ['sometimes', Rule::prohibitedIf(fn () => $this->integer('reference_table_id') !== $referenceValue->reference_table_id)],
-            'key' => ['sometimes', 'string'],
+            'key' => ['sometimes', 'string', Rule::prohibitedIf(fn () => $this->input('key') !== $referenceValue->key)],
             'label' => ['required', 'string', 'max:255'],
             'sort_order' => ['sometimes', 'integer', 'min:0'],
             'version' => ['required', 'integer', 'min:1'],
