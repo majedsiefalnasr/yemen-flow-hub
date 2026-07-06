@@ -18,7 +18,10 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\V1\AuditLogController;
 use App\Http\Controllers\Api\V1\BankController as V1BankController;
 use App\Http\Controllers\Api\V1\ComplianceController;
+use App\Http\Controllers\Api\V1\EngineFxConfirmationController;
+use App\Http\Controllers\Api\V1\EngineRequestClaimController;
 use App\Http\Controllers\Api\V1\EngineRequestController;
+use App\Http\Controllers\Api\V1\EngineRequestDocumentController;
 use App\Http\Controllers\Api\V1\FieldDefinitionController;
 use App\Http\Controllers\Api\V1\FieldGroupController;
 use App\Http\Controllers\Api\V1\MerchantController as V1MerchantController;
@@ -172,16 +175,16 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'active'])->group(function () {
     Route::patch('engine-requests/{engineRequest}/draft', [EngineRequestController::class, 'draft']);
     Route::get('engine-requests/{engineRequest}/history', [EngineRequestController::class, 'history']);
     Route::get('engine-requests/{engineRequest}/graph', [EngineRequestController::class, 'graph']);
-    Route::get('engine-requests/{engineRequest}/documents', [EngineRequestController::class, 'listDocuments']);
-    Route::post('engine-requests/{engineRequest}/documents', [EngineRequestController::class, 'uploadDocument'])->middleware('throttle:10,1');
-    Route::get('engine-requests/{engineRequest}/documents/{document}/download', [EngineRequestController::class, 'downloadDocument']);
-    Route::delete('engine-requests/{engineRequest}/documents/{document}', [EngineRequestController::class, 'deleteDocument']);
-    Route::post('engine-requests/{engineRequest}/fx-confirmation-signed', [EngineRequestController::class, 'uploadSignedFx'])->middleware('throttle:10,1');
-    Route::get('engine-requests/{engineRequest}/customs-declaration/download', [EngineRequestController::class, 'downloadCustomsDeclaration']);
-    Route::get('engine-requests/{engineRequest}/customs-declaration/signed-fx-download', [EngineRequestController::class, 'downloadSignedFxDoc']);
-    Route::post('engine-requests/{engineRequest}/claim', [EngineRequestController::class, 'claim']);
-    Route::post('engine-requests/{engineRequest}/claim/heartbeat', [EngineRequestController::class, 'heartbeatClaim']);
-    Route::delete('engine-requests/{engineRequest}/claim', [EngineRequestController::class, 'releaseClaim']);
+    Route::get('engine-requests/{engineRequest}/documents', [EngineRequestDocumentController::class, 'listDocuments']);
+    Route::post('engine-requests/{engineRequest}/documents', [EngineRequestDocumentController::class, 'uploadDocument'])->middleware('throttle:10,1');
+    Route::get('engine-requests/{engineRequest}/documents/{document}/download', [EngineRequestDocumentController::class, 'downloadDocument']);
+    Route::delete('engine-requests/{engineRequest}/documents/{document}', [EngineRequestDocumentController::class, 'deleteDocument']);
+    Route::post('engine-requests/{engineRequest}/fx-confirmation-signed', [EngineFxConfirmationController::class, 'uploadSignedFx'])->middleware('throttle:10,1');
+    Route::get('engine-requests/{engineRequest}/customs-declaration/download', [EngineFxConfirmationController::class, 'downloadCustomsDeclaration']);
+    Route::get('engine-requests/{engineRequest}/customs-declaration/signed-fx-download', [EngineFxConfirmationController::class, 'downloadSignedFxDoc']);
+    Route::post('engine-requests/{engineRequest}/claim', [EngineRequestClaimController::class, 'claim']);
+    Route::post('engine-requests/{engineRequest}/claim/heartbeat', [EngineRequestClaimController::class, 'heartbeatClaim']);
+    Route::delete('engine-requests/{engineRequest}/claim', [EngineRequestClaimController::class, 'releaseClaim']);
 
     // ─── Audit Logs (Epic 18.6) ─────────────────────────────────────────
     Route::get('audit-logs', [AuditLogController::class, 'index']);
