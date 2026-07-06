@@ -1,6 +1,6 @@
 # Implementation Wave Plan — Yemen Flow Hub Review → Specs → Execution
 
-**Status:** Approved 2026-07-06 (Phase 6 complete)
+**Status:** Approved 2026-07-06 (Phase 6 complete) — **Wave 4 in progress** (WP-7 → WP-8)
 **Authority:** the 15 approved work-package specs under `docs/superpowers/specs/2026-07-06-wp*` + `2026-07-06-wp0` / `wpr`; phase record in `2026-07-05-feature-review-notes.md`.
 **Purpose:** collapse 14 implementation specs into 6 execution waves that preserve dependency safety while letting parallel-capable packages run together.
 
@@ -30,8 +30,8 @@ Multiple WPs may be developed in parallel; **merge order always respects depende
 - Reshapes the workflow model + publish/runtime rules.
 - **Gate:** WP-4 semantic resolver + publish validation land before Wave 4's WP-8 consumer work.
 
-### Wave 3 — Runtime enforcement + auth/security
-**WPs:** WP-5, WP-6, WP-9, WP-10. **Parallel tracks (merge carefully):**
+### Wave 3 — Runtime enforcement + auth/security ✅ COMPLETE
+**WPs:** WP-5, WP-6, WP-9, WP-10. **Branch:** `feat/wp9-governance-lifecycle-guards` (integration commit `a410cf35`).
 - Track A: WP-5 Claims
 - Track B: WP-6 Auth hardening
 - Track C: WP-9 Governance lifecycle guards
@@ -39,8 +39,9 @@ Multiple WPs may be developed in parallel; **merge order always respects depende
 - **Constraint:** WP-10 RM-3 (`users.role` drop) stays deferred — verification window first.
 - **Cross-track coordination:** WP-6 consumes WP-11 auth settings (mfa_required, lockout) — if Wave 5 hasn't shipped them, WP-6 uses fallback defaults; align defaults across both waves.
 
-### Wave 4 — Visibility + documents + FX (highest-risk product wave)
+### Wave 4 — Visibility + documents + FX (highest-risk product wave) 🔄 IN PROGRESS
 **WPs:** WP-7, WP-8. **Internal order:** WP-7 (DataScope + scope enforcement) → WP-8.
+**Plan:** `docs/superpowers/plans/2026-07-06-wp7-two-layer-visibility-wave.md` — branch `feat/wp7-two-layer-visibility`.
 - WP-8 hard-depends on WP-4 (semantic mapping) + WP-7 (DataScope/output visibility).
 - Strong tests; no unrelated cleanup mixed here.
 
