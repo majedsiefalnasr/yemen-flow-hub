@@ -2,9 +2,11 @@
 
 namespace App\Services\Workflow\Engine;
 
+use App\DTOs\Authorization\DataScopeContext;
 use App\Exceptions\FinancingLimitExceededException;
 use App\Exceptions\FinancingLockTimeoutException;
 use App\Models\EngineRequest;
+use App\Services\Authorization\DataScope;
 use App\Support\EngineRequestStatus;
 use App\Support\InvoiceKey;
 use Illuminate\Contracts\Cache\LockTimeoutException;
@@ -47,6 +49,7 @@ class EngineFinancingLedger
         float $requestedPercent,
         callable $onSuccess,
         ?int $excludeRequestId = null,
+        ?DataScopeContext $scope = null,
     ): mixed {
         // Acquire the named lock OUTSIDE the transaction (Laravel retries the closure on
         // deadlock; acquiring inside would re-enter GET_LOCK while the single finally
@@ -56,8 +59,8 @@ class EngineFinancingLedger
         $this->acquireNamedLock($lockName, $cacheLock);
 
         try {
-            return DB::transaction(function () use ($taxNumber, $invoiceNumber, $requestedPercent, $onSuccess, $excludeRequestId): mixed {
-                $usedPercent = $this->sumUsedPercentAfterRowLock($taxNumber, $invoiceNumber, $excludeRequestId);
+            return DB::transaction(function () use ($taxNumber, $invoiceNumber, $requestedPercent, $onSuccess, $excludeRequestId, $scope): mixed {
+                $usedPercent = $this->sumUsedPercentAfterRowLock($taxNumber, $invoiceNumber, $excludeRequestId, $scope);
 
                 if ($usedPercent + $requestedPercent > 100) {
                     throw new FinancingLimitExceededException(
@@ -78,6 +81,7 @@ class EngineFinancingLedger
         string $invoiceNumber,
         float $requestedPercent,
         ?int $excludeRequestId = null,
+        ?DataScopeContext $scope = null,
     ): void {
         $this->reserveCapacity(
             $taxNumber,
@@ -85,17 +89,18 @@ class EngineFinancingLedger
             $requestedPercent,
             static fn (): null => null,
             $excludeRequestId,
+            $scope,
         );
     }
 
-    public function usedPercent(string $taxNumber, string $invoiceNumber, ?int $excludeRequestId = null): float
+    public function usedPercent(string $taxNumber, string $invoiceNumber, ?int $excludeRequestId = null, ?DataScopeContext $scope = null): float
     {
-        return $this->sumEligiblePercent($taxNumber, $invoiceNumber, $excludeRequestId, false);
+        return $this->sumEligiblePercent($taxNumber, $invoiceNumber, $excludeRequestId, false, $scope);
     }
 
-    public function remainingPercent(string $taxNumber, string $invoiceNumber, ?int $excludeRequestId = null): float
+    public function remainingPercent(string $taxNumber, string $invoiceNumber, ?int $excludeRequestId = null, ?DataScopeContext $scope = null): float
     {
-        return max(0.0, 100.0 - $this->usedPercent($taxNumber, $invoiceNumber, $excludeRequestId));
+        return max(0.0, 100.0 - $this->usedPercent($taxNumber, $invoiceNumber, $excludeRequestId, $scope));
     }
 
     public static function normalizeKey(string $value): string
@@ -111,6 +116,7 @@ class EngineFinancingLedger
         string $invoiceNumber,
         ?int $excludeRequestId,
         bool $rowLock,
+        ?DataScopeContext $scope = null,
     ): float {
         $query = EngineRequest::query()
             ->join('merchants', 'merchants.id', '=', 'engine_requests.merchant_id')
@@ -118,6 +124,10 @@ class EngineFinancingLedger
             ->where('engine_requests.invoice_number', self::normalizeKey($invoiceNumber))
             ->when($excludeRequestId !== null, fn ($q) => $q->where('engine_requests.id', '!=', $excludeRequestId))
             ->whereNotIn('engine_requests.status', self::NOT_ELIGIBLE_STATUSES);
+
+        if ($scope) {
+            DataScope::applyTo($query, $scope, 'engine_requests.bank_id');
+        }
 
         if (! $rowLock) {
             return round((float) $query->sum('engine_requests.request_percentage'), 2);
@@ -128,9 +138,9 @@ class EngineFinancingLedger
         return round($rows->sum(static fn ($r): float => (float) ($r->request_percentage ?? 0)), 2);
     }
 
-    private function sumUsedPercentAfterRowLock(string $taxNumber, string $invoiceNumber, ?int $excludeRequestId): float
+    private function sumUsedPercentAfterRowLock(string $taxNumber, string $invoiceNumber, ?int $excludeRequestId, ?DataScopeContext $scope = null): float
     {
-        return $this->sumEligiblePercent($taxNumber, $invoiceNumber, $excludeRequestId, true);
+        return $this->sumEligiblePercent($taxNumber, $invoiceNumber, $excludeRequestId, true, $scope);
     }
 
     private function lockName(string $taxNumber, string $invoiceNumber): string

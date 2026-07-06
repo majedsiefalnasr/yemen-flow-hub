@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Financing;
 
+use App\Enums\OrganizationClassification;
 use App\Enums\UserRole;
 use App\Enums\WorkflowVersionState;
 use App\Models\Bank;
@@ -30,6 +31,7 @@ class FinancingUtilizationEndpointTest extends TestCase
         $org = Organization::query()->create([
             'code' => 'util_test_org',
             'name' => 'Utilization Test Org',
+            'classification' => OrganizationClassification::BANKING_SECTOR,
             'is_active' => true,
         ]);
         $role = Role::query()->create([
@@ -62,6 +64,7 @@ class FinancingUtilizationEndpointTest extends TestCase
             'password' => Hash::make('password'),
             'role' => UserRole::DATA_ENTRY,
             'bank_id' => $bank->id,
+            'organization_id' => $org->id,
             'is_active' => true,
         ]);
         $this->dataEntry->roles()->attach($role->id);
@@ -70,8 +73,8 @@ class FinancingUtilizationEndpointTest extends TestCase
     public function test_returns_aggregate_utilization_shape(): void
     {
         $mock = Mockery::mock(EngineFinancingLedger::class);
-        $mock->shouldReceive('usedPercent')->once()->with('TAX-1', 'INV-1', null)->andReturn(72.5);
-        $mock->shouldReceive('remainingPercent')->once()->with('TAX-1', 'INV-1', null)->andReturn(27.5);
+        $mock->shouldReceive('usedPercent')->once()->with('TAX-1', 'INV-1', null, Mockery::any())->andReturn(72.5);
+        $mock->shouldReceive('remainingPercent')->once()->with('TAX-1', 'INV-1', null, Mockery::any())->andReturn(27.5);
         $this->app->instance(EngineFinancingLedger::class, $mock);
 
         $this->actingAs($this->dataEntry)
@@ -100,8 +103,8 @@ class FinancingUtilizationEndpointTest extends TestCase
     public function test_passes_exclude_request_id_to_service(): void
     {
         $mock = Mockery::mock(EngineFinancingLedger::class);
-        $mock->shouldReceive('usedPercent')->once()->with('TAX-3', 'INV-3', 9)->andReturn(40.0);
-        $mock->shouldReceive('remainingPercent')->once()->with('TAX-3', 'INV-3', 9)->andReturn(60.0);
+        $mock->shouldReceive('usedPercent')->once()->with('TAX-3', 'INV-3', 9, Mockery::any())->andReturn(40.0);
+        $mock->shouldReceive('remainingPercent')->once()->with('TAX-3', 'INV-3', 9, Mockery::any())->andReturn(60.0);
         $this->app->instance(EngineFinancingLedger::class, $mock);
 
         $this->actingAs($this->dataEntry)
