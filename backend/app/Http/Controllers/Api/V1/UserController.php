@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\AuditAction;
 use App\Enums\OrganizationClassification;
-use App\Enums\UserRole;
 use App\Exceptions\StaleResourceException;
 use App\Exceptions\UnmappedRoleException;
 use App\Http\Controllers\Api\Controller;
@@ -17,6 +16,7 @@ use App\Models\User;
 use App\Rules\RoleBelongsToOrganization;
 use App\Services\Audit\AuditService;
 use App\Services\Auth\SessionInvalidationService;
+use App\Support\LegacyRoleMapper;
 use App\Support\PasswordPolicy;
 use App\Support\RoleCodes;
 use Illuminate\Http\JsonResponse;
@@ -80,10 +80,10 @@ class UserController extends Controller
                     'password' => $data['password'],
                     'is_active' => $data['is_active'] ?? true,
                     'mfa_enabled' => $data['mfa_enabled'] ?? false,
-                    'role' => $this->legacyRoleFor($role->code),
+                    'role' => LegacyRoleMapper::toLegacyValue($role->code),
                 ])->refresh();
                 $user->teams()->sync([$data['team_id']]);
-                $user->roles()->sync([$data['role_id']]);
+                $user->assignActiveRole($data['role_id']);
                 $this->auditService->log(AuditAction::USER_CREATED, $request->user(), $user);
 
                 return $user;
@@ -116,11 +116,11 @@ class UserController extends Controller
                     'phone' => $data['phone'] ?? null,
                     'is_active' => $data['is_active'] ?? $locked->is_active,
                     'mfa_enabled' => $data['mfa_enabled'] ?? $locked->mfa_enabled,
-                    'role' => $this->legacyRoleFor($role->code),
+                    'role' => LegacyRoleMapper::toLegacyValue($role->code),
                     'version' => $locked->version + 1,
                 ]);
                 $locked->teams()->sync([$data['team_id']]);
-                $locked->roles()->sync([$data['role_id']]);
+                $locked->assignActiveRole($data['role_id']);
                 $this->sessionInvalidationService->invalidate($locked);
                 $this->auditService->log(AuditAction::USER_UPDATED, $request->user(), $locked);
             });
@@ -172,6 +172,16 @@ class UserController extends Controller
         return new GovernanceUserResource($this->loadIdentity($user));
     }
 
+    public function resetPin(Request $request, User $user): GovernanceUserResource
+    {
+        $this->authorize('resetPin', $user);
+        $user->forceFill(['pin_code_hash' => null, 'pin_enabled' => false])->save();
+        $this->sessionInvalidationService->invalidate($user);
+        $this->auditService->log(AuditAction::PIN_RESET, $request->user(), $user);
+
+        return new GovernanceUserResource($this->loadIdentity($user));
+    }
+
     private function validateIdentity(Request $request, ?User $user = null): array
     {
         $organizationId = $request->integer('organization_id');
@@ -205,26 +215,6 @@ class UserController extends Controller
         }
 
         return $data;
-    }
-
-    private function legacyRoleFor(string $roleCode): string
-    {
-        return match ($roleCode) {
-            RoleCodes::INTAKE => UserRole::DATA_ENTRY->value,
-            RoleCodes::INTERNAL_REVIEWER => UserRole::BANK_REVIEWER->value,
-            RoleCodes::BANK_ADMIN => UserRole::BANK_ADMIN->value,
-            RoleCodes::FX_SWIFT => UserRole::SWIFT_OFFICER->value,
-            RoleCodes::SUPPORT => UserRole::SUPPORT_COMMITTEE->value,
-            RoleCodes::SYSTEM_ADMIN => UserRole::CBY_ADMIN->value,
-            RoleCodes::COMMITTEE_MANAGER => UserRole::COMMITTEE_DIRECTOR->value,
-            // FX_CONFIRM has no legacy equivalent; map to the least-privileged
-            // committee role (voter, not director) during the transition rather
-            // than granting Director legacy semantics.
-            RoleCodes::FX_CONFIRM => UserRole::EXECUTIVE_MEMBER->value,
-            // Fail closed: an unmapped role code must NOT silently inherit the
-            // CBY_ADMIN super-role. Reject the assignment instead.
-            default => throw new UnmappedRoleException($roleCode),
-        };
     }
 
     private function hasActiveWork(User $user): bool

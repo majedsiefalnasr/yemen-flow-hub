@@ -18,7 +18,7 @@ class CustomsDeclarationResource extends JsonResource
                 'id' => $this->issuer->id,
                 'name' => $this->issuer->name,
                 'email' => $this->issuer->email,
-                'role' => $this->issuer->role?->value ?? $this->issuer->role,
+                'role' => $this->issuer->legacyRole()?->value,
             ] : null,
             'issued_at' => $this->issued_at?->toISOString(),
             'signed_fx_doc_path' => $this->signed_fx_doc_path,

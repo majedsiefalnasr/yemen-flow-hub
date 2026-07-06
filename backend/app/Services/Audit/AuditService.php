@@ -26,7 +26,7 @@ class AuditService
 
         $engineRole = $actor?->role();
         $actorRoleId = $engineRole?->id;
-        $userRoleString = $actor?->role?->value ?? $engineRole?->code;
+        $userRoleString = $actor?->legacyRole()?->value ?? $engineRole?->code;
 
         return AuditLog::query()->create([
             'user_id' => $actor?->id,

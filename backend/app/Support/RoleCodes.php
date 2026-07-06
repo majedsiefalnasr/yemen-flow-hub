@@ -41,4 +41,22 @@ class RoleCodes
         self::COMMITTEE_DIRECTOR,
         self::SYSTEM_ADMIN,
     ];
+
+    /** Role codes that cannot be renamed, code-changed, or deleted (RM-4). */
+    public const PROTECTED_CODES = [
+        self::SYSTEM_ADMIN,
+        self::SUPPORT,
+        self::COMMITTEE_MANAGER,
+        self::COMMITTEE_DIRECTOR,
+        self::BANK_ADMIN,
+        self::INTAKE,
+        self::INTERNAL_REVIEWER,
+        self::FX_SWIFT,
+        self::FX_CONFIRM,
+    ];
+
+    public static function isProtectedCode(string $code): bool
+    {
+        return in_array($code, self::PROTECTED_CODES, true);
+    }
 }

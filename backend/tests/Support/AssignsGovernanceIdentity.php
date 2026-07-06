@@ -55,7 +55,7 @@ trait AssignsGovernanceIdentity
             'bank_id' => $keepsBank ? $user->bank_id : null,
         ])->save();
         $user->teams()->sync([$team->id]);
-        $user->roles()->sync([$role->id]);
+        $user->assignActiveRole($role->id);
 
         return $user->fresh();
     }

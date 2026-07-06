@@ -21,7 +21,7 @@ class StageHistoryResource extends JsonResource
             'performed_by' => $this->relationLoaded('actor') && $this->actor ? [
                 'id' => $this->actor->id,
                 'name' => $this->actor->name,
-                'role' => $this->actor->role?->value,
+                'role' => $this->actor_role?->value ?? $this->actor?->legacyRole()?->value,
             ] : null,
             'action' => $this->action,
             'notes' => $this->reason,

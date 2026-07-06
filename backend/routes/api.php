@@ -164,6 +164,7 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'active'])->group(function () {
     Route::post('users/{user}/deactivate', [V1UserController::class, 'deactivate']);
     Route::post('users/{user}/reset-password', [V1UserController::class, 'resetPassword']);
     Route::post('users/{user}/reset-mfa', [V1UserController::class, 'resetMfa']);
+    Route::post('users/{user}/reset-pin', [V1UserController::class, 'resetPin']);
     Route::apiResource('merchants', V1MerchantController::class);
 
     // ─── Engine Requests (Epic 18.5) ─────────────────────────────────────

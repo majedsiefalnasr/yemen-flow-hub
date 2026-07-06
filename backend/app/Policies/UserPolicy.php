@@ -49,13 +49,7 @@ class UserPolicy
         }
 
         if ($user->hasRoleCode(RoleCodes::SYSTEM_ADMIN)) {
-            return $model->hasAnyRoleCode([
-                RoleCodes::SYSTEM_ADMIN,
-                RoleCodes::SUPPORT,
-                RoleCodes::COMMITTEE_MANAGER,
-                RoleCodes::COMMITTEE_DIRECTOR,
-                RoleCodes::BANK_ADMIN,
-            ]);
+            return true;
         }
 
         return $this->canManageOwnBankUser($user, $model);

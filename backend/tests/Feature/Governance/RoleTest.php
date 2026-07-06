@@ -41,7 +41,8 @@ class RoleTest extends TestCase
     public function test_assigned_and_system_roles_are_protected(): void
     {
         $role = Role::query()->where('code', 'system_admin')->firstOrFail();
-        $this->actingAs($this->admin)->postJson("/api/v1/roles/{$role->id}/deactivate")->assertStatus(422);
+        $this->actingAs($this->admin)->postJson("/api/v1/roles/{$role->id}/deactivate")->assertStatus(422)
+            ->assertJsonPath('error.code', 'ROLE_CODE_PROTECTED');
         $this->actingAs($this->admin)->deleteJson("/api/v1/roles/{$role->id}")->assertStatus(422);
     }
 

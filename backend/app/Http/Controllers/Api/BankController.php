@@ -222,7 +222,7 @@ class BankController extends Controller
 
         $this->auditService->log(AuditAction::PASSWORD_RESET, $request->user(), $admin, [
             'mode' => 'bank_management',
-            'target_role' => $admin->role?->value,
+            'target_role' => $admin->legacyRole()?->value,
             'target_bank_id' => $bank->id,
         ]);
 

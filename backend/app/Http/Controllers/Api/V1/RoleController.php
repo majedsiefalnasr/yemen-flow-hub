@@ -3,22 +3,38 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\AuditAction;
+use App\Enums\GovernanceReferenceEntityType;
 use App\Exceptions\StaleResourceException;
 use App\Http\Controllers\Api\Controller;
+use App\Http\Controllers\Concerns\GuardsGovernanceLifecycle;
 use App\Http\Requests\StoreRoleRequest;
 use App\Http\Requests\UpdateRoleRequest;
 use App\Http\Resources\RoleResource;
 use App\Models\Role;
 use App\Services\Audit\AuditService;
+use App\Services\Workflow\PublishedWorkflowReferenceGuard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class RoleController extends Controller
 {
+    use GuardsGovernanceLifecycle;
+
     public function __construct(
         private readonly AuditService $auditService,
+        private readonly PublishedWorkflowReferenceGuard $workflowReferenceGuard,
     ) {}
+
+    protected function auditService(): AuditService
+    {
+        return $this->auditService;
+    }
+
+    protected function workflowReferenceGuard(): PublishedWorkflowReferenceGuard
+    {
+        return $this->workflowReferenceGuard;
+    }
 
     public function index(Request $request): JsonResponse
     {
@@ -64,10 +80,6 @@ class RoleController extends Controller
                     throw new StaleResourceException;
                 }
                 $before = $locked->toArray();
-                // Rename only. The role's permission set is unchanged, so assigned
-                // users' sessions are intentionally NOT invalidated here — a cosmetic
-                // rename must not force a mass logout, and authorization is still
-                // driven by the legacy users.role column (no pivot propagation yet).
                 $locked->update(['name' => $request->string('name')->toString(), 'version' => $locked->version + 1]);
                 $this->auditService->log(AuditAction::GOVERNANCE_UPDATED, $request->user(), $locked, ['before' => $before, 'after' => $locked->toArray()]);
             });
@@ -90,22 +102,46 @@ class RoleController extends Controller
     public function deactivate(Request $request, Role $role): JsonResponse|RoleResource
     {
         $this->authorize('update', $role);
-        if ($role->isProtected() || $role->users()->exists()) {
-            return $this->error('ROLE_IN_USE', 'Assigned or system roles cannot be deactivated.', 422);
+        $blocked = $this->assertCanDeactivateGovernanceEntity(
+            GovernanceReferenceEntityType::ROLE,
+            $role,
+            $request->user(),
+            fn (): ?JsonResponse => $role->isProtected()
+                ? $this->error('ROLE_PROTECTED', 'System roles cannot be deactivated.', 422)
+                : null,
+        );
+        if ($blocked !== null) {
+            return $blocked;
         }
+
         $role->update(['is_active' => false, 'version' => $role->version + 1]);
         $this->auditService->log(AuditAction::GOVERNANCE_UPDATED, $request->user(), $role);
 
         return new RoleResource($role->refresh()->load('organization'));
     }
 
-    public function destroy(Role $role): JsonResponse
+    public function destroy(Request $request, Role $role): JsonResponse
     {
         $this->authorize('delete', $role);
-        if ($role->isProtected() || $role->users()->exists()) {
-            return $this->error('ROLE_PROTECTED', 'Role cannot be deleted.', 422);
+        $blocked = $this->assertCanDeleteGovernanceEntity(
+            GovernanceReferenceEntityType::ROLE,
+            $role,
+            $request->user(),
+            function () use ($role): ?JsonResponse {
+                if ($role->isProtected() || $role->users()->exists()) {
+                    return $this->error('ROLE_PROTECTED', 'Role cannot be deleted.', 422);
+                }
+
+                return null;
+            },
+        );
+        if ($blocked !== null) {
+            return $blocked;
         }
+
+        $snapshot = $role->only(['id', 'organization_id', 'code', 'name', 'is_active', 'version']);
         $role->delete();
+        $this->auditGovernanceDelete($request->user(), $role, $snapshot);
 
         return response()->json(null, 204);
     }

@@ -17,7 +17,7 @@ class TestApiController extends Controller
                 'id' => $u->id,
                 'name' => $u->name,
                 'email' => $u->email,
-                'role' => $u->role->value,
+                'role' => $u->legacyRole()?->value,
                 'role_label' => $u->role->label(),
                 'bank_name' => $u->bank?->name,
                 'bank_code' => $u->bank?->code,

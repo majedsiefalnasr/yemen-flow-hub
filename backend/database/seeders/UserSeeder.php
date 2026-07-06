@@ -162,7 +162,7 @@ class UserSeeder extends Seeder
         );
 
         $user->teams()->sync([$team->id]);
-        $user->roles()->sync([$role->id]);
+        $user->assignActiveRole($role->id);
     }
 
     private function defaultPreferences(UserRole $role): array
@@ -217,7 +217,7 @@ class UserSeeder extends Seeder
             'bank_id' => $keepsBank ? $user->bank_id : null,
         ])->save();
         $user->teams()->sync([$team->id]);
-        $user->roles()->sync([$role->id]);
+        $user->assignActiveRole($role->id);
     }
 
     private function generatePhone(string $bankCode, int $idx): string

@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Enums\UserRole;
+use App\Exceptions\UnmappedRoleException;
+use App\Support\LegacyRoleMapper;
 use App\Support\RoleCodes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -86,7 +88,14 @@ class User extends Authenticatable
 
     public function roles(): BelongsToMany
     {
-        return $this->belongsToMany(Role::class, 'user_roles')->withTimestamps();
+        return $this->belongsToMany(Role::class, 'user_roles')
+            ->withPivot('is_active')
+            ->withTimestamps();
+    }
+
+    public function activeRoles(): BelongsToMany
+    {
+        return $this->roles()->wherePivot('is_active', true);
     }
 
     public function team(): ?Team
@@ -96,7 +105,69 @@ class User extends Authenticatable
 
     public function role(): ?Role
     {
-        return $this->relationLoaded('roles') ? $this->roles->first() : $this->roles()->first();
+        if ($this->relationLoaded('roles')) {
+            return $this->roles->first(fn (Role $role) => (bool) $role->pivot?->is_active)
+                ?? $this->roles->first();
+        }
+
+        return $this->activeRoles()->first();
+    }
+
+    public function legacyRole(): ?UserRole
+    {
+        $code = $this->role()?->code;
+
+        if ($code === null) {
+            return $this->getAttributes()['role'] ?? null
+                ? UserRole::from($this->getAttributes()['role'])
+                : null;
+        }
+
+        try {
+            return LegacyRoleMapper::toLegacyEnum($code);
+        } catch (UnmappedRoleException) {
+            return null;
+        }
+    }
+
+    /**
+     * Assign exactly one active pivot role; prior active rows are deactivated (audited via caller).
+     */
+    public function assignActiveRole(int $roleId): void
+    {
+        $alreadyActive = $this->roles()
+            ->where('roles.id', $roleId)
+            ->wherePivot('is_active', true)
+            ->exists();
+
+        if ($alreadyActive) {
+            return;
+        }
+
+        $this->roles()
+            ->wherePivot('is_active', true)
+            ->get()
+            ->each(fn (Role $role) => $this->roles()->updateExistingPivot($role->id, ['is_active' => false]));
+
+        if ($this->roles()->where('roles.id', $roleId)->exists()) {
+            $this->roles()->updateExistingPivot($roleId, ['is_active' => true]);
+        } else {
+            $this->roles()->attach($roleId, ['is_active' => true]);
+        }
+    }
+
+    public function assertSingleActiveRole(): void
+    {
+        if ($this->roles()->wherePivot('is_active', true)->count() > 1) {
+            abort(response()->json([
+                'error' => [
+                    'code' => 'MULTIPLE_ROLES_NOT_ALLOWED',
+                    'message' => 'A user may hold only one active role.',
+                    'fields' => (object) [],
+                    'request_id' => request()->header('X-Request-ID'),
+                ],
+            ], 422));
+        }
     }
 
     public function auditLogs(): HasMany
@@ -111,17 +182,17 @@ class User extends Authenticatable
 
     public function hasRole(UserRole $role): bool
     {
-        return $this->role === $role;
+        return $this->legacyRole() === $role;
     }
 
     public function isBankUser(): bool
     {
-        return $this->role?->isBankRole() ?? false;
+        return $this->legacyRole()?->isBankRole() ?? false;
     }
 
     public function isCbyUser(): bool
     {
-        return $this->role?->isCbyRole() ?? false;
+        return $this->legacyRole()?->isCbyRole() ?? false;
     }
 
     public function isSystemAdmin(): bool
@@ -135,6 +206,12 @@ class User extends Authenticatable
 
     public function hasRoleCode(string $code): bool
     {
+        $active = $this->role();
+
+        if ($active !== null) {
+            return $active->code === $code;
+        }
+
         if ($this->relationLoaded('roles')) {
             return $this->roles->contains('code', $code);
         }
@@ -144,6 +221,12 @@ class User extends Authenticatable
 
     public function hasAnyRoleCode(array $codes): bool
     {
+        $activeCode = $this->role()?->code;
+
+        if ($activeCode !== null) {
+            return in_array($activeCode, $codes, true);
+        }
+
         if ($this->relationLoaded('roles')) {
             return $this->roles->whereIn('code', $codes)->isNotEmpty();
         }

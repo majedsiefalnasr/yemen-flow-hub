@@ -95,7 +95,7 @@ class UserController extends Controller
         $user = User::query()->create($request->validated());
         $this->auditService->log(AuditAction::USER_CREATED, $request->user(), $user, [
             'bank_id' => $user->bank_id,
-            'target_role' => $user->role?->value,
+            'target_role' => $user->legacyRole()?->value,
             'after' => $this->auditSnapshot($user),
         ]);
 
@@ -147,7 +147,7 @@ class UserController extends Controller
 
         $this->auditService->log(AuditAction::USER_UPDATED, $request->user(), $user, [
             'bank_id' => $user->bank_id,
-            'target_role' => $user->role?->value,
+            'target_role' => $user->legacyRole()?->value,
             'password_reset' => array_key_exists('password', $payload),
             'before' => array_intersect_key($before, array_flip($changedKeys)),
             'after' => array_intersect_key($after, array_flip($changedKeys)),
@@ -173,7 +173,7 @@ class UserController extends Controller
         $this->sessionInvalidationService->invalidate($user);
         $this->auditService->log(AuditAction::USER_DEACTIVATED, request()->user(), $user, [
             'bank_id' => $user->bank_id,
-            'target_role' => $user->role?->value,
+            'target_role' => $user->legacyRole()?->value,
             'before' => $before,
             'after' => $this->auditSnapshot($user),
         ]);
@@ -198,7 +198,7 @@ class UserController extends Controller
 
         $this->auditService->log(AuditAction::PASSWORD_RESET, $request->user(), $user, [
             'mode' => 'admin_assisted',
-            'target_role' => $user->role?->value,
+            'target_role' => $user->legacyRole()?->value,
             'target_bank_id' => $user->bank_id,
         ]);
 
@@ -217,7 +217,7 @@ class UserController extends Controller
         ])->save();
 
         $this->auditService->log(AuditAction::MFA_RESET, $request->user(), $user, [
-            'target_role' => $user->role?->value,
+            'target_role' => $user->legacyRole()?->value,
             'target_bank_id' => $user->bank_id,
         ]);
 
@@ -234,7 +234,7 @@ class UserController extends Controller
         ])->save();
 
         $this->auditService->log(AuditAction::PIN_RESET, $request->user(), $user, [
-            'target_role' => $user->role?->value,
+            'target_role' => $user->legacyRole()?->value,
             'target_bank_id' => $user->bank_id,
         ]);
 
@@ -246,7 +246,7 @@ class UserController extends Controller
         return [
             'name' => $user->name,
             'email' => $user->email,
-            'role' => $user->role?->value,
+            'role' => $user->legacyRole()?->value,
             'bank_id' => $user->bank_id,
             'is_active' => $user->is_active,
         ];
