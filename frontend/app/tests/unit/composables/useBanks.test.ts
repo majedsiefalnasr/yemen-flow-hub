@@ -53,6 +53,7 @@ describe('useBanks', () => {
       mockPost.mockResolvedValueOnce({ success: true, message: 'Created', data: BANK_FIXTURE })
       const { createBank } = useBanks()
       const payload = {
+        organization_id: 1,
         name_ar: 'البنك التجاري اليمني',
         name_en: 'Yemen Commercial Bank',
         code: 'YCB',
