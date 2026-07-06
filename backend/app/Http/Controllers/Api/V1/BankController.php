@@ -113,11 +113,15 @@ class BankController extends Controller
     public function deactivate(Request $request, Bank $bank): JsonResponse|BankResource
     {
         $this->authorize('update', $bank);
-        if ($this->isUsed($bank)) {
-            return $this->error('BANK_IN_USE', 'Bank cannot be deactivated while referenced.', 422);
-        }
+        $inFlight = $bank->engineRequests()->where('status', 'ACTIVE')->count();
+        $before = $bank->toArray();
         $bank->update(['status' => 'SUSPENDED', 'is_active' => false, 'version' => $bank->version + 1]);
-        $this->auditService->log(AuditAction::BANK_UPDATED, $request->user(), $bank);
+        $this->auditService->log(AuditAction::BANK_UPDATED, $request->user(), $bank, [
+            'before' => $before,
+            'after' => $bank->toArray(),
+            'action' => 'suspended',
+            'in_flight_requests' => $inFlight,
+        ]);
 
         return new BankResource($bank->refresh()->load('organization'));
     }
@@ -125,19 +129,30 @@ class BankController extends Controller
     public function activate(Request $request, Bank $bank): BankResource
     {
         $this->authorize('update', $bank);
+        $before = $bank->toArray();
         $bank->update(['status' => 'ACTIVE', 'is_active' => true, 'version' => $bank->version + 1]);
-        $this->auditService->log(AuditAction::BANK_UPDATED, $request->user(), $bank);
+        $this->auditService->log(AuditAction::BANK_UPDATED, $request->user(), $bank, [
+            'before' => $before,
+            'after' => $bank->toArray(),
+            'action' => 'reactivated',
+        ]);
 
         return new BankResource($bank->refresh()->load('organization'));
     }
 
-    public function destroy(Bank $bank): JsonResponse
+    public function destroy(Request $request, Bank $bank): JsonResponse
     {
         $this->authorize('delete', $bank);
         if ($this->isUsed($bank)) {
+            $this->auditService->log(AuditAction::AUTHORIZATION_FAILURE, $request->user(), $bank, [
+                'reason' => 'bank_in_use',
+            ]);
+
             return $this->error('BANK_IN_USE', 'Bank cannot be deleted while referenced.', 422);
         }
+        $snapshot = $bank->toArray();
         $bank->delete();
+        $this->auditService->log(AuditAction::GOVERNANCE_DELETED, $request->user(), $bank, ['before' => $snapshot]);
 
         return response()->json(null, 204);
     }

@@ -72,6 +72,9 @@ import {
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import MetricCard from '@/components/shared/dashboard/MetricCard.vue'
 import MetricGrid from '@/components/shared/dashboard/MetricGrid.vue'
+import GovernanceImpactPreview from '@/components/admin/GovernanceImpactPreview.vue'
+import { useGovernanceImpact } from '@/composables/useGovernanceImpact'
+import { isGovernanceActionBlocked } from '@/types/governance-impact'
 
 definePageMeta({ middleware: ['auth', 'screen'], requiredScreen: 'roles' })
 
@@ -79,6 +82,12 @@ const { roles, loading, error, fetchRoles, createRole, updateRole, setRoleActive
   useGovernanceRoles()
 const { organizations, fetchOrganizations } = useOrganizations()
 const { exportToCSV, exportToExcel, exportToJSON } = useTableExport()
+const {
+  loading: impactLoading,
+  impact: governanceImpact,
+  fetchImpact,
+  reset: resetImpact,
+} = useGovernanceImpact()
 
 const query = ref('')
 const dialogOpen = ref(false)
@@ -89,6 +98,9 @@ const columnFilters = ref<ColumnFiltersState>([])
 const rowSelection = ref<Record<string, boolean>>({})
 const deleteConfirmOpen = ref(false)
 const deletingRole = ref<GovernanceRole | null>(null)
+const deactivateConfirmOpen = ref(false)
+const deactivatingRole = ref<GovernanceRole | null>(null)
+const lifecycleAction = ref<'delete' | 'deactivate'>('delete')
 
 const roleSchema = toTypedSchema(
   z.object({
@@ -223,21 +235,44 @@ const onSubmit = form.handleSubmit(async (values) => {
 })
 
 async function toggleStatus(role: GovernanceRole) {
+  if (role.is_active) {
+    deactivatingRole.value = role
+    lifecycleAction.value = 'deactivate'
+    resetImpact()
+    deleteConfirmOpen.value = false
+    deactivateConfirmOpen.value = true
+    try {
+      await fetchImpact('role', role.id, 'deactivate')
+    } catch {
+      toast.error('تعذّر تحميل معاينة التأثير')
+    }
+    return
+  }
+
   try {
-    await setRoleActive(role, !role.is_active)
-    toast.success(role.is_active ? `تم إيقاف ${role.name}` : `تم تفعيل ${role.name}`)
+    await setRoleActive(role, true)
+    toast.success(`تم تفعيل ${role.name}`)
   } catch {
     toast.error('فشل تغيير الحالة')
   }
 }
 
-function confirmDelete(role: GovernanceRole) {
+async function confirmDelete(role: GovernanceRole) {
   deletingRole.value = role
+  lifecycleAction.value = 'delete'
+  resetImpact()
+  deactivateConfirmOpen.value = false
   deleteConfirmOpen.value = true
+  try {
+    await fetchImpact('role', role.id, 'delete')
+  } catch {
+    toast.error('تعذّر تحميل معاينة التأثير')
+  }
 }
 
 async function executeDelete() {
-  if (!deletingRole.value) return
+  if (!deletingRole.value || !governanceImpact.value) return
+  if (isGovernanceActionBlocked(governanceImpact.value, 'delete')) return
   try {
     await deleteRole(deletingRole.value)
     toast.success('تم حذف الدور')
@@ -246,8 +281,30 @@ async function executeDelete() {
   } finally {
     deletingRole.value = null
     deleteConfirmOpen.value = false
+    resetImpact()
   }
 }
+
+async function executeDeactivate() {
+  if (!deactivatingRole.value || !governanceImpact.value) return
+  if (isGovernanceActionBlocked(governanceImpact.value, 'deactivate')) return
+  try {
+    await setRoleActive(deactivatingRole.value, false)
+    toast.success(`تم إيقاف ${deactivatingRole.value.name}`)
+  } catch (cause) {
+    toast.error(extractApiErrorMessage(cause, 'تعذّر إيقاف الدور'))
+  } finally {
+    deactivatingRole.value = null
+    deactivateConfirmOpen.value = false
+    resetImpact()
+  }
+}
+
+const lifecycleBlocked = computed(() =>
+  governanceImpact.value
+    ? isGovernanceActionBlocked(governanceImpact.value, lifecycleAction.value)
+    : false,
+)
 
 const roleActions: RowAction<GovernanceRole>[] = [
   {
@@ -721,12 +778,44 @@ const formOrgId = computed({
           <AlertDialogHeader>
             <AlertDialogTitle>تأكيد حذف الدور</AlertDialogTitle>
             <AlertDialogDescription>
-              سيتم حذف الدور {{ deletingRole?.name }} نهائياً. لا يمكن التراجع عن هذا الإجراء.
+              سيتم حذف الدور {{ deletingRole?.name }} نهائياً. راجع التأثير قبل التأكيد.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <GovernanceImpactPreview
+            :impact="governanceImpact"
+            action="delete"
+            :loading="impactLoading"
+          />
           <AlertDialogFooter>
-            <AlertDialogCancel @click="deletingRole = null">إلغاء</AlertDialogCancel>
-            <AlertDialogAction @click="executeDelete">تأكيد الحذف</AlertDialogAction>
+            <AlertDialogCancel @click="deletingRole = null; resetImpact()">إلغاء</AlertDialogCancel>
+            <AlertDialogAction :disabled="impactLoading || lifecycleBlocked" @click="executeDelete">
+              تأكيد الحذف
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog v-model:open="deactivateConfirmOpen">
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>تأكيد إيقاف الدور</AlertDialogTitle>
+            <AlertDialogDescription>
+              سيتم إيقاف الدور {{ deactivatingRole?.name }}. راجع التأثير على المنفّذين قبل التأكيد.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <GovernanceImpactPreview
+            :impact="governanceImpact"
+            action="deactivate"
+            :loading="impactLoading"
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel @click="deactivatingRole = null; resetImpact()">إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              :disabled="impactLoading || lifecycleBlocked"
+              @click="executeDeactivate"
+            >
+              تأكيد الإيقاف
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

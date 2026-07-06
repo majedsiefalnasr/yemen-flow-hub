@@ -3,20 +3,38 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\AuditAction;
+use App\Enums\GovernanceReferenceEntityType;
 use App\Exceptions\StaleResourceException;
 use App\Http\Controllers\Api\Controller;
+use App\Http\Controllers\Concerns\GuardsGovernanceLifecycle;
 use App\Http\Requests\StoreTeamRequest;
 use App\Http\Requests\UpdateTeamRequest;
 use App\Http\Resources\TeamResource;
 use App\Models\Team;
 use App\Services\Audit\AuditService;
+use App\Services\Workflow\PublishedWorkflowReferenceGuard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class TeamController extends Controller
 {
-    public function __construct(private readonly AuditService $auditService) {}
+    use GuardsGovernanceLifecycle;
+
+    public function __construct(
+        private readonly AuditService $auditService,
+        private readonly PublishedWorkflowReferenceGuard $workflowReferenceGuard,
+    ) {}
+
+    protected function auditService(): AuditService
+    {
+        return $this->auditService;
+    }
+
+    protected function workflowReferenceGuard(): PublishedWorkflowReferenceGuard
+    {
+        return $this->workflowReferenceGuard;
+    }
 
     public function index(Request $request): JsonResponse
     {
@@ -88,21 +106,45 @@ class TeamController extends Controller
     public function deactivate(Request $request, Team $team): JsonResponse|TeamResource
     {
         $this->authorize('update', $team);
-        if ($team->users()->exists()) {
-            return $this->error('TEAM_IN_USE', 'Team cannot be deactivated while assigned to users.', 422);
+        $blocked = $this->assertCanDeactivateGovernanceEntity(
+            GovernanceReferenceEntityType::TEAM,
+            $team,
+            $request->user(),
+            fn (): ?JsonResponse => $team->isProtected()
+                ? $this->error('TEAM_PROTECTED', 'System teams cannot be deactivated.', 422)
+                : null,
+        );
+        if ($blocked !== null) {
+            return $blocked;
         }
+
         $this->setActive($request, $team, false);
 
         return new TeamResource($team->refresh()->load('organization'));
     }
 
-    public function destroy(Team $team): JsonResponse
+    public function destroy(Request $request, Team $team): JsonResponse
     {
         $this->authorize('delete', $team);
-        if ($team->isProtected() || $team->users()->exists()) {
-            return $this->error('TEAM_PROTECTED', 'Team cannot be deleted.', 422);
+        $blocked = $this->assertCanDeleteGovernanceEntity(
+            GovernanceReferenceEntityType::TEAM,
+            $team,
+            $request->user(),
+            function () use ($team): ?JsonResponse {
+                if ($team->isProtected() || $team->users()->exists()) {
+                    return $this->error('TEAM_PROTECTED', 'Team cannot be deleted.', 422);
+                }
+
+                return null;
+            },
+        );
+        if ($blocked !== null) {
+            return $blocked;
         }
+
+        $snapshot = $team->only(['id', 'organization_id', 'code', 'name', 'is_active', 'version']);
         $team->delete();
+        $this->auditGovernanceDelete($request->user(), $team, $snapshot);
 
         return response()->json(null, 204);
     }

@@ -51,6 +51,9 @@ class ReferenceTable extends Model
         return $this->values()->exists();
     }
 
+    /**
+     * System reference tables cannot be deleted. `key` is immutable after create.
+     */
     public function isProtected(): bool
     {
         return (bool) $this->is_system;

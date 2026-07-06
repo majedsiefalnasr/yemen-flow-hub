@@ -6,6 +6,7 @@ use App\Enums\StageAccessLevel;
 use App\Models\StagePermission;
 use App\Models\User;
 use App\Models\WorkflowStage;
+use App\Support\GovernanceExecutorSimulation;
 
 class StagePermissionAudience
 {
@@ -17,7 +18,7 @@ class StagePermissionAudience
      *
      * @return array<int, int>
      */
-    public function executeHolderIds(WorkflowStage $stage): array
+    public function executeHolderIds(WorkflowStage $stage, ?GovernanceExecutorSimulation $simulation = null): array
     {
         $rows = StagePermission::query()
             ->where('stage_id', $stage->getKey())
@@ -33,19 +34,47 @@ class StagePermissionAudience
             return [];
         }
 
-        $query = User::query()->where('is_active', true)->whereNotNull('organization_id');
+        $query = User::query()
+            ->where('is_active', true)
+            ->whereNotNull('organization_id')
+            ->whereHas('organization', fn ($oq) => $oq->where('is_active', true));
 
-        $query->where(function ($q) use ($rows) {
+        if ($simulation?->deactivatingOrganizationId() !== null) {
+            $query->where('organization_id', '!=', $simulation->deactivatingOrganizationId());
+        }
+
+        $query->where(function ($q) use ($rows, $simulation) {
             foreach ($rows as $row) {
-                $q->orWhere(function ($sub) use ($row) {
+                if ($simulation !== null
+                    && $row->organization_id !== null
+                    && $simulation->isDeactivatingOrganization((int) $row->organization_id)) {
+                    continue;
+                }
+                if ($simulation !== null
+                    && $row->user_id !== null
+                    && $simulation->isDeactivatingUser((int) $row->user_id)) {
+                    continue;
+                }
+
+                $q->orWhere(function ($sub) use ($row, $simulation) {
                     if ($row->organization_id !== null) {
                         $sub->where('organization_id', $row->organization_id);
                     }
                     if ($row->role_id !== null) {
-                        $sub->whereHas('roles', fn ($rq) => $rq->where('roles.id', $row->role_id));
+                        $sub->whereHas('roles', function ($rq) use ($row, $simulation) {
+                            $rq->where('roles.id', $row->role_id)->where('roles.is_active', true);
+                            if ($simulation !== null && $simulation->isDeactivatingRole((int) $row->role_id)) {
+                                $rq->whereRaw('1 = 0');
+                            }
+                        });
                     }
                     if ($row->team_id !== null) {
-                        $sub->whereHas('teams', fn ($tq) => $tq->where('teams.id', $row->team_id));
+                        $sub->whereHas('teams', function ($tq) use ($row, $simulation) {
+                            $tq->where('teams.id', $row->team_id)->where('teams.is_active', true);
+                            if ($simulation !== null && $simulation->isDeactivatingTeam((int) $row->team_id)) {
+                                $tq->whereRaw('1 = 0');
+                            }
+                        });
                     }
                     if ($row->user_id !== null) {
                         $sub->where('users.id', $row->user_id);
@@ -54,7 +83,16 @@ class StagePermissionAudience
             }
         });
 
-        return $query->pluck('id')->toArray();
+        $userIds = $query->pluck('id')->toArray();
+
+        if ($simulation !== null) {
+            return array_values(array_filter(
+                $userIds,
+                fn (int $userId): bool => ! $simulation->isDeactivatingUser($userId),
+            ));
+        }
+
+        return $userIds;
     }
 
     /**
@@ -73,16 +111,19 @@ class StagePermissionAudience
             return 0;
         }
 
-        $query = User::query()->where('is_active', true)->whereNotNull('organization_id');
+        $query = User::query()
+            ->where('is_active', true)
+            ->whereNotNull('organization_id')
+            ->whereHas('organization', fn ($oq) => $oq->where('is_active', true));
         $query->where(function ($sub) use ($permission) {
             if ($permission->organization_id !== null) {
                 $sub->where('organization_id', $permission->organization_id);
             }
             if ($permission->role_id !== null) {
-                $sub->whereHas('roles', fn ($rq) => $rq->where('roles.id', $permission->role_id));
+                $sub->whereHas('roles', fn ($rq) => $rq->where('roles.id', $permission->role_id)->where('roles.is_active', true));
             }
             if ($permission->team_id !== null) {
-                $sub->whereHas('teams', fn ($tq) => $tq->where('teams.id', $permission->team_id));
+                $sub->whereHas('teams', fn ($tq) => $tq->where('teams.id', $permission->team_id)->where('teams.is_active', true));
             }
             if ($permission->user_id !== null) {
                 $sub->where('users.id', $permission->user_id);

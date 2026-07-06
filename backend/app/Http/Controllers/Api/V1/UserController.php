@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\AuditAction;
 use App\Enums\OrganizationClassification;
+use App\Enums\StageAccessLevel;
 use App\Exceptions\StaleResourceException;
 use App\Exceptions\UnmappedRoleException;
 use App\Http\Controllers\Api\Controller;
@@ -16,6 +17,8 @@ use App\Models\User;
 use App\Rules\RoleBelongsToOrganization;
 use App\Services\Audit\AuditService;
 use App\Services\Auth\SessionInvalidationService;
+use App\Services\Workflow\StagePermissionAudience;
+use App\Support\GovernanceExecutorSimulation;
 use App\Support\LegacyRoleMapper;
 use App\Support\PasswordPolicy;
 use App\Support\RoleCodes;
@@ -30,6 +33,7 @@ class UserController extends Controller
     public function __construct(
         private readonly AuditService $auditService,
         private readonly SessionInvalidationService $sessionInvalidationService,
+        private readonly StagePermissionAudience $stagePermissionAudience,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -139,8 +143,8 @@ class UserController extends Controller
         if ($request->user()->getKey() === $user->getKey()) {
             return $this->error('USER_SELF_DEACTIVATION', 'You cannot deactivate your own account.', 422);
         }
-        if ($this->hasActiveWork($user)) {
-            return $this->error('USER_HAS_ACTIVE_WORK', 'Reassign or close active work before deactivating this user.', 422);
+        if ($this->hasOperationalResponsibility($user)) {
+            return $this->error('USER_HAS_ACTIVE_WORK', 'Release claims or reassign operational responsibility before deactivating this user.', 422);
         }
         $user->update(['is_active' => false, 'version' => $user->version + 1]);
         $this->sessionInvalidationService->invalidate($user);
@@ -217,15 +221,66 @@ class UserController extends Controller
         return $data;
     }
 
-    private function hasActiveWork(User $user): bool
+    private function hasOperationalResponsibility(User $user): bool
+    {
+        if ($this->holdsActiveClaim($user)) {
+            return true;
+        }
+
+        if ($this->hasDirectStageAssignmentOnActiveRequest($user)) {
+            return true;
+        }
+
+        return $this->isSoleExecutorOnActiveStage($user);
+    }
+
+    private function holdsActiveClaim(User $user): bool
     {
         return EngineRequest::query()
-            ->whereNotIn('status', ['CLOSED', 'REJECTED'])
-            ->where(function ($query) use ($user): void {
-                $query->orWhere('created_by', $user->id)
-                    ->orWhere('claimed_by', $user->id);
+            ->where('status', 'ACTIVE')
+            ->where('claimed_by', $user->id)
+            ->whereNotNull('claim_expires_at')
+            ->where('claim_expires_at', '>', now())
+            ->exists();
+    }
+
+    private function hasDirectStageAssignmentOnActiveRequest(User $user): bool
+    {
+        return EngineRequest::query()
+            ->where('status', 'ACTIVE')
+            ->whereHas('currentStage.stagePermissions', function ($query) use ($user): void {
+                $query->where('user_id', $user->id)
+                    ->where('access_level', StageAccessLevel::EXECUTE->value);
             })
             ->exists();
+    }
+
+    private function isSoleExecutorOnActiveStage(User $user): bool
+    {
+        $simulation = GovernanceExecutorSimulation::forUser($user->id);
+        $requests = EngineRequest::query()
+            ->where('status', 'ACTIVE')
+            ->with('currentStage')
+            ->get();
+
+        foreach ($requests as $request) {
+            $stage = $request->currentStage;
+            if ($stage === null || $stage->is_final) {
+                continue;
+            }
+
+            $holders = $this->stagePermissionAudience->executeHolderIds($stage);
+            if ($holders === [$user->id]) {
+                return true;
+            }
+
+            if (in_array($user->id, $holders, true)
+                && $this->stagePermissionAudience->executeHolderIds($stage, $simulation) === []) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function loadIdentity(User $user): User

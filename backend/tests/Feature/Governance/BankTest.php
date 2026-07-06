@@ -37,13 +37,14 @@ class BankTest extends TestCase
         $this->actingAs($this->admin)->postJson('/api/v1/banks', ['code' => 'NULL2', 'name' => 'Null Two', 'swift_code' => null, 'status' => 'ACTIVE'])->assertCreated();
     }
 
-    public function test_existing_banks_are_backfilled_and_in_use_is_protected(): void
+    public function test_existing_banks_are_backfilled_and_suspend_allowed_with_history(): void
     {
         $bank = Bank::query()->where('code', 'YBRD')->firstOrFail();
         $this->assertNotNull($bank->organization_id);
         $this->assertSame('ACTIVE', $bank->status);
         $this->actingAs($this->admin)->postJson("/api/v1/banks/{$bank->id}/deactivate")
-            ->assertStatus(422)->assertJsonPath('error.code', 'BANK_IN_USE');
+            ->assertOk()
+            ->assertJsonPath('data.status', 'SUSPENDED');
         $this->actingAs($this->admin)->deleteJson("/api/v1/banks/{$bank->id}")
             ->assertStatus(422)->assertJsonPath('error.code', 'BANK_IN_USE');
     }

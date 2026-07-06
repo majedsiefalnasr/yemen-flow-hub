@@ -4,6 +4,11 @@ namespace App\Models\Concerns;
 
 use LogicException;
 
+/**
+ * System governance rows (`is_system = true`) are protected from deletion,
+ * deactivation, and identity mutation. Display names may change; `code` and
+ * `is_system` are immutable.
+ */
 trait ProtectsSystemRecords
 {
     protected static function bootProtectsSystemRecords(): void

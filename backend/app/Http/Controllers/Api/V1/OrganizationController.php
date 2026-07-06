@@ -2,15 +2,18 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\GovernanceReferenceEntityType;
 use App\Enums\AuditAction;
 use App\Enums\OrganizationClassification;
 use App\Exceptions\StaleResourceException;
 use App\Http\Controllers\Api\Controller;
+use App\Http\Controllers\Concerns\GuardsGovernanceLifecycle;
 use App\Http\Requests\StoreOrganizationRequest;
 use App\Http\Requests\UpdateOrganizationRequest;
 use App\Http\Resources\OrganizationResource;
 use App\Models\Organization;
 use App\Services\Audit\AuditService;
+use App\Services\Workflow\PublishedWorkflowReferenceGuard;
 use App\Support\InitialStageExecutorGuard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,7 +21,22 @@ use Illuminate\Support\Facades\DB;
 
 class OrganizationController extends Controller
 {
-    public function __construct(private readonly AuditService $auditService) {}
+    use GuardsGovernanceLifecycle;
+
+    public function __construct(
+        private readonly AuditService $auditService,
+        private readonly PublishedWorkflowReferenceGuard $workflowReferenceGuard,
+    ) {}
+
+    protected function auditService(): AuditService
+    {
+        return $this->auditService;
+    }
+
+    protected function workflowReferenceGuard(): PublishedWorkflowReferenceGuard
+    {
+        return $this->workflowReferenceGuard;
+    }
 
     public function index(Request $request): JsonResponse
     {
@@ -129,11 +147,23 @@ class OrganizationController extends Controller
     public function deactivate(Request $request, Organization $organization): JsonResponse|OrganizationResource
     {
         $this->authorize('update', $organization);
-        if ($organization->teams()->where('is_active', true)->exists()
-            || $organization->roles()->where('is_active', true)->exists()
-            || $organization->users()->where('is_active', true)->exists()
-            || $organization->banks()->where('is_active', true)->exists()) {
-            return $this->businessError('ORGANIZATION_IN_USE', 'Organization cannot be deactivated while it has active teams, roles, users, or banks.', 422);
+        $blocked = $this->assertCanDeactivateGovernanceEntity(
+            GovernanceReferenceEntityType::ORGANIZATION,
+            $organization,
+            $request->user(),
+            function () use ($organization): ?JsonResponse {
+                if ($organization->teams()->where('is_active', true)->exists()
+                    || $organization->roles()->where('is_active', true)->exists()
+                    || $organization->users()->where('is_active', true)->exists()
+                    || $organization->banks()->where('is_active', true)->exists()) {
+                    return $this->businessError('ORGANIZATION_IN_USE', 'Organization cannot be deactivated while it has active teams, roles, users, or banks.', 422);
+                }
+
+                return null;
+            },
+        );
+        if ($blocked !== null) {
+            return $blocked;
         }
 
         $this->setActive($request, $organization, false);
@@ -141,14 +171,28 @@ class OrganizationController extends Controller
         return new OrganizationResource($organization->refresh());
     }
 
-    public function destroy(Organization $organization): JsonResponse
+    public function destroy(Request $request, Organization $organization): JsonResponse
     {
         $this->authorize('delete', $organization);
-        if ($organization->isProtected() || $organization->teams()->exists() || $organization->roles()->exists() || $organization->users()->exists() || $organization->banks()->exists()) {
-            return $this->businessError('ORGANIZATION_PROTECTED', 'Organization cannot be deleted.', 422);
+        $blocked = $this->assertCanDeleteGovernanceEntity(
+            GovernanceReferenceEntityType::ORGANIZATION,
+            $organization,
+            $request->user(),
+            function () use ($organization): ?JsonResponse {
+                if ($organization->isProtected() || $organization->teams()->exists() || $organization->roles()->exists() || $organization->users()->exists() || $organization->banks()->exists()) {
+                    return $this->businessError('ORGANIZATION_PROTECTED', 'Organization cannot be deleted.', 422);
+                }
+
+                return null;
+            },
+        );
+        if ($blocked !== null) {
+            return $blocked;
         }
 
+        $snapshot = $organization->only(['id', 'code', 'name', 'classification', 'is_active', 'version']);
         $organization->delete();
+        $this->auditGovernanceDelete($request->user(), $organization, $snapshot);
 
         return response()->json(null, 204);
     }

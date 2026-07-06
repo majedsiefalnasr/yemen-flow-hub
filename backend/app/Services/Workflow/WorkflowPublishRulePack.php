@@ -6,6 +6,7 @@ use App\Enums\FieldType;
 use App\Enums\FinalOutcome;
 use App\Enums\WorkflowActionKind;
 use App\Models\FieldDefinition;
+use App\Models\ReferenceTable;
 use App\Models\WorkflowAction;
 use App\Models\WorkflowStage;
 use App\Models\WorkflowTransition;
@@ -47,6 +48,7 @@ class WorkflowPublishRulePack
         $errors = array_merge($errors, $this->validateSelfLoops($transitions));
         $errors = array_merge($errors, $this->validateFieldRules($stages, $transitions));
         $errors = array_merge($errors, $this->validateFieldConstraints($fields));
+        $errors = array_merge($errors, $this->validateInactiveReferenceTables($fields));
         $errors = array_merge($errors, $this->semanticResolver->publishErrors($version, $stages, $fields));
 
         return $errors;
@@ -412,6 +414,42 @@ class WorkflowPublishRulePack
                 if ($optionError !== null) {
                     $errors[] = $this->error('FIELD_OPTIONS_INVALID', "field:{$field->key}", $optionError);
                 }
+            }
+        }
+
+        return $errors;
+    }
+
+    /**
+     * @param  Collection<int, FieldDefinition>  $fields
+     * @return array<int, array{code: string, target: string, message: string}>
+     */
+    private function validateInactiveReferenceTables(Collection $fields): array
+    {
+        $errors = [];
+        $tableIds = $fields->pluck('reference_table_id')->filter()->unique()->values();
+
+        if ($tableIds->isEmpty()) {
+            return [];
+        }
+
+        $inactiveKeys = ReferenceTable::query()
+            ->whereIn('id', $tableIds)
+            ->where('is_active', false)
+            ->pluck('key', 'id');
+
+        foreach ($fields as $field) {
+            if ($field->reference_table_id === null) {
+                continue;
+            }
+
+            $tableKey = $inactiveKeys->get($field->reference_table_id);
+            if ($tableKey !== null) {
+                $errors[] = $this->error(
+                    'INACTIVE_REFERENCE_TABLE',
+                    "field:{$field->key}",
+                    "Field '{$field->key}' depends on inactive reference table '{$tableKey}'.",
+                );
             }
         }
 

@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\V1\EngineFxConfirmationController;
 use App\Http\Controllers\Api\V1\EngineRequestClaimController;
 use App\Http\Controllers\Api\V1\EngineRequestController;
 use App\Http\Controllers\Api\V1\EngineRequestDocumentController;
+use App\Http\Controllers\Api\V1\GovernanceImpactController;
 use App\Http\Controllers\Api\V1\FieldDefinitionController;
 use App\Http\Controllers\Api\V1\FieldGroupController;
 use App\Http\Controllers\Api\V1\MerchantController as V1MerchantController;
@@ -63,6 +64,8 @@ Route::prefix('auth')->group(function () {
 });
 
 Route::prefix('v1')->middleware(['auth:sanctum', 'active'])->group(function () {
+    Route::get('governance/impact', [GovernanceImpactController::class, 'show']);
+    Route::get('banks/{bank}/lifecycle-impact', [GovernanceImpactController::class, 'bank']);
     Route::get('organizations', [OrganizationController::class, 'index']);
     Route::post('organizations', [OrganizationController::class, 'store']);
     Route::get('organizations/{organization}', [OrganizationController::class, 'show']);

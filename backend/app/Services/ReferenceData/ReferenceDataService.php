@@ -8,12 +8,17 @@ use App\Exceptions\StaleResourceException;
 use App\Models\ReferenceTable;
 use App\Models\ReferenceValue;
 use App\Models\User;
+use App\Enums\GovernanceReferenceEntityType;
 use App\Services\Audit\AuditService;
+use App\Services\Workflow\PublishedWorkflowReferenceGuard;
 use Illuminate\Support\Facades\DB;
 
 class ReferenceDataService
 {
-    public function __construct(private readonly AuditService $auditService) {}
+    public function __construct(
+        private readonly AuditService $auditService,
+        private readonly PublishedWorkflowReferenceGuard $workflowReferenceGuard,
+    ) {}
 
     public function createTable(User $actor, array $attributes): ReferenceTable
     {
@@ -109,6 +114,17 @@ class ReferenceDataService
                 return $locked;
             }
 
+            if (! $active && $this->workflowReferenceGuard->isReferencedByPublishedPermissions(
+                GovernanceReferenceEntityType::REFERENCE_TABLE,
+                (int) $locked->getKey(),
+            )) {
+                $this->auditBlockedMutation($actor, $locked, 'reference_table_published_dependency');
+                throw new ReferenceDataProtectionException(
+                    'REFERENCE_TABLE_PROTECTED',
+                    'Reference table cannot be deactivated while referenced by a published workflow.',
+                );
+            }
+
             $before = $locked->only(['is_active', 'version']);
             $locked->update([
                 'is_active' => $active,
@@ -164,6 +180,13 @@ class ReferenceDataService
                 return $locked;
             }
 
+            if ($this->workflowReferenceGuard->isReferencedByPublishedPermissions(
+                GovernanceReferenceEntityType::REFERENCE_TABLE,
+                (int) $locked->getKey(),
+            )) {
+                return $locked;
+            }
+
             $before = $locked->toArray();
             $locked->delete();
             $this->auditService->log(
@@ -180,7 +203,7 @@ class ReferenceDataService
             $this->auditBlockedMutation($actor, $blocked, 'reference_table_protected_or_in_use');
             throw new ReferenceDataProtectionException(
                 'REFERENCE_TABLE_PROTECTED',
-                'Reference table cannot be deleted while it has values or is a system table.',
+                'Reference table cannot be deleted while referenced by a published workflow or while it has values.',
             );
         }
     }
@@ -191,6 +214,13 @@ class ReferenceDataService
             $locked = ReferenceValue::query()->lockForUpdate()->findOrFail($referenceValue->getKey());
 
             if ($locked->isProtected() || $locked->isInUse()) {
+                return $locked;
+            }
+
+            if ($this->workflowReferenceGuard->isReferencedByPublishedPermissions(
+                GovernanceReferenceEntityType::REFERENCE_VALUE,
+                (int) $locked->getKey(),
+            )) {
                 return $locked;
             }
 

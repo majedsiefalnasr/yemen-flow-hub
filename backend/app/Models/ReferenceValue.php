@@ -62,6 +62,9 @@ class ReferenceValue extends Model
         return $this->merchantCompanies()->exists();
     }
 
+    /**
+     * System reference values cannot be deleted. `key` is immutable after create.
+     */
     public function isProtected(): bool
     {
         return (bool) $this->is_system;
