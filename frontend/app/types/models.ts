@@ -1018,7 +1018,7 @@ export interface ResolvedFieldDefinition {
   is_visible: boolean
   is_editable: boolean
   is_required: boolean
-  dynamic_options: Array<{ value: string | number; label: string }> | null
+  dynamic_options: Array<{ value: string | number; label: string; inactive?: boolean }> | null
 }
 
 export interface ResolvedFieldGroup {

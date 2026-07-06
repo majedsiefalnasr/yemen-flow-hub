@@ -4,6 +4,7 @@ namespace Tests\Unit\Workflow;
 
 use App\Models\FieldDefinition;
 use App\Models\StageFieldRule;
+use App\Models\User;
 use App\Services\Workflow\DynamicFieldOptionsResolver;
 use App\Services\Workflow\StageFieldRuleValidator;
 use Illuminate\Support\Collection;
@@ -254,6 +255,50 @@ class StageFieldRuleValidatorTest extends TestCase
         ]);
 
         $ok = $this->validator->validateData($fields, collect([]), ['coverage' => 'full'], []);
+        $this->assertSame([], $ok);
+    }
+
+    public function test_unchanged_deactivated_dynamic_select_value_is_grandfathered(): void
+    {
+        $fields = collect([
+            $this->fieldWith(1, 'merchant_pick', [
+                'type' => 'DYNAMIC_SELECT',
+                'dynamic_source' => 'MERCHANTS',
+            ]),
+        ]);
+        $rules = collect([]);
+        $actor = new User;
+        $actor->forceFill(['id' => 1, 'bank_id' => 1]);
+
+        $previous = ['merchant_pick' => 99];
+        $ok = $this->validator->validateData(
+            $fields,
+            $rules,
+            ['merchant_pick' => 99],
+            $previous,
+            false,
+            $actor,
+        );
+        $this->assertSame([], $ok);
+    }
+
+    public function test_unchanged_static_select_value_is_grandfathered_when_option_removed(): void
+    {
+        $fields = collect([
+            $this->fieldWith(1, 'coverage', [
+                'type' => 'SELECT',
+                'options' => [
+                    ['value' => 'full', 'label' => 'Full'],
+                ],
+            ]),
+        ]);
+
+        $ok = $this->validator->validateData(
+            $fields,
+            collect([]),
+            ['coverage' => 'legacy'],
+            ['coverage' => 'legacy'],
+        );
         $this->assertSame([], $ok);
     }
 }

@@ -7,9 +7,9 @@ use App\Http\Controllers\Api\Controller;
 use App\Http\Requests\StoreEngineRequestRequest;
 use App\Http\Resources\EngineRequestResource;
 use App\Models\EngineRequest;
-use App\Models\User;
 use App\Models\FieldDefinition;
 use App\Models\FieldGroup;
+use App\Models\User;
 use App\Models\WorkflowVersion;
 use App\Services\Authorization\DataScope;
 use App\Services\Notifications\EngineNotificationDispatcher;
@@ -179,7 +179,14 @@ class EngineRequestController extends Controller
                         'is_visible' => $rule?->is_visible ?? true,
                         'is_editable' => $rule?->is_editable ?? true,
                         'is_required' => $rule?->is_required ?? (bool) $field->is_required,
-                        'dynamic_options' => $field->dynamic_source !== null ? $optionsResolver->resolve($field, $request->user(), $engineRequest) : null,
+                        'dynamic_options' => $field->dynamic_source !== null
+                            ? $optionsResolver->resolve(
+                                $field,
+                                $request->user(),
+                                $engineRequest,
+                                $engineRequest->data[$field->key] ?? null,
+                            )
+                            : null,
                     ];
                 })
                 ->values();

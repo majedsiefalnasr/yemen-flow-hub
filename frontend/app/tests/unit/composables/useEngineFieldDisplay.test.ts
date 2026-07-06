@@ -54,6 +54,14 @@ describe('formatFieldValue', () => {
     expect(formatFieldValue(f, 7)).toBe('التاجر السابع')
   })
 
+  it('marks inactive dynamic options in read-only display', () => {
+    const f = field({
+      type: 'DYNAMIC_SELECT',
+      dynamic_options: [{ value: 7, label: 'التاجر السابع', inactive: true }],
+    })
+    expect(formatFieldValue(f, 7)).toBe('التاجر السابع (غير نشط)')
+  })
+
   it('falls back to the raw value when no option matches', () => {
     const f = field({ type: 'SELECT', options: [{ value: 'a', label: 'A' }] })
     expect(formatFieldValue(f, 'z')).toBe('z')

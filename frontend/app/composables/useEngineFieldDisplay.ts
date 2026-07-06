@@ -1,5 +1,9 @@
 import type { ResolvedFieldDefinition } from '@/types/models'
 
+function formatSelectLabel(option: { label: string; inactive?: boolean }): string {
+  return option.inactive ? `${option.label} (غير نشط)` : option.label
+}
+
 const numberFormatter = new Intl.NumberFormat('ar-EG')
 const dateFormatter = new Intl.DateTimeFormat('ar-EG', { dateStyle: 'medium' })
 
@@ -16,7 +20,7 @@ export function formatFieldValue(field: ResolvedFieldDefinition, raw: unknown): 
     case 'DYNAMIC_SELECT': {
       const options = field.dynamic_options ?? field.options ?? []
       const match = options.find((o) => String(o.value) === String(raw))
-      return match ? match.label : String(raw)
+      return match ? formatSelectLabel(match) : String(raw)
     }
     case 'CHECKBOX':
       return raw ? 'نعم' : 'لا'

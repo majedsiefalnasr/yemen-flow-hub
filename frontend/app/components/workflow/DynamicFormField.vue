@@ -92,7 +92,9 @@ function onInput(value: unknown) {
           :key="String(option.value)"
           :value="String(option.value)"
         >
-          {{ option.label }}
+          <span :class="option.inactive ? 'text-[var(--locked-gray)]' : undefined">
+            {{ option.label }}<template v-if="option.inactive"> (غير نشط)</template>
+          </span>
         </SelectItem>
       </SelectContent>
     </Select>

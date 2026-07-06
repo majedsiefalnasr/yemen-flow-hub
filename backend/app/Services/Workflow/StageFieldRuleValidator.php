@@ -111,7 +111,9 @@ class StageFieldRuleValidator
                 continue;
             }
 
-            if ($error = $this->checkConstraints($field, $value, $actor, $request)) {
+            $previous = $previousData[$field->key] ?? null;
+
+            if ($error = $this->checkConstraints($field, $value, $actor, $request, $previous)) {
                 $errors[$field->key] = $error;
             }
         }
@@ -124,11 +126,12 @@ class StageFieldRuleValidator
         mixed $value,
         ?User $actor = null,
         ?EngineRequest $request = null,
+        mixed $previousValue = null,
     ): ?string {
         $type = $field->type instanceof FieldType ? $field->type : null;
 
         if (in_array($type, [FieldType::SELECT, FieldType::DYNAMIC_SELECT], true)) {
-            if ($error = $this->validateSelectMembership($field, $value, $type, $actor, $request)) {
+            if ($error = $this->validateSelectMembership($field, $value, $type, $actor, $request, $previousValue)) {
                 return $error;
             }
         }
@@ -207,7 +210,12 @@ class StageFieldRuleValidator
         FieldType $type,
         ?User $actor,
         ?EngineRequest $request,
+        mixed $previousValue = null,
     ): ?string {
+        if ($this->isUnchangedSelectValue($value, $previousValue)) {
+            return null;
+        }
+
         if ($field->multiple && is_array($value)) {
             foreach ($value as $item) {
                 if ($error = $this->selectValueNotAllowed($field, $item, $type, $actor, $request)) {
@@ -219,6 +227,19 @@ class StageFieldRuleValidator
         }
 
         return $this->selectValueNotAllowed($field, $value, $type, $actor, $request);
+    }
+
+    private function isUnchangedSelectValue(mixed $value, mixed $previousValue): bool
+    {
+        if (is_array($value) && is_array($previousValue)) {
+            return $value === $previousValue;
+        }
+
+        if (is_array($value) || is_array($previousValue)) {
+            return false;
+        }
+
+        return $this->valuesEqual($value, $previousValue);
     }
 
     private function selectValueNotAllowed(
@@ -272,12 +293,17 @@ class StageFieldRuleValidator
     private function valueInOptionSet(mixed $value, array $allowedValues): bool
     {
         foreach ($allowedValues as $allowed) {
-            if ($value === $allowed || (string) $value === (string) $allowed) {
+            if ($this->valuesEqual($value, $allowed)) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    private function valuesEqual(mixed $left, mixed $right): bool
+    {
+        return $left === $right || (string) $left === (string) $right;
     }
 
     private function isEmpty(mixed $value): bool
