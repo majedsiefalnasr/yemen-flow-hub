@@ -34,31 +34,32 @@ describe('FinancingUtilizationBar', () => {
   it('shows the low-capacity warning when remaining is exactly the threshold (20)', () => {
     const wrapper = mountBar({ usedPercent: 80, remainingPercent: 20 })
 
-    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+    expect(wrapper.find('[role="status"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('منخفضة')
   })
 
   it('does not show the low-capacity warning when remaining is just above the threshold (21)', () => {
     const wrapper = mountBar({ usedPercent: 79, remainingPercent: 21 })
 
-    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+    expect(wrapper.find('[role="status"]').exists()).toBe(false)
   })
 
   it('shows the blocked advisory message without hiding the percentages', () => {
     const wrapper = mountBar({ usedPercent: 100, remainingPercent: 0, blocked: true })
 
-    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+    expect(wrapper.find('[role="status"]').exists()).toBe(true)
     expect(wrapper.text()).toContain(FINANCING_ADVISORY_MESSAGE)
     // Blocked takes precedence over the low-capacity warning, but the raw
     // percentages must still be visible — the bar is advisory, not blocking.
     expect(wrapper.text()).toContain('المستخدم 100%')
   })
 
-  it('shows a muted note (not a destructive alert) when the ledger fails to load', () => {
+  it('shows a muted note (not an interrupting live region) when the ledger fails to load', () => {
     const wrapper = mountBar({ error: 'تعذّر تحميل مؤشر التمويل. يمكنك متابعة تعبئة النموذج.' })
 
     expect(wrapper.text()).toContain('يمكنك متابعة تعبئة النموذج')
     expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+    expect(wrapper.find('[role="status"]').exists()).toBe(false)
   })
 
   it('renders a loading skeleton while fetching', () => {

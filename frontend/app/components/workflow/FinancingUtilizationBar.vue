@@ -49,7 +49,7 @@ const isLowRemaining = computed(
     <Card
       v-if="blocked"
       class="border-0 border-s-4 border-s-[var(--severity-red)] bg-[var(--severity-red)]/5 shadow-sm"
-      role="alert"
+      role="status"
     >
       <CardContent class="flex items-center gap-3 pt-4 pb-4">
         <AlertTriangle
@@ -64,7 +64,7 @@ const isLowRemaining = computed(
     <Card
       v-else-if="isLowRemaining"
       class="border-0 border-s-4 border-s-[var(--severity-amber)] bg-[var(--severity-amber)]/5 shadow-sm"
-      role="alert"
+      role="status"
     >
       <CardContent class="flex items-center gap-3 pt-4 pb-4">
         <AlertTriangle
