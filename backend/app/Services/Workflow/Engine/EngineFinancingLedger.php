@@ -5,6 +5,7 @@ namespace App\Services\Workflow\Engine;
 use App\Exceptions\FinancingLimitExceededException;
 use App\Exceptions\FinancingLockTimeoutException;
 use App\Models\EngineRequest;
+use App\Support\EngineRequestStatus;
 use App\Support\InvoiceKey;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
@@ -34,14 +35,9 @@ class EngineFinancingLedger
     /**
      * Engine statuses that FREE financing capacity (terminal non-approved outcomes).
      *
-     * The engine status vocabulary is ACTIVE / CLOSED / REJECTED (vs. the legacy 21-status
-     * not_eligible_set). REJECTED is the terminal-rejected outcome that releases its
-     * percentage allocation; ACTIVE (in-flight, incl. drafts) and CLOSED (completed) both
-     * STAY in the sum — mirroring the legacy rule that only Not-Eligible outcomes free %.
-     *
      * @var list<string>
      */
-    public const NOT_ELIGIBLE_STATUSES = ['REJECTED'];
+    public const NOT_ELIGIBLE_STATUSES = EngineRequestStatus::CAPACITY_FREEING;
 
     private const LOCK_TIMEOUT_SECONDS = 10;
 

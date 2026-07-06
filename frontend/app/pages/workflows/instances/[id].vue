@@ -1,6 +1,7 @@
 <!-- app/pages/workflows/instances/[id].vue -->
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, toRef } from 'vue'
+import { toast } from 'vue-sonner'
 import { useEngineRequestsStore } from '@/stores/engineRequests.store'
 import { useEngineFormSchema } from '@/composables/useEngineFormSchema'
 import { useEngineRequestActions } from '@/composables/useEngineRequestActions'
@@ -155,6 +156,8 @@ async function onWizardSubmitted() {
 // with unsaved field data (see EngineRequestWizard's exposed hasUnsavedChanges).
 const wizardRef = ref<InstanceType<typeof EngineRequestWizard> | null>(null)
 const leaveDialogOpen = ref(false)
+const abandonDialogOpen = ref(false)
+const abandonBusy = ref(false)
 let pendingLeave: (() => void) | null = null
 
 function hasUnsavedWizardChanges(): boolean {
@@ -179,6 +182,23 @@ function confirmLeave() {
 function cancelLeave() {
   leaveDialogOpen.value = false
   pendingLeave = null
+}
+
+async function confirmAbandonDraft() {
+  if (!store.current) return
+  abandonBusy.value = true
+  try {
+    await store.abandonDraft(requestId.value, store.current.version)
+    abandonDialogOpen.value = false
+    leaveDialogOpen.value = false
+    pendingLeave = null
+    toast.success('تم إلغاء المسودة')
+    await router.push('/workflows')
+  } catch {
+    toast.error('تعذّر إلغاء المسودة')
+  } finally {
+    abandonBusy.value = false
+  }
 }
 </script>
 
@@ -251,6 +271,7 @@ function cancelLeave() {
           :initial-data="formData"
           :documents="store.documents"
           @submitted="onWizardSubmitted"
+          @abandon="abandonDialogOpen = true"
         />
       </template>
 
@@ -319,9 +340,31 @@ function cancelLeave() {
             الإرسال.
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter>
+        <AlertDialogFooter class="gap-2 sm:justify-start">
           <AlertDialogCancel @click="cancelLeave">البقاء في الصفحة</AlertDialogCancel>
+          <Button variant="destructive" @click="abandonDialogOpen = true">إلغاء المسودة</Button>
           <AlertDialogAction @click="confirmLeave">مغادرة دون حفظ</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    <AlertDialog v-model:open="abandonDialogOpen">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>إلغاء المسودة</AlertDialogTitle>
+          <AlertDialogDescription>
+            سيتم إنهاء هذا الطلب وإزالته من طابور العمل. لا يمكن التراجع عن هذا الإجراء.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel :disabled="abandonBusy">البقاء في الصفحة</AlertDialogCancel>
+          <AlertDialogAction
+            class="bg-[var(--severity-red)] hover:bg-[var(--severity-red)]/90"
+            :disabled="abandonBusy"
+            @click="confirmAbandonDraft"
+          >
+            تأكيد الإلغاء
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

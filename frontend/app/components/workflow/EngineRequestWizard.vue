@@ -26,7 +26,7 @@ const props = defineProps<{
   documents?: EngineRequestDocument[]
 }>()
 
-const emit = defineEmits<{ submitted: [] }>()
+const emit = defineEmits<{ submitted: []; abandon: [] }>()
 
 const store = useEngineRequestsStore()
 const formRef = ref<InstanceType<typeof DynamicForm> | null>(null)
@@ -201,13 +201,18 @@ defineExpose({ hasUnsavedChanges })
     <!-- Bottom actions panel. -->
     <Card class="border-0 shadow">
       <CardContent class="flex items-center justify-between gap-2 p-4">
-        <Button
-          variant="outline"
-          :disabled="wizard.isFirst.value || wizard.busy.value"
-          @click="onBack"
-        >
-          السابق
-        </Button>
+        <div class="flex items-center gap-2">
+          <Button
+            variant="outline"
+            :disabled="wizard.isFirst.value || wizard.busy.value"
+            @click="onBack"
+          >
+            السابق
+          </Button>
+          <Button variant="destructive" :disabled="wizard.busy.value" @click="emit('abandon')">
+            إلغاء المسودة
+          </Button>
+        </div>
 
         <Button v-if="onReview" :disabled="wizard.busy.value" @click="onSubmit">
           إرسال الطلب

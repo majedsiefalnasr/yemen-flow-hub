@@ -312,6 +312,27 @@ class EngineRequestController extends Controller
         ]);
     }
 
+    public function abandon(Request $request, EngineRequest $engineRequest): JsonResponse
+    {
+        $this->authorize('abandon', $engineRequest);
+
+        $validated = $request->validate([
+            'version' => ['required', 'integer'],
+        ]);
+
+        $result = $this->transitionService->abandonDraft(
+            $engineRequest,
+            $validated['version'],
+            $request->user(),
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Draft abandoned successfully.',
+            'data' => new EngineRequestResource($result),
+        ]);
+    }
+
     // ── 18.5.7: History & Graph ──────────────────────────────────────────
 
     public function history(EngineRequest $engineRequest): JsonResponse

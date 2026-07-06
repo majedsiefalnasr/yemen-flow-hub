@@ -147,6 +147,7 @@ class WorkflowDesignerService
                 'sort_order' => $stage->sort_order,
                 'is_initial' => $stage->is_initial,
                 'is_final' => $stage->is_final,
+                'final_outcome' => $stage->final_outcome,
                 'sla_duration_minutes' => $stage->sla_duration_minutes,
                 'status' => $stage->status,
             ]);
@@ -351,6 +352,8 @@ class WorkflowDesignerService
                 (bool) ($attributes['is_final'] ?? false),
             );
 
+            $attributes = $this->normalizeStageAttributes($attributes);
+
             $stage = $lockedVersion->stages()->create($attributes)->refresh();
 
             if ($stage->is_initial) {
@@ -387,9 +390,14 @@ class WorkflowDesignerService
                 (bool) ($attributes['is_final'] ?? $locked->is_final),
             );
 
+            $mergedAttributes = $this->normalizeStageAttributes([
+                ...$locked->only(['is_initial', 'is_final', 'final_outcome']),
+                ...$attributes,
+            ]);
+
             $before = $locked->toArray();
             $locked->update([
-                ...$attributes,
+                ...$mergedAttributes,
                 'version' => $locked->version + 1,
             ]);
 
@@ -652,6 +660,19 @@ class WorkflowDesignerService
                 'is_final' => 'A stage cannot be marked as both the initial and final stage.',
             ]);
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     * @return array<string, mixed>
+     */
+    private function normalizeStageAttributes(array $attributes): array
+    {
+        if (! (bool) ($attributes['is_final'] ?? false)) {
+            $attributes['final_outcome'] = null;
+        }
+
+        return $attributes;
     }
 
     private function guardInitialStageBankingExecutors(WorkflowStage $stage): void

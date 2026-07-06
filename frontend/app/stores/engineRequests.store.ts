@@ -114,6 +114,11 @@ export const useEngineRequestsStore = defineStore('engineRequests', {
       this.current = await saveDraft(id, data, version)
     },
 
+    async abandonDraft(id: number, version: number) {
+      const { abandonDraft } = useEngineRequests()
+      this.current = await abandonDraft(id, version)
+    },
+
     async loadHistory(id: number) {
       const { history, fetchHistory } = useEngineRequestHistory()
       await fetchHistory(id)

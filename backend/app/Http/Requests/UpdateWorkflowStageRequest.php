@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\FinalOutcome;
 use App\Models\WorkflowStage;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -18,6 +19,9 @@ class UpdateWorkflowStageRequest extends FormRequest
         $stage = $this->route('workflowStage');
         $versionId = $stage instanceof WorkflowStage ? $stage->workflow_version_id : null;
         $stageId = $stage instanceof WorkflowStage ? $stage->getKey() : null;
+        $isFinal = $this->has('is_final')
+            ? $this->boolean('is_final')
+            : ($stage instanceof WorkflowStage && $stage->is_final);
 
         return [
             'code' => [
@@ -31,6 +35,12 @@ class UpdateWorkflowStageRequest extends FormRequest
             'sort_order' => ['sometimes', 'integer', 'min:0'],
             'is_initial' => ['sometimes', 'boolean'],
             'is_final' => ['sometimes', 'boolean'],
+            'final_outcome' => [
+                Rule::requiredIf($isFinal),
+                'nullable',
+                Rule::enum(FinalOutcome::class),
+                Rule::prohibitedIf(! $isFinal),
+            ],
             'requires_claim' => ['sometimes', 'boolean'],
             'sla_duration_minutes' => ['sometimes', 'nullable', 'integer', 'min:1'],
             'status' => ['sometimes', 'string', 'in:ACTIVE,INACTIVE'],

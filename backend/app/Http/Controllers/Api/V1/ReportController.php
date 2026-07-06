@@ -25,9 +25,11 @@ class ReportController extends Controller
         $active = (clone $query)->where('engine_requests.status', 'ACTIVE')->count();
         $closed = (clone $query)->where('engine_requests.status', 'CLOSED')->count();
         $rejected = (clone $query)->where('engine_requests.status', 'REJECTED')->count();
+        $cancelled = (clone $query)->where('engine_requests.status', 'CANCELLED')->count();
+        $abandoned = (clone $query)->where('engine_requests.status', 'ABANDONED')->count();
         $totalAmount = (float) (clone $query)->sum('engine_requests.amount');
 
-        return response()->json(['data' => compact('total', 'active', 'closed', 'rejected', 'totalAmount')]);
+        return response()->json(['data' => compact('total', 'active', 'closed', 'rejected', 'cancelled', 'abandoned', 'totalAmount')]);
     }
 
     public function requestsOverTime(Request $request): JsonResponse

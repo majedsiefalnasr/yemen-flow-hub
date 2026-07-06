@@ -48,6 +48,15 @@ class EngineRequestPolicy
         );
     }
 
+    /**
+     * Abandon delegates guard checks to EngineTransitionService::abandonDraft so
+     * clients receive the spec error codes (REQUEST_CLOSED, ABANDON_NOT_AVAILABLE, …).
+     */
+    public function abandon(User $user, EngineRequest $request): bool
+    {
+        return $this->inScope($user, $request);
+    }
+
     private function inScope(User $user, EngineRequest $request): bool
     {
         if ($user->bank_id === null) {

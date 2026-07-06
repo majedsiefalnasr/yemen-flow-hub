@@ -132,6 +132,8 @@ function statusLabel(status: string): string {
   if (status === 'ACTIVE') return 'نشط'
   if (status === 'CLOSED') return 'مكتمل'
   if (status === 'REJECTED') return 'مرفوض'
+  if (status === 'CANCELLED') return 'ملغي'
+  if (status === 'ABANDONED') return 'متروك'
   return status
 }
 
@@ -158,6 +160,8 @@ function statusBadgeClass(status: string): string {
     return 'border-[var(--severity-green)]/30 bg-[var(--severity-green)]/10 text-[var(--severity-green)]'
   if (status === 'REJECTED')
     return 'border-[var(--severity-red)]/30 bg-[var(--severity-red)]/10 text-[var(--severity-red)]'
+  if (status === 'CANCELLED' || status === 'ABANDONED')
+    return 'border-[var(--locked)]/30 bg-[var(--locked)]/10 text-[var(--locked)]'
   return 'border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/10 text-[var(--severity-amber)]'
 }
 
@@ -181,6 +185,8 @@ const statusFilterOptions = [
   { label: 'نشط', value: 'ACTIVE' },
   { label: 'مكتمل', value: 'CLOSED' },
   { label: 'مرفوض', value: 'REJECTED' },
+  { label: 'ملغي', value: 'CANCELLED' },
+  { label: 'متروك', value: 'ABANDONED' },
 ]
 const stageFilterOptions = computed(() => {
   const names = new Set<string>()

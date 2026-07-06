@@ -109,6 +109,7 @@ class EngineWorkflowFactory
             'sort_order' => 2,
             'is_initial' => false,
             'is_final' => true,
+            'final_outcome' => 'COMPLETED',
             'version' => 1,
         ]);
 

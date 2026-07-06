@@ -11,10 +11,13 @@ use App\Exceptions\FinancingLockTimeoutException;
 use App\Models\EngineRequest;
 use App\Models\User;
 use App\Models\WorkflowHistoryEntry;
+use App\Models\WorkflowStage;
 use App\Models\WorkflowTransition;
 use App\Services\Audit\AuditService;
 use App\Services\Notifications\EngineNotificationDispatcher;
+use App\Support\EngineRequestStatus;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class EngineTransitionService
@@ -77,7 +80,7 @@ class EngineTransitionService
                 throw EngineException::stageFieldsInvalid($fieldErrors);
             }
 
-            $newStatus = $transition->toStage->is_final ? 'CLOSED' : 'ACTIVE';
+            $newStatus = $this->resolveStatusAfterTransition($transition->toStage);
 
             $request->forceFill([
                 'data' => $mergedData,
@@ -191,5 +194,88 @@ class EngineTransitionService
 
             return $request->fresh(['currentStage', 'creator', 'bank', 'merchant']);
         });
+    }
+
+    public function abandonDraft(EngineRequest $request, int $version, User $actor): EngineRequest
+    {
+        return DB::transaction(function () use ($request, $version, $actor) {
+            $request = EngineRequest::lockForUpdate()->findOrFail($request->id);
+
+            if (! $request->isActive()) {
+                throw EngineException::requestClosed();
+            }
+
+            if ($request->version !== $version) {
+                throw EngineException::requestStale();
+            }
+
+            $request->loadMissing('currentStage');
+            $stage = $request->currentStage;
+            if ($stage === null || ! $stage->is_initial) {
+                throw EngineException::abandonNotAvailable();
+            }
+
+            if (! $this->permissionResolver->userCanAccessStage($actor, $stage, StageAccessLevel::EXECUTE)) {
+                throw EngineException::stageExecutionForbidden();
+            }
+
+            if ($stage->requires_claim
+                && ! ($request->claimed_by === $actor->id && $request->isClaimed())) {
+                throw EngineException::claimNotHeld();
+            }
+
+            $fromStageId = $request->current_stage_id;
+            $correlationId = (string) Str::uuid();
+
+            $request->forceFill([
+                'status' => EngineRequestStatus::ABANDONED,
+                'version' => $request->version + 1,
+                'claimed_by' => null,
+                'claimed_at' => null,
+                'claim_expires_at' => null,
+            ])->save();
+
+            $this->projectionSync->sync($request);
+
+            WorkflowHistoryEntry::create([
+                'request_id' => $request->id,
+                'from_stage_id' => $fromStageId,
+                'to_stage_id' => null,
+                'action_code' => 'ABANDON',
+                'performed_by' => $actor->id,
+                'comments' => null,
+                'correlation_id' => $correlationId,
+                'created_at' => now(),
+            ]);
+
+            $this->auditService->log(
+                AuditAction::REQUEST_ABANDONED,
+                $actor,
+                $request,
+                ['from_stage_id' => $fromStageId],
+                workflowInstanceId: $request->id,
+                correlationId: $correlationId,
+            );
+
+            return $request->fresh(['currentStage', 'creator', 'bank', 'merchant']);
+        });
+    }
+
+    private function resolveStatusAfterTransition(WorkflowStage $toStage): string
+    {
+        if (! $toStage->is_final) {
+            return EngineRequestStatus::ACTIVE;
+        }
+
+        if ($toStage->final_outcome === null) {
+            Log::warning('Final stage reached with null final_outcome; defaulting to CLOSED.', [
+                'stage_id' => $toStage->id,
+                'stage_code' => $toStage->code,
+            ]);
+
+            return EngineRequestStatus::CLOSED;
+        }
+
+        return $toStage->final_outcome->toRequestStatus();
     }
 }

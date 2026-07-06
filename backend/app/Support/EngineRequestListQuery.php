@@ -9,7 +9,13 @@ use Illuminate\Http\Request;
 
 class EngineRequestListQuery
 {
-    private const ALLOWED_STATUSES = ['ACTIVE', 'CLOSED', 'REJECTED'];
+    private const ALLOWED_STATUSES = [
+        'ACTIVE',
+        'CLOSED',
+        'REJECTED',
+        'CANCELLED',
+        'ABANDONED',
+    ];
 
     private const ALLOWED_SLA_STATUSES = ['ok', 'nearing', 'breached'];
 

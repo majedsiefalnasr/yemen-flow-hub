@@ -17,7 +17,7 @@ use Illuminate\Contracts\Database\Eloquent\Builder;
  * one mapping instead of re-deriving the retired 21-status enum.
  *
  * Operational buckets are expressed against the engine's stage codes
- * (currentStage.code) and lifecycle status (ACTIVE / CLOSED / REJECTED),
+ * (currentStage.code) and lifecycle status (ACTIVE / CLOSED / REJECTED / CANCELLED / ABANDONED),
  * never the legacy enum.
  */
 final class EngineRequestReadModel

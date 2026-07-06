@@ -51,7 +51,7 @@ class WorkflowPublishTest extends TestCase
         ])->refresh();
 
         $intake = $version->stages()->create(['code' => 'intake', 'name' => 'Intake', 'is_initial' => true, 'sort_order' => 0]);
-        $done = $version->stages()->create(['code' => 'done', 'name' => 'Done', 'is_final' => true, 'sort_order' => 1]);
+        $done = $version->stages()->create(['code' => 'done', 'name' => 'Done', 'is_final' => true, 'final_outcome' => 'COMPLETED', 'sort_order' => 1]);
 
         $intake->stagePermissions()->create([
             'organization_id' => $this->org->id,
@@ -156,7 +156,7 @@ class WorkflowPublishTest extends TestCase
         $definition = WorkflowDefinition::query()->create(['code' => 'partial', 'name' => 'Partial']);
         $version = $definition->versions()->create(['version_number' => 1, 'state' => WorkflowVersionState::DRAFT])->refresh();
         $version->stages()->create(['code' => 'a', 'name' => 'A', 'is_initial' => true, 'sort_order' => 0]);
-        $version->stages()->create(['code' => 'b', 'name' => 'B', 'is_final' => true, 'sort_order' => 1]);
+        $version->stages()->create(['code' => 'b', 'name' => 'B', 'is_final' => true, 'final_outcome' => 'COMPLETED', 'sort_order' => 1]);
 
         $errors = collect(app(WorkflowVersionValidator::class)->validate($version))->pluck('code');
 
@@ -180,7 +180,7 @@ class WorkflowPublishTest extends TestCase
         $definition = WorkflowDefinition::query()->create(['code' => 'self_loop', 'name' => 'Self Loop']);
         $version = $definition->versions()->create(['version_number' => 1, 'state' => WorkflowVersionState::DRAFT])->refresh();
         $intake = $version->stages()->create(['code' => 'intake', 'name' => 'Intake', 'is_initial' => true, 'sort_order' => 0]);
-        $version->stages()->create(['code' => 'done', 'name' => 'Done', 'is_final' => true, 'sort_order' => 1]);
+        $version->stages()->create(['code' => 'done', 'name' => 'Done', 'is_final' => true, 'final_outcome' => 'COMPLETED', 'sort_order' => 1]);
         $intake->stagePermissions()->create([
             'organization_id' => $this->org->id,
             'role_id' => $this->role->id,
@@ -204,7 +204,7 @@ class WorkflowPublishTest extends TestCase
         $definition = WorkflowDefinition::query()->create(['code' => 'inactive_exec', 'name' => 'Inactive Executor']);
         $version = $definition->versions()->create(['version_number' => 1, 'state' => WorkflowVersionState::DRAFT])->refresh();
         $intake = $version->stages()->create(['code' => 'intake', 'name' => 'Intake', 'is_initial' => true, 'sort_order' => 0]);
-        $done = $version->stages()->create(['code' => 'done', 'name' => 'Done', 'is_final' => true, 'sort_order' => 1]);
+        $done = $version->stages()->create(['code' => 'done', 'name' => 'Done', 'is_final' => true, 'final_outcome' => 'COMPLETED', 'sort_order' => 1]);
 
         $inactiveUser = User::factory()->create(['organization_id' => $this->org->id, 'is_active' => false]);
         $intake->stagePermissions()->create([

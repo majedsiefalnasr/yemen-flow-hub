@@ -706,6 +706,8 @@ export interface WorkflowDefinition {
 
 export type WorkflowStageStatus = 'ACTIVE' | 'INACTIVE'
 
+export type FinalOutcome = 'COMPLETED' | 'REJECTED' | 'CANCELLED' | 'ABANDONED'
+
 export interface WorkflowStage {
   id: number
   workflow_version_id: number
@@ -715,6 +717,7 @@ export interface WorkflowStage {
   sort_order: number
   is_initial: boolean
   is_final: boolean
+  final_outcome: FinalOutcome | null
   requires_claim: boolean
   sla_duration_minutes: number | null
   status: WorkflowStageStatus

@@ -123,6 +123,15 @@ export function useEngineRequests() {
     return response.data
   }
 
+  const abandonDraft = async (id: number, version: number): Promise<EngineRequest> => {
+    const response = await api.post<{ success: boolean; data: EngineRequest }>(
+      `/api/v1/engine-requests/${id}/abandon`,
+      { version },
+    )
+    current.value = response.data
+    return response.data
+  }
+
   return {
     instances,
     instancesMeta,
@@ -139,5 +148,6 @@ export function useEngineRequests() {
     create,
     show,
     saveDraft,
+    abandonDraft,
   }
 }

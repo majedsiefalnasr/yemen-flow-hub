@@ -25,18 +25,10 @@ const store = useEngineRequestsStore()
 const { can } = useScreenPermissions()
 
 const canCreate = computed(() => can('requests', 'CREATE'))
-// True while auto-creating the sole workflow, so the picker never flashes.
-const autoStarting = ref(false)
 
 onMounted(async () => {
   if (!canCreate.value) return
   await store.loadAvailableWorkflows()
-  // Single published workflow is the common case: skip the picker and start the
-  // one workflow directly. The picker only renders when a genuine choice exists.
-  if (store.availableWorkflows.length === 1) {
-    autoStarting.value = true
-    await startWorkflow(store.availableWorkflows[0]!.version_id)
-  }
 })
 
 async function startWorkflow(versionId: number) {
@@ -82,7 +74,7 @@ async function onCancel() {
           </EmptyHeader>
         </Empty>
 
-        <div v-else-if="store.loading || autoStarting" class="grid gap-4 sm:grid-cols-2">
+        <div v-else-if="store.loading" class="grid gap-4 sm:grid-cols-2">
           <Skeleton v-for="n in 2" :key="n" class="h-32 w-full rounded-xl" />
         </div>
 

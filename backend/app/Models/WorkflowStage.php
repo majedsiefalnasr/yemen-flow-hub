@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\FinalOutcome;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -19,6 +20,7 @@ class WorkflowStage extends Model
         'sort_order',
         'is_initial',
         'is_final',
+        'final_outcome',
         'sla_duration_minutes',
         'requires_claim',
         'status',
@@ -31,6 +33,7 @@ class WorkflowStage extends Model
             'sort_order' => 'integer',
             'is_initial' => 'boolean',
             'is_final' => 'boolean',
+            'final_outcome' => FinalOutcome::class,
             'sla_duration_minutes' => 'integer',
             'requires_claim' => 'boolean',
             'version' => 'integer',

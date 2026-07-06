@@ -94,4 +94,9 @@ class EngineException extends RuntimeException
     {
         return new self('You do not hold the claim on this request.', 'CLAIM_NOT_HELD', 403);
     }
+
+    public static function abandonNotAvailable(): self
+    {
+        return new self('This request cannot be abandoned from its current stage.', 'ABANDON_NOT_AVAILABLE', 422);
+    }
 }

@@ -1,6 +1,7 @@
 import { ref } from 'vue'
-import type { WorkflowStage } from '@/types/models'
+import type { FinalOutcome, WorkflowStage } from '@/types/models'
 import { useApi } from '@/composables/useApi'
+import { extractApiErrorMessage } from '@/utils/apiErrors'
 
 export type WorkflowStagePayload = {
   code: string
@@ -9,6 +10,7 @@ export type WorkflowStagePayload = {
   sort_order?: number
   is_initial?: boolean
   is_final?: boolean
+  final_outcome?: FinalOutcome | null
   requires_claim?: boolean
   sla_duration_minutes?: number | null
   status?: WorkflowStage['status']

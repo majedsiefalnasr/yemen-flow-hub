@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\EngineRequestStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -103,7 +104,7 @@ class EngineRequest extends Model
 
     public function isClosed(): bool
     {
-        return in_array($this->status, ['CLOSED', 'REJECTED'], true);
+        return EngineRequestStatus::isTerminal((string) $this->status);
     }
 
     public function scopeActive(Builder $query): Builder

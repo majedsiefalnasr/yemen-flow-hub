@@ -39,6 +39,12 @@ vi.mock('@/components/ui/dialog', () => ({
   DialogClose: passthrough('DialogClose'),
 }))
 
+vi.mock('@/composables/useScreenPermissions', () => ({
+  useScreenPermissions: () => ({
+    can: (_screen: string, capability: string) => capability === 'CREATE',
+  }),
+}))
+
 vi.mock('@/composables/useEngineRequests', () => ({
   useEngineRequests: () => ({
     instances: { value: [] },
@@ -134,14 +140,15 @@ describe('workflows/new.vue', () => {
     version_number: 1,
   }
 
-  it('loads available workflows on mount', () => {
+  it('loads available workflows on mount', async () => {
     const store = useEngineRequestsStore()
     const spy = vi.spyOn(store, 'loadAvailableWorkflows')
     mount(WorkflowsNewPage)
+    await flushPromises()
     expect(spy).toHaveBeenCalled()
   })
 
-  it('auto-starts the sole workflow without rendering a picker', async () => {
+  it('renders a single-workflow picker without auto-creating on mount', async () => {
     const store = useEngineRequestsStore()
     vi.spyOn(store, 'loadAvailableWorkflows').mockImplementation(async () => {
       store.availableWorkflows = [WF_IMPORT]
@@ -151,10 +158,9 @@ describe('workflows/new.vue', () => {
     const wrapper = mount(WorkflowsNewPage)
     await flushPromises()
 
-    // No card was clicked, yet the one workflow was created and we navigated in.
-    expect(store.createInstance).toHaveBeenCalledWith({ workflow_version_id: 10, data: {} })
-    expect(mockNavigateTo).toHaveBeenCalledWith('/workflows/instances/99?mode=wizard')
-    expect(wrapper.find('[data-testid="create-instance-1"]').exists()).toBe(false)
+    expect(store.createInstance).not.toHaveBeenCalled()
+    expect(mockNavigateTo).not.toHaveBeenCalled()
+    expect(wrapper.find('[data-testid="create-instance-1"]').exists()).toBe(true)
   })
 
   it('renders a picker and creates on click when multiple workflows exist', async () => {

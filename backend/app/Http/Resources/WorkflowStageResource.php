@@ -18,6 +18,7 @@ class WorkflowStageResource extends JsonResource
             'sort_order' => (int) $this->sort_order,
             'is_initial' => (bool) $this->is_initial,
             'is_final' => (bool) $this->is_final,
+            'final_outcome' => $this->final_outcome?->value,
             'requires_claim' => (bool) $this->requires_claim,
             'sla_duration_minutes' => $this->sla_duration_minutes !== null ? (int) $this->sla_duration_minutes : null,
             'status' => $this->status,

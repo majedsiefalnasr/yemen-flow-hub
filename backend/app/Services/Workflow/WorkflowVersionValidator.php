@@ -42,6 +42,26 @@ class WorkflowVersionValidator
             $errors[] = $this->error('NO_FINAL_STAGE', 'stages', 'The workflow must have at least one final stage.');
         }
 
+        foreach ($stages->where('is_final', true) as $stage) {
+            if ($stage->final_outcome === null) {
+                $errors[] = $this->error(
+                    'FINAL_STAGE_NO_OUTCOME',
+                    "stage:{$stage->code}",
+                    "Final stage '{$stage->code}' must declare a final outcome.",
+                );
+            }
+        }
+
+        foreach ($stages->where('is_final', false) as $stage) {
+            if ($stage->final_outcome !== null) {
+                $errors[] = $this->error(
+                    'NON_FINAL_STAGE_WITH_OUTCOME',
+                    "stage:{$stage->code}",
+                    "Non-final stage '{$stage->code}' must not declare a final outcome.",
+                );
+            }
+        }
+
         // ── Duplicate stage codes / field keys (defensive; unique at DB too) ─
         $dupStageCodes = $stages->groupBy('code')->filter(fn ($g) => $g->count() > 1)->keys();
         foreach ($dupStageCodes as $code) {

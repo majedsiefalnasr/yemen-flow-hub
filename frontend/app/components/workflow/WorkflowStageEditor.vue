@@ -5,7 +5,7 @@ import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 import { z } from 'zod'
 import { Layers, Lock, Pencil, Plus, SlidersHorizontal, Trash2 } from 'lucide-vue-next'
-import type { WorkflowStage, WorkflowVersion } from '@/types/models'
+import type { FinalOutcome, WorkflowStage, WorkflowVersion } from '@/types/models'
 import ScreenGuard from '@/components/security/ScreenGuard.vue'
 import StageFieldRuleMatrix from '@/components/workflow/StageFieldRuleMatrix.vue'
 import {
@@ -50,6 +50,13 @@ import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/comp
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
   Table,
   TableBody,
   TableCell,
@@ -71,12 +78,21 @@ const deleting = ref<WorkflowStage | null>(null)
 const isInitial = ref(false)
 const isFinal = ref(false)
 const requiresClaim = ref(false)
+const finalOutcome = ref<FinalOutcome | ''>('')
+
+const outcomeOptions: { value: FinalOutcome; label: string }[] = [
+  { value: 'COMPLETED', label: 'مكتمل' },
+  { value: 'REJECTED', label: 'مرفوض' },
+  { value: 'CANCELLED', label: 'ملغي' },
+  { value: 'ABANDONED', label: 'متروك' },
+]
 
 watch(isInitial, (value) => {
   if (value) isFinal.value = false
 })
 watch(isFinal, (value) => {
   if (value) isInitial.value = false
+  if (!value) finalOutcome.value = ''
 })
 
 // Stage whose field-rule matrix is open in a dialog (null = closed).
@@ -100,6 +116,7 @@ function openCreate() {
   isInitial.value = false
   isFinal.value = false
   requiresClaim.value = false
+  finalOutcome.value = ''
   form.resetForm({ values: { code: '', name: '', sla_duration_minutes: undefined } })
   dialogOpen.value = true
 }
@@ -109,6 +126,7 @@ function openEdit(stage: WorkflowStage) {
   isInitial.value = stage.is_initial
   isFinal.value = stage.is_final
   requiresClaim.value = stage.requires_claim
+  finalOutcome.value = stage.final_outcome ?? ''
   form.resetForm({
     values: {
       code: stage.code,
@@ -127,6 +145,7 @@ const onSubmit = form.handleSubmit(async (values) => {
       sla_duration_minutes: values.sla_duration_minutes ?? null,
       is_initial: isInitial.value,
       is_final: isFinal.value,
+      final_outcome: isFinal.value ? finalOutcome.value || null : null,
       requires_claim: requiresClaim.value,
     }
     if (editing.value) {
@@ -371,6 +390,20 @@ watch(
         <div class="flex items-center gap-3">
           <Switch id="stage-requires-claim" v-model="requiresClaim" />
           <Label for="stage-requires-claim">يتطلب مطالبة (قفل مرن)</Label>
+        </div>
+
+        <div v-if="isFinal" class="flex flex-col gap-2">
+          <Label for="stage-final-outcome">نتيجة المرحلة النهائية</Label>
+          <Select v-model="finalOutcome">
+            <SelectTrigger id="stage-final-outcome" class="w-full">
+              <SelectValue placeholder="اختر النتيجة" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem v-for="option in outcomeOptions" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <DialogFooter>

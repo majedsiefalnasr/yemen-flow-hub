@@ -10,6 +10,7 @@ enum AuditAction: string
     case REQUEST_CREATED = 'REQUEST_CREATED';
     case REQUEST_UPDATED = 'REQUEST_UPDATED';
     case REQUEST_DELETED = 'REQUEST_DELETED';
+    case REQUEST_ABANDONED = 'REQUEST_ABANDONED';
     case STATUS_TRANSITION = 'STATUS_TRANSITION';
     case VOTE_CAST = 'VOTE_CAST';
     case DOCUMENT_UPLOADED = 'DOCUMENT_UPLOADED';
@@ -54,6 +55,7 @@ enum AuditAction: string
             self::REQUEST_CREATED => 'Request Created / إنشاء طلب',
             self::REQUEST_UPDATED => 'Request Updated / تحديث طلب',
             self::REQUEST_DELETED => 'Request Deleted / حذف طلب',
+            self::REQUEST_ABANDONED => 'Request Abandoned / إلغاء مسودة',
             self::STATUS_TRANSITION => 'Status Transition / انتقال الحالة',
             self::VOTE_CAST => 'Vote Cast / تسجيل تصويت',
             self::DOCUMENT_UPLOADED => 'Document Uploaded / رفع مستند',
