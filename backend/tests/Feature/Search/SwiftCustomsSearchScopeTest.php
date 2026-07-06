@@ -28,15 +28,15 @@ class SwiftCustomsSearchScopeTest extends TestCase
         $this->stage = $this->stage();
     }
 
-    public function test_swift_officer_searches_customs_declarations_across_banks(): void
+    public function test_support_committee_searches_customs_declarations_across_banks(): void
     {
         $bankA = $this->bank('A');
         $bankB = $this->bank('B');
         $this->declaration($bankA, 'FX-WP0-A');
         $this->declaration($bankB, 'FX-WP0-B');
-        $swift = $this->user(UserRole::SWIFT_OFFICER, null, 'swift@example.test');
+        $support = $this->user(UserRole::SUPPORT_COMMITTEE, null, 'support@example.test');
 
-        $response = $this->actingAs($swift)
+        $response = $this->actingAs($support)
             ->getJson('/api/search?q=FX-WP0')
             ->assertOk();
 
@@ -62,6 +62,44 @@ class SwiftCustomsSearchScopeTest extends TestCase
             ['FX-WP0-OWN'],
             collect($response->json('data.customs'))->pluck('declaration_number')->all(),
         );
+    }
+
+    public function test_swift_officer_is_bank_scoped_for_customs_search(): void
+    {
+        $bankA = $this->bank('OWN');
+        $bankB = $this->bank('OTHER');
+        $this->declaration($bankA, 'FX-WP0-OWN');
+        $this->declaration($bankB, 'FX-WP0-OTHER');
+        $swift = $this->user(UserRole::SWIFT_OFFICER, $bankA, 'swift@example.test');
+
+        $response = $this->actingAs($swift)
+            ->getJson('/api/search?q=FX-WP0')
+            ->assertOk();
+
+        $this->assertSame(
+            ['FX-WP0-OWN'],
+            collect($response->json('data.customs'))->pluck('declaration_number')->all(),
+        );
+    }
+
+    public function test_user_with_no_organization_sees_no_customs_results(): void
+    {
+        $bankA = $this->bank('A');
+        $this->declaration($bankA, 'FX-WP0-A');
+
+        // Create user without organization (will be OTHER classification in DataScope)
+        $user = User::query()->create([
+            'name' => 'Other User',
+            'email' => 'other@example.test',
+            'password' => bcrypt('password'),
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->getJson('/api/search?q=FX-WP0')
+            ->assertOk();
+
+        $this->assertEmpty($response->json('data.customs'));
     }
 
     private function declaration(Bank $bank, string $number): CustomsDeclaration

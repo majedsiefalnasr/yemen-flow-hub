@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\DTOs\Authorization\DataScopeContext;
 use App\Http\Resources\UserResource;
 use App\Models\Bank;
 use App\Models\CustomsDeclaration;
 use App\Models\User;
+use App\Services\Authorization\DataScope;
 use App\Support\ApiResponse;
 use App\Support\EngineRequestReadModel;
 use App\Support\RoleCodes;
@@ -95,6 +97,7 @@ class SearchController extends Controller
         }
 
         $like = "%{$query}%";
+        $scope = $this->getScope($user);
 
         $userQuery = User::query()
             ->with(['bank'])
@@ -103,13 +106,10 @@ class SearchController extends Controller
                     ->orWhere('email', 'like', $like);
             });
 
-        if ($user->hasRoleCode(RoleCodes::BANK_ADMIN)) {
-            if (! $user->bank_id) {
-                return [];
-            }
+        DataScope::applyTo($userQuery, $scope, 'bank_id');
 
-            $userQuery->where('bank_id', $user->bank_id)
-                ->whereHas('roles', fn ($q) => $q->whereIn('code', RoleCodes::BANK_ADMIN_MANAGED));
+        if ($user->hasRoleCode(RoleCodes::BANK_ADMIN)) {
+            $userQuery->whereHas('roles', fn ($q) => $q->whereIn('code', RoleCodes::BANK_ADMIN_MANAGED));
         }
 
         return UserResource::collection(
@@ -124,17 +124,20 @@ class SearchController extends Controller
         }
 
         $like = "%{$query}%";
+        $scope = $this->getScope($user);
 
         $banks = Bank::query()
             ->where('is_active', true)
             ->where(function ($q) use ($like) {
                 $q->where('name', 'like', $like)
                     ->orWhere('code', 'like', $like);
-            })
-            ->limit(self::MAX_RESULTS_PER_GROUP)
-            ->get();
+            });
 
-        return $banks->map(fn (Bank $bank) => [
+        DataScope::applyTo($banks, $scope, 'id');
+
+        $results = $banks->limit(self::MAX_RESULTS_PER_GROUP)->get();
+
+        return $results->map(fn (Bank $bank) => [
             'id' => $bank->id,
             'name' => $bank->name,
             'code' => $bank->code,
@@ -145,13 +148,18 @@ class SearchController extends Controller
     private function searchCustoms(User $user, string $query): array
     {
         $like = "%{$query}%";
+        $scope = $this->getScope($user);
 
         $customsQuery = CustomsDeclaration::query()
             ->with(['engineRequest'])
             ->where('declaration_number', 'like', $like);
 
-        if ($user->hasAnyRoleCode([RoleCodes::INTAKE, RoleCodes::INTERNAL_REVIEWER, RoleCodes::BANK_ADMIN])) {
-            $customsQuery->whereHas('engineRequest', fn ($q) => $q->where('bank_id', $user->bank_id));
+        if (! $scope->systemWide) {
+            if ($scope->ownBankId !== null) {
+                $customsQuery->whereHas('engineRequest', fn ($q) => $q->where('bank_id', $scope->ownBankId));
+            } else {
+                $customsQuery->whereRaw('1 = 0');
+            }
         }
 
         $declarations = $customsQuery->limit(self::MAX_RESULTS_PER_GROUP)->get();
@@ -185,5 +193,16 @@ class SearchController extends Controller
         } catch (\Throwable) {
             // fire-and-forget: do not fail the search response if preferences write fails
         }
+    }
+
+    private function getScope(User $user): DataScopeContext
+    {
+        $scope = DataScope::forUser($user);
+
+        if ($user->isSystemAdmin()) {
+            return new DataScopeContext(systemWide: true);
+        }
+
+        return $scope;
     }
 }
