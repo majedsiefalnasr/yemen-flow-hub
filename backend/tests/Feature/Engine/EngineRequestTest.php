@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Engine;
 
+use App\Enums\FieldSemanticTag;
 use App\Enums\StageAccessLevel;
 use App\Enums\UserRole;
 use App\Enums\WorkflowVersionState;
@@ -931,6 +932,7 @@ class EngineRequestTest extends TestCase
             'workflow_version_id' => $this->version->id,
             'field_group_id' => $group->id,
             'key' => 'invoice_amount',
+            'semantic_tag' => FieldSemanticTag::INVOICE_NUMBER,
             'label' => 'Invoice Amount',
             'type' => 'NUMBER',
             'is_required' => false,
@@ -971,6 +973,7 @@ class EngineRequestTest extends TestCase
         $this->assertCount(1, $invoiceDetailsGroup['fields']);
         $returnedField = $invoiceDetailsGroup['fields'][0];
         $this->assertSame('invoice_amount', $returnedField['key']);
+        $this->assertSame('INVOICE_NUMBER', $returnedField['semantic_tag']);
         $this->assertTrue($returnedField['is_required']); // stage rule overrides field default false
         $this->assertTrue($returnedField['is_visible']);
         $this->assertTrue($returnedField['is_editable']);

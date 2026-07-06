@@ -158,6 +158,7 @@ class EngineRequestController extends Controller
                     return [
                         'id' => $field->id,
                         'key' => $field->key,
+                        'semantic_tag' => $field->semantic_tag?->value,
                         'label' => $field->label,
                         'type' => $field->type->value,
                         'placeholder' => $field->placeholder,
