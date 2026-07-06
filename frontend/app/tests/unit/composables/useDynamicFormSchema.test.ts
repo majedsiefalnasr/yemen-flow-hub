@@ -127,12 +127,15 @@ describe('buildDynamicSchema', () => {
     expect(schema.safeParse({ d: '' }).success).toBe(false)
   })
 
-  it('FILE field accepts a non-empty array when required, empty array when not', () => {
+  it('FILE field accepts document id references when required, empty array when not', () => {
     const required = buildDynamicSchema(
       group([baseField({ key: 'docs', type: 'FILE', is_required: true })]),
     )
     expect(required.safeParse({ docs: [] }).success).toBe(false)
     expect(required.safeParse({ docs: [1] }).success).toBe(true)
+    expect(required.safeParse({ docs: [{ mime: 'application/pdf', size_kb: 50 }] }).success).toBe(
+      false,
+    )
 
     const optional = buildDynamicSchema(
       group([baseField({ key: 'docs', type: 'FILE', is_required: false })]),

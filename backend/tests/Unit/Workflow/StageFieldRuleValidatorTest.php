@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Workflow;
 
+use App\Models\EngineRequest;
 use App\Models\FieldDefinition;
 use App\Models\StageFieldRule;
 use App\Models\User;
@@ -184,33 +185,37 @@ class StageFieldRuleValidatorTest extends TestCase
         $this->assertArrayNotHasKey('note', $ok);
     }
 
-    public function test_allowed_file_types_enforced_for_file_field(): void
+    public function test_rejects_client_metadata_for_file_field(): void
     {
         $fields = collect([
-            $this->fieldWith(1, 'doc', ['type' => 'FILE', 'allowed_file_types' => ['pdf', 'xlsx']]),
+            $this->fieldWith(1, 'doc', ['type' => 'FILE', 'allowed_file_types' => ['pdf']]),
         ]);
         $rules = collect([]);
+        $request = new EngineRequest;
+        $request->forceFill(['id' => 1]);
 
-        // Value for file fields is stored as array with 'mime' key
-        $errType = $this->validator->validateData($fields, $rules, ['doc' => ['mime' => 'image/png', 'size_kb' => 50]], []);
-        $this->assertArrayHasKey('doc', $errType);
-
-        $ok = $this->validator->validateData($fields, $rules, ['doc' => ['mime' => 'application/pdf', 'size_kb' => 50]], []);
-        $this->assertArrayNotHasKey('doc', $ok);
+        $errors = $this->validator->validateData(
+            $fields,
+            $rules,
+            ['doc' => ['mime' => 'application/pdf', 'size_kb' => 50]],
+            [],
+            false,
+            null,
+            $request,
+        );
+        $this->assertArrayHasKey('doc', $errors);
+        $this->assertSame('File fields must reference uploaded documents.', $errors['doc']);
     }
 
-    public function test_max_file_size_enforced_for_file_field(): void
+    public function test_rejects_file_field_without_request_context(): void
     {
         $fields = collect([
-            $this->fieldWith(1, 'doc', ['type' => 'FILE', 'max_file_size' => 100]),
+            $this->fieldWith(1, 'doc', ['type' => 'FILE']),
         ]);
-        $rules = collect([]);
 
-        $errSize = $this->validator->validateData($fields, $rules, ['doc' => ['mime' => 'application/pdf', 'size_kb' => 200]], []);
-        $this->assertArrayHasKey('doc', $errSize);
-
-        $ok = $this->validator->validateData($fields, $rules, ['doc' => ['mime' => 'application/pdf', 'size_kb' => 50]], []);
-        $this->assertArrayNotHasKey('doc', $ok);
+        $errors = $this->validator->validateData($fields, collect([]), ['doc' => [1]], []);
+        $this->assertArrayHasKey('doc', $errors);
+        $this->assertSame('File fields must reference uploaded documents.', $errors['doc']);
     }
 
     public function test_constraints_skipped_when_no_value(): void

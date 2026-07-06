@@ -4,6 +4,7 @@ namespace App\Services\Workflow;
 
 use App\Enums\FieldType;
 use App\Models\EngineRequest;
+use App\Models\EngineRequestDocument;
 use App\Models\FieldDefinition;
 use App\Models\StageFieldRule;
 use App\Models\User;
@@ -171,37 +172,123 @@ class StageFieldRuleValidator
             }
         }
 
-        // File constraints — value stored as ['mime' => '...', 'size_kb' => N]
-        if ($type === FieldType::FILE && is_array($value)) {
-            if (! empty($field->allowed_file_types)) {
-                $mime = $value['mime'] ?? '';
-                $mimeMap = [
-                    'pdf' => 'application/pdf',
-                    'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                    'xls' => 'application/vnd.ms-excel',
-                    'doc' => 'application/msword',
-                    'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                    'png' => 'image/png',
-                    'jpg' => 'image/jpeg',
-                    'jpeg' => 'image/jpeg',
-                ];
-                $allowedMimes = array_map(fn ($ext) => $mimeMap[$ext] ?? $ext, $field->allowed_file_types);
-                if (! in_array($mime, $allowedMimes, true)) {
-                    $exts = implode(', ', $field->allowed_file_types);
+        if ($type === FieldType::FILE) {
+            return $this->validateFileReferences($field, $value, $request);
+        }
 
-                    return "Only the following file types are allowed: {$exts}.";
-                }
+        return null;
+    }
+
+    private function validateFileReferences(
+        FieldDefinition $field,
+        mixed $value,
+        ?EngineRequest $request,
+    ): ?string {
+        $ids = $this->normalizeFileReferenceIds($value);
+        if ($ids === false) {
+            return 'File fields must reference uploaded documents.';
+        }
+
+        if ($request === null) {
+            return 'File fields must reference uploaded documents.';
+        }
+
+        foreach ($ids as $id) {
+            $document = EngineRequestDocument::query()
+                ->where('id', $id)
+                ->where('request_id', $request->id)
+                ->first();
+
+            if ($document === null) {
+                return 'The referenced document was not found for this request.';
             }
 
-            if ($field->max_file_size !== null) {
-                $sizeKb = (int) ($value['size_kb'] ?? 0);
-                if ($sizeKb > $field->max_file_size) {
-                    return "The file must not exceed {$field->max_file_size} KB.";
-                }
+            if ($document->field_id !== null && (int) $document->field_id !== (int) $field->id) {
+                return 'The referenced document is not linked to this field.';
+            }
+
+            if (! $this->mimeAllowedForField((string) $document->mime, $field)) {
+                $exts = implode(', ', $field->allowed_file_types ?? []);
+
+                return "Only the following file types are allowed: {$exts}.";
+            }
+
+            if (! $this->sizeAllowedForField((int) $document->size, $field)) {
+                return "The file must not exceed {$field->max_file_size} KB.";
             }
         }
 
         return null;
+    }
+
+    /**
+     * @return list<int>|false
+     */
+    private function normalizeFileReferenceIds(mixed $value): array|false
+    {
+        if (is_int($value) || (is_string($value) && ctype_digit($value))) {
+            return [(int) $value];
+        }
+
+        if (! is_array($value)) {
+            return false;
+        }
+
+        if (array_key_exists('mime', $value) || array_key_exists('size_kb', $value)) {
+            return false;
+        }
+
+        $ids = [];
+        foreach ($value as $item) {
+            if (is_int($item) || (is_string($item) && ctype_digit((string) $item))) {
+                $ids[] = (int) $item;
+
+                continue;
+            }
+
+            return false;
+        }
+
+        return $ids;
+    }
+
+    private function mimeAllowedForField(string $mime, FieldDefinition $field): bool
+    {
+        if (empty($field->allowed_file_types)) {
+            return true;
+        }
+
+        $allowedMimes = array_map(
+            fn (string $ext) => $this->extensionToMime($ext),
+            $field->allowed_file_types,
+        );
+
+        return in_array($mime, $allowedMimes, true);
+    }
+
+    private function sizeAllowedForField(int $sizeBytes, FieldDefinition $field): bool
+    {
+        if ($field->max_file_size === null) {
+            return true;
+        }
+
+        $sizeKb = (int) ceil($sizeBytes / 1024);
+
+        return $sizeKb <= $field->max_file_size;
+    }
+
+    private function extensionToMime(string $ext): string
+    {
+        return match ($ext) {
+            'pdf' => 'application/pdf',
+            'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'xls' => 'application/vnd.ms-excel',
+            'doc' => 'application/msword',
+            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'png' => 'image/png',
+            'jpg', 'jpeg' => 'image/jpeg',
+            default => $ext,
+        };
     }
 
     private function validateSelectMembership(

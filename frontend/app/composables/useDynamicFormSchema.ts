@@ -47,7 +47,7 @@ function buildFieldSchema(field: ResolvedFieldDefinition): z.ZodTypeAny {
       return field.is_required ? z.boolean() : z.boolean().optional()
     }
     case 'FILE': {
-      const a = z.array(z.unknown())
+      const a = z.array(z.number().int().positive())
       return field.is_required ? a.min(1, 'يجب إرفاق ملف واحد على الأقل.') : a
     }
     default:
