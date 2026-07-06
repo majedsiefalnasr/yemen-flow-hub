@@ -121,7 +121,7 @@ class EngineFinancingLedger
         $query = EngineRequest::query()
             ->join('merchants', 'merchants.id', '=', 'engine_requests.merchant_id')
             ->where('merchants.tax_number', self::normalizeKey($taxNumber))
-            ->where('engine_requests.invoice_number', self::normalizeKey($invoiceNumber))
+            ->where('engine_requests.invoice_number_normalized', self::normalizeKey($invoiceNumber))
             ->when($excludeRequestId !== null, fn ($q) => $q->where('engine_requests.id', '!=', $excludeRequestId))
             ->whereNotIn('engine_requests.status', self::NOT_ELIGIBLE_STATUSES);
 

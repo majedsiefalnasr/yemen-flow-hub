@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
-use App\Support\EngineRequestStatus;
-use App\Services\Authorization\DataScope;
 use App\DTOs\Authorization\DataScopeContext;
+use App\Services\Authorization\DataScope;
+use App\Support\EngineRequestStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -33,6 +33,7 @@ class EngineRequest extends Model
         'amount',
         'currency',
         'invoice_number',
+        'invoice_number_normalized',
         'request_percentage',
     ];
 

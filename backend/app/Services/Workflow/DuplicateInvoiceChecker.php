@@ -3,6 +3,7 @@
 namespace App\Services\Workflow;
 
 use App\Models\EngineRequest;
+use App\Support\InvoiceKey;
 
 class DuplicateInvoiceChecker
 {
@@ -11,13 +12,14 @@ class DuplicateInvoiceChecker
      */
     public function check(string $invoiceNumber, ?int $excludeRequestId = null): ?array
     {
-        // TODO(WP-7/R5s2): switch duplicate matching to InvoiceKey normalization with masking/backfill.
-        if (trim($invoiceNumber) === '') {
+        $normalized = InvoiceKey::normalize($invoiceNumber);
+
+        if ($normalized === '') {
             return null;
         }
 
         $query = EngineRequest::query()
-            ->where('invoice_number', $invoiceNumber)
+            ->where('invoice_number_normalized', $normalized)
             ->where('status', 'ACTIVE');
 
         if ($excludeRequestId !== null) {
