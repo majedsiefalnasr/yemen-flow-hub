@@ -3,18 +3,26 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Api\Controller;
-use App\Models\AuditLog;
 use App\Models\EngineRequest;
 use App\Models\Merchant;
+use App\Services\Authorization\DataScope;
+use App\Services\Authorization\PermissionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class ComplianceController extends Controller
 {
+    public function __construct(private readonly PermissionService $permissionService) {}
+
     public function duplicateInvoices(Request $request): JsonResponse
     {
-        $this->authorize('viewAny', AuditLog::class);
+        $user = $request->user();
+        if (! $this->permissionService->userHasCapability($user, 'audit', 'VIEW')) {
+            abort(403);
+        }
+
+        $scope = DataScope::forUser($user);
 
         $query = EngineRequest::query()
             ->select('invoice_number', DB::raw('COUNT(*) as duplicate_count'))
@@ -23,7 +31,7 @@ class ComplianceController extends Controller
             ->groupBy('invoice_number')
             ->havingRaw('COUNT(*) > 1');
 
-        $this->applyScope($request, $query);
+        DataScope::applyTo($query, $scope);
         if ($request->filled('bank_id')) {
             $query->where('bank_id', $request->integer('bank_id'));
         }
@@ -34,7 +42,8 @@ class ComplianceController extends Controller
         $detailQuery = EngineRequest::query()
             ->whereIn('invoice_number', $invoiceNumbers)
             ->with(['bank:id,name', 'merchant:id,name', 'currentStage:id,code,name']);
-        $this->applyScope($request, $detailQuery);
+
+        DataScope::applyTo($detailQuery, $scope);
         $requests = $detailQuery
             ->get()
             ->groupBy('invoice_number');
@@ -68,17 +77,19 @@ class ComplianceController extends Controller
 
     public function expiredDocuments(Request $request): JsonResponse
     {
-        $this->authorize('viewAny', AuditLog::class);
+        $user = $request->user();
+        if (! $this->permissionService->userHasCapability($user, 'audit', 'VIEW')) {
+            abort(403);
+        }
+
+        $scope = DataScope::forUser($user);
 
         $merchantQuery = Merchant::query()
             ->whereNotNull('tax_card_expiry')
             ->whereDate('tax_card_expiry', '<', now())
             ->with('bank:id,name');
 
-        $user = $request->user();
-        if ($user && $user->bank_id !== null) {
-            $merchantQuery->where('bank_id', $user->bank_id);
-        }
+        DataScope::applyTo($merchantQuery, $scope);
 
         $merchants = $merchantQuery->paginate($this->perPage($request));
 
@@ -104,7 +115,12 @@ class ComplianceController extends Controller
 
     public function slaBreaches(Request $request): JsonResponse
     {
-        $this->authorize('viewAny', AuditLog::class);
+        $user = $request->user();
+        if (! $this->permissionService->userHasCapability($user, 'audit', 'VIEW')) {
+            abort(403);
+        }
+
+        $scope = DataScope::forUser($user);
 
         $query = EngineRequest::query()
             ->withStageEntry()
@@ -113,7 +129,7 @@ class ComplianceController extends Controller
             ->whereRaw(EngineRequest::slaDeadlineEpochSql().' < '.EngineRequest::nowEpochSql())
             ->with(['currentStage:id,code,name,sla_duration_minutes', 'bank:id,name', 'creator:id,name']);
 
-        $this->applyScope($request, $query, 'engine_requests.bank_id');
+        DataScope::applyTo($query, $scope, 'engine_requests.bank_id');
         if ($request->filled('bank_id')) {
             $query->where('engine_requests.bank_id', $request->integer('bank_id'));
         }
@@ -145,14 +161,6 @@ class ComplianceController extends Controller
                 'total' => $page->total(),
             ],
         ]);
-    }
-
-    private function applyScope(Request $request, $query, string $column = 'bank_id'): void
-    {
-        $user = $request->user();
-        if ($user && $user->bank_id !== null) {
-            $query->where($column, $user->bank_id);
-        }
     }
 
     private function perPage(Request $request): int
