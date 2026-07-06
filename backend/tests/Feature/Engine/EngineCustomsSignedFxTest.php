@@ -336,4 +336,172 @@ class EngineCustomsSignedFxTest extends TestCase
 
         return ['request' => $request, 'declaration' => CustomsDeclaration::findOrFail($id)];
     }
+
+    // ── F-13: replacement audit trail ───────────────────────────────────
+
+    public function test_replace_signed_doc_emits_replacement_audit_and_records_history(): void
+    {
+        Storage::fake('local');
+
+        ['request' => $request, 'declaration' => $declaration] = $this->seedDeclaration();
+        $uploader = $this->assignGovernanceIdentity(
+            User::factory()->create(['role' => UserRole::COMMITTEE_DIRECTOR]),
+            UserRole::COMMITTEE_DIRECTOR,
+        );
+        $this->grantFxExecute($request, $uploader);
+
+        // Seed an existing signed doc via DB::table (bypasses Eloquent guard for setup).
+        $oldPath = 'fx-confirmation/engine/'.$request->id.'/old_signed.pdf';
+        DB::table('customs_declarations')->where('id', $declaration->id)->update([
+            'signed_fx_doc_path' => $oldPath,
+            'signed_fx_doc_uploaded_at' => now()->subDay()->toDateTimeString(),
+            'signed_fx_doc_uploaded_by' => $uploader->id,
+            'updated_at' => now()->toDateTimeString(),
+        ]);
+
+        $file = UploadedFile::fake()->create('signed_new.pdf', 100, 'application/pdf');
+
+        $this->actingAs($uploader)
+            ->postJson("/api/v1/engine-requests/{$request->id}/fx-confirmation-signed", [
+                'signed_document' => $file,
+                'reason' => 'Incorrect bank stamp — re-uploading with corrections.',
+            ])
+            ->assertOk();
+
+        $fresh = $declaration->fresh();
+
+        // New path is active.
+        $this->assertNotNull($fresh->signed_fx_doc_path);
+        $this->assertStringNotContainsString('old_signed.pdf', $fresh->signed_fx_doc_path);
+
+        // Replacement history recorded in metadata.
+        $history = $fresh->metadata['replacement_history'] ?? [];
+        $this->assertCount(1, $history);
+        $this->assertSame($oldPath, $history[0]['prior_path']);
+        $this->assertSame('Incorrect bank stamp — re-uploading with corrections.', $history[0]['reason']);
+        $this->assertNotNull($history[0]['at']);
+        $this->assertSame($uploader->id, $history[0]['by']);
+
+        // FX_SIGNED_DOC_REPLACED audit emitted.
+        $replaceAudit = AuditLog::query()
+            ->where('action', AuditAction::FX_SIGNED_DOC_REPLACED->value)
+            ->where('subject_id', $request->id)
+            ->first();
+        $this->assertNotNull($replaceAudit);
+        $this->assertSame($oldPath, $replaceAudit->metadata['prior_path'] ?? null);
+        $this->assertSame($fresh->signed_fx_doc_path, $replaceAudit->metadata['new_path'] ?? null);
+    }
+
+    // ── F-14: issuance semantics split ──────────────────────────────────
+
+    public function test_new_declaration_sets_generated_by_not_issued_by(): void
+    {
+        Storage::fake('local');
+
+        ['request' => $request, 'executor' => $executor] = EngineWorkflowFactory::seedClaimStageWithTransition();
+        $this->grantFxExecute($request, $executor);
+
+        // Simulate the effect that CustomsFxPdfEffect performs:
+        // create a declaration with generated_by = actor, issued_by = null.
+        $declaration = CustomsDeclaration::create([
+            'engine_request_id' => $request->id,
+            'declaration_number' => 'FX-F14-'.Str::random(6),
+            'generated_by' => $executor->id,
+            'issued_at' => now(),
+            'pdf_path' => 'fx-confirmation/f14.pdf',
+            'metadata' => [],
+        ]);
+
+        $this->assertNotNull($declaration->generated_by);
+        $this->assertSame($executor->id, $declaration->generated_by);
+        $this->assertNull($declaration->issued_by);
+    }
+
+    public function test_backfill_sets_generated_by_from_existing_issued_by(): void
+    {
+        $actor = User::factory()->create();
+
+        // Create a request via EngineWorkflowFactory.
+        ['request' => $request] = EngineWorkflowFactory::seedClaimStageWithTransition();
+
+        // Simulate an "existing" row where issued_by was the transition actor.
+        $id = DB::table('customs_declarations')->insertGetId([
+            'engine_request_id' => $request->id,
+            'declaration_number' => 'FX-BACKFILL-'.Str::random(6),
+            'issued_by' => $actor->id,
+            'generated_by' => $actor->id, // Migration backfill sets this.
+            'issued_at' => now()->subWeek()->toDateTimeString(),
+            'pdf_path' => 'fx-confirmation/backfill.pdf',
+            'metadata' => json_encode([]),
+            'created_at' => now()->toDateTimeString(),
+            'updated_at' => now()->toDateTimeString(),
+        ]);
+
+        $declaration = CustomsDeclaration::findOrFail($id);
+        $this->assertSame($actor->id, $declaration->issued_by);
+        $this->assertSame($actor->id, $declaration->generated_by);
+    }
+
+    // ── F-15: whitelist guard ───────────────────────────────────────────
+
+    public function test_signed_doc_column_update_succeeds_through_model(): void
+    {
+        ['request' => $request, 'declaration' => $declaration] = $this->seedDeclaration();
+
+        // Updating only whitelisted columns must not throw.
+        $declaration->update([
+            'signed_fx_doc_path' => 'fx-confirmation/test/new.pdf',
+            'signed_fx_doc_uploaded_at' => now(),
+            'signed_fx_doc_uploaded_by' => 1,
+            'signed_uploaded_by' => 1,
+        ]);
+
+        $this->assertSame('fx-confirmation/test/new.pdf', $declaration->fresh()->signed_fx_doc_path);
+    }
+
+    public function test_immutable_column_update_throws_logic_exception(): void
+    {
+        ['declaration' => $declaration] = $this->seedDeclaration();
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('immutable');
+
+        $declaration->update(['declaration_number' => 'FX-HACKED-001']);
+    }
+
+    public function test_immutable_column_issued_by_update_throws_logic_exception(): void
+    {
+        $otherUser = User::factory()->create();
+        ['declaration' => $declaration] = $this->seedDeclaration();
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('immutable');
+
+        $declaration->update(['issued_by' => $otherUser->id]);
+    }
+
+    public function test_signed_doc_upload_service_no_longer_uses_db_table_bypass(): void
+    {
+        Storage::fake('local');
+
+        ['request' => $request, 'declaration' => $declaration] = $this->seedDeclaration();
+        $uploader = $this->assignGovernanceIdentity(
+            User::factory()->create(['role' => UserRole::COMMITTEE_DIRECTOR]),
+            UserRole::COMMITTEE_DIRECTOR,
+        );
+        $this->grantFxExecute($request, $uploader);
+
+        $file = UploadedFile::fake()->create('signed.pdf', 100, 'application/pdf');
+
+        $this->actingAs($uploader)
+            ->postJson("/api/v1/engine-requests/{$request->id}/fx-confirmation-signed", [
+                'signed_document' => $file,
+            ])
+            ->assertOk();
+
+        // signed_uploaded_by is populated (model path, not DB::table).
+        $fresh = $declaration->fresh();
+        $this->assertSame($uploader->id, $fresh->signed_uploaded_by);
+        $this->assertSame($uploader->id, $fresh->signed_fx_doc_uploaded_by);
+    }
 }

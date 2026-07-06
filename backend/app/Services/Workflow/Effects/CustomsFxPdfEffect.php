@@ -34,7 +34,7 @@ class CustomsFxPdfEffect
         $declaration = CustomsDeclaration::create([
             'engine_request_id' => $request->id,
             'declaration_number' => $artifacts['declaration_number'],
-            'issued_by' => $actor->id,
+            'generated_by' => $actor->id,
             'issued_at' => $artifacts['issued_at'],
             'pdf_path' => $artifacts['pdf_path'],
             'metadata' => $artifacts['snapshot'],

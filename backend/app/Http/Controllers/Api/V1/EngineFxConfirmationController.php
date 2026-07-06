@@ -23,11 +23,12 @@ class EngineFxConfirmationController extends Controller
         $declaration = app(EngineCustomsService::class)->uploadSignedFxDoc(
             $engineRequest,
             $request->user(),
-            $request->file('signed_document')
+            $request->file('signed_document'),
+            $request->input('reason'),
         );
 
         return ApiResponse::success(
-            new CustomsDeclarationResource($declaration->load(['issuer', 'engineRequest.bank'])),
+            new CustomsDeclarationResource($declaration->load(['issuer', 'generatedBy', 'signedUploadedBy', 'engineRequest.bank'])),
             'تم رفع وثيقة المصارفة الموقعة بنجاح.'
         );
     }

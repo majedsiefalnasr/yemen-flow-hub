@@ -23,6 +23,7 @@ class FxConfirmationUploadRequest extends ApiFormRequest
     {
         return [
             'signed_document' => ['required', 'file', 'mimetypes:application/pdf', 'max:10240'],
+            'reason' => ['nullable', 'string', 'max:500'],
         ];
     }
 

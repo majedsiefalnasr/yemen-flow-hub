@@ -92,6 +92,7 @@ class EngineRequestResource extends JsonResource
                 'declaration_number' => $this->customsDeclaration->declaration_number,
                 'issued_at' => $this->customsDeclaration->issued_at?->toISOString(),
                 'issued_by' => $this->customsDeclaration->issued_by,
+                'generated_by' => $this->customsDeclaration->generated_by,
                 'issuer' => $this->when(
                     $this->customsDeclaration->relationLoaded('issuer') && $this->customsDeclaration->issuer !== null,
                     fn () => [
@@ -101,6 +102,7 @@ class EngineRequestResource extends JsonResource
                 ),
                 'has_signed_fx_doc' => $this->customsDeclaration->signed_fx_doc_path !== null,
                 'signed_fx_doc_uploaded_at' => $this->customsDeclaration->signed_fx_doc_uploaded_at?->toISOString(),
+                'signed_uploaded_by' => $this->customsDeclaration->signed_uploaded_by,
             ]),
             'fx_panel' => $this->when(
                 $request->user() !== null,

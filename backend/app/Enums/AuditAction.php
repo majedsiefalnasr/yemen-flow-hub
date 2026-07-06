@@ -23,6 +23,7 @@ enum AuditAction: string
     case CUSTOMS_ISSUED = 'CUSTOMS_ISSUED';
     case FX_CONFIRMATION_UPLOADED = 'FX_CONFIRMATION_UPLOADED';
     case FX_CONFIRMATION_ISSUED = 'FX_CONFIRMATION_ISSUED';
+    case FX_SIGNED_DOC_REPLACED = 'FX_SIGNED_DOC_REPLACED';
     case USER_CREATED = 'USER_CREATED';
     case USER_UPDATED = 'USER_UPDATED';
     case USER_DEACTIVATED = 'USER_DEACTIVATED';
@@ -80,6 +81,7 @@ enum AuditAction: string
             self::CUSTOMS_ISSUED => 'Customs Issued / إصدار الجمارك',
             self::FX_CONFIRMATION_UPLOADED => 'FX Confirmation Uploaded / رفع وثيقة المصارفة الخارجية',
             self::FX_CONFIRMATION_ISSUED => 'FX Confirmation Issued / إصدار وثيقة المصارفة الخارجية',
+            self::FX_SIGNED_DOC_REPLACED => 'FX Signed Doc Replaced / استبدال وثيقة المصارفة الخارجية الموقعة',
             self::USER_CREATED => 'User Created / إنشاء مستخدم',
             self::USER_UPDATED => 'User Updated / تحديث مستخدم',
             self::USER_DEACTIVATED => 'User Deactivated / إيقاف مستخدم',

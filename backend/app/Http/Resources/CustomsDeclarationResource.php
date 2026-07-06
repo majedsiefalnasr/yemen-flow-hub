@@ -20,10 +20,20 @@ class CustomsDeclarationResource extends JsonResource
                 'email' => $this->issuer->email,
                 'role' => $this->issuer->legacyRole()?->value,
             ] : null,
+            'generated_by' => $this->generated_by,
+            'generated_by_user' => $this->whenLoaded('generatedBy', fn () => $this->generatedBy === null ? null : [
+                'id' => $this->generatedBy->id,
+                'name' => $this->generatedBy->name,
+            ]),
             'issued_at' => $this->issued_at?->toISOString(),
             'signed_fx_doc_path' => $this->signed_fx_doc_path,
             'signed_fx_doc_uploaded_at' => $this->signed_fx_doc_uploaded_at?->toISOString(),
             'signed_fx_doc_uploaded_by' => $this->signed_fx_doc_uploaded_by,
+            'signed_uploaded_by' => $this->signed_uploaded_by,
+            'signed_uploaded_by_user' => $this->whenLoaded('signedUploadedBy', fn () => $this->signedUploadedBy === null ? null : [
+                'id' => $this->signedUploadedBy->id,
+                'name' => $this->signedUploadedBy->name,
+            ]),
             'has_signed_fx_doc' => $this->signed_fx_doc_path !== null,
             'request' => $this->request ? [
                 'id' => $this->request->id,
