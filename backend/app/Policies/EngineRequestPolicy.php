@@ -5,6 +5,7 @@ namespace App\Policies;
 use App\Enums\StageAccessLevel;
 use App\Models\EngineRequest;
 use App\Models\User;
+use App\Services\Customs\FxConfirmationAuthorizationService;
 use App\Services\Workflow\StagePermissionResolver;
 use App\Support\RoleCodes;
 
@@ -12,6 +13,7 @@ class EngineRequestPolicy
 {
     public function __construct(
         private StagePermissionResolver $resolver,
+        private FxConfirmationAuthorizationService $fxAuthorization,
     ) {}
 
     public function view(User $user, EngineRequest $request): bool
@@ -55,6 +57,11 @@ class EngineRequestPolicy
     public function abandon(User $user, EngineRequest $request): bool
     {
         return $this->inScope($user, $request);
+    }
+
+    public function uploadSignedFx(User $user, EngineRequest $request): bool
+    {
+        return $this->fxAuthorization->canUploadSignedFx($user, $request);
     }
 
     private function inScope(User $user, EngineRequest $request): bool

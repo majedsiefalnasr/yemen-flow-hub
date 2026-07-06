@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Support\RoleCodes;
+use App\Models\EngineRequest;
 
 class FxConfirmationUploadRequest extends ApiFormRequest
 {
@@ -13,7 +13,10 @@ class FxConfirmationUploadRequest extends ApiFormRequest
             return false;
         }
 
-        return $user->hasRoleCode(RoleCodes::COMMITTEE_DIRECTOR);
+        /** @var EngineRequest $engineRequest */
+        $engineRequest = $this->route('engineRequest');
+
+        return $user->can('uploadSignedFx', $engineRequest);
     }
 
     public function rules(): array

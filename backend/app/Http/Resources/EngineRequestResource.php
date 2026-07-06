@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Enums\StageAccessLevel;
+use App\Services\Customs\FxConfirmationAuthorizationService;
 use App\Services\Workflow\StageFieldOutputFilter;
 use App\Services\Workflow\StagePermissionResolver;
 use Illuminate\Http\Request;
@@ -86,6 +87,26 @@ class EngineRequestResource extends JsonResource
             ]),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
+            'customs_declaration' => $this->whenLoaded('customsDeclaration', fn () => $this->customsDeclaration === null ? null : [
+                'id' => $this->customsDeclaration->id,
+                'declaration_number' => $this->customsDeclaration->declaration_number,
+                'issued_at' => $this->customsDeclaration->issued_at?->toISOString(),
+                'issued_by' => $this->customsDeclaration->issued_by,
+                'issuer' => $this->when(
+                    $this->customsDeclaration->relationLoaded('issuer') && $this->customsDeclaration->issuer !== null,
+                    fn () => [
+                        'id' => $this->customsDeclaration->issuer->id,
+                        'name' => $this->customsDeclaration->issuer->name,
+                    ],
+                ),
+                'has_signed_fx_doc' => $this->customsDeclaration->signed_fx_doc_path !== null,
+                'signed_fx_doc_uploaded_at' => $this->customsDeclaration->signed_fx_doc_uploaded_at?->toISOString(),
+            ]),
+            'fx_panel' => $this->when(
+                $request->user() !== null,
+                fn (): array => app(FxConfirmationAuthorizationService::class)
+                    ->panelCapabilities($request->user(), $this->resource),
+            ),
         ];
     }
 }

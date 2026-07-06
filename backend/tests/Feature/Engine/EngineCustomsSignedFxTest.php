@@ -4,12 +4,14 @@ namespace Tests\Feature\Engine;
 
 use App\Enums\AuditAction;
 use App\Enums\StageAccessLevel;
+use App\Enums\StageSemanticRole;
 use App\Enums\UserRole;
 use App\Models\AuditLog;
 use App\Models\CustomsDeclaration;
 use App\Models\EngineRequest;
 use App\Models\StagePermission;
 use App\Models\User;
+use App\Models\WorkflowStage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -20,8 +22,8 @@ use Tests\TestCase;
 
 class EngineCustomsSignedFxTest extends TestCase
 {
-    use RefreshDatabase;
     use AssignsGovernanceIdentity;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -29,13 +31,37 @@ class EngineCustomsSignedFxTest extends TestCase
         $this->seedGovernance();
     }
 
-    private function grantViewToUser(EngineRequest $request, User $user): void
+    private function grantFxExecute(EngineRequest $request, User $user): WorkflowStage
+    {
+        $fxStage = WorkflowStage::create([
+            'workflow_version_id' => $request->workflow_version_id,
+            'code' => 'FX_CONFIRM',
+            'name' => 'FX Confirmation',
+            'sort_order' => 99,
+            'is_initial' => false,
+            'is_final' => false,
+            'semantic_role' => StageSemanticRole::FX_CONFIRMATION,
+            'version' => 1,
+        ]);
+
+        StagePermission::create([
+            'stage_id' => $fxStage->id,
+            'user_id' => $user->id,
+            'access_level' => StageAccessLevel::EXECUTE,
+            'display_label' => 'FX Execute',
+            'version' => 1,
+        ]);
+
+        return $fxStage;
+    }
+
+    private function grantFxView(EngineRequest $request, User $user, WorkflowStage $fxStage): void
     {
         StagePermission::create([
-            'stage_id' => $request->current_stage_id,
+            'stage_id' => $fxStage->id,
             'user_id' => $user->id,
             'access_level' => StageAccessLevel::VIEW,
-            'display_label' => 'View',
+            'display_label' => 'FX View',
             'version' => 1,
         ]);
     }
@@ -44,8 +70,6 @@ class EngineCustomsSignedFxTest extends TestCase
     {
         ['request' => $request, 'executor' => $executor] = EngineWorkflowFactory::seedClaimStageWithTransition();
 
-        // Use DB::table to bypass CustomsDeclaration::booted() immutability guard
-        // (which throws on update() for issued declarations).
         $id = DB::table('customs_declarations')->insertGetId([
             'engine_request_id' => $request->id,
             'declaration_number' => 'FX-TEST-001',
@@ -62,20 +86,20 @@ class EngineCustomsSignedFxTest extends TestCase
         return ['request' => $request, 'declaration' => $declaration, 'executor' => $executor];
     }
 
-    public function test_director_can_upload_signed_fx_doc_for_engine_declaration(): void
+    public function test_fx_stage_executor_can_upload_signed_fx_doc_for_engine_declaration(): void
     {
         Storage::fake('local');
 
         ['request' => $request, 'declaration' => $declaration] = $this->seedDeclaration();
-        $director = $this->assignGovernanceIdentity(
+        $uploader = $this->assignGovernanceIdentity(
             User::factory()->create(['role' => UserRole::COMMITTEE_DIRECTOR]),
             UserRole::COMMITTEE_DIRECTOR
         );
-        $this->grantViewToUser($request, $director);
+        $this->grantFxExecute($request, $uploader);
 
         $file = UploadedFile::fake()->create('signed.pdf', 100, 'application/pdf');
 
-        $this->actingAs($director)
+        $this->actingAs($uploader)
             ->postJson("/api/v1/engine-requests/{$request->id}/fx-confirmation-signed", [
                 'signed_document' => $file,
             ])
@@ -85,7 +109,7 @@ class EngineCustomsSignedFxTest extends TestCase
         $fresh = $declaration->fresh();
         $this->assertNotNull($fresh->signed_fx_doc_path);
         $this->assertNotNull($fresh->signed_fx_doc_uploaded_at);
-        $this->assertSame($director->id, $fresh->signed_fx_doc_uploaded_by);
+        $this->assertSame($uploader->id, $fresh->signed_fx_doc_uploaded_by);
 
         $this->assertTrue(
             AuditLog::query()
@@ -95,7 +119,7 @@ class EngineCustomsSignedFxTest extends TestCase
         );
     }
 
-    public function test_non_director_cannot_upload_signed_fx_doc(): void
+    public function test_non_executor_cannot_upload_signed_fx_doc(): void
     {
         Storage::fake('local');
 
@@ -104,7 +128,17 @@ class EngineCustomsSignedFxTest extends TestCase
             User::factory()->create(['role' => UserRole::BANK_REVIEWER]),
             UserRole::BANK_REVIEWER
         );
-        $this->grantViewToUser($request, $reviewer);
+        $fxStage = WorkflowStage::create([
+            'workflow_version_id' => $request->workflow_version_id,
+            'code' => 'FX_CONFIRM',
+            'name' => 'FX Confirmation',
+            'sort_order' => 99,
+            'is_initial' => false,
+            'is_final' => false,
+            'semantic_role' => StageSemanticRole::FX_CONFIRMATION,
+            'version' => 1,
+        ]);
+        $this->grantFxView($request, $reviewer, $fxStage);
 
         $file = UploadedFile::fake()->create('signed.pdf', 100, 'application/pdf');
 
@@ -120,23 +154,22 @@ class EngineCustomsSignedFxTest extends TestCase
         Storage::fake('local');
 
         ['request' => $request, 'declaration' => $declaration] = $this->seedDeclaration();
-        $director = $this->assignGovernanceIdentity(
+        $uploader = $this->assignGovernanceIdentity(
             User::factory()->create(['role' => UserRole::COMMITTEE_DIRECTOR]),
             UserRole::COMMITTEE_DIRECTOR
         );
-        $this->grantViewToUser($request, $director);
+        $this->grantFxExecute($request, $uploader);
 
-        // Seed an existing signed doc path.
         DB::table('customs_declarations')->where('id', $declaration->id)->update([
             'signed_fx_doc_path' => 'fx-confirmation/engine/'.$request->id.'/old_signed.pdf',
             'signed_fx_doc_uploaded_at' => now()->toDateTimeString(),
-            'signed_fx_doc_uploaded_by' => $director->id,
+            'signed_fx_doc_uploaded_by' => $uploader->id,
             'updated_at' => now()->toDateTimeString(),
         ]);
 
         $file = UploadedFile::fake()->create('signed_new.pdf', 100, 'application/pdf');
 
-        $this->actingAs($director)
+        $this->actingAs($uploader)
             ->postJson("/api/v1/engine-requests/{$request->id}/fx-confirmation-signed", [
                 'signed_document' => $file,
             ])
@@ -147,20 +180,16 @@ class EngineCustomsSignedFxTest extends TestCase
         $this->assertStringNotContainsString('old_signed.pdf', $fresh->signed_fx_doc_path);
     }
 
-    public function test_pivot_role_is_authoritative_for_director_upload_even_when_legacy_enum_disagrees(): void
+    public function test_stage_permission_is_authoritative_for_fx_upload_even_when_legacy_role_disagrees(): void
     {
         Storage::fake('local');
 
         ['request' => $request, 'declaration' => $declaration] = $this->seedDeclaration();
 
-        // Desync case 1: legacy enum says COMMITTEE_DIRECTOR, but the governance
-        // pivot role is NOT committee_director. The pivot must be authoritative,
-        // so this upload must be rejected.
         $staleEnumUser = $this->assignGovernanceIdentity(
             User::factory()->create(['role' => UserRole::COMMITTEE_DIRECTOR]),
             UserRole::BANK_REVIEWER
         );
-        $this->grantViewToUser($request, $staleEnumUser);
 
         $file = UploadedFile::fake()->create('signed.pdf', 100, 'application/pdf');
 
@@ -172,18 +201,15 @@ class EngineCustomsSignedFxTest extends TestCase
 
         $this->assertNull($declaration->fresh()->signed_fx_doc_path);
 
-        // Desync case 2: legacy enum does NOT say COMMITTEE_DIRECTOR, but the
-        // governance pivot role IS committee_director. The pivot must be
-        // authoritative, so this upload must succeed.
-        $realDirector = $this->assignGovernanceIdentity(
+        $fxExecutor = $this->assignGovernanceIdentity(
             User::factory()->create(['role' => UserRole::BANK_REVIEWER]),
-            UserRole::COMMITTEE_DIRECTOR
+            UserRole::EXECUTIVE_MEMBER
         );
-        $this->grantViewToUser($request, $realDirector);
+        $this->grantFxExecute($request, $fxExecutor);
 
         $file2 = UploadedFile::fake()->create('signed2.pdf', 100, 'application/pdf');
 
-        $this->actingAs($realDirector)
+        $this->actingAs($fxExecutor)
             ->postJson("/api/v1/engine-requests/{$request->id}/fx-confirmation-signed", [
                 'signed_document' => $file2,
             ])
@@ -192,7 +218,7 @@ class EngineCustomsSignedFxTest extends TestCase
 
         $fresh = $declaration->fresh();
         $this->assertNotNull($fresh->signed_fx_doc_path);
-        $this->assertSame($realDirector->id, $fresh->signed_fx_doc_uploaded_by);
+        $this->assertSame($fxExecutor->id, $fresh->signed_fx_doc_uploaded_by);
     }
 
     public function test_upload_returns_404_if_no_declaration_exists_for_engine_request(): void
@@ -200,15 +226,15 @@ class EngineCustomsSignedFxTest extends TestCase
         Storage::fake('local');
 
         ['request' => $request] = EngineWorkflowFactory::seedClaimStageWithTransition();
-        $director = $this->assignGovernanceIdentity(
+        $uploader = $this->assignGovernanceIdentity(
             User::factory()->create(['role' => UserRole::COMMITTEE_DIRECTOR]),
             UserRole::COMMITTEE_DIRECTOR
         );
-        $this->grantViewToUser($request, $director);
+        $this->grantFxExecute($request, $uploader);
 
         $file = UploadedFile::fake()->create('signed.pdf', 100, 'application/pdf');
 
-        $this->actingAs($director)
+        $this->actingAs($uploader)
             ->postJson("/api/v1/engine-requests/{$request->id}/fx-confirmation-signed", [
                 'signed_document' => $file,
             ])

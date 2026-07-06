@@ -3,10 +3,12 @@
 namespace Tests\Feature\Requests;
 
 use App\Enums\StageAccessLevel;
+use App\Enums\StageSemanticRole;
 use App\Enums\UserRole;
 use App\Models\EngineRequest;
 use App\Models\StagePermission;
 use App\Models\User;
+use App\Models\WorkflowStage;
 use Database\Seeders\BankSeeder;
 use Database\Seeders\GovernanceSeeder;
 use Database\Seeders\UserSeeder;
@@ -37,13 +39,13 @@ class PivotFormRequestAuthorizationTest extends TestCase
         ]);
     }
 
-    public function test_committee_director_can_upload_fx_confirmation(): void
+    public function test_fx_stage_executor_can_upload_fx_confirmation(): void
     {
-        $director = User::query()->where('role', UserRole::COMMITTEE_DIRECTOR->value)->firstOrFail();
+        $executor = User::query()->where('email', 'fxconfirm@cby.gov.ye')->firstOrFail();
         $request = EngineWorkflowFactory::seedRequestOnClaimStage();
-        $this->grantViewToUser($request, $director);
+        $this->grantFxExecute($request, $executor);
 
-        $response = $this->actingAs($director)->postJson(
+        $response = $this->actingAs($executor)->postJson(
             "/api/v1/engine-requests/{$request->id}/fx-confirmation-signed",
             []
         );
@@ -51,7 +53,7 @@ class PivotFormRequestAuthorizationTest extends TestCase
         $this->assertNotEquals(403, $response->status());
     }
 
-    public function test_executive_member_cannot_upload_fx_confirmation(): void
+    public function test_executive_member_without_fx_execute_cannot_upload_fx_confirmation(): void
     {
         $executive = User::query()->where('role', UserRole::EXECUTIVE_MEMBER->value)->firstOrFail();
         $request = EngineWorkflowFactory::seedRequestOnClaimStage();
@@ -63,6 +65,28 @@ class PivotFormRequestAuthorizationTest extends TestCase
         );
 
         $response->assertForbidden();
+    }
+
+    private function grantFxExecute(EngineRequest $request, User $user): void
+    {
+        $fxStage = WorkflowStage::create([
+            'workflow_version_id' => $request->workflow_version_id,
+            'code' => 'FX_CONFIRM',
+            'name' => 'FX Confirmation',
+            'sort_order' => 99,
+            'is_initial' => false,
+            'is_final' => false,
+            'semantic_role' => StageSemanticRole::FX_CONFIRMATION,
+            'version' => 1,
+        ]);
+
+        StagePermission::create([
+            'stage_id' => $fxStage->id,
+            'user_id' => $user->id,
+            'access_level' => StageAccessLevel::EXECUTE,
+            'display_label' => 'FX Execute',
+            'version' => 1,
+        ]);
     }
 
     public function test_cby_admin_can_update_admin_settings(): void

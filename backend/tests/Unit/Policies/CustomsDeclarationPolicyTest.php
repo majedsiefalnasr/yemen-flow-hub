@@ -2,12 +2,18 @@
 
 namespace Tests\Unit\Policies;
 
+use App\Enums\StageAccessLevel;
+use App\Enums\StageSemanticRole;
 use App\Enums\UserRole;
 use App\Models\Bank;
 use App\Models\CustomsDeclaration;
 use App\Models\EngineRequest;
+use App\Models\StagePermission;
 use App\Models\User;
+use App\Models\WorkflowStage;
 use App\Policies\CustomsDeclarationPolicy;
+use App\Services\Customs\FxConfirmationAuthorizationService;
+use App\Services\Workflow\StagePermissionResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\AssignsGovernanceIdentity;
@@ -24,24 +30,22 @@ class CustomsDeclarationPolicyTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->policy = new CustomsDeclarationPolicy;
+        $this->policy = new CustomsDeclarationPolicy(new FxConfirmationAuthorizationService(new StagePermissionResolver));
         $this->seedGovernance();
     }
 
-    // ── download() ───────────────────────────────────────────────────────
-
-    public function test_director_can_download_engine_issued_declaration(): void
+    public function test_fx_stage_viewer_can_download_engine_issued_declaration(): void
     {
         $bank = $this->makeBank();
         $engineRequest = $this->makeEngineRequest($bank->id);
         $declaration = $this->makeEngineDeclaration($engineRequest);
-
-        $director = $this->assignGovernanceIdentity(
+        $viewer = $this->assignGovernanceIdentity(
             User::factory()->create(['role' => UserRole::COMMITTEE_DIRECTOR]),
             UserRole::COMMITTEE_DIRECTOR
         );
+        $this->grantFxView($engineRequest, $viewer);
 
-        $this->assertTrue($this->policy->download($director, $declaration));
+        $this->assertTrue($this->policy->download($viewer, $declaration));
     }
 
     public function test_bank_reviewer_of_same_bank_can_download_engine_issued_declaration(): void
@@ -59,25 +63,26 @@ class CustomsDeclarationPolicyTest extends TestCase
             User::factory()->create(['role' => UserRole::BANK_REVIEWER, 'bank_id' => $otherBank->id]),
             UserRole::BANK_REVIEWER
         );
+        $this->grantFxView($engineRequest, $sameReviewer);
+        $this->grantFxView($engineRequest, $otherReviewer);
 
         $this->assertTrue($this->policy->download($sameReviewer, $declaration));
         $this->assertFalse($this->policy->download($otherReviewer, $declaration));
     }
 
-    // ── downloadSignedFx() ───────────────────────────────────────────────
-
-    public function test_director_can_download_signed_fx_for_engine_declaration(): void
+    public function test_fx_stage_viewer_can_download_signed_fx_for_engine_declaration(): void
     {
         $bank = $this->makeBank();
         $engineRequest = $this->makeEngineRequest($bank->id);
         $declaration = $this->makeEngineDeclaration($engineRequest);
 
-        $director = $this->assignGovernanceIdentity(
+        $viewer = $this->assignGovernanceIdentity(
             User::factory()->create(['role' => UserRole::COMMITTEE_DIRECTOR]),
             UserRole::COMMITTEE_DIRECTOR
         );
+        $this->grantFxView($engineRequest, $viewer);
 
-        $this->assertTrue($this->policy->downloadSignedFx($director, $declaration));
+        $this->assertTrue($this->policy->downloadSignedFx($viewer, $declaration));
     }
 
     public function test_bank_user_of_same_bank_can_download_signed_fx(): void
@@ -95,12 +100,40 @@ class CustomsDeclarationPolicyTest extends TestCase
             User::factory()->create(['role' => UserRole::DATA_ENTRY, 'bank_id' => $otherBank->id]),
             UserRole::DATA_ENTRY
         );
+        $this->grantFxView($engineRequest, $sameDataEntry);
+        $this->grantFxView($engineRequest, $otherDataEntry);
 
         $this->assertTrue($this->policy->downloadSignedFx($sameDataEntry, $declaration));
         $this->assertFalse($this->policy->downloadSignedFx($otherDataEntry, $declaration));
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────
+    private function grantFxView(EngineRequest $engineRequest, User $user): WorkflowStage
+    {
+        $fxStage = WorkflowStage::query()->firstOrCreate(
+            [
+                'workflow_version_id' => $engineRequest->workflow_version_id,
+                'code' => 'FX_CONFIRM',
+            ],
+            [
+                'name' => 'FX Confirmation',
+                'sort_order' => 99,
+                'is_initial' => false,
+                'is_final' => false,
+                'semantic_role' => StageSemanticRole::FX_CONFIRMATION,
+                'version' => 1,
+            ],
+        );
+
+        StagePermission::create([
+            'stage_id' => $fxStage->id,
+            'user_id' => $user->id,
+            'access_level' => StageAccessLevel::VIEW,
+            'display_label' => 'FX View',
+            'version' => 1,
+        ]);
+
+        return $fxStage;
+    }
 
     private function makeBank(): Bank
     {

@@ -111,7 +111,7 @@ class EngineRequestController extends Controller
     {
         $this->authorize('view', $engineRequest);
 
-        $engineRequest->load(['currentStage', 'creator', 'bank', 'merchant', 'claimedBy', 'workflowVersion.definition']);
+        $engineRequest->load(['currentStage', 'creator', 'bank', 'merchant', 'claimedBy', 'workflowVersion.definition', 'customsDeclaration.issuer']);
 
         $response = [
             'success' => true,

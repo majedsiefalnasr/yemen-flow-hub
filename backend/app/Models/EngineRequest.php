@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -99,6 +100,11 @@ class EngineRequest extends Model
     public function documents(): HasMany
     {
         return $this->hasMany(EngineRequestDocument::class, 'request_id');
+    }
+
+    public function customsDeclaration(): HasOne
+    {
+        return $this->hasOne(CustomsDeclaration::class, 'engine_request_id');
     }
 
     public function isActive(): bool

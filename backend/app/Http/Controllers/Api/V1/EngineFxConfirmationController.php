@@ -18,7 +18,7 @@ class EngineFxConfirmationController extends Controller
 {
     public function uploadSignedFx(FxConfirmationUploadRequest $request, EngineRequest $engineRequest): JsonResponse
     {
-        $this->authorize('view', $engineRequest);
+        $this->authorize('uploadSignedFx', $engineRequest);
 
         $declaration = app(EngineCustomsService::class)->uploadSignedFxDoc(
             $engineRequest,
