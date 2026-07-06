@@ -3,10 +3,12 @@
 namespace App\Http\Requests;
 
 use App\Enums\AuditAction;
+use App\Enums\FieldSemanticTag;
 use App\Models\FieldDefinition;
 use App\Services\Audit\AuditService;
 use App\Support\FieldDefinitionConstraintValidator;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class UpdateFieldDefinitionRequest extends FormRequest
@@ -21,6 +23,7 @@ class UpdateFieldDefinitionRequest extends FormRequest
         // key and type are immutable once defined — change via a new version.
         return [
             'key' => ['sometimes', 'string'],
+            'semantic_tag' => ['sometimes', 'nullable', Rule::enum(FieldSemanticTag::class)],
             'label' => ['sometimes', 'string', 'max:255'],
             'placeholder' => ['sometimes', 'nullable', 'string', 'max:255'],
             'help_text' => ['sometimes', 'nullable', 'string', 'max:500'],

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\FinalOutcome;
+use App\Enums\StageSemanticRole;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,6 +16,8 @@ class WorkflowStage extends Model
     protected $fillable = [
         'workflow_version_id',
         'code',
+        'semantic_role',
+        'attached_effects',
         'name',
         'description',
         'sort_order',
@@ -31,6 +34,8 @@ class WorkflowStage extends Model
     {
         return [
             'sort_order' => 'integer',
+            'semantic_role' => StageSemanticRole::class,
+            'attached_effects' => 'array',
             'is_initial' => 'boolean',
             'is_final' => 'boolean',
             'final_outcome' => FinalOutcome::class,

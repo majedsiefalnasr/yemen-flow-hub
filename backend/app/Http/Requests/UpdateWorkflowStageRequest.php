@@ -3,7 +3,9 @@
 namespace App\Http\Requests;
 
 use App\Enums\FinalOutcome;
+use App\Enums\StageSemanticRole;
 use App\Models\WorkflowStage;
+use App\Services\Workflow\SemanticRegistry;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -44,6 +46,9 @@ class UpdateWorkflowStageRequest extends FormRequest
             'requires_claim' => ['sometimes', 'boolean'],
             'sla_duration_minutes' => ['sometimes', 'nullable', 'integer', 'min:1'],
             'status' => ['sometimes', 'string', 'in:ACTIVE,INACTIVE'],
+            'semantic_role' => ['sometimes', 'nullable', Rule::enum(StageSemanticRole::class)],
+            'attached_effects' => ['sometimes', 'nullable', 'array'],
+            'attached_effects.*' => ['string', Rule::in(app(SemanticRegistry::class)->registeredEffectCodes())],
             'version' => ['required', 'integer', 'min:1'],
         ];
     }

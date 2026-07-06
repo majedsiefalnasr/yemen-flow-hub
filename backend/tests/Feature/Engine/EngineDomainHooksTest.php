@@ -117,12 +117,15 @@ class EngineDomainHooksTest extends TestCase
         ]);
 
         $group = FieldGroup::create(['workflow_version_id' => $this->version->id, 'name' => 'main', 'label' => 'Main', 'sort_order' => 1, 'version' => 1]);
-        foreach (['invoice_number' => 'TEXT', 'request_percentage' => 'NUMBER'] as $key => $type) {
+        foreach (['invoice_number' => 'TEXT', 'request_percentage' => 'NUMBER', 'amount' => 'CURRENCY', 'currency' => 'TEXT'] as $key => $type) {
             FieldDefinition::create([
                 'workflow_version_id' => $this->version->id, 'field_group_id' => $group->id, 'key' => $key,
                 'label' => $key, 'type' => $type, 'is_required' => false, 'sort_order' => 1, 'version' => 1,
             ]);
         }
+
+        $this->execStage->update(['attached_effects' => ['financing.reserve']]);
+        $this->fxStage->update(['attached_effects' => ['fx.confirmation_pdf']]);
     }
 
     private function stage(string $code, int $order, bool $isInitial = false, bool $isFinal = false): WorkflowStage
@@ -138,7 +141,12 @@ class EngineDomainHooksTest extends TestCase
         $res = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', [
             'workflow_version_id' => $this->version->id,
             'merchant_id' => $this->merchant->id,
-            'data' => ['invoice_number' => $invoice, 'request_percentage' => $percent],
+            'data' => [
+                'invoice_number' => $invoice,
+                'request_percentage' => $percent,
+                'amount' => 100000,
+                'currency' => 'USD',
+            ],
         ])->assertCreated();
 
         return EngineRequest::findOrFail($res->json('data.id'));

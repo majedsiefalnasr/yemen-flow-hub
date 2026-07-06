@@ -14,6 +14,9 @@ class StageHookRegistry
     /** @var array<string, callable[]> */
     private array $exitHooks = [];
 
+    /** @var array<string, callable[]> */
+    private array $effectEntryHooks = [];
+
     public function onStageEntry(string $stageCode, callable $handler): void
     {
         $this->entryHooks[$stageCode][] = $handler;
@@ -22,6 +25,11 @@ class StageHookRegistry
     public function onStageExit(string $stageCode, callable $handler): void
     {
         $this->exitHooks[$stageCode][] = $handler;
+    }
+
+    public function onEffectEntry(string $effectCode, callable $handler): void
+    {
+        $this->effectEntryHooks[$effectCode][] = $handler;
     }
 
     public function fireExit(EngineRequest $request, WorkflowTransition $transition, User $actor): void
@@ -38,11 +46,24 @@ class StageHookRegistry
 
     public function fireEntry(EngineRequest $request, WorkflowTransition $transition, User $actor): void
     {
-        $toCode = $transition->toStage?->code;
-        if ($toCode === null) {
+        $transition->loadMissing('toStage');
+        $toStage = $transition->toStage;
+        if ($toStage === null) {
             return;
         }
 
+        $effects = $toStage->attached_effects ?? [];
+        if ($effects !== []) {
+            foreach ($effects as $effectCode) {
+                foreach ($this->effectEntryHooks[(string) $effectCode] ?? [] as $handler) {
+                    $handler($request, $transition, $actor);
+                }
+            }
+
+            return;
+        }
+
+        $toCode = $toStage->code;
         foreach ($this->entryHooks[$toCode] ?? [] as $handler) {
             $handler($request, $transition, $actor);
         }

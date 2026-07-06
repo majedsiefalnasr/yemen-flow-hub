@@ -51,6 +51,17 @@ class AppServiceProvider extends ServiceProvider
     {
         $registry = $this->app->make(StageHookRegistry::class);
 
+        $registry->onEffectEntry(
+            'financing.reserve',
+            fn ($request, $transition, $actor) => $this->app->make(FinancingLedgerEffect::class)($request, $transition, $actor),
+        );
+
+        $registry->onEffectEntry(
+            'fx.confirmation_pdf',
+            fn ($request, $transition, $actor) => $this->app->make(CustomsFxPdfEffect::class)($request, $transition, $actor),
+        );
+
+        // Legacy config-stage bootstrap for workflows without attached_effects yet.
         $registry->onStageEntry(
             (string) config('engine_hooks.financing_reserve_stage'),
             fn ($request, $transition, $actor) => $this->app->make(FinancingLedgerEffect::class)($request, $transition, $actor),

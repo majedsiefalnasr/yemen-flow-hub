@@ -1,0 +1,15 @@
+<?php
+
+namespace App\Enums;
+
+enum FieldSemanticTag: string
+{
+    case INVOICE_NUMBER = 'INVOICE_NUMBER';
+    case REQUESTED_PERCENTAGE = 'REQUESTED_PERCENTAGE';
+    case MERCHANT_TAX_NUMBER = 'MERCHANT_TAX_NUMBER';
+    case SUPPLIER_NAME = 'SUPPLIER_NAME';
+    case GOODS_DESCRIPTION = 'GOODS_DESCRIPTION';
+    case PORT_OF_ENTRY = 'PORT_OF_ENTRY';
+    case AMOUNT = 'AMOUNT';
+    case CURRENCY = 'CURRENCY';
+}

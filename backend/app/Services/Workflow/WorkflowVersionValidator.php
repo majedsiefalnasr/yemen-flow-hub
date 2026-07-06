@@ -20,6 +20,7 @@ class WorkflowVersionValidator
 {
     public function __construct(
         private readonly WorkflowPublishRulePack $rulePack,
+        private readonly SemanticResolver $semanticResolver,
     ) {}
 
     /**
@@ -137,6 +138,16 @@ class WorkflowVersionValidator
         }
 
         return array_merge($errors, $this->rulePack->validate($version, $stages, $transitions, $fields));
+    }
+
+    /**
+     * @return array<int, array{code: string, target: string, message: string}>
+     */
+    public function warnings(WorkflowVersion $version): array
+    {
+        $stages = $version->stages()->get();
+
+        return $this->semanticResolver->publishWarnings($version, $stages);
     }
 
     /**

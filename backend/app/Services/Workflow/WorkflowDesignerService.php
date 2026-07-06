@@ -166,6 +166,8 @@ class WorkflowDesignerService
             $newStage = WorkflowStage::query()->create([
                 'workflow_version_id' => $clone->id,
                 'code' => $stage->code,
+                'semantic_role' => $stage->semantic_role,
+                'attached_effects' => $stage->attached_effects,
                 'name' => $stage->name,
                 'description' => $stage->description,
                 'sort_order' => $stage->sort_order,
@@ -195,6 +197,7 @@ class WorkflowDesignerService
                 'workflow_version_id' => $clone->id,
                 'field_group_id' => $fieldGroupIdMap[$field->field_group_id] ?? null,
                 'key' => $field->key,
+                'semantic_tag' => $field->semantic_tag,
                 'label' => $field->label,
                 'type' => $field->type,
                 'placeholder' => $field->placeholder,
@@ -269,6 +272,14 @@ class WorkflowDesignerService
     public function validateVersion(WorkflowVersion $version): array
     {
         return $this->validator->validate($version);
+    }
+
+    /**
+     * @return array<int, array{code: string, target: string, message: string}>
+     */
+    public function validationWarnings(WorkflowVersion $version): array
+    {
+        return $this->validator->warnings($version);
     }
 
     /**

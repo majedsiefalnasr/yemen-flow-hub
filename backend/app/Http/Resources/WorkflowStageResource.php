@@ -13,6 +13,8 @@ class WorkflowStageResource extends JsonResource
             'id' => $this->id,
             'workflow_version_id' => $this->workflow_version_id,
             'code' => $this->code,
+            'semantic_role' => $this->semantic_role?->value,
+            'attached_effects' => $this->attached_effects ?? [],
             'name' => $this->name,
             'description' => $this->description,
             'sort_order' => (int) $this->sort_order,

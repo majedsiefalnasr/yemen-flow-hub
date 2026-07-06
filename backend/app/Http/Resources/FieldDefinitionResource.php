@@ -14,6 +14,7 @@ class FieldDefinitionResource extends JsonResource
             'workflow_version_id' => $this->workflow_version_id,
             'field_group_id' => $this->field_group_id,
             'key' => $this->key,
+            'semantic_tag' => $this->semantic_tag?->value,
             'label' => $this->label,
             'type' => $this->type->value,
             'placeholder' => $this->placeholder,

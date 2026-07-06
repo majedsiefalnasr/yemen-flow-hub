@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\DynamicFieldSource;
+use App\Enums\FieldSemanticTag;
 use App\Enums\FieldType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -16,6 +17,7 @@ class FieldDefinition extends Model
         'workflow_version_id',
         'field_group_id',
         'key',
+        'semantic_tag',
         'label',
         'type',
         'placeholder',
@@ -42,6 +44,7 @@ class FieldDefinition extends Model
     {
         return [
             'type' => FieldType::class,
+            'semantic_tag' => FieldSemanticTag::class,
             'dynamic_source' => DynamicFieldSource::class,
             'options' => 'array',
             'allowed_file_types' => 'array',

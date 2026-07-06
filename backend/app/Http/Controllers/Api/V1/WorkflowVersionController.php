@@ -139,7 +139,12 @@ class WorkflowVersionController extends Controller
     {
         $this->authorize('view', $workflowVersion);
 
-        return response()->json(['data' => ['errors' => $this->designer->validateVersion($workflowVersion)]]);
+        return response()->json([
+            'data' => [
+                'errors' => $this->designer->validateVersion($workflowVersion),
+                'warnings' => $this->designer->validationWarnings($workflowVersion),
+            ],
+        ]);
     }
 
     public function archive(Request $request, WorkflowVersion $workflowVersion): JsonResponse

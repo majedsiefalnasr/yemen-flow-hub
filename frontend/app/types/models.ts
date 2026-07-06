@@ -708,10 +708,32 @@ export type WorkflowStageStatus = 'ACTIVE' | 'INACTIVE'
 
 export type FinalOutcome = 'COMPLETED' | 'REJECTED' | 'CANCELLED' | 'ABANDONED'
 
+export type StageSemanticRole =
+  | 'INITIAL_ENTRY'
+  | 'BANK_REVIEW'
+  | 'SUPPORT_REVIEW'
+  | 'SWIFT'
+  | 'EXECUTIVE_VOTE'
+  | 'FINANCE_RESERVE'
+  | 'FX_CONFIRMATION'
+  | 'FINAL'
+
+export type FieldSemanticTag =
+  | 'INVOICE_NUMBER'
+  | 'REQUESTED_PERCENTAGE'
+  | 'MERCHANT_TAX_NUMBER'
+  | 'SUPPLIER_NAME'
+  | 'GOODS_DESCRIPTION'
+  | 'PORT_OF_ENTRY'
+  | 'AMOUNT'
+  | 'CURRENCY'
+
 export interface WorkflowStage {
   id: number
   workflow_version_id: number
   code: string
+  semantic_role: StageSemanticRole | null
+  attached_effects: string[]
   name: string
   description: string | null
   sort_order: number
@@ -795,6 +817,7 @@ export interface FieldDefinition {
   workflow_version_id: number
   field_group_id: number
   key: string
+  semantic_tag: FieldSemanticTag | null
   label: string
   type: FieldType
   placeholder: string | null

@@ -20,6 +20,7 @@ class WorkflowPublishRulePack
 {
     public function __construct(
         private readonly StagePermissionAudience $audience,
+        private readonly SemanticResolver $semanticResolver,
     ) {}
 
     /**
@@ -46,6 +47,7 @@ class WorkflowPublishRulePack
         $errors = array_merge($errors, $this->validateSelfLoops($transitions));
         $errors = array_merge($errors, $this->validateFieldRules($stages, $transitions));
         $errors = array_merge($errors, $this->validateFieldConstraints($fields));
+        $errors = array_merge($errors, $this->semanticResolver->publishErrors($version, $stages, $fields));
 
         return $errors;
     }

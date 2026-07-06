@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\DynamicFieldSource;
+use App\Enums\FieldSemanticTag;
 use App\Enums\FieldType;
 use App\Models\WorkflowVersion;
 use App\Support\FieldDefinitionConstraintValidator;
@@ -31,6 +32,7 @@ class StoreFieldDefinitionRequest extends FormRequest
                 'required', 'string', 'max:100', 'alpha_dash',
                 Rule::unique('field_definitions', 'key')->where('workflow_version_id', $versionId),
             ],
+            'semantic_tag' => ['sometimes', 'nullable', Rule::enum(FieldSemanticTag::class)],
             'label' => ['required', 'string', 'max:255'],
             'type' => ['required', Rule::enum(FieldType::class)],
             'placeholder' => ['sometimes', 'nullable', 'string', 'max:255'],
