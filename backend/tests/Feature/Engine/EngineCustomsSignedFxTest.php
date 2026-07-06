@@ -7,15 +7,22 @@ use App\Enums\StageAccessLevel;
 use App\Enums\StageSemanticRole;
 use App\Enums\UserRole;
 use App\Models\AuditLog;
+use App\Models\Bank;
 use App\Models\CustomsDeclaration;
 use App\Models\EngineRequest;
+use App\Models\Organization;
 use App\Models\StagePermission;
 use App\Models\User;
 use App\Models\WorkflowStage;
+use Database\Seeders\GovernanceSeeder;
+use Database\Seeders\ImportFinancingWorkflowSeeder;
+use Database\Seeders\ReferenceDataSeeder;
+use Database\Seeders\WorkflowActionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Tests\Support\AssignsGovernanceIdentity;
 use Tests\Support\EngineWorkflowFactory;
 use Tests\TestCase;
@@ -239,5 +246,94 @@ class EngineCustomsSignedFxTest extends TestCase
                 'signed_document' => $file,
             ])
             ->assertStatus(404);
+    }
+
+    /**
+     * Regression test for WP-8 F-12 seeder gap: the canonical
+     * ImportFinancingWorkflowSeeder must grant commercial_banks a VIEW
+     * StagePermission on FX_CONFIRM so bank users can download their own
+     * bank's signed FX deliverable end-to-end through the real download
+     * route, under the actual seeded workflow (not an ad hoc test stage).
+     * DataScope (bank_id) must still block a user from a different bank.
+     */
+    public function test_bank_user_downloads_own_bank_signed_fx_under_seeded_workflow_permissions(): void
+    {
+        Storage::fake('local');
+
+        $this->seed([
+            GovernanceSeeder::class,
+            ReferenceDataSeeder::class,
+            WorkflowActionSeeder::class,
+            ImportFinancingWorkflowSeeder::class,
+        ]);
+
+        $ownBank = Bank::query()->create(['name' => 'Own Bank', 'code' => 'OWN'.Str::random(4), 'is_active' => true]);
+        $otherBank = Bank::query()->create(['name' => 'Other Bank', 'code' => 'OTH'.Str::random(4), 'is_active' => true]);
+
+        ['request' => $request, 'declaration' => $declaration] = $this->seedDeclarationOnSeededFxStage($ownBank->id);
+
+        $bankOrganization = Organization::query()->where('code', 'commercial_banks')->firstOrFail();
+
+        $sameBankUser = $this->assignGovernanceIdentity(
+            User::factory()->create(['role' => UserRole::BANK_REVIEWER, 'bank_id' => $ownBank->id, 'organization_id' => $bankOrganization->id]),
+            UserRole::BANK_REVIEWER
+        );
+        $otherBankUser = $this->assignGovernanceIdentity(
+            User::factory()->create(['role' => UserRole::BANK_REVIEWER, 'bank_id' => $otherBank->id, 'organization_id' => $bankOrganization->id]),
+            UserRole::BANK_REVIEWER
+        );
+
+        Storage::disk('local')->put('private/'.$declaration->signed_fx_doc_path, 'signed-fx-pdf-bytes');
+
+        $this->actingAs($sameBankUser)
+            ->get("/api/v1/engine-requests/{$request->id}/customs-declaration/signed-fx-download")
+            ->assertOk();
+
+        $this->actingAs($otherBankUser)
+            ->get("/api/v1/engine-requests/{$request->id}/customs-declaration/signed-fx-download")
+            ->assertStatus(403);
+    }
+
+    /**
+     * Builds an EngineRequest on the real seeded ImportFinancingWorkflowSeeder
+     * workflow, parked on its FX_CONFIRM stage, scoped to $bankId, with a
+     * CustomsDeclaration carrying a signed FX document path.
+     *
+     * @return array{request: EngineRequest, declaration: CustomsDeclaration}
+     */
+    private function seedDeclarationOnSeededFxStage(int $bankId): array
+    {
+        $fxStage = WorkflowStage::query()
+            ->whereHas('workflowVersion.definition', fn ($q) => $q->where('code', 'IMPORT_FINANCING'))
+            ->where('code', 'FX_CONFIRM')
+            ->firstOrFail();
+
+        $creator = User::factory()->create(['bank_id' => $bankId]);
+
+        $request = EngineRequest::create([
+            'workflow_version_id' => $fxStage->workflow_version_id,
+            'current_stage_id' => $fxStage->id,
+            'bank_id' => $bankId,
+            'reference' => 'ENG-SEEDED-FX-'.Str::random(10),
+            'status' => 'ACTIVE',
+            'created_by' => $creator->id,
+            'version' => 1,
+        ]);
+
+        $id = DB::table('customs_declarations')->insertGetId([
+            'engine_request_id' => $request->id,
+            'declaration_number' => 'FX-SEEDED-'.Str::random(6),
+            'issued_by' => $creator->id,
+            'issued_at' => now()->toDateTimeString(),
+            'pdf_path' => 'fx-confirmation/seeded.pdf',
+            'signed_fx_doc_path' => 'fx-confirmation/engine/'.$request->id.'/signed.pdf',
+            'signed_fx_doc_uploaded_at' => now()->toDateTimeString(),
+            'signed_fx_doc_uploaded_by' => $creator->id,
+            'metadata' => json_encode([]),
+            'created_at' => now()->toDateTimeString(),
+            'updated_at' => now()->toDateTimeString(),
+        ]);
+
+        return ['request' => $request, 'declaration' => CustomsDeclaration::findOrFail($id)];
     }
 }

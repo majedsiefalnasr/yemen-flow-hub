@@ -363,6 +363,7 @@ class ImportFinancingWorkflowSeeder extends Seeder
             ['EXEC', 'national_committee', 'executive', 'committee_manager', StageAccessLevel::EXECUTE, 'قرار اللجنة التنفيذية'],
             ['FX', 'commercial_banks', 'fx_ops', null, StageAccessLevel::EXECUTE, 'تنفيذ عملية الصرف'],
             ['FX_CONFIRM', 'national_committee', 'fx_confirmation', null, StageAccessLevel::EXECUTE, 'تأكيد عملية الصرف'],
+            ['FX_CONFIRM', 'commercial_banks', null, null, StageAccessLevel::VIEW, 'عرض تأكيد المصارفة الخارجية'],
             ['FINAL', 'national_committee', 'executive', 'committee_manager', StageAccessLevel::EXECUTE, 'الاعتماد النهائي'],
             ['CLOSED', 'national_committee', 'executive', 'committee_manager', StageAccessLevel::VIEW, 'إغلاق الطلب'],
         ];
