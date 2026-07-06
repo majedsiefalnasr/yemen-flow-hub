@@ -28,13 +28,20 @@ export function useOrganizations() {
     }
   }
 
-  const createOrganization = async (payload: { code: string; name: string }) => {
+  const createOrganization = async (payload: {
+    code: string
+    name: string
+    classification: Organization['classification']
+  }) => {
     const response = await api.post<{ data: Organization }>('/api/v1/organizations', payload)
     organizations.value = [response.data, ...organizations.value]
     return response.data
   }
 
-  const updateOrganization = async (organization: Organization, payload: { name: string }) => {
+  const updateOrganization = async (
+    organization: Organization,
+    payload: { name: string; classification?: Organization['classification'] },
+  ) => {
     const response = await api.put<{ data: Organization }>(
       `/api/v1/organizations/${organization.id}`,
       { ...payload, version: organization.version },

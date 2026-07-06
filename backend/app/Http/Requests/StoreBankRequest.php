@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\OrganizationClassification;
 use App\Models\Bank;
 use App\Support\PasswordPolicy;
 use Illuminate\Validation\Rule;
@@ -29,6 +30,14 @@ class StoreBankRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
+            'organization_id' => [
+                'required',
+                'integer',
+                Rule::exists('organizations', 'id')->where(
+                    'classification',
+                    OrganizationClassification::BANKING_SECTOR->value,
+                ),
+            ],
             'name' => ['required', 'string', 'max:255', 'unique:banks,name'],
             'code' => ['required', 'string', 'max:20', 'unique:banks,code'],
             'is_active' => ['sometimes', 'boolean'],

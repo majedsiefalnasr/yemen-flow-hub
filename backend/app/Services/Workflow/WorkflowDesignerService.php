@@ -19,6 +19,7 @@ use App\Models\WorkflowStage;
 use App\Models\WorkflowTransition;
 use App\Models\WorkflowVersion;
 use App\Services\Audit\AuditService;
+use App\Support\InitialStageExecutorGuard;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -356,6 +357,8 @@ class WorkflowDesignerService
                 $this->demoteOtherInitialStages($lockedVersion, $stage);
             }
 
+            $this->guardInitialStageBankingExecutors($stage->refresh());
+
             $this->auditService->log(
                 AuditAction::GOVERNANCE_CREATED,
                 $actor,
@@ -393,6 +396,8 @@ class WorkflowDesignerService
             if (($attributes['is_initial'] ?? false) === true) {
                 $this->demoteOtherInitialStages($parent, $locked);
             }
+
+            $this->guardInitialStageBankingExecutors($locked->refresh());
 
             $this->auditService->log(
                 AuditAction::GOVERNANCE_UPDATED,
@@ -647,6 +652,17 @@ class WorkflowDesignerService
                 'is_final' => 'A stage cannot be marked as both the initial and final stage.',
             ]);
         }
+    }
+
+    private function guardInitialStageBankingExecutors(WorkflowStage $stage): void
+    {
+        if (! InitialStageExecutorGuard::stageHasNonBankingInitialExecutors($stage)) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'is_initial' => 'The initial stage cannot grant EXECUTE to a non-banking organization.',
+        ]);
     }
 
     /**

@@ -2,8 +2,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useEngineRequestsStore } from '@/stores/engineRequests.store'
-import { useAuthStore } from '@/stores/auth.store'
-import { UserRole } from '@/types/enums'
+import { useScreenPermissions } from '@/composables/useScreenPermissions'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -23,9 +22,9 @@ import { Inbox, ShieldAlert } from 'lucide-vue-next'
 definePageMeta({ middleware: ['auth', 'screen'], requiredScreen: 'requests' })
 
 const store = useEngineRequestsStore()
-const auth = useAuthStore()
+const { can } = useScreenPermissions()
 
-const canCreate = computed(() => auth.currentRole === UserRole.DATA_ENTRY)
+const canCreate = computed(() => can('requests', 'CREATE'))
 // True while auto-creating the sole workflow, so the picker never flashes.
 const autoStarting = ref(false)
 

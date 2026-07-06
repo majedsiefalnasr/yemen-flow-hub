@@ -24,6 +24,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -97,8 +104,22 @@ const formSchema = toTypedSchema(
   z.object({
     code: z.string().min(2, 'الرمز مطلوب (حرفان على الأقل)').max(100),
     name: z.string().min(2, 'الاسم مطلوب (حرفان على الأقل)').max(255),
+    classification: z.enum(['BANKING_SECTOR', 'NATIONAL_COMMITTEE', 'OTHER']),
   }),
 )
+
+const CLASSIFICATION_OPTIONS: Array<{
+  value: Organization['classification']
+  label: string
+}> = [
+  { value: 'BANKING_SECTOR', label: 'القطاع المصرفي' },
+  { value: 'NATIONAL_COMMITTEE', label: 'اللجنة الوطنية' },
+  { value: 'OTHER', label: 'أخرى' },
+]
+
+function classificationLabel(value: Organization['classification']): string {
+  return CLASSIFICATION_OPTIONS.find((option) => option.value === value)?.label ?? value
+}
 
 const form = useForm({ validationSchema: formSchema })
 
@@ -106,7 +127,10 @@ const onSubmit = form.handleSubmit(async (values) => {
   saving.value = true
   try {
     if (editing.value) {
-      await updateOrganization(editing.value, { name: values.name })
+      await updateOrganization(editing.value, {
+        name: values.name,
+        classification: values.classification,
+      })
       toast.success('تم تحديث المؤسسة')
     } else {
       await createOrganization(values)
@@ -122,13 +146,17 @@ const onSubmit = form.handleSubmit(async (values) => {
 
 function openCreate() {
   editing.value = null
-  form.resetForm({ values: { code: '', name: '' } })
+  form.resetForm({
+    values: { code: '', name: '', classification: 'OTHER' },
+  })
   dialogOpen.value = true
 }
 
 function openEdit(org: Organization) {
   editing.value = org
-  form.resetForm({ values: { code: org.code, name: org.name } })
+  form.resetForm({
+    values: { code: org.code, name: org.name, classification: org.classification },
+  })
   dialogOpen.value = true
 }
 
@@ -184,6 +212,7 @@ const statusOptions = [
 
 const COLUMN_LABELS: Record<string, string> = {
   code: 'الرمز',
+  classification: 'التصنيف',
   is_active: 'الحالة',
 }
 
@@ -318,6 +347,12 @@ const columns: ColumnDef<Organization>[] = [
     header: ({ column }) => h(DataTableColumnHeader as any, { column, title: 'الرمز' }),
     cell: ({ row }) =>
       h('code', { class: 'rounded bg-muted px-2 py-0.5 text-xs font-mono' }, row.original.code),
+  },
+  {
+    id: 'classification',
+    accessorKey: 'classification',
+    header: ({ column }) => h(DataTableColumnHeader as any, { column, title: 'التصنيف' }),
+    cell: ({ row }) => h('span', { class: 'text-sm' }, classificationLabel(row.original.classification)),
   },
   {
     accessorKey: 'is_active',
@@ -634,6 +669,29 @@ async function bulkToggleStatus(activate: boolean) {
                 <FormControl>
                   <Input v-bind="componentField" placeholder="مثال: البنك المركزي اليمني" />
                 </FormControl>
+                <FormMessage />
+              </FormItem>
+            </FormField>
+
+            <FormField v-slot="{ componentField }" name="classification">
+              <FormItem>
+                <FormLabel>التصنيف *</FormLabel>
+                <Select v-bind="componentField">
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="اختر التصنيف" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem
+                      v-for="option in CLASSIFICATION_OPTIONS"
+                      :key="option.value"
+                      :value="option.value"
+                    >
+                      {{ option.label }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             </FormField>

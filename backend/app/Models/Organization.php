@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\OrganizationClassification;
 use App\Models\Concerns\ProtectsSystemRecords;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,11 +12,12 @@ class Organization extends Model
 {
     use HasFactory, ProtectsSystemRecords;
 
-    protected $fillable = ['code', 'name', 'is_system', 'is_active', 'version'];
+    protected $fillable = ['code', 'name', 'classification', 'is_system', 'is_active', 'version'];
 
     protected function casts(): array
     {
         return [
+            'classification' => OrganizationClassification::class,
             'is_system' => 'boolean',
             'is_active' => 'boolean',
             'version' => 'integer',

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\AuditAction;
+use App\Enums\OrganizationClassification;
 use App\Exceptions\StaleResourceException;
 use App\Http\Controllers\Api\Controller;
 use App\Http\Requests\StoreOrganizationRequest;
@@ -10,6 +11,7 @@ use App\Http\Requests\UpdateOrganizationRequest;
 use App\Http\Resources\OrganizationResource;
 use App\Models\Organization;
 use App\Services\Audit\AuditService;
+use App\Support\InitialStageExecutorGuard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -61,7 +63,7 @@ class OrganizationController extends Controller
         $organization = DB::transaction(function () use ($request): Organization {
             $organization = Organization::query()->create($request->validated());
             $this->auditService->log(AuditAction::GOVERNANCE_CREATED, $request->user(), $organization, [
-                'after' => $organization->only(['code', 'name', 'is_active', 'version']),
+                'after' => $organization->only(['code', 'name', 'classification', 'is_active', 'version']),
             ]);
 
             return $organization->refresh();
@@ -77,22 +79,36 @@ class OrganizationController extends Controller
         $this->authorize('update', $organization);
 
         $expectedVersion = (int) $request->integer('version');
+        $validated = $request->validated();
+
+        if (array_key_exists('classification', $validated)
+            && $organization->classification === OrganizationClassification::BANKING_SECTOR
+            && OrganizationClassification::from((string) $validated['classification']) !== OrganizationClassification::BANKING_SECTOR
+            && InitialStageExecutorGuard::organizationHasPublishedInitialExecuteGrants($organization)) {
+            return $this->businessError(
+                'ORGANIZATION_CLASSIFICATION_IN_USE',
+                'Organization classification cannot change while published workflows grant initial-stage EXECUTE to this organization.',
+                422,
+                ['classification' => ['Organization classification is in use by published workflow grants.']],
+            );
+        }
 
         try {
-            DB::transaction(function () use ($request, $organization, $expectedVersion): void {
+            DB::transaction(function () use ($request, $organization, $expectedVersion, $validated): void {
                 $locked = Organization::query()->lockForUpdate()->findOrFail($organization->getKey());
                 if ($expectedVersion !== (int) $locked->version) {
                     throw new StaleResourceException;
                 }
 
-                $before = $locked->only(['code', 'name', 'is_active', 'version']);
+                $before = $locked->only(['code', 'name', 'classification', 'is_active', 'version']);
                 $locked->update([
-                    'name' => $request->string('name')->toString(),
+                    'name' => $validated['name'],
+                    'classification' => $validated['classification'] ?? $locked->classification,
                     'version' => $locked->version + 1,
                 ]);
                 $this->auditService->log(AuditAction::GOVERNANCE_UPDATED, $request->user(), $locked, [
                     'before' => $before,
-                    'after' => $locked->only(['code', 'name', 'is_active', 'version']),
+                    'after' => $locked->only(['code', 'name', 'classification', 'is_active', 'version']),
                 ]);
             });
         } catch (StaleResourceException) {
@@ -150,13 +166,13 @@ class OrganizationController extends Controller
         ]);
     }
 
-    private function businessError(string $code, string $message, int $status): JsonResponse
+    private function businessError(string $code, string $message, int $status, array $fields = []): JsonResponse
     {
         return response()->json([
             'error' => [
                 'code' => $code,
                 'message' => $message,
-                'fields' => (object) [],
+                'fields' => (object) $fields,
                 'request_id' => request()->header('X-Request-ID'),
             ],
         ], $status);

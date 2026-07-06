@@ -3,6 +3,8 @@
 namespace App\Http\Requests;
 
 use App\Enums\StageAccessLevel;
+use App\Models\WorkflowStage;
+use App\Support\InitialStageExecutorGuard;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -42,6 +44,32 @@ class UpdateStagePermissionRequest extends FormRequest
                     'role_id' => $this->has('role_id') ? $this->input('role_id') : $permission?->role_id,
                     'user_id' => $this->has('user_id') ? $this->input('user_id') : $permission?->user_id,
                 ]);
+
+                /** @var WorkflowStage|null $stage */
+                $stage = $this->route('workflowStage');
+                if ($stage === null || $validator->errors()->isNotEmpty()) {
+                    return;
+                }
+
+                $accessLevel = StageAccessLevel::from(
+                    $this->has('access_level')
+                        ? $this->string('access_level')->toString()
+                        : $permission?->access_level?->value,
+                );
+                $organizationId = $this->has('organization_id')
+                    ? $this->integer('organization_id')
+                    : $permission?->organization_id;
+
+                if (InitialStageExecutorGuard::isNonBankingInitialExecuteGrant(
+                    $stage->is_initial,
+                    $accessLevel,
+                    $organizationId,
+                )) {
+                    $validator->errors()->add(
+                        'organization_id',
+                        'Only banking-sector organizations may hold EXECUTE on the initial stage.',
+                    );
+                }
             },
         ];
     }

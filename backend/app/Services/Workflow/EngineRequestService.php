@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\WorkflowHistoryEntry;
 use App\Models\WorkflowVersion;
 use App\Services\Audit\AuditService;
+use App\Support\RequestCreationGate;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
@@ -26,6 +27,10 @@ class EngineRequestService
 
     public function create(WorkflowVersion $version, array $data, User $actor): EngineRequest
     {
+        if (! RequestCreationGate::userCanCreateRequests($actor)) {
+            throw EngineException::creationNotAllowedForOrganization();
+        }
+
         if ($version->state !== WorkflowVersionState::PUBLISHED) {
             throw EngineException::versionNotPublished();
         }
@@ -49,17 +54,14 @@ class EngineRequestService
             throw EngineException::stageFieldsInvalid($fieldErrors);
         }
 
-        $resolvedBankId = $actor->bank_id ?? ($data['bank_id'] ?? null);
+        $resolvedBankId = $actor->bank_id;
 
         if (isset($data['merchant_id'])) {
             $merchant = Merchant::find($data['merchant_id']);
             if ($merchant === null) {
                 throw new EngineException('Merchant not found.', 'MERCHANT_NOT_FOUND', 422);
             }
-            // The merchant must belong to the request's resolved bank. This guards
-            // both bank users (resolved bank = their bank) and CBY users who select
-            // a bank explicitly — preventing a merchant being bound to a foreign bank.
-            if ($resolvedBankId !== null && (int) $merchant->bank_id !== (int) $resolvedBankId) {
+            if ($resolvedBankId === null || (int) $merchant->bank_id !== (int) $resolvedBankId) {
                 throw EngineException::merchantOutOfScope();
             }
         }

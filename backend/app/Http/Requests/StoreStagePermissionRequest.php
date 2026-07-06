@@ -3,6 +3,8 @@
 namespace App\Http\Requests;
 
 use App\Enums\StageAccessLevel;
+use App\Models\WorkflowStage;
+use App\Support\InitialStageExecutorGuard;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -31,6 +33,24 @@ class StoreStagePermissionRequest extends FormRequest
         return [
             function (Validator $validator): void {
                 StagePermissionConsistency::check($validator, $this->all());
+
+                /** @var WorkflowStage|null $stage */
+                $stage = $this->route('workflowStage');
+                if ($stage === null || $validator->errors()->isNotEmpty()) {
+                    return;
+                }
+
+                $accessLevel = StageAccessLevel::from($this->string('access_level')->toString());
+                if (InitialStageExecutorGuard::isNonBankingInitialExecuteGrant(
+                    $stage->is_initial,
+                    $accessLevel,
+                    $this->integer('organization_id'),
+                )) {
+                    $validator->errors()->add(
+                        'organization_id',
+                        'Only banking-sector organizations may hold EXECUTE on the initial stage.',
+                    );
+                }
             },
         ];
     }

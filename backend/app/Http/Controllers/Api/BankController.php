@@ -91,7 +91,11 @@ class BankController extends Controller
         $payload = $request->validated();
 
         $bank = DB::transaction(function () use ($payload, $request): Bank {
-            $bank = Bank::query()->create(Arr::only($payload, ['name', 'code', 'is_active']));
+            $organization = Organization::query()->findOrFail($payload['organization_id']);
+            $bank = Bank::query()->create([
+                ...Arr::only($payload, ['name', 'code', 'is_active']),
+                'organization_id' => $organization->id,
+            ]);
 
             $admin = User::query()->create([
                 'name' => $payload['admin_name'],
@@ -104,7 +108,6 @@ class BankController extends Controller
                 'temporary_password_set_at' => now(),
             ]);
 
-            $organization = Organization::query()->where('code', 'commercial_banks')->firstOrFail();
             $team = Team::query()->where('organization_id', $organization->id)->where('code', RoleCodes::BANK_ADMIN)->firstOrFail();
             $role = Role::query()->where('organization_id', $organization->id)->where('code', RoleCodes::BANK_ADMIN)->firstOrFail();
 

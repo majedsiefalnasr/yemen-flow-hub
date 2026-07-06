@@ -3,12 +3,12 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\AuditAction;
+use App\Enums\OrganizationClassification;
 use App\Exceptions\BankOrganizationImmutableException;
 use App\Exceptions\StaleResourceException;
 use App\Http\Controllers\Api\Controller;
 use App\Http\Resources\BankResource;
 use App\Models\Bank;
-use App\Models\Organization;
 use App\Services\Audit\AuditService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -50,13 +50,20 @@ class BankController extends Controller
     {
         $this->authorize('create', Bank::class);
         $data = $request->validate([
+            'organization_id' => [
+                'required',
+                'integer',
+                Rule::exists('organizations', 'id')->where(
+                    'classification',
+                    OrganizationClassification::BANKING_SECTOR->value,
+                ),
+            ],
             'code' => ['required', 'string', 'max:50', 'unique:banks,code'],
             'name' => ['required', 'string', 'max:255'],
             'license_number' => ['nullable', 'string', 'max:100'],
             'swift_code' => ['nullable', 'string', 'max:50', 'unique:banks,swift_code'],
             'status' => ['required', Rule::in(['ACTIVE', 'SUSPENDED'])],
         ]);
-        $data['organization_id'] = Organization::query()->where('code', 'commercial_banks')->value('id');
         $data['is_active'] = $data['status'] === 'ACTIVE';
         $bank = Bank::query()->create($data)->refresh();
         $this->auditService->log(AuditAction::BANK_CREATED, $request->user(), $bank, ['after' => $bank->toArray()]);

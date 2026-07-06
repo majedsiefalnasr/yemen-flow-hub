@@ -2,11 +2,13 @@
 
 namespace App\Services\Authorization;
 
+use App\Enums\OrganizationClassification;
 use App\Enums\StageAccessLevel;
 use App\Enums\WorkflowVersionState;
 use App\Models\StagePermission;
 use App\Models\User;
 use App\Services\Workflow\StagePermissionResolver;
+use App\Support\RequestCreationGate;
 use App\Support\RoleCodes;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -153,6 +155,11 @@ class PermissionService
             ->whereIn('id', $roleIds)
             ->pluck('organization_id', 'id');
 
+        $bankingOrganizationIds = DB::table('organizations')
+            ->where('classification', OrganizationClassification::BANKING_SECTOR->value)
+            ->pluck('id')
+            ->flip();
+
         $publishedVersionIds = DB::table('workflow_versions')
             ->where('state', WorkflowVersionState::PUBLISHED->value)
             ->pluck('id');
@@ -217,7 +224,8 @@ class PermissionService
                 if ($row->access_level === 'EXECUTE') {
                     $edit = true;
 
-                    if ($initialStageIds->has($row->stage_id)) {
+                    if ($initialStageIds->has($row->stage_id)
+                        && $bankingOrganizationIds->has($roleOrganizationId)) {
                         $add = true;
                     }
                 }
@@ -288,6 +296,12 @@ class PermissionService
             'user_id' => (int) $user->getKey(),
         ];
 
+        if ($identity['organization_id'] === null) {
+            return $result;
+        }
+
+        $canCreate = RequestCreationGate::userCanCreateRequests($user);
+
         $rowsByStage = $rows->groupBy('stage_id');
 
         foreach ($rowsByStage as $stageId => $stageRows) {
@@ -298,7 +312,7 @@ class PermissionService
             if ($this->stagePermissionResolver->identityMatchesAny($identity, $stageRows, StageAccessLevel::EXECUTE)) {
                 $result['edit'] = true;
 
-                if ($initialStageIds->has($stageId)) {
+                if ($initialStageIds->has($stageId) && $canCreate) {
                     $result['add'] = true;
                 }
             }

@@ -352,13 +352,15 @@ class EngineRequestTest extends TestCase
 
     public function test_create_blocked_without_execute(): void
     {
+        // Support committee holds VIEW (not EXECUTE) on the initial stage, but WP-1
+        // blocks creation earlier for non-banking-sector organizations.
         $response = $this->actingAs($this->viewer)->postJson('/api/v1/engine-requests', [
             'workflow_version_id' => $this->version->id,
             'data' => ['amount' => 100],
         ]);
 
         $response->assertStatus(403)
-            ->assertJsonPath('error_code', 'STAGE_EXECUTION_FORBIDDEN');
+            ->assertJsonPath('error_code', 'CREATION_NOT_ALLOWED_FOR_ORGANIZATION');
     }
 
     public function test_create_reference_unique(): void

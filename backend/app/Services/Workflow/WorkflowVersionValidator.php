@@ -3,7 +3,9 @@
 namespace App\Services\Workflow;
 
 use App\Enums\FieldType;
+use App\Enums\OrganizationClassification;
 use App\Enums\StageAccessLevel;
+use App\Models\Organization;
 use App\Models\User;
 use App\Models\WorkflowAction;
 use App\Models\WorkflowVersion;
@@ -96,6 +98,27 @@ class WorkflowVersionValidator
                 $errors[] = $this->error('FIELD_INVALID_SOURCE', "field:{$field->key}", "DYNAMIC_SELECT field '{$field->key}' has no dynamic source.");
             } elseif ($field->dynamic_source->value === 'REFERENCE_DATA' && $field->reference_table_id === null) {
                 $errors[] = $this->error('FIELD_INVALID_SOURCE', "field:{$field->key}", "DYNAMIC_SELECT field '{$field->key}' uses REFERENCE_DATA but has no reference table.");
+            }
+        }
+
+        foreach ($stages as $stage) {
+            if (! $stage->is_initial) {
+                continue;
+            }
+
+            foreach ($stage->stagePermissions as $permission) {
+                if ($permission->access_level !== StageAccessLevel::EXECUTE || $permission->organization_id === null) {
+                    continue;
+                }
+
+                $organization = Organization::query()->find($permission->organization_id);
+                if ($organization !== null && $organization->classification !== OrganizationClassification::BANKING_SECTOR) {
+                    $errors[] = $this->error(
+                        'INITIAL_STAGE_NON_BANKING_EXECUTOR',
+                        "stage_permission:{$permission->id}",
+                        "Initial stage '{$stage->code}' grants EXECUTE to a non-banking organization.",
+                    );
+                }
             }
         }
 

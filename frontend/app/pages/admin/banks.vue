@@ -28,6 +28,7 @@ import { ROUTE_ROLE_MAP } from '@/constants/workflow'
 import { UserRole } from '@/types/enums'
 import type { Bank, User } from '@/types/models'
 import { useBanks, type CreateBankPayload, type UpdateBankPayload } from '@/composables/useBanks'
+import { useOrganizations } from '@/composables/useOrganizations'
 import { useTableExport } from '@/composables/useTableExport'
 import { useAuthStore } from '@/stores/auth.store'
 import { Button } from '@/components/ui/button'
@@ -82,6 +83,7 @@ definePageMeta({
 })
 
 type BankForm = {
+  organization_id: number | null
   name_ar: string
   name_en: string
   license_number: string
@@ -95,6 +97,10 @@ type BankForm = {
 const authStore = useAuthStore()
 const currentUser = computed(() => authStore.user)
 const { fetchBanks, createBank, updateBank, extractFieldErrors, extractMessage } = useBanks()
+const { organizations, fetchOrganizations } = useOrganizations()
+const bankingOrganizations = computed(() =>
+  organizations.value.filter((org) => org.classification === 'BANKING_SECTOR'),
+)
 const { exportToCSV, exportToExcel, exportToJSON } = useTableExport()
 const { notify, error: toastError } = useToast()
 
@@ -112,6 +118,7 @@ const recoveryTarget = ref<User | null>(null)
 const fieldErrors = ref<Record<string, string[]>>({})
 
 const form = reactive<BankForm>({
+  organization_id: null,
   name_ar: '',
   name_en: '',
   license_number: '',
@@ -125,6 +132,8 @@ const form = reactive<BankForm>({
 onMounted(async () => {
   loadingBanks.value = true
   try {
+    await fetchOrganizations()
+    form.organization_id = bankingOrganizations.value[0]?.id ?? null
     banks.value = await fetchBanks()
   } finally {
     loadingBanks.value = false
@@ -294,6 +303,7 @@ async function saveBank() {
       notify('تم حفظ التعديلات')
     } else {
       const payload: CreateBankPayload = {
+        organization_id: form.organization_id ?? bankingOrganizations.value[0]!.id,
         name_ar: form.name_ar.trim(),
         name_en: form.name_en.trim(),
         code: form.code.trim(),

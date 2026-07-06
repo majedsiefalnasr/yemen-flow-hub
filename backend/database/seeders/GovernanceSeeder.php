@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\OrganizationClassification;
 use App\Models\Organization;
 use App\Models\Role;
 use App\Models\Team;
@@ -12,15 +13,20 @@ class GovernanceSeeder extends Seeder
     public function run(): void
     {
         $organizations = [
-            'commercial_banks' => 'البنوك التجارية',
-            'national_committee' => 'اللجنة الوطنية لتمويل الواردات',
-            'system_administration' => 'إدارة النظام',
+            'commercial_banks' => ['name' => 'البنوك التجارية', 'classification' => OrganizationClassification::BANKING_SECTOR],
+            'national_committee' => ['name' => 'اللجنة الوطنية لتمويل الواردات', 'classification' => OrganizationClassification::NATIONAL_COMMITTEE],
+            'system_administration' => ['name' => 'إدارة النظام', 'classification' => OrganizationClassification::OTHER],
         ];
 
-        foreach ($organizations as $code => $name) {
+        foreach ($organizations as $code => $attributes) {
             Organization::query()->updateOrCreate(
                 ['code' => $code],
-                ['name' => $name, 'is_system' => true, 'is_active' => true]
+                [
+                    'name' => $attributes['name'],
+                    'classification' => $attributes['classification'],
+                    'is_system' => true,
+                    'is_active' => true,
+                ]
             );
         }
 

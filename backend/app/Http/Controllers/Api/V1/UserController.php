@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\AuditAction;
+use App\Enums\OrganizationClassification;
 use App\Enums\UserRole;
 use App\Exceptions\StaleResourceException;
 use App\Exceptions\UnmappedRoleException;
@@ -195,9 +196,9 @@ class UserController extends Controller
         ], PasswordPolicy::messages());
 
         $organization = Organization::query()->findOrFail($organizationId);
-        if ($organization->code === 'commercial_banks') {
+        if ($organization->classification === OrganizationClassification::BANKING_SECTOR) {
             if (empty($data['bank_id']) || ! Bank::query()->whereKey($data['bank_id'])->where('organization_id', $organizationId)->exists()) {
-                abort(response()->json(['error' => ['code' => 'BANK_REQUIRED', 'message' => 'A commercial-bank user requires a bank in the commercial-banks organization.', 'fields' => ['bank_id' => ['Invalid bank.']], 'request_id' => null]], 422));
+                abort(response()->json(['error' => ['code' => 'BANK_REQUIRED', 'message' => 'A banking-sector user requires a bank in their organization.', 'fields' => ['bank_id' => ['Invalid bank.']], 'request_id' => null]], 422));
             }
         } else {
             $data['bank_id'] = null;

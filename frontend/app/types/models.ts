@@ -76,6 +76,7 @@ export interface GovernanceIdentity {
 }
 
 export interface Organization extends GovernanceIdentity {
+  classification: 'BANKING_SECTOR' | 'NATIONAL_COMMITTEE' | 'OTHER'
   is_system: boolean
   is_active: boolean
   created_at: string | null
@@ -128,7 +129,7 @@ export interface DemoUser {
   bank: GovernanceBank | null
 }
 
-export type ScreenCapability = 'VIEW' | 'MANAGE' | 'EXPORT'
+export type ScreenCapability = 'VIEW' | 'MANAGE' | 'EXPORT' | 'CREATE' | 'UPDATE'
 export type ScreenPermissions = Record<string, ScreenCapability[]>
 
 export interface AuthMeData {

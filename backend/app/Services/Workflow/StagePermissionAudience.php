@@ -33,7 +33,7 @@ class StagePermissionAudience
             return [];
         }
 
-        $query = User::query()->where('is_active', true);
+        $query = User::query()->where('is_active', true)->whereNotNull('organization_id');
 
         $query->where(function ($q) use ($rows) {
             foreach ($rows as $row) {

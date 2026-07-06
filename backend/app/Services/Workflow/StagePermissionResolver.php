@@ -65,6 +65,10 @@ class StagePermissionResolver
      */
     public function identityMatchesAny(array $identity, iterable $rows, StageAccessLevel $required): bool
     {
+        if ($identity['organization_id'] === null) {
+            return false;
+        }
+
         foreach ($rows as $row) {
             if ($this->rowMatches($identity, $row, $required)) {
                 return true;

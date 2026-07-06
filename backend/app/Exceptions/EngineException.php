@@ -76,6 +76,15 @@ class EngineException extends RuntimeException
         return new self('Workflow has no initial stage.', 'NO_INITIAL_STAGE', 422);
     }
 
+    public static function creationNotAllowedForOrganization(): self
+    {
+        return new self(
+            'Request creation is not allowed for this organization.',
+            'CREATION_NOT_ALLOWED_FOR_ORGANIZATION',
+            403,
+        );
+    }
+
     public static function stageClaimed(): self
     {
         return new self('This request is already being reviewed by another user.', 'STAGE_CLAIMED', 409);

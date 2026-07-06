@@ -8,6 +8,7 @@ export interface FetchBanksParams {
 }
 
 export interface CreateBankPayload {
+  organization_id: number
   name?: string
   name_ar: string
   name_en: string

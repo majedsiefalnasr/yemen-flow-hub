@@ -8,7 +8,6 @@ class StoreEngineRequestRequest extends ApiFormRequest
     {
         return [
             'workflow_version_id' => ['required', 'integer', 'exists:workflow_versions,id'],
-            'bank_id' => ['nullable', 'integer', 'exists:banks,id'],
             'merchant_id' => ['nullable', 'integer', 'exists:merchants,id'],
             // A brand-new draft is created empty, then filled step by step in the
             // wizard, so an empty object is valid. Use `present` (key must exist,

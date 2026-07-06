@@ -18,6 +18,7 @@ use App\Services\Workflow\EngineTransitionService;
 use App\Services\Workflow\StagePermissionResolver;
 use App\Services\Workflow\WorkflowGraphService;
 use App\Support\EngineRequestListQuery;
+use App\Support\RequestCreationGate;
 use App\Support\RoleCodes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -72,6 +73,10 @@ class EngineRequestController extends Controller
     public function availableWorkflows(Request $request): JsonResponse
     {
         $user = $request->user();
+
+        if (! RequestCreationGate::userCanCreateRequests($user)) {
+            return response()->json(['data' => []]);
+        }
 
         $versions = WorkflowVersion::query()
             ->where('state', 'PUBLISHED')

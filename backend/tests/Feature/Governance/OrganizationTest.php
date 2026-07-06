@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Governance;
 
+use App\Enums\OrganizationClassification;
 use App\Enums\UserRole;
 use App\Models\Organization;
 use App\Models\User;
@@ -30,6 +31,7 @@ class OrganizationTest extends TestCase
         $created = $this->actingAs($this->admin)->postJson('/api/v1/organizations', [
             'code' => 'test_agency',
             'name' => 'Test Agency',
+            'classification' => OrganizationClassification::OTHER->value,
         ])->assertCreated()
             ->assertJsonPath('data.code', 'test_agency')
             ->assertJsonPath('data.is_active', true);
@@ -84,6 +86,7 @@ class OrganizationTest extends TestCase
         $this->actingAs($this->admin)->postJson('/api/v1/organizations', [
             'code' => 'audited',
             'name' => 'Audited',
+            'classification' => OrganizationClassification::OTHER->value,
         ])->assertCreated();
 
         $this->assertDatabaseHas('audit_logs', [

@@ -13,6 +13,7 @@ class OrganizationResource extends JsonResource
             'id' => $this->id,
             'code' => $this->code,
             'name' => $this->name,
+            'classification' => $this->classification?->value,
             'is_system' => (bool) $this->is_system,
             'is_active' => (bool) $this->is_active,
             'created_at' => $this->created_at?->toISOString(),
