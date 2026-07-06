@@ -8,7 +8,8 @@ use App\Models\StageFieldRule;
 use App\Models\WorkflowStage;
 use App\Services\Workflow\StageFieldOutputFilter;
 use Illuminate\Support\Collection;
-use PHPUnit\Framework\TestCase;
+use Illuminate\Support\Facades\Log;
+use Tests\TestCase;
 
 class StageFieldOutputFilterTest extends TestCase
 {
@@ -70,5 +71,29 @@ class StageFieldOutputFilterTest extends TestCase
         ]);
 
         $this->assertFalse($this->filter->canViewerAccessFieldLinkedDocument($request, $document));
+    }
+
+    public function test_unresolvable_stage_with_non_empty_data_returns_empty_and_logs_warning(): void
+    {
+        Log::shouldReceive('warning')
+            ->once()
+            ->with(
+                'Request has non-empty data but its current stage could not be resolved; hiding all fields.',
+                [
+                    'engine_request_id' => 42,
+                    'current_stage_id' => 999,
+                ],
+            );
+
+        $request = new EngineRequest([
+            'id' => 42,
+            'workflow_version_id' => 1,
+            'current_stage_id' => 999,
+        ]);
+        $request->id = 42;
+        $request->setRelation('currentStage', null);
+        $request->data = ['field_a' => 'value'];
+
+        $this->assertSame([], $this->filter->filterRequestData($request));
     }
 }

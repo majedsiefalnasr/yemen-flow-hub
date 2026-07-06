@@ -8,6 +8,7 @@ use App\Models\FieldDefinition;
 use App\Models\User;
 use App\Models\WorkflowStage;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Filters request output (JSON data + field-linked documents) by per-stage
@@ -30,6 +31,11 @@ class StageFieldOutputFilter
 
         $stage = $this->resolveStage($request);
         if ($stage === null) {
+            Log::warning('Request has non-empty data but its current stage could not be resolved; hiding all fields.', [
+                'engine_request_id' => $request->id,
+                'current_stage_id' => $request->current_stage_id,
+            ]);
+
             return [];
         }
 
