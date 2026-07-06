@@ -2,15 +2,18 @@
 
 namespace App\Services\Notifications;
 
-use App\Enums\StageAccessLevel;
 use App\Jobs\DispatchNotification;
-use App\Models\StagePermission;
 use App\Models\User;
 use App\Models\WorkflowStage;
+use App\Services\Workflow\StagePermissionAudience;
 use Illuminate\Support\Facades\DB;
 
 class EngineNotificationDispatcher
 {
+    public function __construct(
+        private StagePermissionAudience $stagePermissionAudience,
+    ) {}
+
     public function afterTransition(
         int $requestId,
         string $referenceNumber,
@@ -19,7 +22,7 @@ class EngineNotificationDispatcher
         string $toStageName,
         string $actionLabel,
     ): void {
-        $userIds = $this->resolveExecuteHolders($toStage);
+        $userIds = $this->stagePermissionAudience->executeHolderIds($toStage);
 
         $this->dispatchAfterCommit(
             type: 'transition',
@@ -142,53 +145,6 @@ class EngineNotificationDispatcher
     public function engineRequestActionUrl(int $requestId): string
     {
         return "/workflows/instances/{$requestId}";
-    }
-
-    /**
-     * Resolve users that hold EXECUTE on a given stage.
-     *
-     * @return int[]
-     */
-    private function resolveExecuteHolders(WorkflowStage $stage): array
-    {
-        $rows = StagePermission::query()
-            ->where('stage_id', $stage->getKey())
-            ->where('access_level', StageAccessLevel::EXECUTE->value)
-            ->get()
-            // Skip rows with no scoping column set — an empty inner closure would match
-            // every active user and fan the notification out to the entire user base.
-            ->filter(fn ($row) => $row->organization_id !== null
-                || $row->role_id !== null
-                || $row->team_id !== null
-                || $row->user_id !== null)
-            ->values();
-
-        if ($rows->isEmpty()) {
-            return [];
-        }
-
-        $query = User::query()->where('is_active', true);
-
-        $query->where(function ($q) use ($rows) {
-            foreach ($rows as $row) {
-                $q->orWhere(function ($sub) use ($row) {
-                    if ($row->organization_id !== null) {
-                        $sub->where('organization_id', $row->organization_id);
-                    }
-                    if ($row->role_id !== null) {
-                        $sub->whereHas('roles', fn ($rq) => $rq->where('roles.id', $row->role_id));
-                    }
-                    if ($row->team_id !== null) {
-                        $sub->whereHas('teams', fn ($tq) => $tq->where('teams.id', $row->team_id));
-                    }
-                    if ($row->user_id !== null) {
-                        $sub->where('users.id', $row->user_id);
-                    }
-                });
-            }
-        });
-
-        return $query->pluck('id')->toArray();
     }
 
     /**

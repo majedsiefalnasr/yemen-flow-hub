@@ -11,7 +11,7 @@ use App\Models\User;
 use App\Models\WorkflowDefinition;
 use App\Models\WorkflowStage;
 use App\Models\WorkflowVersion;
-use App\Services\Notifications\EngineNotificationDispatcher;
+use App\Services\Workflow\StagePermissionAudience;
 use App\Services\Workflow\StagePermissionResolver;
 use Database\Seeders\GovernanceSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -144,6 +144,7 @@ class AudienceResolutionTest extends TestCase
         $actual = User::query()->whereIn('id', $ids)->pluck('email')->all();
 
         $this->assertEqualsCanonicalizing($emails, $actual);
+        $this->assertAudienceMatchesResolver($ids);
     }
 
     /**
@@ -195,9 +196,22 @@ class AudienceResolutionTest extends TestCase
      */
     private function resolveExecuteHolders(): array
     {
-        $method = new \ReflectionMethod(EngineNotificationDispatcher::class, 'resolveExecuteHolders');
-        $method->setAccessible(true);
+        return app(StagePermissionAudience::class)->executeHolderIds($this->stage);
+    }
 
-        return $method->invoke(app(EngineNotificationDispatcher::class), $this->stage);
+    /**
+     * @param  array<int, int>  $audienceIds
+     */
+    private function assertAudienceMatchesResolver(array $audienceIds): void
+    {
+        $resolver = app(StagePermissionResolver::class);
+        $resolverIds = User::query()
+            ->where('is_active', true)
+            ->get()
+            ->filter(fn (User $user) => $resolver->userCanAccessStage($user, $this->stage, StageAccessLevel::EXECUTE))
+            ->pluck('id')
+            ->all();
+
+        $this->assertEqualsCanonicalizing($resolverIds, $audienceIds);
     }
 }
