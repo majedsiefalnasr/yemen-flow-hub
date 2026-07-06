@@ -7,9 +7,11 @@ use App\Http\Controllers\Api\Controller;
 use App\Http\Requests\StoreEngineRequestRequest;
 use App\Http\Resources\EngineRequestResource;
 use App\Models\EngineRequest;
+use App\Models\User;
 use App\Models\FieldDefinition;
 use App\Models\FieldGroup;
 use App\Models\WorkflowVersion;
+use App\Services\Authorization\DataScope;
 use App\Services\Notifications\EngineNotificationDispatcher;
 use App\Services\Workflow\DuplicateInvoiceChecker;
 use App\Services\Workflow\DynamicFieldOptionsResolver;
@@ -57,12 +59,14 @@ class EngineRequestController extends Controller
         if ($invoiceNumber !== null) {
             $warning = $this->duplicateChecker->check($invoiceNumber, $engineRequest->id);
             if ($warning !== null) {
+                $originalDuplicates = $warning['duplicates'];
+                $warning = $this->maskDuplicates($warning, $request->user());
                 $response['warnings'] = [$warning];
                 $this->notificationDispatcher->afterDuplicateInvoice(
                     $engineRequest->id,
                     (string) $engineRequest->reference,
                     $invoiceNumber,
-                    $warning['duplicates'],
+                    $originalDuplicates,
                 );
             }
         }
@@ -120,6 +124,7 @@ class EngineRequestController extends Controller
         if ($invoiceNumber !== null) {
             $warning = $this->duplicateChecker->check($invoiceNumber, $engineRequest->id);
             if ($warning !== null) {
+                $warning = $this->maskDuplicates($warning, request()->user());
                 $response['warnings'] = [$warning];
             }
         }
@@ -274,12 +279,14 @@ class EngineRequestController extends Controller
         if ($invoiceNumber !== null) {
             $warning = $this->duplicateChecker->check($invoiceNumber, $result->id);
             if ($warning !== null) {
+                $originalDuplicates = $warning['duplicates'];
+                $warning = $this->maskDuplicates($warning, $request->user());
                 $response['warnings'] = [$warning];
                 $this->notificationDispatcher->afterDuplicateInvoice(
                     $result->id,
                     (string) $result->reference,
                     $invoiceNumber,
-                    $warning['duplicates'],
+                    $originalDuplicates,
                 );
             }
         }
@@ -410,5 +417,31 @@ class EngineRequestController extends Controller
             'success' => true,
             'data' => $graphData + ['execute_stage_ids' => $executeStageIds],
         ]);
+    }
+
+    /**
+     * Mask cross-bank duplicate warnings for non-NC users (WP-7 S-8).
+     */
+    private function maskDuplicates(array $warning, User $user): array
+    {
+        $scope = DataScope::forUser($user);
+
+        if ($scope->systemWide) {
+            return $warning;
+        }
+
+        $warning['duplicates'] = array_map(function ($dup) use ($scope) {
+            if ($dup['bank_id'] === $scope->ownBankId) {
+                return $dup;
+            }
+
+            return [
+                'id' => null,
+                'reference' => 'طلب مكرر في مؤسسة أخرى', // "Duplicate request at another institution"
+                'bank_id' => null,
+            ];
+        }, $warning['duplicates']);
+
+        return $warning;
     }
 }

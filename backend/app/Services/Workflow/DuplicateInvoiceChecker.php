@@ -24,7 +24,7 @@ class DuplicateInvoiceChecker
             $query->where('id', '!=', $excludeRequestId);
         }
 
-        $duplicates = $query->select(['id', 'reference'])->get();
+        $duplicates = $query->select(['id', 'reference', 'bank_id'])->get();
 
         if ($duplicates->isEmpty()) {
             return null;
@@ -36,6 +36,7 @@ class DuplicateInvoiceChecker
             'duplicates' => $duplicates->map(fn ($r) => [
                 'id' => $r->id,
                 'reference' => $r->reference,
+                'bank_id' => $r->bank_id,
             ])->all(),
         ];
     }

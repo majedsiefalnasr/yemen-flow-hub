@@ -49,18 +49,64 @@ class EngineNotificationDispatcher
         string $invoiceNumber,
         array $duplicates,
     ): void {
-        $refs = implode('، ', array_column($duplicates, 'reference'));
+        $recipientIds = $this->scopeRecipientsForRequest($requestId, $this->resolveAuditViewers());
+        if (empty($recipientIds)) {
+            return;
+        }
 
-        $this->dispatchAfterCommit(
-            type: 'compliance.duplicate_invoice',
-            severity: 'warning',
-            title: "تكرار رقم فاتورة: {$referenceNumber}",
-            body: "رقم الفاتورة {$invoiceNumber} مطابق لطلبات قائمة: {$refs}",
-            entityType: 'engine_request',
-            entityId: $requestId,
-            actionUrl: $this->engineRequestActionUrl($requestId),
-            recipientUserIds: $this->scopeRecipientsForRequest($requestId, $this->resolveAuditViewers()),
-        );
+        // Split recipients by classification to handle masking (WP-7 S-8)
+        $recipients = User::query()
+            ->whereIn('id', $recipientIds)
+            ->with('organization')
+            ->get()
+            ->groupBy(fn(User $u) => $u->organization->classification->value);
+
+        // 1. NATIONAL_COMMITTEE: platform-wide oversight (full detail)
+        if ($ncIds = $recipients->get(OrganizationClassification::NATIONAL_COMMITTEE->value)?->pluck('id')->toArray()) {
+            $refs = implode('، ', array_column($duplicates, 'reference'));
+            $this->dispatchAfterCommit(
+                type: 'compliance.duplicate_invoice',
+                severity: 'warning',
+                title: "تكرار رقم فاتورة: {$referenceNumber}",
+                body: "رقم الفاتورة {$invoiceNumber} مطابق لطلبات قائمة: {$refs}",
+                entityType: 'engine_request',
+                entityId: $requestId,
+                actionUrl: $this->engineRequestActionUrl($requestId),
+                recipientUserIds: $ncIds,
+            );
+        }
+
+        // 2. BANKING_SECTOR: own-org only (masked cross-bank details)
+        if ($bankIds = $recipients->get(OrganizationClassification::BANKING_SECTOR->value)?->pluck('id')->toArray()) {
+            $requestBankId = DB::table('engine_requests')->where('id', $requestId)->value('bank_id');
+
+            $maskedRefs = [];
+            $otherBankCount = 0;
+            foreach ($duplicates as $dup) {
+                if ($dup['bank_id'] === $requestBankId) {
+                    $maskedRefs[] = $dup['reference'];
+                } else {
+                    $otherBankCount++;
+                }
+            }
+
+            if ($otherBankCount > 0) {
+                $maskedRefs[] = 'طلب مكرر في مؤسسة أخرى';
+            }
+
+            $bodyRefs = implode('، ', $maskedRefs);
+
+            $this->dispatchAfterCommit(
+                type: 'compliance.duplicate_invoice',
+                severity: 'warning',
+                title: "تكرار رقم فاتورة: {$referenceNumber}",
+                body: "رقم الفاتورة {$invoiceNumber} مطابق لطلبات قائمة: {$bodyRefs}",
+                entityType: 'engine_request',
+                entityId: $requestId,
+                actionUrl: $this->engineRequestActionUrl($requestId),
+                recipientUserIds: $bankIds,
+            );
+        }
     }
 
     /**
