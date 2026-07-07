@@ -2,7 +2,9 @@
 
 namespace Tests\Feature\Settings;
 
+use App\Enums\AuditAction;
 use App\Enums\UserRole;
+use App\Models\AuditLog;
 use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;

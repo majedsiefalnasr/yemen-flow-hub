@@ -16,6 +16,7 @@ use App\Models\Role;
 use App\Models\StagePermission;
 use App\Models\SystemSetting;
 use App\Models\Team;
+use App\Services\Settings\SettingResolver;
 use App\Models\User;
 use App\Models\WorkflowDefinition;
 use App\Models\WorkflowStage;
@@ -77,7 +78,8 @@ class DuplicateInvoicePolicyTest extends TestCase
     {
         $this->makeActiveRequest('INV-002');
 
-        SystemSetting::create(['key' => 'duplicate_invoice_policy', 'value' => 'block']);
+        SystemSetting::findByKey('duplicate_invoice_policy')?->update(['value' => 'block']);
+        app(SettingResolver::class)->forget('duplicate_invoice_policy');
 
         $checker = app(DuplicateInvoiceChecker::class);
         $result = $checker->check('INV-002');
@@ -168,7 +170,8 @@ class DuplicateInvoicePolicyTest extends TestCase
             'data' => ['invoice_number' => 'INV-BLOCK-001'],
         ])->assertCreated();
 
-        SystemSetting::create(['key' => 'duplicate_invoice_policy', 'value' => 'block']);
+        SystemSetting::findByKey('duplicate_invoice_policy')?->update(['value' => 'block']);
+        app(SettingResolver::class)->forget('duplicate_invoice_policy');
 
         $countBefore = EngineRequest::count();
 
