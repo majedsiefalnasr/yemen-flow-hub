@@ -1,7 +1,7 @@
 # Engine Demo Seeder Redesign — Design Spec
 
 **Date:** 2026-07-07  
-**Status:** Revised — pending final review  
+**Status:** Approved (2026-07-07)  
 **Scope:** Reseed workflow + request demo data for post–WP-14 engine runtime (no legacy `import_requests`, no voting sessions)
 
 ---
@@ -29,7 +29,7 @@ Engine requests use three related concepts. **Do not conflate them.**
 | --- | --- | --- | --- |
 | **`current_stage`** | `engine_requests.current_stage_id` → `workflow_stages.code` | `CREATE`, `INTERNAL`, `SUPPORT`, `EXEC`, `FX`, `FX_CONFIRM`, `FINAL`, `CLOSED` | Where the request sits in the published workflow graph |
 | **`runtime_status`** | `engine_requests.status` | `ACTIVE`, `CLOSED`, `REJECTED`, `CANCELLED`, `ABANDONED` | Engine lifecycle state (`EngineRequestStatus`) |
-| **`final_outcome`** | `workflow_stages.final_outcome` on the **terminal stage** reached by the last transition | `COMPLETED`, `REJECTED`, `CANCELLED`, `ABANDONED` (enum `FinalOutcome`) | Design-time outcome semantics on a final stage; drives `runtime_status` when a terminal transition executes |
+| **`final_outcome`** | `workflow_stages.final_outcome` on the **terminal stage row** (not on the transition or request) | `COMPLETED`, `REJECTED`, `CANCELLED`, `ABANDONED` (enum `FinalOutcome`) | Design-time semantics on a final stage; `EngineTransitionService::resolveStatusAfterTransition()` maps `toStage.final_outcome` → `runtime_status` when `toStage.is_final` |
 
 **WP-2 mapping** (`FinalOutcome::toRequestStatus()` / `EngineRequestStatus::fromFinalOutcome()`):
 
@@ -42,18 +42,35 @@ Engine requests use three related concepts. **Do not conflate them.**
 
 **Active (non-terminal) requests:** `runtime_status = ACTIVE`; `final_outcome` is null on non-final stages.
 
-### Terminal scenario table (anchors)
+### Terminal outcome model — v1 constraints (approved)
 
-Each row names all three columns explicitly.
+`final_outcome` lives on **`workflow_stages`**, not on transitions or requests. A **single** shared `CLOSED` stage **cannot** simultaneously represent `COMPLETED`, `REJECTED`, `CANCELLED`, and `ABANDONED` as distinct terminal semantics — the incoming transition does not change the stage row’s `final_outcome`.
 
-| Scenario key | `current_stage` | `runtime_status` | `final_outcome` (via last hop into `CLOSED`) | Last transition |
+**v1 Import Financing (frozen):** seed only terminal outcomes genuinely supported by the published graph and manifest. Do **not** synthesize incompatible history or request statuses.
+
+**Deferred to v2:** transition-built anchors for `CANCELLED` and `ABANDONED` (requires separate terminal stages, transition/request outcome storage, or another explicit mapping mechanism — a workflow-model change, not a demo-seeder data-fix).
+
+**Pre-implementation audit (required — Task 0):** Inspect WP-2 schema and `EngineTransitionService` before building terminal fixtures. Code today:
+
+- `resolveStatusAfterTransition()` reads `toStage.final_outcome` when `toStage.is_final`.
+- `WorkflowPublishRulePack` requires REJECT transitions → `final_outcome = REJECTED` stage; APPROVE/CLOSE → `final_outcome = COMPLETED` stage.
+- Migration `2026_07_06_000002` backfills a **single** final stage from incoming reject presence (cannot represent both outcomes on one stage under publish rules).
+- `ImportFinancingWorkflowSeeder` seeds both `EXEC → CLOSED (REJECT_FINAL)` and `FINAL → CLOSED (FINAL_APPROVE)` into one `CLOSED` stage — **manifest + audit must confirm actual DB `final_outcome` and whether transition-built completed/rejected anchors are valid or require a reviewed v1 terminal-stage split before seeding.**
+
+The parity manifest represents the **real implemented model**, not the conceptual table alone.
+
+### Terminal scenario table — v1 anchors (manifest-backed)
+
+Each row names all three columns. **Implement only rows validated by Task 0 audit.**
+
+| Scenario key | `current_stage` | `runtime_status` | `final_outcome` (terminal stage) | Last transition |
 | --- | --- | --- | --- | --- |
-| `completed` | `CLOSED` | `CLOSED` | `COMPLETED` | `FINAL → CLOSED` / `FINAL_APPROVE` |
-| `rejected` | `CLOSED` | `REJECTED` | `REJECTED` | `EXEC → CLOSED` / `REJECT_FINAL` |
-| `cancelled` | `CLOSED` | `CANCELLED` | `CANCELLED` | Terminal transition into a `CLOSED` stage with `final_outcome = CANCELLED` (published v1 must expose this path, or anchor documents a reviewed v1 data-fix adding it) |
-| `abandoned` | `CLOSED` | `ABANDONED` | `ABANDONED` | Terminal transition into a `CLOSED` stage with `final_outcome = ABANDONED` (same rule as cancelled) |
+| `completed` | Terminal stage with `COMPLETED` outcome (e.g. `CLOSED` **only if** manifest says `final_outcome = COMPLETED`) | `CLOSED` | `COMPLETED` | `FINAL → …` / `FINAL_APPROVE` |
+| `rejected` | Terminal stage with `REJECTED` outcome | `REJECTED` | `REJECTED` | `EXEC → …` / `REJECT_FINAL` |
 
-**Implementation note:** Published v1 today seeds `CLOSED` with `final_outcome` derived from incoming transitions (`REJECT_FINAL` → `REJECTED`, else `COMPLETED`). If `CANCELLED` / `ABANDONED` terminal paths are not yet in v1, the implementation plan must either (a) add reviewed immutable v1 data-fix transitions/stages, or (b) defer those two anchor scenarios until a new workflow version — **do not** fake incompatible `runtime_status` without a matching `final_outcome` and history hop. The parity manifest documents which terminal outcomes v1 supports.
+**Not in v1 anchor catalog:** `cancelled`, `abandoned` as transition-built terminals. Constants `A027` / `A028` are **not** cancelled/abandoned until v2 or catalog-version migration.
+
+**Abandon API note:** `POST /abandon` can set `runtime_status = ABANDONED` without a terminal stage hop (see `OutcomeSemanticsTest`). Bulk `abandoned_terminal` rows may use the abandon service in `DemoSeedContext`, not a fake `CLOSED` transition — document in manifest if used.
 
 ### Active scenario examples
 
@@ -213,8 +230,8 @@ Bulk row **timestamps** may be relative to seeding date; **anchor references nev
 | A024 | `scan_pending` | `INTERNAL` | `ACTIVE` | — |
 | A025 | `scan_failed` | `INTERNAL` | `ACTIVE` | — |
 | A026 | `scan_infected` | `INTERNAL` | `ACTIVE` | — |
-| A027 | `cancelled` | `CLOSED` | `CANCELLED` | `CANCELLED` |
-| A028 | `abandoned` | `CLOSED` | `ABANDONED` | `ABANDONED` |
+| A027 | `claim_released` | `SUPPORT` | `ACTIVE` | — (claim columns cleared after release/transition) |
+| A028 | `document_replaced` | `INTERNAL` | `ACTIVE` | — (superseded + active commercial-invoice doc versions) |
 
 Base Lovable rows already include **`completed`** (`CLOSED`/`CLOSED`/`COMPLETED`) and **`rejected`** (`CLOSED`/`REJECTED`/`REJECTED`) per bank. **`scan_clean`** is covered by default commercial-invoice document on `ENG-2026-{BANK}-A001` (and bulk rows).
 
@@ -291,9 +308,9 @@ Matrix in `engine-request-scenarios.php` — **must sum to 250**:
 | `final_active` | 8 | 35 | 100 |
 | `completed_closed` | 20 | 180 | 365 |
 | `rejected_terminal` | 12 | 90 | 210 |
-| `cancelled_terminal` | 6 | 60 | 180 |
-| `abandoned_terminal` | 6 | 60 | 180 |
 | `claim_released` | 6 | 14 | 45 |
+| `document_replaced` | 6 | 10 | 40 |
+| `abandoned_via_api` | 6 | 5 | 30 |
 | `scan_pending` | 8 | 5 | 30 |
 | `scan_failed` | 4 | 10 | 40 |
 | `scope_cross_bank_mask` | 4 | 30 | 90 |
@@ -366,6 +383,8 @@ No `if (seeding)` branches inside `EngineTransitionService` or related core serv
 
 **Rerun behavior:** Second `db:seed` updates demo rows in place; no duplicate references; missing auxiliary rows backfilled.
 
+**ANCHOR_SPEC_VERSION rebuild:** Transactional; delete/replace **seed-owned** history and documents only (match `seed_batch` / deterministic doc keys). Never delete unrelated audit or document rows on the request.
+
 **Tests:** clean seed; second seed run; partial anchor set; pre-existing non-demo request; missing auxiliary after anchors exist.
 
 ---
@@ -402,7 +421,7 @@ Tests reject `financeAmount`, `invoiceNumber`, `requestPercentage` in JSON.
 | Released | bulk `claim_released` | claim columns null after transition away or explicit release |
 | Invalid | unit tests only | wrong stage, wrong `claim_stage_id`, terminal with claim set — validator rejects |
 
-Terminal anchors (`cancelled`, `abandoned`, `completed`, `rejected`): **claim fields cleared**.
+Terminal anchors (`completed`, `rejected`): **claim fields cleared**. `abandoned_via_api` bulk rows: claim cleared per abandon side effects.
 
 ---
 
@@ -469,21 +488,26 @@ Seeded dataset must exercise:
 
 | Rule | Detail |
 | --- | --- |
-| Demo request seeders | Gated by `config('demo.seed_demo_data')` **and** `app()->environment()` ∈ `config('demo.allowed_seed_environments')` (default: `local`, `staging`, `testing`) |
-| Production `DatabaseSeeder` | Does **not** call anchor/bulk/auxiliary demo seeders unless explicitly overridden (forbidden in prod) |
+| **Production hard block (non-bypassable)** | All demo seeders throw `LogicException('Demo engine request seeders are forbidden in production.')` when `app()->environment('production')` — even if `DEMO_SEED_DATA=true`, operator invokes seeder directly, or allowed environments misconfigured. **No force flag.** |
+| Demo request seeders | Additionally gated by `config('demo.seed_demo_data')` **and** `app()->environment()` ∈ `config('demo.allowed_seed_environments')` (default: `local`, `staging`, `testing`) |
+| `DatabaseSeeder` | Does **not** register demo seeders in production execution path |
+| `DemoSystemSettingsSeeder` | Same production hard block as anchor/bulk/auxiliary seeders |
 | Demo role switch | Remains local/staging-only per WP-14 |
 | External I/O | No real email, external APIs, or production storage mutation |
 | Logging | `Seeding demo engine requests (56 anchors, N bulk)…` clearly emitted |
 
+Shared guard (trait or `DemoSeedGuard::ensureNotProduction()`), called at start of every demo seeder `run()`.
+
 `config/demo.php` additions:
 
 ```php
-'seed_demo_data' => env('DEMO_SEED_DATA', true), // false in production .env
+'seed_demo_data' => env('DEMO_SEED_DATA', true), // .env.example: false for production templates
 'allowed_seed_environments' => ['local', 'staging', 'testing'],
-'seed_size' => env('DEMO_SEED_SIZE', 'full'), // minimal | full
+'seed_size' => env('DEMO_SEED_SIZE', 'minimal'), // minimal | full
 ```
 
-PHPUnit sets `DEMO_SEED_DATA=true`, `DEMO_SEED_SIZE=full` (or `minimal` for fast suites — anchors-only tests).
+**PHPUnit / normal CI:** `DEMO_SEED_DATA=true`, `DEMO_SEED_SIZE=minimal` (56 anchors).  
+**Dedicated full-seed CI job:** `DEMO_SEED_SIZE=full` (306 requests).
 
 ---
 
@@ -491,12 +515,21 @@ PHPUnit sets `DEMO_SEED_DATA=true`, `DEMO_SEED_SIZE=full` (or `minimal` for fast
 
 | Mode | Contents | Target |
 | --- | --- | --- |
-| `DEMO_SEED_SIZE=minimal` | 56 anchors | ≤ 30s local `migrate:fresh --seed` anchor path |
-| `DEMO_SEED_SIZE=full` | 56 + 250 | ≤ 120s local; CI may use `minimal` for speed |
-| Queue | — | 0 real jobs dispatched (faked) |
-| Mail | — | 0 messages sent |
+| `DEMO_SEED_SIZE=minimal` | 56 anchors | ≤ 30s local `migrate:fresh --seed` anchor path; **default normal CI** |
+| `DEMO_SEED_SIZE=full` | 56 + 250 | ≤ 120s local; **dedicated full-seed CI job only** |
+| Queue | — | 0 real jobs dispatched (faked); **tests assert** zero dispatched jobs |
+| Mail | — | 0 messages sent; **tests assert** zero deliveries |
 
 Bulk count configurable only via `DEMO_SEED_SIZE`; anchor set **immutable**.
+
+### CI strategy (approved)
+
+| Job | `DEMO_SEED_SIZE` | Runs |
+| --- | --- | --- |
+| Normal PHPUnit pipeline | `minimal` | Anchor, parity, invariant, permission, claim, document, auxiliary, idempotency tests |
+| Dedicated full-seed job | `full` | Exact bulk count, scenario distribution, dashboard/pagination/analytics volume, seed performance |
+
+Full-seed job is **required** on changes touching: demo seeders, workflow manifest, dashboard/list stats, DataScope queries, pagination, analytics, scenario builder.
 
 ---
 
@@ -565,25 +598,29 @@ Delete `EngineRequestDemoSeeder`, `ImportRequestSeeder`, legacy `RequestScenario
 ## Approval checklist
 
 - [x] Layered seeders + declarative catalog (architecture approved)
-- [ ] WP-2 status / `final_outcome` alignment confirmed
-- [ ] v1 immutability documented
-- [ ] Manifest is CI contract (not gitignored `seed.ts`)
-- [ ] Direct-insert invariant validation specified
-- [ ] Transition side-effect suppression via `DemoSeedContext`
-- [ ] Reference-based idempotency specified
-- [ ] Cross-bank duplicate prevention documented
-- [ ] Scan enforcement scenarios + runtime download tests
-- [ ] External FX Confirmation terminology
-- [ ] Permission-based QA wording (not role-hardcoded)
-- [ ] Exact counts: 56 / 250 / 306
-- [ ] Production/demo environment gate
-- [ ] Anchor refs + auxiliary hooks in `SeederCatalog`
-- [ ] Old seeder removal gated on verification
+- [x] WP-2 status / `final_outcome` alignment documented; Task 0 audit required before terminal fixtures
+- [x] v1 immutability documented
+- [x] Manifest is CI contract (not gitignored `seed.ts`)
+- [x] Direct-insert invariant validation specified
+- [x] Transition side-effect suppression via `DemoSeedContext`; tests assert zero mail/jobs
+- [x] Reference-based idempotency specified; seed-owned rebuild only
+- [x] Cross-bank duplicate prevention documented
+- [x] Scan enforcement scenarios + runtime download tests
+- [x] External FX Confirmation terminology
+- [x] Permission-based QA wording (not role-hardcoded)
+- [x] Exact counts: 56 / 250 / 306
+- [x] Production hard block + config gate
+- [x] Anchor refs + auxiliary hooks in `SeederCatalog`; A027/A028 = claim_released / document_replaced
+- [x] CANCELLED/ABANDONED transition anchors deferred to v2
+- [x] CI: minimal default + dedicated full-seed job
+- [x] Old seeder removal gated on verification
 
 ---
 
-## Open questions (business / infrastructure confirmation)
+## Resolved decisions (2026-07-07)
 
-1. **Cancelled / abandoned terminal paths on frozen v1:** Does published v1 already include transitions into `CLOSED` with `final_outcome` `CANCELLED` and `ABANDONED`? If not, approve a one-time v1 data-fix migration vs deferring anchors A027/A028 to v2.
-2. **`DEMO_SEED_SIZE=minimal` in CI:** Confirm PHPUnit default (`full` vs `minimal`) for pipeline time budget.
-3. **Production emergency seed:** Confirm zero case where production runs demo seeders (hard `false` in production `.env.example` only, or enforce in code with exception?).
+| # | Decision |
+| --- | --- |
+| 1 | **Defer** transition-built `CANCELLED` / `ABANDONED` anchors to **v2**. Replace A027/A028 with `claim_released` and `document_replaced`. Task 0 audits completed/rejected terminal model. |
+| 2 | Normal CI uses `DEMO_SEED_SIZE=minimal`; separate **required** full-seed job for bulk/dashboard coverage. |
+| 3 | **Hard production block** in code (`LogicException`); config gate for non-production only; no bypass flag. |
