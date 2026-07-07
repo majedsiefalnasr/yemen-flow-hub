@@ -2,7 +2,8 @@
 
 **Status:** Draft — conservative defaults; **CBY policy confirmation required** before enforcement  
 **Config source:** `backend/config/retention.php` (`config('retention.*')`)  
-**Traceability:** WP-13 RT-1 through RT-6; D17-N6, D18-N4, D19-N6, D10-N6/N7
+**Traceability:** WP-13 RT-1 through RT-6; D17-N6, D18-N4, D19-N6, D10-N6/N7  
+**Operations:** [Runbook](./runbook.md) — failure handling, recovery, audit restore, escalation
 
 ---
 
@@ -24,7 +25,7 @@
 | **Hot duration** | 12 months (`audit_hot_months`) — **CBY confirm regulatory minimum** |
 | **Archive schedule** | Daily `audit:archive-old`; batch size 500 rows (`audit_archive_batch_size`) |
 | **Archive target** | Cold storage / separate archive table / export bundle (implementation in Task 7) |
-| **Search / restore** | Archived rows searchable by ops; restore path documented in runbook (OM-5) |
+| **Search / restore** | Archived rows searchable by ops; restore path in [runbook](./runbook.md#archived-audit-log-restore) |
 | **Access control** | Archive access restricted to `CBY_ADMIN`; all archive/restore operations audited |
 | **Delete policy** | **Never delete** within retention horizon; archive only |
 
