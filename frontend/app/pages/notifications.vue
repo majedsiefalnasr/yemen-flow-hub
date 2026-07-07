@@ -58,6 +58,7 @@ import {
 } from '@/constants/workflow'
 import { useNotificationsStore } from '@/stores/notifications.store'
 import { useNotifications } from '@/composables/useNotifications'
+import { resolveNotificationTarget } from '@/utils/notificationNavigation'
 import type { Notification } from '@/types/models'
 
 definePageMeta({
@@ -336,9 +337,13 @@ async function openNotification(notification: Notification) {
   }
 }
 
+function hasLinkedRequest(notification: Notification | null): boolean {
+  return resolveNotificationTarget(notification) !== null
+}
+
 function openLinkedRequest(notification = selectedNotification.value) {
-  if (!notification?.data?.request_id) return
-  navigateTo(`/requests/${notification.data.request_id}`)
+  const target = resolveNotificationTarget(notification)
+  if (target) navigateTo(target)
 }
 
 async function handleMarkAllRead() {
@@ -510,7 +515,7 @@ const columns: ColumnDef<Notification>[] = [
                       },
                       () => 'عرض ملخص الإشعار',
                     ),
-                    ...(n.data?.request_id
+                    ...(hasLinkedRequest(n)
                       ? [
                           h(
                             DropdownMenuItem,
@@ -791,7 +796,7 @@ const columns: ColumnDef<Notification>[] = [
 
         <DialogFooter class="gap-2">
           <Button
-            v-if="selectedNotification?.data?.request_id"
+            v-if="hasLinkedRequest(selectedNotification)"
             class="min-w-0"
             @click="openLinkedRequest()"
           >

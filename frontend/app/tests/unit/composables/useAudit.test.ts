@@ -16,7 +16,7 @@ const ENGINE_LOG_FIXTURE = {
   actor_role_id: 1,
   user_role: 'CBY_ADMIN',
   event_code: 'STATUS_TRANSITION',
-  entity_type: 'ImportRequest',
+  entity_type: 'EngineRequest',
   entity_id: 42,
   request_id: 42,
   correlation_id: null,
@@ -89,7 +89,7 @@ describe('useAudit — fetchAuditLogs (V1 audit-logs)', () => {
     const result = await fetchAuditLogs()
     const log = result.data[0]
     expect(log?.action).toBe('STATUS_TRANSITION')
-    expect(log?.entity_type).toBe('ImportRequest')
+    expect(log?.entity_type).toBe('EngineRequest')
     expect(log?.from_status).toBe('BANK_REVIEW')
     expect(log?.to_status).toBe('BANK_APPROVED')
     expect(log?.user?.name).toBe('مدير النظام')

@@ -15,7 +15,7 @@ const ENGINE_NOTIFICATION_ROW = {
   body: 'انتقل الطلب من مرحلة أ إلى مرحلة ب',
   entity_type: 'engine_request',
   entity_id: 1,
-  action_url: '/requests/1',
+  action_url: '/workflows/instances/1',
   read_at: null,
   archived_at: null,
   created_at: '2026-06-24T10:00:00.000000Z',
