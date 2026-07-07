@@ -58,6 +58,8 @@ enum AuditAction: string
     case WORKFLOW_PUBLISHED = 'WORKFLOW_PUBLISHED';
     case AUDIT_LOG_EXPORTED = 'AUDIT_LOG_EXPORTED';
     case SCREEN_PERMISSION_UPDATED = 'SCREEN_PERMISSION_UPDATED';
+    case RETENTION_JOB_RUN = 'RETENTION_JOB_RUN';
+    case AUDIT_ARCHIVED = 'AUDIT_ARCHIVED';
 
     public function label(): string
     {
@@ -116,6 +118,8 @@ enum AuditAction: string
             self::WORKFLOW_PUBLISHED => 'Workflow Published / نشر سير العمل',
             self::AUDIT_LOG_EXPORTED => 'Audit Log Exported / تصدير سجل التدقيق',
             self::SCREEN_PERMISSION_UPDATED => 'Screen Permission Updated / تحديث صلاحيات الشاشة',
+            self::RETENTION_JOB_RUN => 'Retention Job Run / تشغيل مهمة الاحتفاظ',
+            self::AUDIT_ARCHIVED => 'Audit Archived / أرشفة سجل التدقيق',
         };
     }
 }

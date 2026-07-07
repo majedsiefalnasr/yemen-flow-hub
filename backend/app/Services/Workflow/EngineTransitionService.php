@@ -17,6 +17,7 @@ use App\Models\WorkflowStage;
 use App\Models\WorkflowTransition;
 use App\Services\Audit\AuditService;
 use App\Services\Notifications\EngineNotificationDispatcher;
+use App\Services\Operations\OperationalAlertLogger;
 use App\Support\EngineRequestStatus;
 use App\Support\TransitionFieldDiffBuilder;
 use Illuminate\Support\Facades\DB;
@@ -149,6 +150,11 @@ class EngineTransitionService
             } catch (EngineException|FinancingLimitExceededException|FinancingLockTimeoutException|CustomsException $e) {
                 throw $e;
             } catch (\Throwable $e) {
+                OperationalAlertLogger::failure('stage_hook', $e, [
+                    'transition_id' => $transition->id,
+                    'request_id' => $request->id,
+                ]);
+
                 throw new EngineException(
                     'A stage side-effect failed; the transition was rolled back.',
                     'STAGE_HOOK_FAILED',

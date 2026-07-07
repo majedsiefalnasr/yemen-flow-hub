@@ -76,6 +76,12 @@ class ReportExportController extends Controller
             abort(403);
         }
 
+        if ($reportExport->status === 'EXPIRED') {
+            return response()->json([
+                'error' => ['code' => 'EXPORT_EXPIRED', 'message' => 'Export file has expired and is no longer available.'],
+            ], 422);
+        }
+
         if ($reportExport->status === 'FAILED') {
             return response()->json([
                 'error' => ['code' => 'EXPORT_FAILED', 'message' => 'Export failed and is not available for download.'],

@@ -2,46 +2,64 @@
 
 namespace App\Console\Commands;
 
+use App\Console\Concerns\RecordsSchedulerHeartbeat;
 use App\Models\EngineRequest;
 use App\Models\User;
 use App\Services\Notifications\EngineNotificationDispatcher;
+use App\Services\Operations\OperationalAlertLogger;
 use App\Services\Workflow\EngineClaimService;
 use App\Support\RoleCodes;
 use Illuminate\Console\Command;
 
 class ExpireEngineClaimsCommand extends Command
 {
+    use RecordsSchedulerHeartbeat;
+
     protected $signature = 'workflow:expire-engine-claims';
 
     protected $description = 'Release engine request claims whose TTL has expired';
 
-    public function handle(EngineClaimService $claimService, EngineNotificationDispatcher $dispatcher): void
+    public function handle(EngineClaimService $claimService, EngineNotificationDispatcher $dispatcher): int
     {
-        $expiredIds = EngineRequest::query()
-            ->whereNotNull('claim_expires_at')
-            ->where('claim_expires_at', '<', now())
-            ->pluck('id');
+        return $this->runWithHeartbeat(function () use ($claimService, $dispatcher): array {
+            $expiredIds = EngineRequest::query()
+                ->whereNotNull('claim_expires_at')
+                ->where('claim_expires_at', '<', now())
+                ->pluck('id');
 
-        foreach ($expiredIds as $id) {
-            try {
-                $request = EngineRequest::findOrFail($id);
-                $referenceNumber = $request->reference;
-                $claimService->releaseExpired($request);
+            $released = 0;
+            $failedCount = 0;
 
-                $dispatcher->custom(
-                    type: 'claim.released',
-                    severity: 'info',
-                    title: "أُلغيت مطالبة بسبب انتهاء المهلة: {$referenceNumber}",
-                    body: null,
-                    entityType: 'engine_request',
-                    entityId: $id,
-                    actionUrl: "/requests/{$id}",
-                    recipientUserIds: $this->resolveCbyAdminIds(),
-                );
-            } catch (\Throwable $e) {
-                $this->error("Failed to expire engine claim for request {$id}: {$e->getMessage()}");
+            foreach ($expiredIds as $id) {
+                try {
+                    $request = EngineRequest::findOrFail($id);
+                    $referenceNumber = $request->reference;
+                    $claimService->releaseExpired($request);
+
+                    $dispatcher->custom(
+                        type: 'claim.released',
+                        severity: 'info',
+                        title: "أُلغيت مطالبة بسبب انتهاء المهلة: {$referenceNumber}",
+                        body: null,
+                        entityType: 'engine_request',
+                        entityId: $id,
+                        actionUrl: "/requests/{$id}",
+                        recipientUserIds: $this->resolveCbyAdminIds(),
+                    );
+
+                    $released++;
+                } catch (\Throwable $e) {
+                    $failedCount++;
+                    OperationalAlertLogger::failure('claim_sweep', $e, ['request_id' => $id]);
+                    $this->error("Failed to expire engine claim for request {$id}: {$e->getMessage()}");
+                }
             }
-        }
+
+            return [
+                'affected' => $released,
+                'meta' => $failedCount > 0 ? ['failed_count' => $failedCount] : [],
+            ];
+        });
     }
 
     /** @return int[] */
