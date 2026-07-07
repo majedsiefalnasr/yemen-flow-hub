@@ -137,6 +137,40 @@ Same filters as `GET /api/v1/engine-requests`, but always scoped to `ACTIVE` req
 
 ---
 
+# Get Request List Stats
+
+## Endpoint
+
+```http
+GET /api/v1/engine-requests/stats
+```
+
+## Query Parameters
+
+- `scope` — `all` (default) or `queue`
+  - `all` — same visibility as `GET /api/v1/engine-requests` (VIEW-scoped stages; `system_admin` unscoped)
+  - `queue` — same visibility as `GET /api/v1/engine-requests/my-queue` (EXECUTE-scoped active requests)
+- All list filters from `GET /api/v1/engine-requests` (`search`, `status`, `sla_status`, `workflow_id`, `stage_id`, `bank_id`, `merchant_id`, `created_from`, `created_to`, …) — aggregates apply to the **full filtered dataset**, not the current paginated page.
+
+## Response
+
+```json
+{
+  "data": {
+    "total": 62,
+    "active": 48,
+    "breached_sla": 5,
+    "nearing_sla": 3,
+    "unclaimed_active": 7,
+    "by_status": { "ACTIVE": 48, "CLOSED": 10, "REJECTED": 4 }
+  }
+}
+```
+
+Stats queries use the same organization/stage scoping as list endpoints (`EngineRequest::forUser` + `StagePermissionResolver` + `EngineRequestListQuery::applyFilters`). They must never return counts wider than the caller may list.
+
+---
+
 # Request Visibility Rules
 
 The API must NEVER return requests outside the user's organization scope.
@@ -294,7 +328,7 @@ POST /api/v1/engine-requests/{id}/actions
 }
 ```
 
-- `transition_id` identifies a `WorkflowTransition` (a specific from-stage + action + to-stage combination) — the set of transitions available for a request is discoverable from its current stage via `GET /api/v1/engine-requests/{id}/graph` (which flags which transitions are currently `possible` for the caller).
+- `transition_id` identifies a `WorkflowTransition` (a specific from-stage + action + to-stage combination) — the set of transitions available for a request is discoverable from its current stage via `GET /api/v1/engine-requests/{id}/graph` (which flags which transitions are currently `possible` for the caller). Graph edges include `confirmation_message`, `is_destructive`, and `is_default_submit`; the draft wizard uses `is_default_submit` (or the sole outgoing edge) to pick the submit transition.
 - `comment` is required when the transition's `requires_comment` flag is set (e.g. a bank rejection reason).
 - `version` is the optimistic-concurrency token; it must equal the request's current `version` column.
 
@@ -743,7 +777,41 @@ Branding/general blobs (`settings.general`, `settings.branding`) are **not** par
 
 ---
 
-# Reports APIs
+# Report APIs
+
+# Async Report Exports (v1)
+
+## Endpoints
+
+```http
+POST   /api/v1/reports/exports
+GET    /api/v1/reports/exports
+GET    /api/v1/reports/exports/{id}
+GET    /api/v1/reports/exports/{id}/download
+```
+
+Exports are generated asynchronously. Poll `GET .../exports/{id}` until `status` is `COMPLETED` or `FAILED`.
+
+## Truncation
+
+CSV exports cap at **10,000** rows (`GenerateReportExport::ROW_LIMIT`). When more rows match the filters, the job sets:
+
+| Field | Meaning |
+| ----- | ------- |
+| `total_matching` | Rows matching filters before the cap |
+| `exported_count` | Rows written to the file (≤ 10,000) |
+| `truncated` | `true` when `total_matching` > `exported_count` |
+| `truncation_note` | User-facing Arabic/English note when truncated |
+
+The CSV preamble (first line after BOM) repeats the truncation summary. Clients should surface `truncation_note` or an equivalent toast when `truncated` is true.
+
+## Failed Exports
+
+When generation fails, `status` is `FAILED`, `file_path` is cleared, and `GET .../download` returns `EXPORT_FAILED` (422). Clients should show a retry affordance rather than a download link.
+
+---
+
+# Legacy Report Endpoints
 
 # Workflow Report
 
@@ -764,6 +832,21 @@ Reports must respect request visibility scope and user permissions.
 ```http
 GET /api/reports/voting
 ```
+
+---
+
+# Notification Inbox APIs (v1)
+
+```http
+GET    /api/v1/notifications/inbox
+POST   /api/v1/notifications/{id}/read
+POST   /api/v1/notifications/{id}/archive
+POST   /api/v1/notifications/read-all
+```
+
+## Mark All Read
+
+`POST /api/v1/notifications/read-all` marks **non-archived** unread inbox rows as read. Archived notifications (`archived_at` set) are left unchanged even if still unread.
 
 ---
 
