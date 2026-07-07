@@ -247,7 +247,7 @@ export function useReports() {
 
   async function loadPresets(): Promise<ReportPreset[]> {
     try {
-      const response = await get<ApiResponse<ReportPreset[]>>('/api/report-presets')
+      const response = await get<ApiResponse<ReportPreset[]>>('/api/v1/report-presets')
       return response.data ?? []
     } catch {
       return []
@@ -261,12 +261,12 @@ export function useReports() {
       filter,
       createdAt: new Date().toISOString(),
     }
-    await post<ApiResponse<ReportPreset[]>>('/api/report-presets', preset)
+    await post<ApiResponse<ReportPreset[]>>('/api/v1/report-presets', preset)
     return preset
   }
 
   async function deletePreset(id: string): Promise<void> {
-    await del(`/api/report-presets/${id}`)
+    await del(`/api/v1/report-presets/${id}`)
   }
 
   function buildEngineQuery(filters: EngineReportFilters): string {
