@@ -33,6 +33,7 @@ use App\Http\Controllers\Api\V1\ReferenceTableController;
 use App\Http\Controllers\Api\V1\ReferenceValueController;
 use App\Http\Controllers\Api\V1\ReportController as V1ReportController;
 use App\Http\Controllers\Api\V1\ReportExportController;
+use App\Http\Controllers\Api\V1\ReportPresetController;
 use App\Http\Controllers\Api\V1\RoleController;
 use App\Http\Controllers\Api\V1\RoleScreenPermissionController;
 use App\Http\Controllers\Api\V1\ScreenController;
@@ -225,6 +226,11 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'active'])->group(function () {
     Route::post('reports/exports', [ReportExportController::class, 'store']);
     Route::get('reports/exports/{reportExport}', [ReportExportController::class, 'show']);
     Route::get('reports/exports/{reportExport}/download', [ReportExportController::class, 'download']);
+
+    // ─── Report Presets ─────────────────────────────────────────────────
+    Route::get('report-presets', [ReportPresetController::class, 'index']);
+    Route::post('report-presets', [ReportPresetController::class, 'store']);
+    Route::delete('report-presets/{id}', [ReportPresetController::class, 'destroy']);
 
     // ─── Notification Inbox (Epic 18.7) ─────────────────────────────────
     Route::get('notifications', [NotificationInboxController::class, 'index']);
