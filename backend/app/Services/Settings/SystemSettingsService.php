@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\Audit\AuditService;
 use App\Support\RoleCodes;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Http\UploadedFile;
 
 class SystemSettingsService
 {
@@ -23,7 +24,7 @@ class SystemSettingsService
     private const DEFAULT_BRANDING = [
         'brandColor' => '#0066cc',
         'brandLogoName' => 'yemen-emblem.svg',
-        'brandLogoDataUrl' => '/brand/yemen-emblem.svg',
+        'brandLogoPath' => '/brand/yemen-emblem.svg',
         'brandingPublished' => true,
         'brandingChannels' => [
             'securityQuestionnaires' => false,
@@ -33,7 +34,8 @@ class SystemSettingsService
     ];
 
     public function __construct(
-        private readonly AuditService $auditService
+        private readonly AuditService $auditService,
+        private readonly LogoStorageService $logoStorageService,
     ) {}
 
     public function saveSection(User $user, string $section, array $data, ?string $subsection = null): array
@@ -99,16 +101,19 @@ class SystemSettingsService
             ->sortDesc()
             ->first();
 
+        $branding = array_merge(
+            self::DEFAULT_BRANDING,
+            $this->arrayValue($settings->get('settings.branding')?->value)
+        );
+        $branding = $this->exposePublicBranding($branding);
+
         return [
             'version' => $version?->toJSON() ?? 'defaults-v1',
             'general' => array_merge(
                 self::DEFAULT_GENERAL,
                 $this->arrayValue($settings->get('settings.general')?->value)
             ),
-            'branding' => array_merge(
-                self::DEFAULT_BRANDING,
-                $this->arrayValue($settings->get('settings.branding')?->value)
-            ),
+            'branding' => $branding,
         ];
     }
 
@@ -128,7 +133,15 @@ class SystemSettingsService
         }
 
         if ($section === 'theming' && $subsection === 'branding') {
-            return array_merge(self::DEFAULT_BRANDING, $data);
+            $normalized = array_merge(self::DEFAULT_BRANDING, $data);
+
+            if (isset($normalized['brandLogoFile']) && $normalized['brandLogoFile'] instanceof UploadedFile) {
+                $normalized['brandLogoPath'] = $this->logoStorageService->store($normalized['brandLogoFile']);
+            }
+
+            unset($normalized['brandLogoFile'], $normalized['brandLogoDataUrl']);
+
+            return $normalized;
         }
 
         if ($section === 'email') {
@@ -157,5 +170,17 @@ class SystemSettingsService
     private function arrayValue(mixed $value): array
     {
         return is_array($value) ? $value : [];
+    }
+
+    private function exposePublicBranding(array $branding): array
+    {
+        $path = $branding['brandLogoPath']
+            ?? $branding['brandLogoDataUrl']
+            ?? self::DEFAULT_BRANDING['brandLogoPath'];
+
+        $branding['brandLogoUrl'] = $this->logoStorageService->url($path);
+        unset($branding['brandLogoPath'], $branding['brandLogoDataUrl']);
+
+        return $branding;
     }
 }

@@ -19,7 +19,7 @@ class SaveSettingsSectionRequest extends FormRequest
             'data' => 'required|array',
             'data.brandColor' => 'sometimes|string|regex:/^#[0-9a-fA-F]{6}$/',
             'data.brandLogoName' => 'sometimes|nullable|string|max:255',
-            'data.brandLogoDataUrl' => 'sometimes|nullable|string|max:3000000',
+            'data.brandLogoFile' => 'sometimes|nullable|file|mimes:png,svg,jpeg,webp|max:2048',
         ];
     }
 

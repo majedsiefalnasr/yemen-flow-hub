@@ -43,7 +43,7 @@ class SettingsControllerTest extends TestCase
         $response->assertJsonPath('data.dashboard_view', 'normal');
         $response->assertJsonPath('data.table_density', 'normal');
         $response->assertJsonPath('data.system.version', 'defaults-v1');
-        $response->assertJsonPath('data.system.branding.brandLogoDataUrl', '/brand/yemen-emblem.svg');
+        $response->assertJsonPath('data.system.branding.brandLogoUrl', '/brand/yemen-emblem.svg');
         $response->assertJsonPath('data.system.branding.brandLogoName', 'yemen-emblem.svg');
     }
 

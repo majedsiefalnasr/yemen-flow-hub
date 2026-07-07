@@ -36,7 +36,9 @@ const seoDescription = computed(
   () =>
     `${platformName.value} منصة مؤسسية لإدارة ومراجعة طلبات تمويل الواردات لدى ${authorityName.value}.`,
 )
-const faviconHref = computed(() => orgStore.brandLogoDataUrl || DEFAULT_BRAND_LOGO_URL)
+const faviconHref = computed(
+  () => themingStore.brandLogoUrl || orgStore.brandLogoDataUrl || DEFAULT_BRAND_LOGO_URL,
+)
 const faviconType = computed(() => {
   const href = faviconHref.value
   if (href.startsWith('data:image/png')) return 'image/png'

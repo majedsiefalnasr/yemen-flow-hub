@@ -30,7 +30,7 @@ interface BrandingChannels {
 interface BrandingSettings {
   brandColor?: string
   brandLogoName?: string | null
-  brandLogoDataUrl?: string | null
+  brandLogoUrl?: string | null
   brandingPublished?: boolean
   brandingChannels?: Partial<BrandingChannels>
 }
@@ -50,6 +50,7 @@ interface ThemingState {
   layout: LayoutMode
   brandColor: string
   brandLogoName: string
+  brandLogoUrl: string
   brandingPublished: boolean
   brandingChannels: BrandingChannels
   shortcutsRequireModifier: boolean
@@ -321,6 +322,7 @@ export const useThemingStore = defineStore('theming', {
     layout: 'boxed',
     brandColor: '#0066cc',
     brandLogoName: '',
+    brandLogoUrl: '',
     brandingPublished: true,
     brandingChannels: {
       securityQuestionnaires: false,
@@ -598,6 +600,9 @@ export const useThemingStore = defineStore('theming', {
       if (typeof branding.brandLogoName === 'string') {
         this.brandLogoName = branding.brandLogoName
       }
+      if (typeof branding.brandLogoUrl === 'string') {
+        this.brandLogoUrl = branding.brandLogoUrl
+      }
       if (typeof branding.brandingPublished === 'boolean') {
         this.brandingPublished = branding.brandingPublished
       }
@@ -609,7 +614,14 @@ export const useThemingStore = defineStore('theming', {
         }
       }
 
-      useOrgStore().applySystemSettings(settings.general, branding, settings.version)
+      useOrgStore().applySystemSettings(
+        settings.general,
+        {
+          ...branding,
+          brandLogoDataUrl: branding.brandLogoUrl ?? undefined,
+        },
+        settings.version,
+      )
       this.applyBranding()
     },
 

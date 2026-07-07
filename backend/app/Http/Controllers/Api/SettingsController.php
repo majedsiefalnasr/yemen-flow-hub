@@ -147,6 +147,10 @@ class SettingsController extends Controller
         $subsection = $request->input('subsection');
         $data = $request->input('data');
 
+        if ($request->hasFile('data.brandLogoFile')) {
+            $data['brandLogoFile'] = $request->file('data.brandLogoFile');
+        }
+
         try {
             if ($request->isSystemSection()) {
                 $result = $this->systemSettingsService->saveSection($user, $section, $data, $subsection);
