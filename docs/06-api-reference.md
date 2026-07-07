@@ -507,15 +507,22 @@ Document API payloads do not expose a reusable `download_url`; clients should do
 
 # Audit APIs
 
+Legacy `GET /api/audit` and related `/api/audit/*` routes were removed in WP-14. Use the V1 engine audit trail exclusively.
+
 # Get Audit Logs
 
 ## Endpoint
 
 ```http
-GET /api/audit
+GET /api/v1/audit-logs
 ```
 
-(A separate, richer `GET /api/v1/audit-logs` endpoint also exists for the dynamic-engine-era audit trail, with `GET /api/v1/audit-logs/export` and `GET /api/v1/audit-logs/{id}` alongside it.)
+## Related
+
+```http
+GET /api/v1/audit-logs/export
+GET /api/v1/audit-logs/{id}
+```
 
 ---
 
@@ -566,14 +573,16 @@ GET /api/v1/engine-requests/{id}/customs-declaration/signed-fx-download
 
 ---
 
-# Users APIs
+# Users APIs (V1)
+
+Legacy `/api/users` routes were removed in WP-14. All user administration uses the governance V1 namespace.
 
 # Get Users
 
 ## Endpoint
 
 ```http
-GET /api/users
+GET /api/v1/users
 ```
 
 ---
@@ -583,7 +592,7 @@ GET /api/users
 ## Endpoint
 
 ```http
-POST /api/users
+POST /api/v1/users
 ```
 
 ---
@@ -593,19 +602,32 @@ POST /api/users
 ## Endpoint
 
 ```http
-PUT /api/users/{id}
+PUT /api/v1/users/{id}
 ```
 
 ---
 
-# Banks APIs
+# Account Recovery (admin)
+
+```http
+POST /api/v1/users/{user}/reset-password
+POST /api/v1/users/{user}/reset-mfa
+POST /api/v1/users/{user}/reset-pin
+POST /api/v1/users/{user}/deactivate
+```
+
+---
+
+# Banks APIs (V1)
+
+Legacy `/api/banks` routes were removed in WP-14.
 
 # Get Banks
 
 ## Endpoint
 
 ```http
-GET /api/banks
+GET /api/v1/banks
 ```
 
 ---
@@ -615,7 +637,25 @@ GET /api/banks
 ## Endpoint
 
 ```http
-POST /api/banks
+POST /api/v1/banks
+```
+
+---
+
+# Update Bank
+
+## Endpoint
+
+```http
+PUT /api/v1/banks/{id}
+```
+
+## Lifecycle
+
+```http
+POST /api/v1/banks/{bank}/activate
+POST /api/v1/banks/{bank}/deactivate
+DELETE /api/v1/banks/{bank}
 ```
 
 ---
@@ -811,38 +851,47 @@ When generation fails, `status` is `FAILED`, `file_path` is cleared, and `GET ..
 
 ---
 
-# Legacy Report Endpoints
+# Report Presets (V1)
 
-# Workflow Report
-
-## Endpoint
+User-scoped saved report filters. Legacy `GET/POST/DELETE /api/report-presets` was removed in WP-14.
 
 ```http
-GET /api/reports/workflow
+GET    /api/v1/report-presets
+POST   /api/v1/report-presets
+DELETE /api/v1/report-presets/{id}
 ```
 
-Reports must respect request visibility scope and user permissions.
+Presets are stored in the authenticated user's `user_preferences.report_presets` JSON and never bypass organization data scope.
 
 ---
 
-# Voting Report
+# Legacy Report Endpoints (removed)
 
-## Endpoint
+The following pre-engine report routes were removed in WP-14 and return **404**:
 
 ```http
-GET /api/reports/voting
+GET /api/reports/workflow   (removed)
+GET /api/reports/voting     (removed)
 ```
+
+Use `/api/v1/reports/*` and `/api/v1/reports/exports` instead.
 
 ---
 
 # Notification Inbox APIs (v1)
 
+Legacy duplicate `/api/notifications` routes were removed in WP-14.
+
 ```http
-GET    /api/v1/notifications/inbox
+GET    /api/v1/notifications
+GET    /api/v1/notifications/unread-count
 POST   /api/v1/notifications/{id}/read
+POST   /api/v1/notifications/{id}/unread
 POST   /api/v1/notifications/{id}/archive
 POST   /api/v1/notifications/read-all
 ```
+
+Engine notifications deep-link to `/workflows/instances/{id}` via the `action_url` field.
 
 ## Mark All Read
 
