@@ -18,9 +18,9 @@ Task 2: complete (057ce1c9)
 Task 3 (wire claim + SLA commands): complete (9715c1b0)
 Task 4 (notifications:purge-old): complete (f147067c)
 Task 5 (reports:purge-old-exports + EXPIRED): complete (2472703a)
-Task 6 (documents purge-orphans + archive-superseded): pending
-Task 7 (audit:archive-old): pending
-Task 8 (failed-job visibility + AdminHealth): pending
+Task 6 (documents purge-orphans + archive-superseded): complete (871eb1cd)
+Task 7 (audit:archive-old): complete (c0604f89)
+Task 8 (failed-job visibility + AdminHealth): complete (81ac6dbe)
 Task 9 (operations runbook): pending
 Task 10 (gate + final review): pending
 
