@@ -12,6 +12,11 @@ export function useDemoUsers() {
 
   async function fetchDemoUsers(): Promise<void> {
     const config = useRuntimeConfig()
+    if (!config.public.demoEnabled) {
+      users.value = []
+      return
+    }
+
     const baseURL = config.public.apiBase as string
 
     loading.value = true

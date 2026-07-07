@@ -64,16 +64,14 @@ function mockForPath(path: string, method: string, role: UserRole) {
   if (path === '/sanctum/csrf-cookie') return null
   if (path === '/api/auth/me') return apiOk(mockUser(role))
   if (path === '/api/dashboard/stats') return apiOk({})
-  if (path === '/api/notifications/unread-count') return apiOk({ count: 0 })
-  if (path === '/api/notifications') return apiOk(paginated([]))
-  if (path === '/api/banks') return apiOk([])
-  if (path === '/api/users') return apiOk([])
-  if (path === '/api/merchants') return apiOk(paginated([]))
-  if (path === '/api/document-types') return apiOk([])
-  if (path === '/api/audit') return apiOk(paginated([]))
-  if (path === '/api/audit/stats') return apiOk({ today_count: 0, duplicate_invoice_count: 0 })
-  if (path === '/api/audit/duplicates') return apiOk({ data: [] })
-  if (path === '/api/audit/risk-indicators') return apiOk({ data: [] })
+  if (path === '/api/v1/notifications/unread-count') return apiOk({ count: 0 })
+  if (path === '/api/v1/notifications') return apiOk(paginated([]))
+  if (path === '/api/v1/banks') return apiOk([])
+  if (path === '/api/v1/users') return apiOk([])
+  if (path === '/api/v1/merchants') return apiOk(paginated([]))
+  if (path === '/api/v1/audit-logs' || path.startsWith('/api/v1/audit-logs/')) {
+    return { data: [], meta: { current_page: 1, last_page: 1, per_page: 30, total: 0 } }
+  }
   if (path === '/api/reports/workflow') {
     return apiOk({
       counts_by_status: {},

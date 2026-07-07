@@ -48,14 +48,6 @@ vi.mock('../../../composables/useAudit', () => ({
   }),
 }))
 
-vi.mock('../../../composables/useDocumentTypes', () => ({
-  useDocumentTypes: () => ({
-    fetchDocumentTypes: vi.fn().mockResolvedValue([]),
-    createDocumentType: vi.fn(),
-    updateDocumentType: vi.fn(),
-  }),
-}))
-
 async function renderPage(component: unknown): Promise<string> {
   const app = createSSRApp(component as any)
   app.use(createPinia())

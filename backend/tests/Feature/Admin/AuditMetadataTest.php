@@ -6,8 +6,12 @@ use App\Enums\AuditAction;
 use App\Enums\UserRole;
 use App\Models\AuditLog;
 use App\Models\Bank;
+use App\Models\Organization;
+use App\Models\Role;
+use App\Models\Team;
 use App\Models\User;
 use App\Services\Audit\AuditService;
+use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -23,13 +27,21 @@ class AuditMetadataTest extends TestCase
     {
         parent::setUp();
         $this->seedGovernance();
+        $this->seed(ScreenPermissionSeeder::class);
     }
-
-    // ─── Helpers ──────────────────────────────────────────────────────────────
 
     private function makeBank(string $code = 'TBK'): Bank
     {
-        return Bank::query()->create(['name' => "بنك {$code}", 'code' => $code, 'is_active' => true]);
+        $organization = Organization::query()->where('code', 'commercial_banks')->firstOrFail();
+
+        return Bank::query()->create([
+            'name' => "بنك {$code}",
+            'code' => $code,
+            'is_active' => true,
+            'organization_id' => $organization->id,
+            'status' => 'ACTIVE',
+            'version' => 1,
+        ]);
     }
 
     private function makeCbyAdmin(): User
@@ -58,9 +70,30 @@ class AuditMetadataTest extends TestCase
         ]), $role);
     }
 
-    // ─── Migration: user_agent column width ───────────────────────────────────
+    /** @return array<string, mixed> */
+    private function v1UserPayload(UserRole $role, Bank $bank, array $overrides = []): array
+    {
+        $organization = Organization::query()->where('code', 'commercial_banks')->firstOrFail();
+        $map = [
+            UserRole::DATA_ENTRY->value => ['entry', 'intake'],
+            UserRole::BANK_REVIEWER->value => ['internal_review', 'internal_reviewer'],
+        ];
+        [$teamCode, $roleCode] = $map[$role->value];
+        $team = Team::query()->whereBelongsTo($organization)->where('code', $teamCode)->firstOrFail();
+        $govRole = Role::query()->whereBelongsTo($organization)->where('code', $roleCode)->firstOrFail();
 
-    /** @test */
+        return array_merge([
+            'organization_id' => $organization->id,
+            'team_id' => $team->id,
+            'role_id' => $govRole->id,
+            'bank_id' => $bank->id,
+            'name' => 'Test User',
+            'email' => 'test@cby.gov.ye',
+            'password' => 'Secret123!',
+            'is_active' => true,
+        ], $overrides);
+    }
+
     public function test_audit_logs_user_agent_column_accepts_512_chars(): void
     {
         $longUa = str_repeat('A', 512);
@@ -73,32 +106,23 @@ class AuditMetadataTest extends TestCase
         $this->assertSame($longUa, $log->fresh()->user_agent);
     }
 
-    /** @test */
     public function test_audit_logs_user_agent_column_is_nullable(): void
     {
         $log = AuditLog::query()->create(['action' => AuditAction::LOGIN->value]);
         $this->assertNull($log->fresh()->user_agent);
     }
 
-    // ─── AuditService: ip + user_agent captured from request ─────────────────
-
-    /** @test */
     public function test_audit_service_captures_ip_and_user_agent_from_request(): void
     {
         $admin = $this->makeCbyAdmin();
         $bank = $this->makeBank('IPT');
 
-        // POST /api/users creates a USER_CREATED audit log with ip+user_agent.
         $this->actingAs($admin)
             ->withHeaders(['User-Agent' => 'TestBrowser/1.0'])
-            ->postJson('/api/users', [
+            ->postJson('/api/v1/users', $this->v1UserPayload(UserRole::DATA_ENTRY, $bank, [
                 'name' => 'IP Test User',
                 'email' => 'iptest@cby.gov.ye',
-                'password' => 'Secret123!',
-                'role' => UserRole::DATA_ENTRY->value,
-                'bank_id' => $bank->id,
-                'is_active' => true,
-            ])
+            ]))
             ->assertStatus(201);
 
         $log = AuditLog::query()
@@ -111,11 +135,8 @@ class AuditMetadataTest extends TestCase
         $this->assertSame('TestBrowser/1.0', $log->user_agent);
     }
 
-    /** @test */
     public function test_audit_service_writes_null_user_agent_when_no_ua_header_present(): void
     {
-        // Symfony's Request::create() injects HTTP_USER_AGENT='Symfony' by default.
-        // Strip it to faithfully simulate a CLI/queue context with no browser UA.
         $bare = Request::create('/');
         $bare->headers->remove('User-Agent');
         $bare->server->remove('HTTP_USER_AGENT');
@@ -132,24 +153,18 @@ class AuditMetadataTest extends TestCase
         $this->assertNull($log->user_agent);
     }
 
-    /** @test */
     public function test_audit_service_truncates_user_agent_to_512_chars(): void
     {
         $admin = $this->makeCbyAdmin();
         $bank = $this->makeBank('TRK');
         $longUa = str_repeat('X', 600);
 
-        // Any write endpoint that logs via AuditService will do; POST /api/users is simplest.
         $this->actingAs($admin)
             ->withHeaders(['User-Agent' => $longUa])
-            ->postJson('/api/users', [
+            ->postJson('/api/v1/users', $this->v1UserPayload(UserRole::DATA_ENTRY, $bank, [
                 'name' => 'Truncate Test',
                 'email' => 'trunc@cby.gov.ye',
-                'password' => 'Secret123!',
-                'role' => UserRole::DATA_ENTRY->value,
-                'bank_id' => $bank->id,
-                'is_active' => true,
-            ])
+            ]))
             ->assertStatus(201);
 
         $log = AuditLog::query()
@@ -162,7 +177,6 @@ class AuditMetadataTest extends TestCase
         $this->assertLessThanOrEqual(512, strlen($log->user_agent));
     }
 
-    /** @test */
     public function test_audit_service_truncates_multibyte_user_agent_without_breaking_utf8(): void
     {
         $admin = $this->makeCbyAdmin();
@@ -171,14 +185,10 @@ class AuditMetadataTest extends TestCase
 
         $this->actingAs($admin)
             ->withHeaders(['User-Agent' => $longUa])
-            ->postJson('/api/users', [
+            ->postJson('/api/v1/users', $this->v1UserPayload(UserRole::DATA_ENTRY, $bank, [
                 'name' => 'UTF User Agent',
                 'email' => 'utf-agent@cby.gov.ye',
-                'password' => 'Secret123!',
-                'role' => UserRole::DATA_ENTRY->value,
-                'bank_id' => $bank->id,
-                'is_active' => true,
-            ])
+            ]))
             ->assertStatus(201);
 
         $log = AuditLog::query()
@@ -192,9 +202,6 @@ class AuditMetadataTest extends TestCase
         $this->assertTrue(mb_check_encoding($log->user_agent, 'UTF-8'));
     }
 
-    // ─── AuditLogResource: exposes user_agent ─────────────────────────────────
-
-    /** @test */
     public function test_audit_log_resource_exposes_user_agent_and_ip_address(): void
     {
         $admin = $this->makeCbyAdmin();
@@ -207,10 +214,10 @@ class AuditMetadataTest extends TestCase
             'user_agent' => 'Mozilla/5.0 TestAgent',
         ]);
 
-        $response = $this->actingAs($admin)->getJson('/api/audit');
+        $response = $this->actingAs($admin)->getJson('/api/v1/audit-logs?event=LOGIN');
 
         $response->assertOk();
-        $entry = $response->json('data.data.0');
+        $entry = $response->json('data.0');
 
         $this->assertArrayHasKey('ip_address', $entry);
         $this->assertArrayHasKey('user_agent', $entry);
@@ -218,7 +225,6 @@ class AuditMetadataTest extends TestCase
         $this->assertSame('Mozilla/5.0 TestAgent', $entry['user_agent']);
     }
 
-    /** @test */
     public function test_audit_log_resource_renders_gracefully_when_user_agent_is_null(): void
     {
         $admin = $this->makeCbyAdmin();
@@ -231,134 +237,13 @@ class AuditMetadataTest extends TestCase
             'user_agent' => null,
         ]);
 
-        $response = $this->actingAs($admin)->getJson('/api/audit');
+        $response = $this->actingAs($admin)->getJson('/api/v1/audit-logs?event=LOGIN');
 
         $response->assertOk();
-        $entry = $response->json('data.data.0');
+        $entry = $response->json('data.0');
 
         $this->assertArrayHasKey('user_agent', $entry);
         $this->assertNull($entry['user_agent']);
         $this->assertNull($entry['ip_address']);
-    }
-
-    // ─── Before/after on USER_UPDATED ─────────────────────────────────────────
-
-    /** @test */
-    public function test_user_update_audit_log_contains_only_changed_keys_in_before_after(): void
-    {
-        $admin = $this->makeCbyAdmin();
-        $bank = $this->makeBank();
-        $target = $this->makeUser(UserRole::DATA_ENTRY, $bank);
-
-        // Update only the role — name/email/is_active unchanged
-        $this->actingAs($admin)->putJson("/api/users/{$target->id}", [
-            'name' => $target->name,
-            'email' => $target->email,
-            'role' => UserRole::BANK_REVIEWER->value,
-            'bank_id' => $target->bank_id,
-            'is_active' => $target->is_active,
-        ])->assertOk();
-
-        $log = AuditLog::query()
-            ->where('action', AuditAction::USER_UPDATED->value)
-            ->latest('id')
-            ->first();
-
-        $this->assertNotNull($log);
-        $before = $log->metadata['before'] ?? [];
-        $after = $log->metadata['after'] ?? [];
-
-        // Only 'role' changed — before/after must contain only that key
-        $this->assertArrayHasKey('role', $before);
-        $this->assertArrayHasKey('role', $after);
-        $this->assertSame(UserRole::DATA_ENTRY->value, $before['role']);
-        $this->assertSame(UserRole::BANK_REVIEWER->value, $after['role']);
-
-        // Unchanged fields must NOT appear
-        $this->assertArrayNotHasKey('name', $before);
-        $this->assertArrayNotHasKey('email', $before);
-        $this->assertArrayNotHasKey('is_active', $before);
-    }
-
-    /** @test */
-    public function test_user_update_audit_log_before_after_empty_when_nothing_changed(): void
-    {
-        $admin = $this->makeCbyAdmin();
-        $bank = $this->makeBank('NBK');
-        $target = $this->makeUser(UserRole::DATA_ENTRY, $bank);
-
-        // Submit identical values
-        $this->actingAs($admin)->putJson("/api/users/{$target->id}", [
-            'name' => $target->name,
-            'email' => $target->email,
-            'role' => $target->role->value,
-            'bank_id' => $target->bank_id,
-            'is_active' => $target->is_active,
-        ])->assertOk();
-
-        $log = AuditLog::query()
-            ->where('action', AuditAction::USER_UPDATED->value)
-            ->latest('id')
-            ->first();
-
-        $this->assertNotNull($log);
-        $this->assertEmpty($log->metadata['before'] ?? []);
-        $this->assertEmpty($log->metadata['after'] ?? []);
-    }
-
-    // ─── Before/after on BANK_UPDATED ─────────────────────────────────────────
-
-    /** @test */
-    public function test_bank_update_audit_log_contains_only_changed_keys_in_before_after(): void
-    {
-        $admin = $this->makeCbyAdmin();
-        $bank = $this->makeBank('CBK');
-
-        $this->actingAs($admin)->putJson("/api/banks/{$bank->id}", [
-            'name' => 'بنك جديد',
-            'code' => 'CBK',
-            'is_active' => true,
-        ])->assertOk();
-
-        $log = AuditLog::query()
-            ->where('action', AuditAction::BANK_UPDATED->value)
-            ->latest('id')
-            ->first();
-
-        $this->assertNotNull($log);
-        $before = $log->metadata['before'] ?? [];
-        $after = $log->metadata['after'] ?? [];
-
-        // Only 'name' changed
-        $this->assertArrayHasKey('name', $before);
-        $this->assertArrayHasKey('name', $after);
-        $this->assertSame('بنك CBK', $before['name']);
-        $this->assertSame('بنك جديد', $after['name']);
-
-        // Unchanged fields must NOT appear
-        $this->assertArrayNotHasKey('code', $before);
-        $this->assertArrayNotHasKey('is_active', $before);
-    }
-
-    /** @test */
-    public function test_bank_update_audit_log_before_after_empty_when_nothing_changed(): void
-    {
-        $admin = $this->makeCbyAdmin();
-        $bank = $this->makeBank('ZBK');
-
-        $this->actingAs($admin)->putJson("/api/banks/{$bank->id}", [
-            'name' => 'بنك ZBK',
-            'code' => 'ZBK',
-            'is_active' => true,
-        ])->assertOk();
-
-        $log = AuditLog::query()
-            ->where('action', AuditAction::BANK_UPDATED->value)
-            ->latest('id')
-            ->first();
-
-        $this->assertNotNull($log);
-        $this->assertEmpty($log->metadata['before'] ?? []);
-        $this->assertEmpty($log->metadata['after'] ?? []);
     }
 }

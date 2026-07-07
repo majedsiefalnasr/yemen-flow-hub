@@ -379,6 +379,18 @@ class AuthController extends Controller
             return ApiResponse::notFound('No active demo account found for selected role.');
         }
 
+        $this->auditService->log(
+            AuditAction::DEMO_USER_SWITCH,
+            $request->user(),
+            $user,
+            [
+                'target_user_id' => $user->id,
+                'switch_type' => 'role',
+                'target_role' => $role->value,
+                'environment' => app()->environment(),
+            ]
+        );
+
         return $this->issueSession($request, $user);
     }
 
@@ -420,6 +432,17 @@ class AuthController extends Controller
         if (! $user) {
             return ApiResponse::notFound('No active demo account found for the selected user.');
         }
+
+        $this->auditService->log(
+            AuditAction::DEMO_USER_SWITCH,
+            $request->user(),
+            $user,
+            [
+                'target_user_id' => $user->id,
+                'switch_type' => 'user',
+                'environment' => app()->environment(),
+            ]
+        );
 
         return $this->issueSession($request, $user);
     }

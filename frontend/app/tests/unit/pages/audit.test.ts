@@ -8,16 +8,10 @@ import { UserRole } from '../../../types/enums'
 vi.stubGlobal('definePageMeta', vi.fn())
 
 const fetchAuditLogsMock = vi.hoisted(() => vi.fn())
-const fetchAuditStatsMock = vi.hoisted(() => vi.fn())
-const fetchDuplicatesMock = vi.hoisted(() => vi.fn())
-const fetchRiskIndicatorsMock = vi.hoisted(() => vi.fn())
 
 vi.mock('../../../composables/useAudit', () => ({
   useAudit: () => ({
     fetchAuditLogs: fetchAuditLogsMock,
-    fetchAuditStats: fetchAuditStatsMock,
-    fetchDuplicates: fetchDuplicatesMock,
-    fetchRiskIndicators: fetchRiskIndicatorsMock,
   }),
 }))
 
@@ -92,42 +86,22 @@ function riskIconColor(level: RiskLevel): string {
   return '#32ade6'
 }
 
-function openAlertsCount(indicators: Array<{ level: RiskLevel }>): number {
-  return indicators.length
-}
+describe('audit page — legacy widgets (AUDIT_LEGACY_WIDGETS=false)', () => {
+  it('does not render legacy audit widget panels when AUDIT_LEGACY_WIDGETS is false', async () => {
+    vi.stubGlobal('useRuntimeConfig', () => ({
+      public: { auditLegacyWidgets: false },
+    }))
+    fetchAuditLogsMock.mockResolvedValue({
+      data: [],
+      meta: { last_page: 1, total: 0, per_page: 30 },
+    })
 
-// ─── KPI rendering ────────────────────────────────────────────────────────────
+    const wrapper = mountAuditPage()
+    await flushPromises()
 
-describe('audit page — KPI rendering', () => {
-  it('renders today_count from stats', () => {
-    const stats = { today_count: 42, duplicate_invoice_count: 3 }
-    expect(stats.today_count).toBe(42)
-  })
-
-  it('renders duplicate_invoice_count from stats', () => {
-    const stats = { today_count: 5, duplicate_invoice_count: 7 }
-    expect(stats.duplicate_invoice_count).toBe(7)
-  })
-
-  it('open alerts count is derived from all returned risk indicators', () => {
-    const indicators = [
-      { level: 'عالية' as RiskLevel },
-      { level: 'عالية' as RiskLevel },
-      { level: 'متوسطة' as RiskLevel },
-      { level: 'منخفضة' as RiskLevel },
-    ]
-    expect(openAlertsCount(indicators)).toBe(4)
-  })
-
-  it('fraud count KPI is derived from high-severity indicators', () => {
-    const indicators = [
-      { level: 'عالية' as RiskLevel },
-      { level: 'عالية' as RiskLevel },
-      { level: 'متوسطة' as RiskLevel },
-      { level: 'منخفضة' as RiskLevel },
-    ]
-    const fraudCount = indicators.filter((item) => item.level === 'عالية').length
-    expect(fraudCount).toBe(2)
+    expect(wrapper.text()).not.toContain('مؤشرات المخاطر')
+    expect(wrapper.text()).not.toContain('فواتير مكررة')
+    expect(wrapper.text()).not.toContain('نشاطات اليوم')
   })
 })
 
@@ -312,10 +286,10 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: unknown; aft
 describe('audit.vue row expansion rendering', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubGlobal('useRuntimeConfig', () => ({
+      public: { auditLegacyWidgets: false },
+    }))
     fetchAuditLogsMock.mockResolvedValue({ data: [], meta: { last_page: 1, total: 0 } })
-    fetchAuditStatsMock.mockResolvedValue({ today_count: 0, duplicate_invoice_count: 0 })
-    fetchDuplicatesMock.mockResolvedValue([])
-    fetchRiskIndicatorsMock.mockResolvedValue([])
   })
 
   it.skip('renders the empty detail state for no-op before/after metadata', async () => {

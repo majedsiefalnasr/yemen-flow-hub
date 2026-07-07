@@ -88,7 +88,7 @@ async function mockApi(page: Parameters<typeof test>[0]['page'], user = cbyAdmin
       return
     }
 
-    if (path === '/api/notifications/unread-count') {
+    if (path === '/api/v1/notifications/unread-count') {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -97,7 +97,7 @@ async function mockApi(page: Parameters<typeof test>[0]['page'], user = cbyAdmin
       return
     }
 
-    if (path === '/api/notifications') {
+    if (path === '/api/v1/notifications') {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',

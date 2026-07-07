@@ -45,7 +45,7 @@ describe('useApi', () => {
     const { useApi } = await import('../../../composables/useApi')
     const { post } = useApi()
 
-    await post('/api/notifications/abc-123/read')
+    await post('/api/v1/notifications/abc-123/read')
 
     expect(mockFetch).toHaveBeenNthCalledWith(
       1,
@@ -56,7 +56,7 @@ describe('useApi', () => {
     )
     expect(mockFetch).toHaveBeenNthCalledWith(
       2,
-      '/api/notifications/abc-123/read',
+      '/api/v1/notifications/abc-123/read',
       expect.objectContaining({
         method: 'POST',
         headers: expect.objectContaining({
@@ -75,7 +75,7 @@ describe('useApi', () => {
       }
 
       if (
-        path === '/api/notifications/abc-123/read' &&
+        path === '/api/v1/notifications/abc-123/read' &&
         mockFetch.mock.calls.filter(([callPath]) => callPath === path).length === 1
       ) {
         throw { statusCode: 419 }
@@ -87,13 +87,13 @@ describe('useApi', () => {
     const { useApi } = await import('../../../composables/useApi')
     const { post } = useApi()
 
-    await post('/api/notifications/abc-123/read')
+    await post('/api/v1/notifications/abc-123/read')
 
     expect(mockFetch).toHaveBeenCalledTimes(3)
     expect(mockFetch).toHaveBeenNthCalledWith(2, '/sanctum/csrf-cookie', expect.any(Object))
     expect(mockFetch).toHaveBeenNthCalledWith(
       3,
-      '/api/notifications/abc-123/read',
+      '/api/v1/notifications/abc-123/read',
       expect.objectContaining({
         headers: expect.objectContaining({
           'x-xsrf-token': 'fresh-token',

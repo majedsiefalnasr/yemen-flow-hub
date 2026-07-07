@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import DemoUserSwitcherDialog from '@/components/auth/DemoUserSwitcherDialog.vue'
 
 const config = useRuntimeConfig()
-const isEnabled = Boolean(config.public.demoUserSwitch)
+const isEnabled = Boolean(config.public.demoEnabled)
 const dialogOpen = ref(false)
 </script>
 

@@ -11,7 +11,6 @@ use App\Enums\VotingSessionStatus;
 use App\Models\AuditLog;
 use App\Models\Bank;
 use App\Models\CustomsDeclaration;
-use App\Models\DocumentType;
 use App\Models\ImportRequest;
 use App\Models\Merchant;
 use App\Models\RequestDocument;
@@ -357,7 +356,7 @@ class RequestScenarioBuilder
     private function docTypes(): Collection
     {
         if ($this->documentTypes === null) {
-            $this->documentTypes = DocumentType::query()->where('is_active', true)->orderBy('sort_order')->get();
+            $this->documentTypes = collect();
         }
 
         return $this->documentTypes;

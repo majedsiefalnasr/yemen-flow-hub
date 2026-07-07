@@ -31,7 +31,7 @@ describe('useUsers', () => {
   })
 
   describe('fetchUsers()', () => {
-    it('calls GET /api/users and returns the inner paginated data array', async () => {
+    it('calls GET /api/v1/users and returns the inner paginated data array', async () => {
       mockGet.mockResolvedValueOnce({
         success: true,
         message: 'OK',
@@ -47,7 +47,7 @@ describe('useUsers', () => {
       })
       const { fetchUsers } = useUsers()
       const result = await fetchUsers()
-      expect(mockGet).toHaveBeenCalledWith('/api/users')
+      expect(mockGet).toHaveBeenCalledWith('/api/v1/users')
       expect(result).toEqual([USER_FIXTURE])
     })
 
@@ -87,13 +87,13 @@ describe('useUsers', () => {
       })
 
       expect(mockGet).toHaveBeenCalledWith(
-        '/api/users?role=BANK_REVIEWER&bank_id=7&is_active=true&per_page=100',
+        '/api/v1/users?role=BANK_REVIEWER&bank_id=7&is_active=true&per_page=100',
       )
     })
   })
 
   describe('createUser()', () => {
-    it('calls POST /api/users with the payload and returns the created user', async () => {
+    it('calls POST /api/v1/users with the payload and returns the created user', async () => {
       mockPost.mockResolvedValueOnce({ success: true, message: 'Created', data: USER_FIXTURE })
       const { createUser } = useUsers()
       const payload = {
@@ -105,13 +105,13 @@ describe('useUsers', () => {
         is_active: true,
       }
       const result = await createUser(payload)
-      expect(mockPost).toHaveBeenCalledWith('/api/users', payload)
+      expect(mockPost).toHaveBeenCalledWith('/api/v1/users', payload)
       expect(result).toEqual(USER_FIXTURE)
     })
   })
 
   describe('updateUser()', () => {
-    it('calls PUT /api/users/:id with the payload and returns the updated user', async () => {
+    it('calls PUT /api/v1/users/:id with the payload and returns the updated user', async () => {
       const updated = { ...USER_FIXTURE, name: 'اسم محدث', is_active: false }
       mockPut.mockResolvedValueOnce({ success: true, message: 'Updated', data: updated })
       const { updateUser } = useUsers()
@@ -123,7 +123,7 @@ describe('useUsers', () => {
         is_active: false,
       }
       const result = await updateUser(1, payload)
-      expect(mockPut).toHaveBeenCalledWith('/api/users/1', payload)
+      expect(mockPut).toHaveBeenCalledWith('/api/v1/users/1', payload)
       expect(result).toEqual(updated)
     })
 
@@ -140,14 +140,14 @@ describe('useUsers', () => {
       }
       await updateUser(1, payload)
       expect(mockPut).toHaveBeenCalledWith(
-        '/api/users/1',
+        '/api/v1/users/1',
         expect.objectContaining({ password: 'newpass123' }),
       )
     })
   })
 
   describe('account recovery admin actions', () => {
-    it('calls POST /api/users/:id/reset-password with the temporary password payload', async () => {
+    it('calls POST /api/v1/users/:id/reset-password with the temporary password payload', async () => {
       mockPost.mockResolvedValueOnce({ success: true, message: 'OK', data: USER_FIXTURE })
       const { resetUserPassword } = useUsers()
       const payload = {
@@ -157,7 +157,7 @@ describe('useUsers', () => {
 
       const result = await resetUserPassword(7, payload)
 
-      expect(mockPost).toHaveBeenCalledWith('/api/users/7/reset-password', payload)
+      expect(mockPost).toHaveBeenCalledWith('/api/v1/users/7/reset-password', payload)
       expect(result).toEqual(USER_FIXTURE)
     })
 
@@ -170,8 +170,8 @@ describe('useUsers', () => {
       await resetUserMfa(7)
       await resetUserPin(7)
 
-      expect(mockPost).toHaveBeenNthCalledWith(1, '/api/users/7/reset-mfa', {})
-      expect(mockPost).toHaveBeenNthCalledWith(2, '/api/users/7/reset-pin', {})
+      expect(mockPost).toHaveBeenNthCalledWith(1, '/api/v1/users/7/reset-mfa', {})
+      expect(mockPost).toHaveBeenNthCalledWith(2, '/api/v1/users/7/reset-pin', {})
     })
   })
 })

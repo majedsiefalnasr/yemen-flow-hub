@@ -157,7 +157,7 @@ describe('notifications page — markAllRead interaction', () => {
     await markAllRead()
 
     expect(mockFetch).toHaveBeenCalledWith(
-      '/api/notifications/read-all',
+      '/api/v1/notifications/read-all',
       expect.objectContaining({
         method: 'POST',
       }),
@@ -253,7 +253,7 @@ describe('notifications page — pagination', () => {
     await fetchNotifications(2)
 
     expect(mockFetch).toHaveBeenCalledWith(
-      '/api/notifications',
+      '/api/v1/notifications',
       expect.objectContaining({
         query: { page: 2 },
       }),

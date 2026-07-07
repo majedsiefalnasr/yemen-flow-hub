@@ -269,7 +269,7 @@ describe('useReports — preset management (API-backed)', () => {
     mockGet.mockResolvedValue({ data: stored })
     const { loadPresets } = useReports()
     const result = await loadPresets()
-    expect(mockGet).toHaveBeenCalledWith('/api/report-presets')
+    expect(mockGet).toHaveBeenCalledWith('/api/v1/report-presets')
     expect(result).toEqual(stored)
   })
 
@@ -284,7 +284,7 @@ describe('useReports — preset management (API-backed)', () => {
     const { savePreset } = useReports()
     const preset = await savePreset('Q1 2026', { fromDate: '2026-01-01', toDate: '2026-03-31' })
     expect(mockPost).toHaveBeenCalledWith(
-      '/api/report-presets',
+      '/api/v1/report-presets',
       expect.objectContaining({ name: 'Q1 2026' }),
     )
     expect(preset.name).toBe('Q1 2026')
@@ -303,7 +303,7 @@ describe('useReports — preset management (API-backed)', () => {
     mockDel.mockResolvedValue({ data: [] })
     const { deletePreset } = useReports()
     await deletePreset('abc-123')
-    expect(mockDel).toHaveBeenCalledWith('/api/report-presets/abc-123')
+    expect(mockDel).toHaveBeenCalledWith('/api/v1/report-presets/abc-123')
   })
 })
 

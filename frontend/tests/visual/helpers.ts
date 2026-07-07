@@ -316,15 +316,15 @@ export async function mockApi(page: Page, role: VisualRole) {
       await json(route, apiOk(makeRequest(parseInt(path.split('/').pop()!), 'SUBMITTED')))
       return
     }
-    if (path === '/api/banks') {
+    if (path === '/api/v1/banks') {
       await json(route, apiOk(SAMPLE_BANKS))
       return
     }
-    if (path === '/api/notifications') {
+    if (path === '/api/v1/notifications') {
       await json(route, paginatedOk([]))
       return
     }
-    if (path === '/api/notifications/unread-count') {
+    if (path === '/api/v1/notifications/unread-count') {
       await json(route, apiOk({ count: 2 }))
       return
     }

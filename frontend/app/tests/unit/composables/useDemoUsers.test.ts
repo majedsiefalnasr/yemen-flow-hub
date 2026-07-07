@@ -5,7 +5,7 @@ import type { DemoUser } from '../../../types/models'
 const mockFetch = vi.fn()
 vi.stubGlobal('$fetch', mockFetch)
 vi.stubGlobal('useRuntimeConfig', () => ({
-  public: { apiBase: 'http://localhost:8000' },
+  public: { apiBase: 'http://localhost:8000', demoEnabled: true },
 }))
 
 const { useDemoUsers } = await import('../../../composables/useDemoUsers')
@@ -62,5 +62,17 @@ describe('useDemoUsers', () => {
     await fetchDemoUsers()
 
     expect(error.value).not.toBeNull()
+  })
+
+  it('skips the API call when demo switching is disabled', async () => {
+    vi.stubGlobal('useRuntimeConfig', () => ({
+      public: { apiBase: 'http://localhost:8000', demoEnabled: false },
+    }))
+
+    const { users, fetchDemoUsers } = useDemoUsers()
+    await fetchDemoUsers()
+
+    expect(mockFetch).not.toHaveBeenCalled()
+    expect(users.value).toEqual([])
   })
 })

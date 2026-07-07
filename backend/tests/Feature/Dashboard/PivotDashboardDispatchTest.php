@@ -5,6 +5,7 @@ namespace Tests\Feature\Dashboard;
 use App\Enums\UserRole;
 use App\Models\User;
 use Database\Seeders\GovernanceSeeder;
+use Database\Seeders\ScreenPermissionSeeder;
 use Database\Seeders\UserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -17,6 +18,7 @@ class PivotDashboardDispatchTest extends TestCase
     {
         parent::setUp();
         $this->seed(GovernanceSeeder::class);
+        $this->seed(ScreenPermissionSeeder::class);
         $this->seed(UserSeeder::class);
     }
 
@@ -48,23 +50,23 @@ class PivotDashboardDispatchTest extends TestCase
     {
         $director = User::query()->where('role', UserRole::COMMITTEE_DIRECTOR->value)->firstOrFail();
 
-        $response = $this->actingAs($director)->getJson('/api/audit');
+        $response = $this->actingAs($director)->getJson('/api/v1/audit-logs');
         $response->assertOk();
     }
 
-    public function test_executive_member_cannot_access_audit_log(): void
+    public function test_executive_member_can_access_audit_log_when_granted(): void
     {
         $executive = User::query()->where('role', UserRole::EXECUTIVE_MEMBER->value)->firstOrFail();
 
-        $response = $this->actingAs($executive)->getJson('/api/audit');
-        $response->assertForbidden();
+        $response = $this->actingAs($executive)->getJson('/api/v1/audit-logs');
+        $response->assertOk();
     }
 
     public function test_cby_admin_can_access_audit_log(): void
     {
         $admin = User::query()->where('role', UserRole::CBY_ADMIN->value)->firstOrFail();
 
-        $response = $this->actingAs($admin)->getJson('/api/audit');
+        $response = $this->actingAs($admin)->getJson('/api/v1/audit-logs');
         $response->assertOk();
     }
 }

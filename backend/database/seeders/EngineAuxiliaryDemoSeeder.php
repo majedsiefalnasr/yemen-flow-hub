@@ -127,7 +127,7 @@ class EngineAuxiliaryDemoSeeder extends Seeder
                 'body' => $body,
                 'entity_type' => EngineRequest::class,
                 'entity_id' => $request->id,
-                'action_url' => "/admin/requests/{$request->id}",
+                'action_url' => "/workflows/instances/{$request->id}",
             ]);
 
             NotificationRecipient::query()->create([

@@ -1,6 +1,7 @@
 import { RequestStatus, UserRole } from '../../../types/enums'
 import type { ImportRequest, RequestDocument } from '../../../types/models'
 
+/** Test fixture for engine request queue rows (legacy `ImportRequest` type name). */
 export function makeImportRequest(overrides: Partial<ImportRequest> = {}): ImportRequest {
   return {
     id: 42,
