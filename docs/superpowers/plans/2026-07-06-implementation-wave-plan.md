@@ -45,11 +45,12 @@ Multiple WPs may be developed in parallel; **merge order always respects depende
 - WP-8 notes: F-16 terminology verified already-shipped (no new commit); F-8 scanning shipped schema-ready with enforcement config-gated; F-14 official-issuer source (`issued_by`) remains an open business question — `generated_by` carries the transition actor.
 
 ### Wave 5 — Runtime UX + settings + operations
-**WPs:** WP-11 ✅, WP-12, WP-13. **Parallel tracks:**
-- Track A: WP-11 Settings truth wave ✅ (merged to `main`; merge commit includes `42b39bca` gate fixes)
-- Track B: WP-12 Runtime UX pack
-- Track C: WP-13 Retention + operations (docs/jobs)
-- **Constraint:** WP-6 (Wave 3) and WP-11 must agree on auth setting defaults — especially `mfa_required` and `login_lockout_*`. WP-11 now canonical: `mfa_required=false`, lockout 5 attempts / 15 min via DB rows.
+**WPs:** WP-11 ✅, WP-12 🔄, WP-13 🔄. **Parallel tracks (in flight):**
+- Track A: WP-11 Settings truth wave ✅ (merged to `main`; merge commit `e02cce5d`)
+- Track B: WP-12 Runtime UX pack — branch `worktree-wp12-runtime-ux`, plan `docs/superpowers/plans/2026-07-07-wp12-runtime-ux-pack.md`
+- Track C: WP-13 Retention + operations — branch `worktree-wp13-retention-ops`, plan `docs/superpowers/plans/2026-07-07-wp13-retention-and-operations.md`
+- **Merge order:** WP-12 and WP-13 have no hard dependency; prefer WP-12 before WP-13 on `ReportExport` touchpoints (FAILED UX vs EXPIRED/purge)
+- **Constraint:** WP-6 (Wave 3) and WP-11 auth defaults now canonical: `mfa_required=false`, lockout 5 attempts / 15 min via DB rows.
 
 ### Wave 6 — Terminal cleanup
 **WPs:** WP-14.
