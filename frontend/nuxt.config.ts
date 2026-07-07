@@ -68,6 +68,7 @@ export default defineNuxtConfig({
       googleFontsApiKey: process.env.NUXT_PUBLIC_GOOGLE_FONTS_API_KEY || '',
       inactivityTimeoutMs: Number(process.env.NUXT_PUBLIC_INACTIVITY_TIMEOUT_MS) || 900_000,
       inactivityWarningMs: Number(process.env.NUXT_PUBLIC_INACTIVITY_WARNING_MS) || 120_000,
+      auditLegacyWidgets: process.env.AUDIT_LEGACY_WIDGETS === 'true',
     },
   },
 

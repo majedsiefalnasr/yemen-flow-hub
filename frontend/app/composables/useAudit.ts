@@ -1,4 +1,4 @@
-import type { ApiResponse, AuditLog, EngineAuditLog, PaginatedResponse } from '../types/models'
+import type { AuditLog, EngineAuditLog, PaginatedResponse } from '../types/models'
 import { useApi } from './useApi'
 
 export interface AuditFilters {
@@ -24,67 +24,60 @@ export interface EngineAuditFilters {
   per_page?: number
 }
 
-export interface AuditStats {
-  today_count: number
-  duplicate_invoice_count: number
+function mapEngineAuditLogToAuditLog(log: EngineAuditLog): AuditLog {
+  const metadata =
+    log.metadata ??
+    (log.old_values || log.new_values
+      ? { before: log.old_values ?? {}, after: log.new_values ?? {} }
+      : null)
+
+  const metaRecord = (log.metadata ?? {}) as Record<string, unknown>
+  const oldRecord = (log.old_values ?? {}) as Record<string, unknown>
+  const newRecord = (log.new_values ?? {}) as Record<string, unknown>
+
+  return {
+    id: log.id,
+    user: log.actor
+      ? {
+          id: log.actor.id,
+          name: log.actor.name,
+          email: log.actor.email,
+          role: log.user_role ?? '',
+        }
+      : null,
+    user_id: log.actor_user_id,
+    user_role: log.user_role,
+    action: log.event_code,
+    entity_type: log.entity_type,
+    entity_id: log.entity_id,
+    from_status:
+      (metaRecord.from_status as string | undefined) ??
+      (oldRecord.from_status as string | undefined) ??
+      null,
+    to_status:
+      (metaRecord.to_status as string | undefined) ??
+      (newRecord.to_status as string | undefined) ??
+      null,
+    ip_address: log.ip_address,
+    user_agent: log.user_agent,
+    metadata,
+    created_at: log.created_at,
+  }
 }
 
-export interface DuplicateRequest {
-  id: number
-  reference_number: string
-  bank_name: string | null
-  amount: number
-  currency: string
-  created_at: string
-  status: string
-}
-
-export interface DuplicateGroup {
-  invoice_number: string
-  banks: string[]
-  requests: DuplicateRequest[]
-}
-
-/** @deprecated use DuplicateGroup */
-export type DuplicateInvoice = DuplicateGroup
-
-export interface RiskIndicator {
-  title: string
-  body: string
-  level: 'عالية' | 'متوسطة' | 'منخفضة'
+function toEngineAuditFilters(filters: AuditFilters): EngineAuditFilters {
+  return {
+    user: filters.user_id,
+    event: filters.action,
+    from: filters.from_date,
+    to: filters.to_date,
+    page: filters.page,
+    per_page: filters.per_page,
+  }
 }
 
 export function useAudit() {
   const { get } = useApi()
-
-  async function fetchAuditLogs(filters: AuditFilters = {}): Promise<PaginatedResponse<AuditLog>> {
-    const params = new URLSearchParams()
-    if (filters.user_id) params.set('user_id', String(filters.user_id))
-    if (filters.action) params.set('action', filters.action)
-    if (filters.from_date) params.set('from_date', filters.from_date)
-    if (filters.to_date) params.set('to_date', filters.to_date)
-    if (filters.page) params.set('page', String(filters.page))
-    if (filters.per_page) params.set('per_page', String(filters.per_page))
-    const query = params.toString()
-    const path = query ? `/api/audit?${query}` : '/api/audit'
-    const response = await get<ApiResponse<PaginatedResponse<AuditLog>>>(path)
-    return response.data
-  }
-
-  async function fetchAuditStats(): Promise<AuditStats> {
-    const response = await get<ApiResponse<AuditStats>>('/api/audit/stats')
-    return response.data
-  }
-
-  async function fetchDuplicates(): Promise<DuplicateGroup[]> {
-    const response = await get<ApiResponse<{ data: DuplicateGroup[] }>>('/api/audit/duplicates')
-    return response.data.data ?? []
-  }
-
-  async function fetchRiskIndicators(): Promise<RiskIndicator[]> {
-    const response = await get<ApiResponse<{ data: RiskIndicator[] }>>('/api/audit/risk-indicators')
-    return response.data.data
-  }
 
   async function fetchEngineAuditLogs(
     filters: EngineAuditFilters = {},
@@ -102,6 +95,14 @@ export function useAudit() {
       meta: PaginatedResponse<EngineAuditLog>['meta']
     }>(path)
     return { data: response.data, meta: response.meta }
+  }
+
+  async function fetchAuditLogs(filters: AuditFilters = {}): Promise<PaginatedResponse<AuditLog>> {
+    const result = await fetchEngineAuditLogs(toEngineAuditFilters(filters))
+    return {
+      data: result.data.map(mapEngineAuditLogToAuditLog),
+      meta: result.meta,
+    }
   }
 
   async function fetchEngineAuditLogDetail(id: number): Promise<EngineAuditLog> {
@@ -137,9 +138,6 @@ export function useAudit() {
 
   return {
     fetchAuditLogs,
-    fetchAuditStats,
-    fetchDuplicates,
-    fetchRiskIndicators,
     fetchEngineAuditLogs,
     fetchEngineAuditLogDetail,
     exportEngineAuditLogs,

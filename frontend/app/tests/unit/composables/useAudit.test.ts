@@ -8,66 +8,74 @@ vi.mock('../../../composables/useApi', () => ({
 
 const { useAudit } = await import('../../../composables/useAudit')
 
-const LOG_FIXTURE = {
+const ENGINE_LOG_FIXTURE = {
   id: 1,
-  user: { id: 5, name: 'مدير النظام', email: 'admin@cby.ye', role: 'CBY_ADMIN' },
-  user_id: 5,
+  actor: { id: 5, name: 'مدير النظام', email: 'admin@cby.ye' },
+  actor_user_id: 5,
+  actor_role: { id: 1, code: 'admin', name: 'مدير النظام' },
+  actor_role_id: 1,
   user_role: 'CBY_ADMIN',
-  action: 'STATUS_TRANSITION',
+  event_code: 'STATUS_TRANSITION',
   entity_type: 'ImportRequest',
   entity_id: 42,
-  from_status: 'BANK_REVIEW',
-  to_status: 'BANK_APPROVED',
+  request_id: 42,
+  correlation_id: null,
+  old_values: { from_status: 'BANK_REVIEW' },
+  new_values: { to_status: 'BANK_APPROVED' },
+  metadata: { reason: null, from_status: 'BANK_REVIEW', to_status: 'BANK_APPROVED' },
   ip_address: '127.0.0.1',
-  metadata: { reason: null },
+  user_agent: 'Test Agent',
   created_at: '2026-05-18T10:00:00.000Z',
 }
 
-const PAGINATED_RESPONSE = {
-  success: true,
-  message: 'OK',
-  data: {
-    data: [LOG_FIXTURE],
-    meta: { current_page: 1, last_page: 3, per_page: 30, total: 75 },
-  },
+const V1_PAGINATED_RESPONSE = {
+  data: [ENGINE_LOG_FIXTURE],
+  meta: { current_page: 1, last_page: 3, per_page: 30, total: 75 },
 }
 
-describe('useAudit — fetchAuditLogs', () => {
+describe('useAudit — fetchAuditLogs (V1 audit-logs)', () => {
   beforeEach(() => {
     mockGet.mockReset()
   })
 
-  it('calls GET /api/audit without filters by default', async () => {
-    mockGet.mockResolvedValueOnce(PAGINATED_RESPONSE)
+  it('calls GET /api/v1/audit-logs for the main audit table', async () => {
+    mockGet.mockResolvedValueOnce(V1_PAGINATED_RESPONSE)
+    const { fetchAuditLogs } = useAudit()
+    await fetchAuditLogs({ page: 1 })
+    expect(mockGet).toHaveBeenCalledWith('/api/v1/audit-logs?page=1')
+  })
+
+  it('calls GET /api/v1/audit-logs without filters by default', async () => {
+    mockGet.mockResolvedValueOnce(V1_PAGINATED_RESPONSE)
     const { fetchAuditLogs } = useAudit()
     await fetchAuditLogs()
-    expect(mockGet).toHaveBeenCalledWith('/api/audit')
+    expect(mockGet).toHaveBeenCalledWith('/api/v1/audit-logs')
   })
 
-  it('appends action filter to query string', async () => {
-    mockGet.mockResolvedValueOnce(PAGINATED_RESPONSE)
+  it('maps action filter to event query param', async () => {
+    mockGet.mockResolvedValueOnce(V1_PAGINATED_RESPONSE)
     const { fetchAuditLogs } = useAudit()
     await fetchAuditLogs({ action: 'STATUS_TRANSITION' })
-    expect(mockGet).toHaveBeenCalledWith(expect.stringContaining('action=STATUS_TRANSITION'))
+    expect(mockGet).toHaveBeenCalledWith(expect.stringContaining('event=STATUS_TRANSITION'))
   })
 
-  it('appends from_date and to_date filters', async () => {
-    mockGet.mockResolvedValueOnce(PAGINATED_RESPONSE)
+  it('maps from_date and to_date to from and to query params', async () => {
+    mockGet.mockResolvedValueOnce(V1_PAGINATED_RESPONSE)
     const { fetchAuditLogs } = useAudit()
     await fetchAuditLogs({ from_date: '2026-05-01', to_date: '2026-05-18' })
-    expect(mockGet).toHaveBeenCalledWith(expect.stringContaining('from_date=2026-05-01'))
-    expect(mockGet).toHaveBeenCalledWith(expect.stringContaining('to_date=2026-05-18'))
+    expect(mockGet).toHaveBeenCalledWith(expect.stringContaining('from=2026-05-01'))
+    expect(mockGet).toHaveBeenCalledWith(expect.stringContaining('to=2026-05-18'))
   })
 
-  it('appends page parameter', async () => {
-    mockGet.mockResolvedValueOnce(PAGINATED_RESPONSE)
+  it('maps user_id filter to user query param', async () => {
+    mockGet.mockResolvedValueOnce(V1_PAGINATED_RESPONSE)
     const { fetchAuditLogs } = useAudit()
-    await fetchAuditLogs({ page: 2 })
-    expect(mockGet).toHaveBeenCalledWith(expect.stringContaining('page=2'))
+    await fetchAuditLogs({ user_id: 5 })
+    expect(mockGet).toHaveBeenCalledWith(expect.stringContaining('user=5'))
   })
 
   it('returns paginated response with data and meta', async () => {
-    mockGet.mockResolvedValueOnce(PAGINATED_RESPONSE)
+    mockGet.mockResolvedValueOnce(V1_PAGINATED_RESPONSE)
     const { fetchAuditLogs } = useAudit()
     const result = await fetchAuditLogs()
     expect(result.data).toHaveLength(1)
@@ -75,8 +83,8 @@ describe('useAudit — fetchAuditLogs', () => {
     expect(result.meta.last_page).toBe(3)
   })
 
-  it('returns audit log entries with correct shape', async () => {
-    mockGet.mockResolvedValueOnce(PAGINATED_RESPONSE)
+  it('maps V1 engine audit log entries to AuditLog shape', async () => {
+    mockGet.mockResolvedValueOnce(V1_PAGINATED_RESPONSE)
     const { fetchAuditLogs } = useAudit()
     const result = await fetchAuditLogs()
     const log = result.data[0]
@@ -89,9 +97,8 @@ describe('useAudit — fetchAuditLogs', () => {
 
   it('returns empty data array when no logs match', async () => {
     mockGet.mockResolvedValueOnce({
-      success: true,
-      message: 'OK',
-      data: { data: [], meta: { current_page: 1, last_page: 1, per_page: 30, total: 0 } },
+      data: [],
+      meta: { current_page: 1, last_page: 1, per_page: 30, total: 0 },
     })
     const { fetchAuditLogs } = useAudit()
     const result = await fetchAuditLogs({ action: 'nonexistent_action' })
@@ -105,120 +112,6 @@ describe('useAudit — fetchAuditLogs', () => {
     await expect(fetchAuditLogs()).rejects.toThrow('Forbidden')
   })
 })
-
-describe('useAudit — new endpoints (Story 7.9)', () => {
-  beforeEach(() => {
-    mockGet.mockReset()
-  })
-
-  it('fetchAuditStats maps today_count and duplicate_invoice_count', async () => {
-    mockGet.mockResolvedValueOnce({
-      success: true,
-      message: 'OK',
-      data: { today_count: 12, duplicate_invoice_count: 3 },
-    })
-    const { fetchAuditStats } = useAudit()
-    const result = await fetchAuditStats()
-    expect(result.today_count).toBe(12)
-    expect(result.duplicate_invoice_count).toBe(3)
-    expect(mockGet).toHaveBeenCalledWith('/api/audit/stats')
-  })
-
-  it('fetchDuplicates returns grouped DuplicateGroup array (Story 8.6)', async () => {
-    const group = {
-      invoice_number: 'INV-001',
-      banks: ['بنك التضامن', 'بنك سبأ'],
-      requests: [
-        {
-          id: 1,
-          reference_number: 'YFH-2026-000001',
-          bank_name: 'بنك التضامن',
-          amount: 5000,
-          currency: 'USD',
-          created_at: '2026-05-18T10:00:00Z',
-          status: 'DRAFT',
-        },
-        {
-          id: 2,
-          reference_number: 'YFH-2026-000002',
-          bank_name: 'بنك سبأ',
-          amount: 5000,
-          currency: 'USD',
-          created_at: '2026-05-18T11:00:00Z',
-          status: 'SUBMITTED',
-        },
-      ],
-    }
-    mockGet.mockResolvedValueOnce({
-      success: true,
-      message: 'OK',
-      data: { data: [group] },
-    })
-    const { fetchDuplicates } = useAudit()
-    const result = await fetchDuplicates()
-    expect(result).toHaveLength(1)
-    expect(result[0]?.invoice_number).toBe('INV-001')
-    expect(result[0]?.banks).toEqual(['بنك التضامن', 'بنك سبأ'])
-    expect(result[0]?.requests).toHaveLength(2)
-    expect(mockGet).toHaveBeenCalledWith('/api/audit/duplicates')
-  })
-
-  it('fetchDuplicates returns empty array when backend has no groups', async () => {
-    mockGet.mockResolvedValueOnce({ success: true, message: 'OK', data: { data: [] } })
-    const { fetchDuplicates } = useAudit()
-    const result = await fetchDuplicates()
-    expect(result).toEqual([])
-  })
-
-  it('fetchRiskIndicators returns array with title, body, level', async () => {
-    const indicators = [
-      { title: 'نمط غير عادي', body: 'تفصيل', level: 'عالية' as const },
-      { title: 'محاولة مشبوهة', body: 'تفصيل 2', level: 'متوسطة' as const },
-    ]
-    mockGet.mockResolvedValueOnce({ success: true, message: 'OK', data: { data: indicators } })
-    const { fetchRiskIndicators } = useAudit()
-    const result = await fetchRiskIndicators()
-    expect(result).toHaveLength(2)
-    expect(result[0]?.level).toBe('عالية')
-    expect(result[1]?.level).toBe('متوسطة')
-    expect(mockGet).toHaveBeenCalledWith('/api/audit/risk-indicators')
-  })
-
-  it('fetchAuditLogs still works unchanged after composable extension', async () => {
-    mockGet.mockResolvedValueOnce({
-      success: true,
-      message: 'OK',
-      data: {
-        data: [LOG_FIXTURE],
-        meta: { current_page: 1, last_page: 1, per_page: 30, total: 1 },
-      },
-    })
-    const { fetchAuditLogs } = useAudit()
-    const result = await fetchAuditLogs()
-    expect(result.data).toHaveLength(1)
-    expect(result.data[0]?.action).toBe('STATUS_TRANSITION')
-  })
-})
-
-const ENGINE_LOG_FIXTURE = {
-  id: 100,
-  actor: { id: 5, name: 'Admin', email: 'admin@cby.ye' },
-  actor_user_id: 5,
-  actor_role: { id: 1, code: 'admin', name: 'مدير النظام' },
-  actor_role_id: 1,
-  user_role: 'CBY_ADMIN',
-  event_code: 'STATUS_TRANSITION',
-  entity_type: 'EngineRequest',
-  entity_id: 42,
-  request_id: 42,
-  correlation_id: 'abc-123',
-  old_values: { stage: 'INTAKE' },
-  new_values: { stage: 'REVIEW' },
-  metadata: {},
-  ip_address: '10.0.0.1',
-  user_agent: 'Test Agent',
-  created_at: '2026-06-23T10:00:00.000Z',
-}
 
 describe('useAudit — V1 engine audit (Story 18.6.1)', () => {
   beforeEach(() => {
@@ -235,7 +128,7 @@ describe('useAudit — V1 engine audit (Story 18.6.1)', () => {
     expect(mockGet).toHaveBeenCalledWith('/api/v1/audit-logs')
     expect(result.data).toHaveLength(1)
     expect(result.data[0]?.event_code).toBe('STATUS_TRANSITION')
-    expect(result.data[0]?.correlation_id).toBe('abc-123')
+    expect(result.data[0]?.correlation_id).toBeNull()
   })
 
   it('fetchEngineAuditLogs passes all filters', async () => {
@@ -257,14 +150,14 @@ describe('useAudit — V1 engine audit (Story 18.6.1)', () => {
     const { fetchEngineAuditLogDetail } = useAudit()
     const result = await fetchEngineAuditLogDetail(100)
     expect(mockGet).toHaveBeenCalledWith('/api/v1/audit-logs/100')
-    expect(result.id).toBe(100)
-    expect(result.old_values).toEqual({ stage: 'INTAKE' })
-    expect(result.new_values).toEqual({ stage: 'REVIEW' })
+    expect(result.id).toBe(1)
+    expect(result.old_values).toEqual({ from_status: 'BANK_REVIEW' })
+    expect(result.new_values).toEqual({ to_status: 'BANK_APPROVED' })
   })
 
   it('fetchEngineAuditLogs filters by correlation_id', async () => {
     mockGet.mockResolvedValueOnce({
-      data: [ENGINE_LOG_FIXTURE],
+      data: [{ ...ENGINE_LOG_FIXTURE, correlation_id: 'abc-123' }],
       meta: { current_page: 1, last_page: 1, per_page: 30, total: 1 },
     })
     const { fetchEngineAuditLogs } = useAudit()

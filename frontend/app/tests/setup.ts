@@ -20,7 +20,7 @@ beforeEach(() => {
 // but not available in the Vitest environment.
 vi.stubGlobal('useState', (_key: string, init?: () => unknown) => ref(init?.()))
 vi.stubGlobal('useRuntimeConfig', () => ({
-  public: { apiBase: 'http://localhost', demoMode: false },
+  public: { apiBase: 'http://localhost', demoMode: false, auditLegacyWidgets: false },
 }))
 vi.stubGlobal('useRoute', () => ({ params: {}, query: {}, path: '/' }))
 vi.stubGlobal('useRouter', () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() }))

@@ -7,13 +7,10 @@ import type {
   VisibilityState,
 } from '@tanstack/vue-table'
 import {
-  Activity,
   AlertTriangle,
   Download,
-  FileWarning,
   MoreHorizontal,
   SearchX,
-  ShieldCheck,
   X,
 } from 'lucide-vue-next'
 import { h } from 'vue'
@@ -30,8 +27,6 @@ import {
 } from '@/components/ui/data-table'
 import DataTable from '@/components/ui/data-table/DataTable.vue'
 import MetricCard from '@/components/shared/dashboard/MetricCard.vue'
-import MetricGrid from '@/components/shared/dashboard/MetricGrid.vue'
-import RankedListCard from '@/components/shared/dashboard/RankedListCard.vue'
 import InsightsTabsCard from '@/components/shared/dashboard/InsightsTabsCard.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -57,7 +52,9 @@ definePageMeta({
   requiredRoles: ROUTE_ROLE_MAP['/audit'],
 })
 
-const { fetchAuditLogs, fetchAuditStats, fetchDuplicates, fetchRiskIndicators } = useAudit()
+const { fetchAuditLogs } = useAudit()
+const config = useRuntimeConfig()
+const showLegacyWidgets = config.public.auditLegacyWidgets === true
 const { exportToCSV, exportToExcel, exportToJSON } = useTableExport()
 const route = useRoute()
 const router = useRouter()
@@ -69,15 +66,6 @@ const loadingAudit = ref(true)
 const auditLoadError = ref<string | null>(null)
 const auditLogs = ref<AuditLog[]>([])
 const auditMeta = ref<{ last_page: number; total: number; per_page: number } | null>(null)
-const todayCount = ref(0)
-const duplicates = ref<
-  {
-    invoice_number: string
-    banks: string[]
-    requests: { id: number; reference_number: string }[]
-  }[]
->([])
-const risks = ref<{ title: string; body: string; level: 'عالية' | 'متوسطة' | 'منخفضة' }[]>([])
 
 const urlAuditPage = computed(() => Number(route.query.page ?? 1))
 const urlAuditPageSize = computed(() => Number(route.query.perPage ?? DEFAULT_AUDIT_PAGE_SIZE))
@@ -123,27 +111,8 @@ async function loadAuditLogs() {
 
 watch([urlAuditPage, urlAuditPageSize], () => loadAuditLogs())
 
-onMounted(async () => {
-  const [logsResult, statsResult, dupsResult, risksResult] = await Promise.allSettled([
-    fetchAuditLogs({ page: urlAuditPage.value, per_page: urlAuditPageSize.value }),
-    fetchAuditStats(),
-    fetchDuplicates(),
-    fetchRiskIndicators(),
-  ])
-  if (logsResult.status === 'fulfilled') {
-    auditLogs.value = logsResult.value.data
-    auditMeta.value = {
-      last_page: logsResult.value.meta.last_page,
-      total: logsResult.value.meta.total,
-      per_page: logsResult.value.meta.per_page,
-    }
-  } else {
-    auditLoadError.value = 'تعذّر تحميل سجل التدقيق. تحقق من الاتصال وأعد المحاولة.'
-  }
-  if (statsResult.status === 'fulfilled') todayCount.value = statsResult.value.today_count
-  if (dupsResult.status === 'fulfilled') duplicates.value = dupsResult.value
-  if (risksResult.status === 'fulfilled') risks.value = risksResult.value
-  loadingAudit.value = false
+onMounted(() => {
+  void loadAuditLogs()
 })
 
 const filteredAudits = computed(() => {
@@ -156,40 +125,6 @@ const filteredAudits = computed(() => {
       entry.action.toLowerCase().includes(lower),
   )
 })
-
-const kpis = computed(() => [
-  {
-    label: 'نشاطات اليوم',
-    value: todayCount.value.toString(),
-    icon: Activity,
-    tone: 'text-info bg-info/10',
-  },
-  {
-    label: 'تنبيهات مفتوحة',
-    value: risks.value.length.toString(),
-    icon: AlertTriangle,
-    tone: 'text-[var(--color-text-warning)] bg-[var(--color-surface-warning)]',
-  },
-  {
-    label: 'فواتير مكررة',
-    value: duplicates.value.length.toString(),
-    icon: FileWarning,
-    tone: 'text-[var(--color-text-error)] bg-[var(--color-surface-error)]',
-  },
-  {
-    label: 'حالات مخاطر',
-    value: risks.value.filter((r) => r.level === 'عالية').length.toString(),
-    icon: ShieldCheck,
-    tone: 'text-[var(--color-text-error)] bg-[var(--color-surface-error)]',
-  },
-])
-
-function kpiToneFromClass(tone: string): 'default' | 'info' | 'warning' | 'danger' {
-  if (tone.includes('text-red')) return 'danger'
-  if (tone.includes('text-amber')) return 'warning'
-  if (tone.includes('text-info')) return 'info'
-  return 'default'
-}
 
 // Smart summary bar computeds derived from loaded audit logs
 const smartSummary = computed(() => {
@@ -533,7 +468,11 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: any; after: 
   <div>
     <PageHeader
       title="التدقيق والامتثال"
-      subtitle="سجل النشاط، كشف الفواتير المكررة، وتنبيهات المخاطر الأمنية"
+      :subtitle="
+        showLegacyWidgets
+          ? 'سجل النشاط، كشف الفواتير المكررة، وتنبيهات المخاطر الأمنية'
+          : 'سجل النشاط والأنماط الشاذة المستمدة من سجلات التدقيق'
+      "
       :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'التدقيق والامتثال' }]"
     />
 
@@ -586,25 +525,9 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: any; after: 
       </Card>
     </div>
 
-    <div v-if="!auditLoadError" class="mb-6">
-      <MetricGrid :columns="4">
-        <MetricCard
-          v-for="kpi in kpis"
-          :key="kpi.label"
-          :label="kpi.label"
-          :value="kpi.value"
-          :icon="kpi.icon"
-          :tone="kpiToneFromClass(kpi.tone)"
-          :clickable="false"
-        />
-      </MetricGrid>
-    </div>
-
     <Tabs v-if="!auditLoadError" default-value="logs">
       <TabsList>
         <TabsTrigger value="logs"> سجل النشاط </TabsTrigger>
-        <TabsTrigger value="duplicates"> الفواتير المكررة </TabsTrigger>
-        <TabsTrigger value="risk"> مؤشرات المخاطر </TabsTrigger>
         <TabsTrigger value="anomalies">
           الأنماط الشاذة
           <Badge
@@ -739,102 +662,6 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: any; after: 
             </template>
           </DataTable>
         </Card>
-      </TabsContent>
-
-      <TabsContent value="duplicates" class="mt-4">
-        <Card class="border-0 p-5 shadow">
-          <div
-            v-if="duplicates.length > 0"
-            class="border-destructive/30 mb-4 flex items-center gap-2 rounded-lg border bg-[var(--color-surface-error)] p-3"
-          >
-            <AlertTriangle class="h-5 w-5 text-[var(--color-text-error)]" />
-            <div class="text-sm">
-              <span class="font-semibold">تم اكتشاف {{ duplicates.length }} حالات</span>
-              لفواتير مكررة بحاجة لمراجعة عاجلة.
-            </div>
-          </div>
-
-          <Empty
-            v-if="duplicates.length === 0"
-            class="bg-muted/20 min-h-[160px] rounded-xl border border-dashed"
-          >
-            <EmptyHeader>
-              <EmptyTitle>لا توجد فواتير مكررة</EmptyTitle>
-            </EmptyHeader>
-            <EmptyContent>
-              <EmptyDescription>لم يُكتشف أي تكرار في أرقام الفواتير.</EmptyDescription>
-            </EmptyContent>
-          </Empty>
-
-          <div class="space-y-3">
-            <div
-              v-for="dup in duplicates"
-              :key="dup.invoice_number"
-              class="hover:border-destructive/40 rounded-lg border p-4"
-            >
-              <div class="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <div class="flex items-center gap-2">
-                    <Badge variant="destructive"> مكرر </Badge>
-                    <span class="font-mono font-semibold">{{ dup.invoice_number }}</span>
-                  </div>
-                  <div class="text-muted-foreground mt-1 text-xs">
-                    البنوك: {{ dup.banks.join('، ') }}
-                  </div>
-                </div>
-                <div class="text-muted-foreground text-start text-xs">
-                  {{ dup.requests.length }} طلبات مرتبطة
-                </div>
-              </div>
-            </div>
-          </div>
-        </Card>
-      </TabsContent>
-
-      <TabsContent value="risk" class="mt-4">
-        <RankedListCard title="مؤشرات المخاطر النشطة" content-class="p-5">
-          <Empty
-            v-if="risks.length === 0"
-            class="bg-muted/20 min-h-[160px] rounded-xl border border-dashed"
-          >
-            <EmptyHeader>
-              <EmptyTitle>لا توجد مؤشرات مخاطر</EmptyTitle>
-            </EmptyHeader>
-            <EmptyContent>
-              <EmptyDescription>النظام في وضع سليم، لا تنبيهات نشطة.</EmptyDescription>
-            </EmptyContent>
-          </Empty>
-
-          <div class="space-y-3">
-            <div
-              v-for="risk in risks"
-              :key="risk.title"
-              class="flex items-start gap-3 rounded-lg border p-3"
-            >
-              <ShieldCheck
-                :class="[
-                  'mt-0.5 h-5 w-5',
-                  risk.level === 'عالية'
-                    ? 'text-[var(--color-text-error)]'
-                    : risk.level === 'متوسطة'
-                      ? 'text-[var(--color-text-warning)]'
-                      : 'text-info',
-                ]"
-              />
-              <div class="flex-1">
-                <div class="text-sm font-medium">
-                  {{ risk.title }}
-                </div>
-                <div class="text-muted-foreground text-xs">
-                  {{ risk.body }}
-                </div>
-              </div>
-              <Badge :variant="risk.level === 'عالية' ? 'destructive' : 'secondary'">
-                {{ risk.level }}
-              </Badge>
-            </div>
-          </div>
-        </RankedListCard>
       </TabsContent>
 
       <TabsContent value="anomalies" class="mt-4">
