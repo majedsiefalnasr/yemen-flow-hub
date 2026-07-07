@@ -7,16 +7,20 @@ use App\Exceptions\EngineException;
 use App\Models\EngineRequest;
 use App\Models\User;
 use App\Services\Audit\AuditService;
+use App\Services\Settings\SettingResolver;
 use App\Support\RoleCodes;
 use Illuminate\Support\Facades\DB;
 
 class EngineClaimService
 {
-    public function __construct(private AuditService $auditService) {}
+    public function __construct(
+        private AuditService $auditService,
+        private SettingResolver $settings,
+    ) {}
 
     private function ttlMinutes(): int
     {
-        return (int) config('workflow.support_claim_ttl_minutes', 15);
+        return (int) $this->settings->get('support_claim_ttl', 15);
     }
 
     /**
