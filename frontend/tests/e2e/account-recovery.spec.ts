@@ -174,7 +174,7 @@ async function mockApi(page: Parameters<typeof test>[0]['page'], options: MockAp
       return
     }
 
-    if (path === '/api/users' && route.request().method() === 'GET') {
+    if (path === '/api/v1/users' && route.request().method() === 'GET') {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -183,7 +183,7 @@ async function mockApi(page: Parameters<typeof test>[0]['page'], options: MockAp
       return
     }
 
-    const resetMatch = path.match(/^\/api\/users\/(\d+)\/reset-(password|mfa|pin)$/)
+    const resetMatch = path.match(/^\/api\/v1\/users\/(\d+)\/reset-(password|mfa|pin)$/)
     if (resetMatch) {
       const updated = users.find((user) => user.id === Number(resetMatch[1])) ?? users[0]
       await route.fulfill({

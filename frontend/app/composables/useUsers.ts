@@ -46,7 +46,7 @@ export function useUsers() {
     if (params.is_active !== undefined) query.set('is_active', String(params.is_active))
     if (params.per_page !== undefined) query.set('per_page', String(params.per_page))
 
-    const path = query.size > 0 ? `/api/users?${query.toString()}` : '/api/users'
+    const path = query.size > 0 ? `/api/v1/users?${query.toString()}` : '/api/v1/users'
     const response = await get<ApiResponse<User[] | PaginatedResponse<User>>>(path)
     const payload = response.data
 
@@ -70,38 +70,38 @@ export function useUsers() {
     if (params.search) query.set('search', params.search)
 
     const response = await get<ApiResponse<PaginatedResponse<User>>>(
-      `/api/users?${query.toString()}`,
+      `/api/v1/users?${query.toString()}`,
     )
     return response.data
   }
 
   async function createUser(payload: CreateUserPayload): Promise<User> {
-    const response = await post<ApiResponse<User>>('/api/users', payload)
+    const response = await post<ApiResponse<User>>('/api/v1/users', payload)
     return response.data
   }
 
   async function updateUser(id: number, payload: UpdateUserPayload): Promise<User> {
-    const response = await put<ApiResponse<User>>(`/api/users/${id}`, payload)
+    const response = await put<ApiResponse<User>>(`/api/v1/users/${id}`, payload)
     return response.data
   }
 
   async function getUser(id: number): Promise<User> {
-    const response = await get<ApiResponse<User>>(`/api/users/${id}`)
+    const response = await get<ApiResponse<User>>(`/api/v1/users/${id}`)
     return response.data
   }
 
   async function resetUserPassword(id: number, payload: ResetPasswordPayload): Promise<User> {
-    const response = await post<ApiResponse<User>>(`/api/users/${id}/reset-password`, payload)
+    const response = await post<ApiResponse<User>>(`/api/v1/users/${id}/reset-password`, payload)
     return response.data
   }
 
   async function resetUserMfa(id: number): Promise<User> {
-    const response = await post<ApiResponse<User>>(`/api/users/${id}/reset-mfa`, {})
+    const response = await post<ApiResponse<User>>(`/api/v1/users/${id}/reset-mfa`, {})
     return response.data
   }
 
   async function resetUserPin(id: number): Promise<User> {
-    const response = await post<ApiResponse<User>>(`/api/users/${id}/reset-pin`, {})
+    const response = await post<ApiResponse<User>>(`/api/v1/users/${id}/reset-pin`, {})
     return response.data
   }
 
