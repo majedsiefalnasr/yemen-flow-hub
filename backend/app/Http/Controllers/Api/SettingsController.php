@@ -128,7 +128,7 @@ class SettingsController extends Controller
             required: true,
             content: new OA\JsonContent(
                 properties: [
-                    new OA\Property(property: 'section', type: 'string', enum: ['workflow', 'email', 'security', 'general', 'theming', 'notif'], description: 'Settings section to save'),
+                    new OA\Property(property: 'section', type: 'string', enum: ['workflow', 'security', 'general', 'theming', 'notif'], description: 'Settings section to save'),
                     new OA\Property(property: 'data', type: 'object', description: 'Settings data'),
                 ]
             )

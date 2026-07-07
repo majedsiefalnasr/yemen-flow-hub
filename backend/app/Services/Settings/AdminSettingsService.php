@@ -4,12 +4,15 @@ namespace App\Services\Settings;
 
 use App\Models\SystemSetting;
 use App\Models\User;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 class AdminSettingsService
 {
+    public function __construct(
+        private readonly SettingResolver $resolver,
+    ) {}
+
     private const DEFAULTS = [
         'support_claim_ttl' => 15,
         'pdf_upload_size_limit' => 10,
@@ -50,20 +53,6 @@ class AdminSettingsService
         }
 
         return $settings;
-    }
-
-    public function getEmailTemplates(): array
-    {
-        $emailSettings = SystemSetting::getValueByKey('settings.email', []);
-        $templates = is_array($emailSettings['templates'] ?? null) ? $emailSettings['templates'] : [];
-
-        $empty = ['subject' => '', 'body' => ''];
-
-        return [
-            'approved' => is_array($templates['approved'] ?? null) ? $templates['approved'] : $empty,
-            'rejected' => is_array($templates['rejected'] ?? null) ? $templates['rejected'] : $empty,
-            'returned' => is_array($templates['returned'] ?? null) ? $templates['returned'] : $empty,
-        ];
     }
 
     public function getSetting(string $key): mixed
@@ -163,7 +152,6 @@ class AdminSettingsService
 
     private function invalidateCache(string $key): void
     {
-        Cache::forget("admin_setting:$key");
-        Cache::forget('admin_settings:all');
+        $this->resolver->forget($key);
     }
 }

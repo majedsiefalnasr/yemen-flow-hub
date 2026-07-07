@@ -73,17 +73,6 @@ class SystemSettingsService
             ]
         );
 
-        if ($section === 'email' && isset($value['templates']) && is_array($value['templates'])) {
-            foreach (array_keys($value['templates']) as $type) {
-                $this->auditService->log(
-                    AuditAction::EMAIL_TEMPLATE_UPDATED,
-                    $user,
-                    null,
-                    ['template_type' => $type, 'changed_by' => $user->id]
-                );
-            }
-        }
-
         return [
             'key' => $setting->key,
             'value' => $setting->value,
@@ -144,26 +133,6 @@ class SystemSettingsService
             unset($normalized['brandLogoFile'], $normalized['brandLogoDataUrl']);
 
             return $normalized;
-        }
-
-        if ($section === 'email') {
-            $types = ['approved', 'rejected', 'returned'];
-            $normalizedTemplates = [];
-            if (isset($data['templates']) && is_array($data['templates'])) {
-                foreach ($types as $type) {
-                    if (isset($data['templates'][$type]) && is_array($data['templates'][$type])) {
-                        $subject = is_string($data['templates'][$type]['subject'] ?? null)
-                            ? trim($data['templates'][$type]['subject'])
-                            : '';
-                        $body = is_string($data['templates'][$type]['body'] ?? null)
-                            ? trim($data['templates'][$type]['body'])
-                            : '';
-                        $normalizedTemplates[$type] = compact('subject', 'body');
-                    }
-                }
-            }
-
-            return ['templates' => $normalizedTemplates];
         }
 
         return $data;

@@ -36,9 +36,7 @@ class AdminSettingsController extends Controller
         $settings = $this->settingsService->getAllSettings();
 
         return ApiResponse::success(
-            array_merge($settings, [
-                'email_templates' => $this->settingsService->getEmailTemplates(),
-            ]),
+            $settings,
             'System settings retrieved.'
         );
     }
