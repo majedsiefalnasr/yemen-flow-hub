@@ -6,9 +6,20 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { AlertCircle } from 'lucide-vue-next'
+import { useTransitionConfirm } from '@/composables/useTransitionConfirm'
 
-defineProps<{
+const props = defineProps<{
   availableActions: WorkflowGraphEdge[]
   canAct: boolean
   claimRequiredButNotHeld: boolean
@@ -19,6 +30,28 @@ defineProps<{
 
 const emit = defineEmits<{ run: [transitionId: number, requiresComment: boolean]; claim: [] }>()
 const comment = defineModel<string>('comment', { default: '' })
+
+const {
+  confirmOpen,
+  pendingEdge,
+  pendingMessage,
+  confirmIfNeeded,
+  confirmPending,
+  cancelPending,
+} = useTransitionConfirm()
+
+async function onActionClick(action: WorkflowGraphEdge) {
+  if (!props.canAct || props.busy) return
+
+  const confirmed = await confirmIfNeeded(action)
+  if (!confirmed) return
+
+  emit('run', action.id, action.requires_comment)
+}
+
+function onConfirmDialogAction() {
+  confirmPending()
+}
 </script>
 
 <template>
@@ -53,7 +86,7 @@ const comment = defineModel<string>('comment', { default: '' })
             v-for="action in availableActions"
             :key="action.id"
             :disabled="!canAct || busy"
-            @click="emit('run', action.id, action.requires_comment)"
+            @click="onActionClick(action)"
           >
             {{ action.action_name ?? action.action_code }}
           </Button>
@@ -64,4 +97,17 @@ const comment = defineModel<string>('comment', { default: '' })
       </template>
     </CardContent>
   </Card>
+
+  <AlertDialog v-model:open="confirmOpen">
+    <AlertDialogContent dir="rtl">
+      <AlertDialogHeader>
+        <AlertDialogTitle>تأكيد الإجراء</AlertDialogTitle>
+        <AlertDialogDescription>{{ pendingMessage }}</AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancel @click="cancelPending">إلغاء</AlertDialogCancel>
+        <AlertDialogAction @click="onConfirmDialogAction">تأكيد</AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
 </template>

@@ -876,8 +876,12 @@ export interface WorkflowGraphEdge {
   action_code: string | null
   action_name: string | null
   requires_comment: boolean
+  confirmation_message?: string | null
+  is_destructive?: boolean
+  is_default_submit?: boolean
   is_self_loop: boolean
   is_return: boolean
+  transition_type?: string
   /** Per-request marker, present on the request graph endpoint. */
   state?: 'executed' | 'possible'
 }
