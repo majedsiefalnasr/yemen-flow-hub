@@ -15,6 +15,7 @@ use App\Services\Notifications\EngineNotificationDispatcher;
 use App\Services\Workflow\DuplicateInvoiceChecker;
 use App\Services\Workflow\DynamicFieldOptionsResolver;
 use App\Services\Workflow\EngineRequestService;
+use App\Services\Workflow\EngineRequestStatsService;
 use App\Services\Workflow\EngineTransitionService;
 use App\Services\Workflow\StageFieldOutputFilter;
 use App\Services\Workflow\StagePermissionResolver;
@@ -216,6 +217,16 @@ class EngineRequestController extends Controller
     }
 
     // ── 18.5.2: List (scoped & filtered) ─────────────────────────────────
+
+    public function stats(Request $request): JsonResponse
+    {
+        $scope = $request->string('scope', 'all')->value();
+        abort_unless(in_array($scope, ['all', 'queue'], true), 422);
+
+        $data = app(EngineRequestStatsService::class)->aggregate($request->user(), $request, $scope);
+
+        return response()->json(['data' => $data]);
+    }
 
     public function index(Request $request): JsonResponse
     {

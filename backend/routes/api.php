@@ -46,6 +46,8 @@ use App\Http\Controllers\Api\V1\WorkflowTransitionController;
 use App\Http\Controllers\Api\V1\WorkflowVersionController;
 use Illuminate\Support\Facades\Route;
 
+Route::pattern('engineRequest', '[0-9]+');
+
 Route::prefix('auth')->group(function () {
     Route::get('demo-users', [AuthController::class, 'demoUsers'])->middleware('throttle:20,1');
     Route::post('switch-demo-user', [AuthController::class, 'switchDemoUser'])->middleware('throttle:20,1');
@@ -172,6 +174,7 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'active'])->group(function () {
 
     // ─── Engine Requests (Epic 18.5) ─────────────────────────────────────
     Route::get('engine-requests', [EngineRequestController::class, 'index']);
+    Route::get('engine-requests/stats', [EngineRequestController::class, 'stats']);
     Route::get('engine-requests/my-queue', [EngineRequestController::class, 'myQueue']);
     Route::post('engine-requests', [EngineRequestController::class, 'store']);
     Route::get('engine-requests/available-workflows', [EngineRequestController::class, 'availableWorkflows']);

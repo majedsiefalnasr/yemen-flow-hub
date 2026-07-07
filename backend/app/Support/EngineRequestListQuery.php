@@ -51,8 +51,15 @@ class EngineRequestListQuery
                 ->where('engine_requests.reference', 'like', $term)
                 ->orWhere('engine_requests.invoice_number', 'like', $term));
         }
-        if ($request->filled('sla_status') && in_array($request->string('sla_status')->value(), self::ALLOWED_SLA_STATUSES, true)) {
+        if ($request->filled('sla_status')) {
             $this->applySlaStatusFilter($query, $request->string('sla_status')->value());
+        }
+        if ($request->filled('claimed')) {
+            match ($request->string('claimed')->value()) {
+                'unclaimed' => $query->whereNull('engine_requests.claimed_by'),
+                'claimed' => $query->whereNotNull('engine_requests.claimed_by'),
+                default => null,
+            };
         }
     }
 
@@ -86,7 +93,16 @@ class EngineRequestListQuery
      * never a JSON scan. `ok` and `nearing` exclude requests with no SLA configured.
      * Expressions are epoch-second based so they run on both MySQL and SQLite.
      */
-    private function applySlaStatusFilter($query, string $slaStatus): void
+    public function applySlaStatusFilter($query, string $slaStatus): void
+    {
+        if (! in_array($slaStatus, self::ALLOWED_SLA_STATUSES, true)) {
+            return;
+        }
+
+        $this->applySlaStatusFilterInternal($query, $slaStatus);
+    }
+
+    private function applySlaStatusFilterInternal($query, string $slaStatus): void
     {
         $deadline = EngineRequest::slaDeadlineEpochSql();
         $now = EngineRequest::nowEpochSql();

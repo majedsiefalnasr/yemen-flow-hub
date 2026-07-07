@@ -919,6 +919,15 @@ export interface StagePermission {
 
 export type EngineRequestStatus = 'ACTIVE' | 'CLOSED' | 'REJECTED'
 
+export interface EngineRequestStats {
+  total: number
+  active: number
+  breached_sla: number
+  nearing_sla: number
+  unclaimed_active: number
+  by_status: Record<string, number>
+}
+
 export interface EngineRequest {
   id: number
   reference: string

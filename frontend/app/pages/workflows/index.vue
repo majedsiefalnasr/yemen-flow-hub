@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { ColumnDef, ColumnFiltersState, VisibilityState } from '@tanstack/vue-table'
+import type { ColumnDef, ColumnFiltersState, PaginationState, VisibilityState } from '@tanstack/vue-table'
+import { refDebounced } from '@vueuse/core'
 import { h } from 'vue'
 import {
   AlertCircle,
@@ -19,6 +20,7 @@ import {
   UserCheck,
 } from 'lucide-vue-next'
 import { useEngineRequestsStore } from '@/stores/engineRequests.store'
+import type { ListOptions } from '@/composables/useEngineRequests'
 import { useAuthStore } from '@/stores/auth.store'
 import { UserRole } from '@/types/enums'
 import type { EngineRequest } from '@/types/models'
@@ -74,7 +76,10 @@ const scopeLabel = computed(
   () => scopeOptions.find((o) => o.value === view.value)?.label ?? 'النطاق',
 )
 const query = ref('')
+const debouncedQuery = refDebounced(query, 300)
 const columnFilters = ref<ColumnFiltersState>([])
+const DEFAULT_PAGE_SIZE = 25
+const pagination = ref<PaginationState>({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE })
 // SLA and claim columns are oversight-only; hidden for participants, shown for
 // supervisors (toggled on in onMounted once the role is known).
 const columnVisibility = ref<VisibilityState>({
@@ -85,47 +90,74 @@ const columnVisibility = ref<VisibilityState>({
   claimed: false,
 })
 
-function load() {
-  if (view.value === 'queue') store.loadQueue()
-  else store.loadList()
+function columnFilterValue(id: string): string | undefined {
+  const filter = columnFilters.value.find((entry) => entry.id === id)
+  const value = filter?.value
+  if (!Array.isArray(value) || value.length !== 1) return undefined
+  return String(value[0])
+}
+
+function buildListParams(): ListOptions {
+  return {
+    page: pagination.value.pageIndex + 1,
+    per_page: pagination.value.pageSize,
+    search: debouncedQuery.value.trim() || undefined,
+    status: columnFilterValue('status'),
+    sla_status: columnFilterValue('sla'),
+    claimed: columnFilterValue('claimed'),
+  }
+}
+
+async function load() {
+  const params = buildListParams()
+  const loaders: Promise<void>[] = []
+
+  if (view.value === 'queue') {
+    loaders.push(store.loadQueue(params))
+  } else {
+    loaders.push(store.loadList(params))
+  }
+
+  if (!isSupervisor.value) {
+    loaders.push(store.loadStats({ ...params, scope: 'queue' }))
+    loaders.push(store.loadStats({ ...params, scope: 'all' }))
+  } else {
+    loaders.push(store.loadStats({ ...params, scope: 'all' }))
+  }
+
+  await Promise.all(loaders)
 }
 
 onMounted(() => {
-  // Pin supervisors to the platform-wide list; they have no personal queue, and
-  // surface the oversight columns for them.
   if (isSupervisor.value) {
     view.value = 'all'
     columnVisibility.value = { ...columnVisibility.value, sla: true, claimed: true }
   }
   load()
 })
+
 watch(view, () => {
   columnFilters.value = []
-  load()
+  pagination.value = { pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE }
 })
+
+watch([debouncedQuery, columnFilters, pagination], () => {
+  load()
+}, { deep: true })
 
 const rows = computed<EngineRequest[]>(() =>
   view.value === 'queue' ? store.queue : store.instances,
 )
 
-// Client-side search across the fields most people scan by.
-const filteredRows = computed(() => {
-  const q = query.value.trim().toLowerCase()
-  if (!q) return rows.value
-  return rows.value.filter((r) =>
-    [r.reference, r.current_stage?.name, r.bank?.name, r.merchant?.name, r.invoice_number].some(
-      (v) => (v ?? '').toString().toLowerCase().includes(q),
-    ),
-  )
-})
+const pageMeta = computed(() => (view.value === 'queue' ? store.queueMeta : store.instancesMeta))
 
 const stats = computed(() => ({
-  queue: store.queue.length,
-  all: store.instances.length,
-  total: rows.value.length,
-  waiting: rows.value.filter((r) => r.status === 'ACTIVE').length,
-  breached: rows.value.filter((r) => r.sla_status === 'breached').length,
-  unclaimed: rows.value.filter((r) => r.status === 'ACTIVE' && r.claimed_by == null).length,
+  queue: store.queueStats?.total ?? 0,
+  all: store.allStats?.total ?? 0,
+  total: store.stats?.total ?? 0,
+  waiting: store.stats?.active ?? 0,
+  breached: store.stats?.breached_sla ?? 0,
+  unclaimed: store.stats?.unclaimed_active ?? 0,
 }))
 
 function statusLabel(status: string): string {
@@ -445,6 +477,7 @@ function buildExportFilename(): string {
 }
 
 function setStatusFilter(status: EngineRequest['status']) {
+  pagination.value = { ...pagination.value, pageIndex: 0 }
   columnFilters.value = [{ id: 'status', value: [status] }]
 }
 
@@ -454,6 +487,7 @@ function isStatusActive(status: EngineRequest['status']): boolean {
 }
 
 function setColumnFilter(id: string, value: string) {
+  pagination.value = { ...pagination.value, pageIndex: 0 }
   columnFilters.value = [{ id, value: [value] }]
 }
 
@@ -463,11 +497,13 @@ function isColumnFilterActive(id: string, value: string): boolean {
 }
 
 function resetAllFilters() {
+  pagination.value = { ...pagination.value, pageIndex: 0 }
   columnFilters.value = []
 }
 
 function handleReset() {
   query.value = ''
+  pagination.value = { ...pagination.value, pageIndex: 0 }
   columnFilters.value = []
 }
 </script>
@@ -567,9 +603,11 @@ function handleReset() {
 
     <div v-else class="relative flex flex-col gap-4">
       <DataTable
-        :data="filteredRows"
+        v-model:pagination="pagination"
+        :data="rows"
         :columns="columns"
         :loading="store.loading"
+        :page-count="pageMeta?.last_page ?? -1"
         :column-filters="columnFilters"
         :column-visibility="columnVisibility"
         row-class="cursor-pointer"
@@ -752,7 +790,7 @@ function handleReset() {
           </Empty>
         </template>
         <template #pagination="{ table }">
-          <DataTablePagination :table="table" />
+          <DataTablePagination :table="table" :total-rows="pageMeta?.total" />
         </template>
       </DataTable>
     </div>
