@@ -1,6 +1,6 @@
 # Implementation Wave Plan — Yemen Flow Hub Review → Specs → Execution
 
-**Status:** Approved 2026-07-06 — **Wave 5 ✅ complete (WP-11 + WP-12 + WP-13 merged to main); next: Wave 6 / WP-14**
+**Status:** Approved 2026-07-06 — **All waves complete (WP-0 through WP-14 merged to `main`)**
 **Authority:** the 15 approved work-package specs under `docs/superpowers/specs/2026-07-06-wp*` + `2026-07-06-wp0` / `wpr`; phase record in `2026-07-05-feature-review-notes.md`.
 **Purpose:** collapse 14 implementation specs into 6 execution waves that preserve dependency safety while letting parallel-capable packages run together.
 
@@ -52,10 +52,12 @@ Multiple WPs may be developed in parallel; **merge order always respects depende
 - **Merge note:** WP-12 merged before WP-13; export stack reconciled (`FAILED` + `EXPIRED` + ops logging)
 - **Constraint:** WP-6 auth defaults canonical via WP-11: `mfa_required=false`, lockout 5/15 min
 
-### Wave 6 — Terminal cleanup
-**WPs:** WP-14.
-- Runs strictly last; no removals before earlier WPs ship + consumers migrate.
-- Stages the R9 API envelope migration endpoint-by-endpoint within this wave.
+### Wave 6 — Terminal cleanup ✅ COMPLETE
+**WPs:** WP-14 ✅ (merged to `main`; legacy API surface removed, V1 consumers migrated, demo routes env-gated)
+- Staged R9 envelope tolerance via `apiErrors.ts` on rewritten endpoints
+- `users.role` column drop **deferred** — WP-10 RM-3 verification gate not yet green (documented in release notes)
+- Release notes: `docs/release-notes/wp14-legacy-cleanup.md`
+- Grep gate: `scripts/verify-no-legacy-api-consumers.sh`
 
 ## Execution start
 
