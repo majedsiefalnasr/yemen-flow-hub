@@ -28,7 +28,6 @@ export const useEngineRequestsStore = defineStore('engineRequests', {
     instancesMeta: null as PaginationMeta | null,
     queue: [] as EngineRequest[],
     queueMeta: null as PaginationMeta | null,
-    stats: null as EngineRequestStats | null,
     queueStats: null as EngineRequestStats | null,
     allStats: null as EngineRequestStats | null,
     availableWorkflows: [] as AvailableWorkflow[],
@@ -69,7 +68,6 @@ export const useEngineRequestsStore = defineStore('engineRequests', {
       } else {
         this.allStats = stats.value
       }
-      this.stats = stats.value
     },
 
     async loadAvailableWorkflows() {

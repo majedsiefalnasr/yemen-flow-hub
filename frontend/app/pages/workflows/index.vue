@@ -97,6 +97,13 @@ function columnFilterValue(id: string): string | undefined {
   return String(value[0])
 }
 
+function columnFilterNumber(id: string): number | undefined {
+  const raw = columnFilterValue(id)
+  if (raw === undefined) return undefined
+  const parsed = Number(raw)
+  return Number.isFinite(parsed) ? parsed : undefined
+}
+
 function buildListParams(): ListOptions {
   return {
     page: pagination.value.pageIndex + 1,
@@ -105,6 +112,9 @@ function buildListParams(): ListOptions {
     status: columnFilterValue('status'),
     sla_status: columnFilterValue('sla'),
     claimed: columnFilterValue('claimed'),
+    stage_id: columnFilterNumber('stage'),
+    bank_id: columnFilterNumber('bank'),
+    workflow_version_id: columnFilterNumber('workflow'),
   }
 }
 
@@ -151,13 +161,17 @@ const rows = computed<EngineRequest[]>(() =>
 
 const pageMeta = computed(() => (view.value === 'queue' ? store.queueMeta : store.instancesMeta))
 
+const viewScopedStats = computed(() =>
+  isSupervisor.value || view.value === 'all' ? store.allStats : store.queueStats,
+)
+
 const stats = computed(() => ({
   queue: store.queueStats?.total ?? 0,
   all: store.allStats?.total ?? 0,
-  total: store.stats?.total ?? 0,
-  waiting: store.stats?.active ?? 0,
-  breached: store.stats?.breached_sla ?? 0,
-  unclaimed: store.stats?.unclaimed_active ?? 0,
+  total: viewScopedStats.value?.total ?? 0,
+  waiting: viewScopedStats.value?.active ?? 0,
+  breached: viewScopedStats.value?.breached_sla ?? 0,
+  unclaimed: viewScopedStats.value?.unclaimed_active ?? 0,
 }))
 
 function statusLabel(status: string): string {
@@ -225,14 +239,38 @@ const statusFilterOptions = [
   { label: 'متروك', value: 'ABANDONED' },
 ]
 const stageFilterOptions = computed(() => {
-  const names = new Set<string>()
-  for (const r of rows.value) if (r.current_stage?.name) names.add(r.current_stage.name)
-  return [...names].sort().map((n) => ({ label: n, value: n }))
+  const seen = new Map<number, string>()
+  for (const r of rows.value) {
+    if (r.current_stage?.id && r.current_stage.name) {
+      seen.set(r.current_stage.id, r.current_stage.name)
+    }
+  }
+  return [...seen.entries()]
+    .sort((a, b) => a[1].localeCompare(b[1], 'ar'))
+    .map(([id, name]) => ({ label: name, value: String(id) }))
 })
 const bankFilterOptions = computed(() => {
-  const names = new Set<string>()
-  for (const r of rows.value) if (r.bank?.name) names.add(r.bank.name)
-  return [...names].sort().map((n) => ({ label: n, value: n }))
+  const seen = new Map<number, string>()
+  for (const r of rows.value) {
+    if (r.bank?.id && r.bank.name) {
+      seen.set(r.bank.id, r.bank.name)
+    }
+  }
+  return [...seen.entries()]
+    .sort((a, b) => a[1].localeCompare(b[1], 'ar'))
+    .map(([id, name]) => ({ label: name, value: String(id) }))
+})
+const workflowFilterOptions = computed(() => {
+  const seen = new Map<number, string>()
+  for (const r of rows.value) {
+    const version = r.workflow_version
+    if (version?.id && version.definition?.name) {
+      seen.set(version.id, `${version.definition.name} v${version.version_number}`)
+    }
+  }
+  return [...seen.entries()]
+    .sort((a, b) => a[1].localeCompare(b[1], 'ar'))
+    .map(([id, label]) => ({ label, value: String(id) }))
 })
 
 // Supervisor-only oversight filters.
@@ -286,8 +324,6 @@ const columns: ColumnDef<EngineRequest>[] = [
     id: 'workflow',
     header: ({ column }) => h(DataTableColumnHeader as any, { column, title: 'مسار العمل' }),
     accessorFn: (row) => row.workflow_version?.definition?.name ?? '—',
-    filterFn: (row, _id, value: string[]) =>
-      value.includes(row.original.workflow_version?.definition?.name ?? '—'),
     cell: ({ row }) => {
       const v = row.original.workflow_version
       if (!v?.definition) return h('span', { class: 'text-muted-foreground text-sm' }, '—')
@@ -302,8 +338,6 @@ const columns: ColumnDef<EngineRequest>[] = [
     id: 'stage',
     header: 'المرحلة الحالية',
     accessorFn: (row) => row.current_stage?.name ?? '—',
-    filterFn: (row, _id, value: string[]) =>
-      value.includes(row.original.current_stage?.name ?? '—'),
     cell: ({ row }) =>
       h('span', { class: 'text-sm text-foreground' }, row.original.current_stage?.name ?? '—'),
   },
@@ -311,7 +345,6 @@ const columns: ColumnDef<EngineRequest>[] = [
     id: 'bank',
     header: 'البنك',
     accessorFn: (row) => row.bank?.name ?? '—',
-    filterFn: (row, _id, value: string[]) => value.includes(row.original.bank?.name ?? '—'),
     cell: ({ row }) =>
       row.original.bank?.name
         ? h(Badge, { variant: 'outline', class: 'font-normal' }, () => [
@@ -618,7 +651,7 @@ function handleReset() {
         <template #toolbar="{ table }">
           <DataTableToolbar
             :table="table"
-            search-placeholder="بحث بالمرجع، المرحلة، البنك، أو المستورد"
+            search-placeholder="بحث بالمرجع أو رقم الفاتورة"
             :has-filters="hasActiveFilters"
             @update:search="(v) => (query = v)"
             @reset="handleReset"
@@ -666,6 +699,12 @@ function handleReset() {
                   </Command>
                 </PopoverContent>
               </Popover>
+              <DataTableFacetedFilter
+                v-if="table.getColumn('workflow') && workflowFilterOptions.length > 1"
+                :column="table.getColumn('workflow')!"
+                title="مسار العمل"
+                :options="workflowFilterOptions"
+              />
               <DataTableFacetedFilter
                 v-if="table.getColumn('status')"
                 :column="table.getColumn('status')!"
