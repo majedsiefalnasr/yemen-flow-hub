@@ -23,7 +23,7 @@
 |--------|--------|
 | **Hot duration** | 12 months (`audit_hot_months`) — **CBY confirm regulatory minimum** |
 | **Archive schedule** | Daily `audit:archive-old`; batch size 500 rows (`audit_archive_batch_size`) |
-| **Archive target** | Cold storage / separate archive table / export bundle (implementation in Task 4) |
+| **Archive target** | Cold storage / separate archive table / export bundle (implementation in Task 7) |
 | **Search / restore** | Archived rows searchable by ops; restore path documented in runbook (OM-5) |
 | **Access control** | Archive access restricted to `CBY_ADMIN`; all archive/restore operations audited |
 | **Delete policy** | **Never delete** within retention horizon; archive only |
@@ -43,7 +43,9 @@
 | **Archive schedule** | Daily `notifications:purge-old` |
 | **Search / restore** | Not required — notifications are operational, not compliance evidence |
 | **Access control** | Per-user scope; purge job runs system-wide |
-| **Delete policy** | Archive-first where possible; physical delete after archive or when policy permits |
+| **Delete policy** | Physical delete after retention horizon — notifications are operational signals, not compliance evidence |
+
+**Exemption (Task 4):** Security and compliance notifications (`severity = critical` or type prefix `security.`) are **not purged** until CBY policy confirms a separate horizon.
 
 **Reminder:** Notifications are **not** the audit trail. Compliance actions are recorded in `audit_logs`.
 
@@ -125,9 +127,9 @@ Before enabling enforcement (scheduled purge/archive jobs in production):
 
 | Command | Data class | Task |
 |---------|------------|------|
-| `audit:archive-old` | Audit logs | Task 4 |
-| `notifications:purge-old` | Notifications | Task 5 |
-| `reports:purge-old-exports` | Export files | Task 6 |
-| `documents:archive-superseded` | Superseded documents | Task 7 |
-| `documents:purge-orphans` | Orphan files | Task 7 |
+| `audit:archive-old` | Audit logs | Task 7 |
+| `notifications:purge-old` | Notifications | Task 4 |
+| `reports:purge-old-exports` | Export files | Task 5 |
+| `documents:archive-superseded` | Superseded documents | Task 6 |
+| `documents:purge-orphans` | Orphan files | Task 6 |
 | `workflow:expire-engine-claims` | Claims (existing) | Verify OM visibility |
