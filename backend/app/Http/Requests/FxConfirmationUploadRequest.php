@@ -3,9 +3,16 @@
 namespace App\Http\Requests;
 
 use App\Models\EngineRequest;
+use App\Support\UploadSizeLimit;
 
 class FxConfirmationUploadRequest extends ApiFormRequest
 {
+    public function __construct(
+        private readonly UploadSizeLimit $uploadSizeLimit,
+    ) {
+        parent::__construct();
+    }
+
     public function authorize(): bool
     {
         $user = $this->user();
@@ -22,7 +29,7 @@ class FxConfirmationUploadRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
-            'signed_document' => ['required', 'file', 'mimetypes:application/pdf', 'max:10240'],
+            'signed_document' => ['required', 'file', 'mimetypes:application/pdf', 'max:'.$this->uploadSizeLimit->maxKilobytes()],
             'reason' => ['nullable', 'string', 'max:500'],
         ];
     }
