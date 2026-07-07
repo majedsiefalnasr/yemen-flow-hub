@@ -28,7 +28,7 @@ Task 6 (migrate useReports presets): complete — see task-6-report.md
 Task 7 (API envelope tolerance): complete — see task-7-report.md
 Task 8 (demo route production gate): complete — see task-8-report.md
 Task 9 (zero-legacy grep gate): complete — scripts/verify-no-legacy-api-consumers.sh passes
-Task 10 (purge legacy route batch 1): pending — blocked on Task 9
+Task 10 (purge legacy route batch 1): complete
 Task 11 (dead module + designer guard purge): pending
 Task 12 (stale reference sweep): pending
 Task 13 (conditional users.role drop): pending — gated on WP-10 RM-3

@@ -3,19 +3,12 @@
 use App\Http\Controllers\Api\Admin\AdminHealthController;
 use App\Http\Controllers\Api\Admin\NotificationTemplateController;
 use App\Http\Controllers\Api\AdminSettingsController;
-use App\Http\Controllers\Api\AuditController;
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\BankController;
 use App\Http\Controllers\Api\DashboardController;
-use App\Http\Controllers\Api\DocumentTypeController;
 use App\Http\Controllers\Api\FinancingController;
-use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ProfileController;
-use App\Http\Controllers\Api\ReportController;
-use App\Http\Controllers\Api\ReportPresetsController;
 use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\SettingsController;
-use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\V1\AuditLogController;
 use App\Http\Controllers\Api\V1\BankController as V1BankController;
 use App\Http\Controllers\Api\V1\ComplianceController;
@@ -274,23 +267,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
 });
 
 Route::middleware(['auth:sanctum', 'active'])->group(function () {
-    Route::apiResource('banks', BankController::class);
-    Route::post('banks/{bank}/admin/reset-password', [BankController::class, 'resetAdminPassword'])->middleware('throttle:10,1');
-    Route::apiResource('users', UserController::class);
-    Route::post('users/{user}/reset-password', [UserController::class, 'resetPassword'])->middleware('throttle:10,1');
-    Route::post('users/{user}/reset-mfa', [UserController::class, 'resetMfa'])->middleware('throttle:10,1');
-    Route::post('users/{user}/reset-pin', [UserController::class, 'resetPin'])->middleware('throttle:10,1');
-    Route::get('document-types', [DocumentTypeController::class, 'index']);
-    Route::post('document-types', [DocumentTypeController::class, 'store']);
-    Route::put('document-types/{documentType}', [DocumentTypeController::class, 'update']);
-    Route::delete('document-types/{documentType}', [DocumentTypeController::class, 'destroy']);
-
     Route::get('financing/utilization', [FinancingController::class, 'utilization']);
-
-    Route::get('audit', [AuditController::class, 'index']);
-    Route::get('audit/stats', [AuditController::class, 'stats']);
-    Route::get('audit/duplicates', [AuditController::class, 'duplicates']);
-    Route::get('audit/risk-indicators', [AuditController::class, 'riskIndicators']);
 
     Route::get('admin/health', [AdminHealthController::class, 'index']);
     Route::get('admin/settings', [AdminSettingsController::class, 'index']);
@@ -301,21 +278,8 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::put('admin/notification-templates/{type}', [NotificationTemplateController::class, 'update'])->middleware('throttle:10,60');
     Route::post('admin/notification-templates/{type}/preview', [NotificationTemplateController::class, 'preview'])->middleware('throttle:30,60');
 
-    Route::get('notifications', [NotificationController::class, 'index']);
-    Route::get('notifications/unread-count', [NotificationController::class, 'unreadCount']);
-    Route::post('notifications/read-all', [NotificationController::class, 'readAll']);
-    Route::post('notifications/{notification}/read', [NotificationController::class, 'read']);
-
     Route::get('search/recent', [SearchController::class, 'recent']);
     Route::get('search', [SearchController::class, 'search']);
 
     Route::get('dashboard/stats', [DashboardController::class, 'stats']);
-    Route::get('reports/workflow', [ReportController::class, 'workflow']);
-    Route::get('reports/voting', [ReportController::class, 'voting']);
-    Route::get('reports/bank', [ReportController::class, 'bank']);
-    Route::get('reports/workflow/export', [ReportController::class, 'exportWorkflow']);
-    Route::get('reports/bank/export', [ReportController::class, 'exportBank']);
-    Route::get('report-presets', [ReportPresetsController::class, 'index']);
-    Route::post('report-presets', [ReportPresetsController::class, 'store']);
-    Route::delete('report-presets/{id}', [ReportPresetsController::class, 'destroy']);
 });

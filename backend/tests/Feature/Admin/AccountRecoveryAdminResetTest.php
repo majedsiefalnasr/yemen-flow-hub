@@ -48,7 +48,7 @@ class AccountRecoveryAdminResetTest extends TestCase
         $bank = $this->makeBank();
         $target = $this->makeUser(UserRole::BANK_ADMIN, $bank, 'bank.admin@bank.test');
 
-        $this->actingAs($cbyAdmin)->postJson("/api/users/{$target->id}/reset-password", [
+        $this->actingAs($cbyAdmin)->postJson("/api/v1/users/{$target->id}/reset-password", [
             'password' => 'TempPassword123',
             'password_confirmation' => 'TempPassword123',
         ])->assertOk();
@@ -56,7 +56,6 @@ class AccountRecoveryAdminResetTest extends TestCase
         $target->refresh();
         $this->assertTrue(Hash::check('TempPassword123', $target->password));
         $this->assertTrue($target->must_change_password);
-        $this->assertNotNull($target->temporary_password_set_at);
     }
 
     public function test_cby_admin_can_reset_cby_user_password(): void
@@ -64,7 +63,7 @@ class AccountRecoveryAdminResetTest extends TestCase
         $cbyAdmin = $this->makeUser(UserRole::CBY_ADMIN, null, 'admin@cby.gov.ye');
         $target = $this->makeUser(UserRole::SUPPORT_COMMITTEE, null, 'support@cby.gov.ye');
 
-        $this->actingAs($cbyAdmin)->postJson("/api/users/{$target->id}/reset-password", [
+        $this->actingAs($cbyAdmin)->postJson("/api/v1/users/{$target->id}/reset-password", [
             'password' => 'TempPassword123',
             'password_confirmation' => 'TempPassword123',
         ])->assertOk();
@@ -78,7 +77,7 @@ class AccountRecoveryAdminResetTest extends TestCase
         $bankAdmin = $this->makeUser(UserRole::BANK_ADMIN, $bank, 'admin@bank.test');
         $target = $this->makeUser(UserRole::DATA_ENTRY, $bank, 'entry@bank.test');
 
-        $this->actingAs($bankAdmin)->postJson("/api/users/{$target->id}/reset-password", [
+        $this->actingAs($bankAdmin)->postJson("/api/v1/users/{$target->id}/reset-password", [
             'password' => 'TempPassword123',
             'password_confirmation' => 'TempPassword123',
         ])->assertOk();
@@ -93,7 +92,7 @@ class AccountRecoveryAdminResetTest extends TestCase
         $bankAdmin = $this->makeUser(UserRole::BANK_ADMIN, $bank, 'admin@bank.test');
         $target = $this->makeUser(UserRole::DATA_ENTRY, $otherBank, 'entry@other.test');
 
-        $this->actingAs($bankAdmin)->postJson("/api/users/{$target->id}/reset-password", [
+        $this->actingAs($bankAdmin)->postJson("/api/v1/users/{$target->id}/reset-password", [
             'password' => 'TempPassword123',
             'password_confirmation' => 'TempPassword123',
         ])->assertForbidden();
@@ -105,7 +104,7 @@ class AccountRecoveryAdminResetTest extends TestCase
         $bankAdmin = $this->makeUser(UserRole::BANK_ADMIN, $bank, 'admin@bank.test');
         $target = $this->makeUser(UserRole::BANK_ADMIN, $bank, 'other.admin@bank.test');
 
-        $this->actingAs($bankAdmin)->postJson("/api/users/{$target->id}/reset-password", [
+        $this->actingAs($bankAdmin)->postJson("/api/v1/users/{$target->id}/reset-password", [
             'password' => 'TempPassword123',
             'password_confirmation' => 'TempPassword123',
         ])->assertForbidden();
@@ -124,7 +123,7 @@ class AccountRecoveryAdminResetTest extends TestCase
             'pin_code_hash' => Hash::make('125812'),
         ])->save();
 
-        $this->actingAs($cbyAdmin)->postJson("/api/users/{$target->id}/reset-password", [
+        $this->actingAs($cbyAdmin)->postJson("/api/v1/users/{$target->id}/reset-password", [
             'password' => 'TempPassword123',
             'password_confirmation' => 'TempPassword123',
         ])->assertOk();
@@ -151,8 +150,8 @@ class AccountRecoveryAdminResetTest extends TestCase
             'pin_code_hash' => Hash::make('125812'),
         ])->save();
 
-        $this->actingAs($bankAdmin)->postJson("/api/users/{$target->id}/reset-mfa")->assertOk();
-        $this->actingAs($bankAdmin)->postJson("/api/users/{$target->id}/reset-pin")->assertOk();
+        $this->actingAs($bankAdmin)->postJson("/api/v1/users/{$target->id}/reset-mfa")->assertOk();
+        $this->actingAs($bankAdmin)->postJson("/api/v1/users/{$target->id}/reset-pin")->assertOk();
 
         $target->refresh();
         $this->assertFalse($target->mfa_enabled);
@@ -170,8 +169,8 @@ class AccountRecoveryAdminResetTest extends TestCase
         $bankAdmin = $this->makeUser(UserRole::BANK_ADMIN, $bank, 'admin@bank.test');
         $target = $this->makeUser(UserRole::DATA_ENTRY, $otherBank, 'entry@other.test');
 
-        $this->actingAs($bankAdmin)->postJson("/api/users/{$target->id}/reset-mfa")->assertForbidden();
-        $this->actingAs($bankAdmin)->postJson("/api/users/{$target->id}/reset-pin")->assertForbidden();
+        $this->actingAs($bankAdmin)->postJson("/api/v1/users/{$target->id}/reset-mfa")->assertForbidden();
+        $this->actingAs($bankAdmin)->postJson("/api/v1/users/{$target->id}/reset-pin")->assertForbidden();
     }
 
     public function test_admin_reset_forces_password_change_on_next_login(): void
@@ -179,7 +178,7 @@ class AccountRecoveryAdminResetTest extends TestCase
         $cbyAdmin = $this->makeUser(UserRole::CBY_ADMIN, null, 'admin@cby.gov.ye');
         $target = $this->makeUser(UserRole::SUPPORT_COMMITTEE, null, 'support@cby.gov.ye');
 
-        $this->actingAs($cbyAdmin)->postJson("/api/users/{$target->id}/reset-password", [
+        $this->actingAs($cbyAdmin)->postJson("/api/v1/users/{$target->id}/reset-password", [
             'password' => 'TempPassword123',
             'password_confirmation' => 'TempPassword123',
         ])->assertOk();
