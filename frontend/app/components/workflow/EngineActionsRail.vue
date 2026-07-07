@@ -55,7 +55,6 @@ function isActionDisabled(_action: WorkflowGraphEdge): boolean {
 
 const {
   confirmOpen,
-  pendingEdge,
   pendingMessage,
   confirmIfNeeded,
   confirmPending,

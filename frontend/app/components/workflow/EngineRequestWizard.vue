@@ -5,6 +5,7 @@ import { useEngineRequestsStore } from '@/stores/engineRequests.store'
 import { useEngineWizard } from '@/composables/useEngineWizard'
 import { useFinancingLedger } from '@/composables/useFinancingLedger'
 import { extractApiErrorCode } from '@/utils/apiErrors'
+import { resolveSubmitTransition } from '@/utils/resolveSubmitTransition'
 import { findFieldKeyBySemanticTag, groupHasSemanticTag } from '@/utils/findFieldKeyBySemanticTag'
 import DynamicForm from '@/components/workflow/DynamicForm.vue'
 import EngineRequestDataTabs from '@/components/workflow/EngineRequestDataTabs.vue'
@@ -47,7 +48,9 @@ const wizard = useEngineWizard(groupsRef, {
   },
   submit: async (data) => {
     const edges = store.graph?.edges ?? []
-    const initial = edges.find((e) => e.from_stage_id === store.current?.current_stage?.id)
+    const stageId = store.current?.current_stage?.id
+    const initial =
+      stageId != null ? resolveSubmitTransition(edges, stageId) : null
     if (!initial) {
       submitError.value = 'لا يوجد إجراء بدء متاح لهذا الطلب.'
       throw new Error('no initial transition')
