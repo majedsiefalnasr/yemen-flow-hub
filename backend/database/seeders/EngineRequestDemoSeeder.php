@@ -21,7 +21,7 @@ class EngineRequestDemoSeeder extends Seeder
      *
      * @var array<int, string>
      */
-    private const PATH = ['CREATE', 'INTERNAL', 'SUPPORT', 'EXEC', 'FX', 'FX_CONFIRM', 'FINAL', 'CLOSED'];
+    private const PATH = ['CREATE', 'INTERNAL', 'SUPPORT', 'EXEC', 'FX', 'FX_CONFIRM', 'FINAL', 'CLOSED_COMPLETED'];
 
     /**
      * @var Collection<string, WorkflowStage>
@@ -141,7 +141,8 @@ class EngineRequestDemoSeeder extends Seeder
             'EXEC' => User::query()->where('email', 'director@cby.gov.ye')->firstOrFail(),
             'FX_CONFIRM' => User::query()->where('email', 'fxconfirm@cby.gov.ye')->firstOrFail(),
             'FINAL' => User::query()->where('email', 'director@cby.gov.ye')->firstOrFail(),
-            'CLOSED' => User::query()->where('email', 'director@cby.gov.ye')->firstOrFail(),
+            'CLOSED_COMPLETED' => User::query()->where('email', 'director@cby.gov.ye')->firstOrFail(),
+            'CLOSED_REJECTED' => User::query()->where('email', 'director@cby.gov.ye')->firstOrFail(),
         ];
     }
 
@@ -203,9 +204,9 @@ class EngineRequestDemoSeeder extends Seeder
             $this->sample('FINAL', 'ACTIVE', 420000, 'EUR', 'INV-2026-10132', 'construction_materials', 'Bayer AG', 'tr', 'aden_port'),
             $this->sample('FINAL', 'ACTIVE', 540000, 'USD', 'INV-2026-10143', 'food_beverages', 'Cargill Inc.', 'cn', 'aden_port'),
             $this->sample('FX_CONFIRM', 'ACTIVE', 1280000, 'USD', 'INV-2026-10154', 'construction_materials', 'Siemens AG', 'tr', 'hodeidah_port'),
-            $this->sample('CLOSED', 'CLOSED', 980000, 'USD', 'INV-2026-10165', 'fuel_energy', 'Saudi Aramco Trading', 'ae', 'mukalla_port'),
-            $this->sample('CLOSED', 'CLOSED', 360000, 'USD', 'INV-2026-10176', 'medical_pharma', 'Pfizer Ltd.', 'in', 'aden_port'),
-            $this->sample('CLOSED', 'REJECTED', 775000, 'EUR', 'INV-2026-10187', 'fuel_energy', 'Saudi Aramco Trading', 'ae', 'mukalla_port'),
+            $this->sample('CLOSED_COMPLETED', 'CLOSED', 980000, 'USD', 'INV-2026-10165', 'fuel_energy', 'Saudi Aramco Trading', 'ae', 'mukalla_port'),
+            $this->sample('CLOSED_COMPLETED', 'CLOSED', 360000, 'USD', 'INV-2026-10176', 'medical_pharma', 'Pfizer Ltd.', 'in', 'aden_port'),
+            $this->sample('CLOSED_REJECTED', 'REJECTED', 775000, 'EUR', 'INV-2026-10187', 'fuel_energy', 'Saudi Aramco Trading', 'ae', 'mukalla_port'),
         ];
     }
 
@@ -236,9 +237,9 @@ class EngineRequestDemoSeeder extends Seeder
             $this->sample('FINAL', 'ACTIVE', 436000, 'EUR', 'INV-2026-20132', 'construction_materials', 'Bayer AG', 'tr', 'aden_port'),
             $this->sample('FINAL', 'ACTIVE', 528000, 'USD', 'INV-2026-20143', 'food_beverages', 'Cargill Inc.', 'cn', 'aden_port'),
             $this->sample('FX_CONFIRM', 'ACTIVE', 1310000, 'USD', 'INV-2026-20154', 'construction_materials', 'Siemens AG', 'tr', 'hodeidah_port'),
-            $this->sample('CLOSED', 'CLOSED', 1020000, 'USD', 'INV-2026-20165', 'fuel_energy', 'Saudi Aramco Trading', 'ae', 'mukalla_port'),
-            $this->sample('CLOSED', 'CLOSED', 372000, 'USD', 'INV-2026-20176', 'medical_pharma', 'Pfizer Ltd.', 'in', 'aden_port'),
-            $this->sample('CLOSED', 'REJECTED', 805000, 'EUR', 'INV-2026-20187', 'fuel_energy', 'Saudi Aramco Trading', 'ae', 'mukalla_port'),
+            $this->sample('CLOSED_COMPLETED', 'CLOSED', 1020000, 'USD', 'INV-2026-20165', 'fuel_energy', 'Saudi Aramco Trading', 'ae', 'mukalla_port'),
+            $this->sample('CLOSED_COMPLETED', 'CLOSED', 372000, 'USD', 'INV-2026-20176', 'medical_pharma', 'Pfizer Ltd.', 'in', 'aden_port'),
+            $this->sample('CLOSED_REJECTED', 'REJECTED', 805000, 'EUR', 'INV-2026-20187', 'fuel_energy', 'Saudi Aramco Trading', 'ae', 'mukalla_port'),
         ];
     }
 
@@ -342,7 +343,7 @@ class EngineRequestDemoSeeder extends Seeder
             }
 
             $timestamp = $timestamp->copy()->addHours(26);
-            $rows[] = $this->historyHop('EXEC', 'CLOSED', 'REJECT_FINAL', $timestamp);
+            $rows[] = $this->historyHop('EXEC', 'CLOSED_REJECTED', 'REJECT_FINAL', $timestamp);
 
             return ['history' => $rows, 'updated_at' => $timestamp];
         }
@@ -377,7 +378,7 @@ class EngineRequestDemoSeeder extends Seeder
             $from = self::PATH[$i - 1];
             $to = self::PATH[$i];
             $timestamp = $timestamp->copy()->addHours(26);
-            $rows[] = $this->historyHop($from, $to, $to === 'CLOSED' ? 'FINAL_APPROVE' : 'APPROVE', $timestamp);
+            $rows[] = $this->historyHop($from, $to, $to === 'CLOSED_COMPLETED' ? 'FINAL_APPROVE' : 'APPROVE', $timestamp);
         }
 
         return ['history' => $rows, 'updated_at' => $timestamp];

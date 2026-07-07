@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Enums\FieldType;
+use App\Enums\FinalOutcome;
 use App\Enums\StageAccessLevel;
 use App\Enums\WorkflowActionKind;
 use App\Enums\WorkflowVersionState;
@@ -24,7 +25,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * Seeds the canonical "تمويل الواردات" (Import Financing) workflow, mirroring
  * the dynamic-workflow-engine reference seed: one definition, one published
- * version, 8 stages, 12 transitions, 4 field groups, ~35 field definitions,
+ * version, 9 stages (split terminal outcomes), 12 transitions, 4 field groups, ~35 field definitions,
  * per-stage field rules, and stage permissions bound to the governance
  * org/team/role rows created by GovernanceSeeder.
  *
@@ -225,18 +226,19 @@ class ImportFinancingWorkflowSeeder extends Seeder
     private function seedStages(int $versionId): array
     {
         $rows = [
-            ['CREATE', 'إنشاء الطلب', 1, true, false],
-            ['INTERNAL', 'المراجعة الداخلية', 2, false, false],
-            ['SUPPORT', 'المراجعة المساندة', 3, false, false],
-            ['EXEC', 'القرار التنفيذي', 4, false, false],
-            ['FX', 'عمليات الصرف', 5, false, false],
-            ['FX_CONFIRM', 'تأكيد الصرف', 6, false, false],
-            ['FINAL', 'الاعتماد النهائي', 7, false, false],
-            ['CLOSED', 'مغلق', 99, false, true],
+            ['CREATE', 'إنشاء الطلب', 1, true, false, null, false],
+            ['INTERNAL', 'المراجعة الداخلية', 2, false, false, null, false],
+            ['SUPPORT', 'المراجعة المساندة', 3, false, false, null, true],
+            ['EXEC', 'القرار التنفيذي', 4, false, false, null, false],
+            ['FX', 'عمليات الصرف', 5, false, false, null, false],
+            ['FX_CONFIRM', 'تأكيد الصرف', 6, false, false, null, false],
+            ['FINAL', 'الاعتماد النهائي', 7, false, false, null, false],
+            ['CLOSED_COMPLETED', 'مغلق — مكتمل', 98, false, true, FinalOutcome::COMPLETED, false],
+            ['CLOSED_REJECTED', 'مغلق — مرفوض', 99, false, true, FinalOutcome::REJECTED, false],
         ];
 
         $ids = [];
-        foreach ($rows as [$code, $name, $order, $isInitial, $isFinal]) {
+        foreach ($rows as [$code, $name, $order, $isInitial, $isFinal, $finalOutcome, $requiresClaim]) {
             $stage = WorkflowStage::query()->create([
                 'workflow_version_id' => $versionId,
                 'code' => $code,
@@ -244,6 +246,8 @@ class ImportFinancingWorkflowSeeder extends Seeder
                 'sort_order' => $order,
                 'is_initial' => $isInitial,
                 'is_final' => $isFinal,
+                'final_outcome' => $finalOutcome,
+                'requires_claim' => $requiresClaim,
             ]);
             $ids[$code] = $stage->id;
         }
@@ -268,11 +272,11 @@ class ImportFinancingWorkflowSeeder extends Seeder
             ['SUPPORT', 'EXEC', 'APPROVE'],
             ['SUPPORT', 'SUPPORT', 'ADD_NOTES'],
             ['EXEC', 'FX', 'APPROVE'],
-            ['EXEC', 'CLOSED', 'REJECT_FINAL'],
+            ['EXEC', 'CLOSED_REJECTED', 'REJECT_FINAL'],
             ['FX', 'FX_CONFIRM', 'APPROVE'],
             ['FX_CONFIRM', 'FINAL', 'APPROVE'],
             ['FX_CONFIRM', 'FX', 'REJECT'],
-            ['FINAL', 'CLOSED', 'FINAL_APPROVE'],
+            ['FINAL', 'CLOSED_COMPLETED', 'FINAL_APPROVE'],
             ['FINAL', 'FX_CONFIRM', 'REJECT'],
         ];
 
@@ -318,7 +322,7 @@ class ImportFinancingWorkflowSeeder extends Seeder
         }
 
         // All downstream stages — submitted data visible + read-only.
-        foreach (['INTERNAL', 'SUPPORT', 'EXEC', 'FX', 'FX_CONFIRM', 'FINAL', 'CLOSED'] as $stageCode) {
+        foreach (['INTERNAL', 'SUPPORT', 'EXEC', 'FX', 'FX_CONFIRM', 'FINAL', 'CLOSED_COMPLETED', 'CLOSED_REJECTED'] as $stageCode) {
             foreach ($fields as $fieldId) {
                 $rows[] = [
                     'stage_id' => $stages[$stageCode],
@@ -365,7 +369,8 @@ class ImportFinancingWorkflowSeeder extends Seeder
             ['FX_CONFIRM', 'national_committee', 'fx_confirmation', null, StageAccessLevel::EXECUTE, 'تأكيد عملية الصرف'],
             ['FX_CONFIRM', 'commercial_banks', null, null, StageAccessLevel::VIEW, 'عرض تأكيد المصارفة الخارجية'],
             ['FINAL', 'national_committee', 'executive', 'committee_manager', StageAccessLevel::EXECUTE, 'الاعتماد النهائي'],
-            ['CLOSED', 'national_committee', 'executive', 'committee_manager', StageAccessLevel::VIEW, 'إغلاق الطلب'],
+            ['CLOSED_COMPLETED', 'national_committee', 'executive', 'committee_manager', StageAccessLevel::VIEW, 'إغلاق الطلب — مكتمل'],
+            ['CLOSED_REJECTED', 'national_committee', 'executive', 'committee_manager', StageAccessLevel::VIEW, 'إغلاق الطلب — مرفوض'],
         ];
 
         foreach ($rows as [$stageCode, $orgCode, $teamCode, $roleCode, $level, $label]) {
