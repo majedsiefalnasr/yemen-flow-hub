@@ -438,6 +438,13 @@ export const useAuthStore = defineStore('auth', {
 
     async switchDemoRole(role: UserRole): Promise<void> {
       const config = useRuntimeConfig()
+      if (!config.public.demoEnabled) {
+        throw {
+          statusCode: 404,
+          data: { success: false, message: 'تبديل العرض التوضيحي غير متاح في هذه البيئة.' },
+        }
+      }
+
       const baseURL = config.public.apiBase as string
       const xsrfToken = this.getXsrfToken()
 
@@ -475,6 +482,13 @@ export const useAuthStore = defineStore('auth', {
 
     async switchDemoUser(userId: number): Promise<void> {
       const config = useRuntimeConfig()
+      if (!config.public.demoEnabled) {
+        throw {
+          statusCode: 404,
+          data: { success: false, message: 'تبديل العرض التوضيحي غير متاح في هذه البيئة.' },
+        }
+      }
+
       const baseURL = config.public.apiBase as string
       const xsrfToken = this.getXsrfToken()
 

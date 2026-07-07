@@ -65,6 +65,7 @@ export default defineNuxtConfig({
       visualBypass: process.env.NUXT_PUBLIC_VISUAL_BYPASS === 'true',
       visualBypassRole: process.env.NUXT_PUBLIC_VISUAL_BYPASS_ROLE || 'CBY_ADMIN',
       demoUserSwitch: process.env.NUXT_PUBLIC_DEMO_USER_SWITCH === 'true',
+      demoEnabled: process.env.NUXT_PUBLIC_DEMO_USER_SWITCH === 'true',
       googleFontsApiKey: process.env.NUXT_PUBLIC_GOOGLE_FONTS_API_KEY || '',
       inactivityTimeoutMs: Number(process.env.NUXT_PUBLIC_INACTIVITY_TIMEOUT_MS) || 900_000,
       inactivityWarningMs: Number(process.env.NUXT_PUBLIC_INACTIVITY_WARNING_MS) || 120_000,

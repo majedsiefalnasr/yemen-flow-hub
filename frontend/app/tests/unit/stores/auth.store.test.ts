@@ -7,7 +7,7 @@ import type { AuthUser } from '../../../types/models'
 const mockFetch = vi.fn()
 vi.stubGlobal('$fetch', mockFetch)
 vi.stubGlobal('useRuntimeConfig', () => ({
-  public: { apiBase: 'http://localhost:8000' },
+  public: { apiBase: 'http://localhost:8000', demoEnabled: true },
 }))
 // navigateTo is only available in Nuxt context — stub for test isolation
 vi.stubGlobal('navigateTo', vi.fn())
@@ -108,6 +108,14 @@ describe('useAuthStore', () => {
           requires_mfa: false,
         },
       })
+      mockFetch.mockResolvedValueOnce({
+        success: true,
+        data: {
+          user: targetUser,
+          screen_permissions: {},
+          capabilities: {},
+        },
+      })
 
       const store = useAuthStore()
       await store.switchDemoUser(42)
@@ -138,6 +146,16 @@ describe('useAuthStore', () => {
 
       const store = useAuthStore()
       await expect(store.switchDemoUser(1)).rejects.toMatchObject({ statusCode: 403 })
+    })
+
+    it('throws when demo switching is disabled in runtime config', async () => {
+      vi.stubGlobal('useRuntimeConfig', () => ({
+        public: { apiBase: 'http://localhost:8000', demoEnabled: false },
+      }))
+
+      const store = useAuthStore()
+      await expect(store.switchDemoUser(1)).rejects.toMatchObject({ statusCode: 404 })
+      expect(mockFetch).not.toHaveBeenCalled()
     })
   })
 

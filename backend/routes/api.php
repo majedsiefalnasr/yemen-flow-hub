@@ -50,20 +50,26 @@ use Illuminate\Support\Facades\Route;
 
 Route::pattern('engineRequest', '[0-9]+');
 
-Route::prefix('auth')->group(function () {
-    Route::get('demo-users', [AuthController::class, 'demoUsers'])->middleware('throttle:20,1');
-    Route::post('switch-demo-user', [AuthController::class, 'switchDemoUser'])->middleware('throttle:20,1');
+$demoEnvironmentAllowed = in_array(app()->environment(), config('demo.allowed_environments'), true);
+
+Route::prefix('auth')->group(function () use ($demoEnvironmentAllowed) {
+    if ($demoEnvironmentAllowed) {
+        Route::get('demo-users', [AuthController::class, 'demoUsers'])->middleware('throttle:20,1');
+        Route::post('switch-demo-user', [AuthController::class, 'switchDemoUser'])->middleware('throttle:20,1');
+    }
     Route::post('login', [AuthController::class, 'login'])->middleware('throttle:5,1');
     Route::post('login-pin', [AuthController::class, 'loginWithPin'])->middleware('throttle:10,1');
     Route::post('verify-otp', [AuthController::class, 'verifyOtp'])->middleware('throttle:10,1');
     Route::post('password/forgot', [AuthController::class, 'forgotPassword'])->middleware('throttle:5,1');
     Route::post('password/verify', [AuthController::class, 'verifyPasswordResetOtp'])->middleware('throttle:10,1');
     Route::post('password/reset', [AuthController::class, 'resetPassword'])->middleware('throttle:10,1');
-    Route::middleware(['auth:sanctum', 'active'])->group(function () {
+    Route::middleware(['auth:sanctum', 'active'])->group(function () use ($demoEnvironmentAllowed) {
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('me', [AuthController::class, 'me']);
         Route::get('me/permissions', [AuthController::class, 'permissions']);
-        Route::post('switch-demo-role', [AuthController::class, 'switchDemoRole'])->middleware('throttle:20,1');
+        if ($demoEnvironmentAllowed) {
+            Route::post('switch-demo-role', [AuthController::class, 'switchDemoRole'])->middleware('throttle:20,1');
+        }
     });
 });
 
