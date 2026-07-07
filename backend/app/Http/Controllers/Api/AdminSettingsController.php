@@ -36,10 +36,9 @@ class AdminSettingsController extends Controller
         Gate::authorize('cbyAdmin', $request->user());
 
         $settings = $this->settingsService->getAllSettings();
-        $securityPolicies = $this->settingsService->getSecurityPolicies();
 
         return ApiResponse::success(
-            array_merge($settings, $securityPolicies, [
+            array_merge($settings, [
                 'email_templates' => $this->settingsService->getEmailTemplates(),
             ]),
             'System settings retrieved.'

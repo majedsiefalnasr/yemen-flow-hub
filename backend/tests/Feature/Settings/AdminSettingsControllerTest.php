@@ -48,10 +48,10 @@ class AdminSettingsControllerTest extends TestCase
         $response->assertStatus(200);
         $response->assertJsonPath('success', true);
         $response->assertJsonPath('data.support_claim_ttl', 15);
-        $response->assertJsonPath('data.voting_session_timeout', 60);
         $response->assertJsonPath('data.pdf_upload_size_limit', 10);
+        $response->assertJsonPath('data.login_lockout_attempts', 5);
         $response->assertJsonPath('data.login_lockout_duration', 15);
-        $response->assertJsonPath('data.notifications_phase_1_enabled', false);
+        $response->assertJsonPath('data.mfa_required', false);
     }
 
     public function test_get_admin_settings_forbidden_for_non_admin_user(): void
@@ -93,16 +93,16 @@ class AdminSettingsControllerTest extends TestCase
         $this->assertEquals($admin->id, $setting->updated_by);
     }
 
-    public function test_update_voting_session_timeout_with_valid_value(): void
+    public function test_update_trusted_device_ttl_hours_with_valid_value(): void
     {
         $admin = $this->makeCbyAdmin();
 
-        $response = $this->actingAs($admin)->putJson('/api/admin/settings/voting_session_timeout', [
-            'value' => 90,
+        $response = $this->actingAs($admin)->putJson('/api/admin/settings/trusted_device_ttl_hours', [
+            'value' => 48,
         ]);
 
         $response->assertStatus(200);
-        $response->assertJsonPath('data.value', 90);
+        $response->assertJsonPath('data.value', 48);
     }
 
     public function test_update_pdf_upload_size_limit_with_valid_value(): void
@@ -121,7 +121,7 @@ class AdminSettingsControllerTest extends TestCase
     {
         $admin = $this->makeCbyAdmin();
 
-        $response = $this->actingAs($admin)->putJson('/api/admin/settings/notifications_phase_1_enabled', [
+        $response = $this->actingAs($admin)->putJson('/api/admin/settings/mfa_required', [
             'value' => true,
         ]);
 
