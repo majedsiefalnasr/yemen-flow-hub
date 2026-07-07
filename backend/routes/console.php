@@ -1,9 +1,11 @@
 <?php
 
+use App\Console\Commands\ArchiveSupersededDocumentsCommand;
 use App\Console\Commands\ExpireEngineClaimsCommand;
 use App\Console\Commands\NotifySlaSignalsCommand;
 use App\Console\Commands\PurgeOldNotificationsCommand;
 use App\Console\Commands\PurgeOldReportExportsCommand;
+use App\Console\Commands\PurgeOrphanDocumentsCommand;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -16,3 +18,5 @@ Schedule::command(ExpireEngineClaimsCommand::class)->everyMinute();
 Schedule::command(NotifySlaSignalsCommand::class)->hourly();
 Schedule::command(PurgeOldNotificationsCommand::class)->dailyAt('02:10');
 Schedule::command(PurgeOldReportExportsCommand::class)->dailyAt('02:20');
+Schedule::command(ArchiveSupersededDocumentsCommand::class)->dailyAt('02:30');
+Schedule::command(PurgeOrphanDocumentsCommand::class)->dailyAt('02:40');
