@@ -3,12 +3,14 @@
 namespace App\Services\Workflow;
 
 use App\Enums\AuditAction;
+use App\Enums\FieldSemanticTag;
 use App\Enums\StageAccessLevel;
 use App\Exceptions\CustomsException;
 use App\Exceptions\EngineException;
 use App\Exceptions\FinancingLimitExceededException;
 use App\Exceptions\FinancingLockTimeoutException;
 use App\Models\EngineRequest;
+use App\Models\FieldDefinition;
 use App\Models\User;
 use App\Models\WorkflowHistoryEntry;
 use App\Models\WorkflowStage;
@@ -16,6 +18,7 @@ use App\Models\WorkflowTransition;
 use App\Services\Audit\AuditService;
 use App\Services\Notifications\EngineNotificationDispatcher;
 use App\Support\EngineRequestStatus;
+use App\Support\TransitionFieldDiffBuilder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -30,6 +33,7 @@ class EngineTransitionService
         private StageHookRegistry $hookRegistry,
         private EngineNotificationDispatcher $notificationDispatcher,
         private EngineClaimService $claimService,
+        private TransitionFieldDiffBuilder $fieldDiffBuilder,
     ) {}
 
     public function execute(
@@ -70,11 +74,12 @@ class EngineTransitionService
                 throw EngineException::commentRequired();
             }
 
-            $mergedData = array_merge($request->data ?? [], $data);
+            $beforeData = $request->data ?? [];
+            $mergedData = array_merge($beforeData, $data);
             $fieldErrors = $this->fieldRuleValidator->validateStage(
                 $transition->fromStage,
                 $mergedData,
-                $request->data ?? [],
+                $beforeData,
                 true,
                 $user,
                 $request,
@@ -111,6 +116,12 @@ class EngineTransitionService
                 'created_at' => now(),
             ]);
 
+            $fieldDiff = $this->fieldDiffBuilder->diff(
+                $beforeData,
+                $mergedData,
+                $this->resolveSensitiveFieldKeys($request),
+            );
+
             $this->auditService->log(
                 AuditAction::STATUS_TRANSITION,
                 $user,
@@ -120,9 +131,12 @@ class EngineTransitionService
                     'from_stage_id' => $transition->from_stage_id,
                     'to_stage_id' => $transition->to_stage_id,
                     'action_code' => $transition->action?->code,
+                    'request_id' => $request->id,
                 ],
                 workflowInstanceId: $request->id,
                 correlationId: $correlationId,
+                oldValues: $fieldDiff['old_values'] !== [] ? $fieldDiff['old_values'] : null,
+                newValues: $fieldDiff['new_values'] !== [] ? $fieldDiff['new_values'] : null,
             );
 
             // Hooks run inside the transaction so any failure rolls the transition back
@@ -175,11 +189,12 @@ class EngineTransitionService
 
             $this->claimService->ensureClaimHeld($request, $user);
 
-            $mergedData = array_merge($request->data ?? [], $data);
+            $beforeData = $request->data ?? [];
+            $mergedData = array_merge($beforeData, $data);
             $fieldErrors = $this->fieldRuleValidator->validateStage(
                 $request->currentStage,
                 $mergedData,
-                $request->data ?? [],
+                $beforeData,
                 false,
                 $user,
                 $request,
@@ -195,12 +210,20 @@ class EngineTransitionService
 
             $this->projectionSync->sync($request);
 
+            $fieldDiff = $this->fieldDiffBuilder->diff(
+                $beforeData,
+                $mergedData,
+                $this->resolveSensitiveFieldKeys($request),
+            );
+
             $this->auditService->log(
                 AuditAction::REQUEST_UPDATED,
                 $user,
                 $request,
-                ['action' => 'draft_save'],
+                ['action' => 'draft_save', 'request_id' => $request->id],
                 workflowInstanceId: $request->id,
+                oldValues: $fieldDiff['old_values'] !== [] ? $fieldDiff['old_values'] : null,
+                newValues: $fieldDiff['new_values'] !== [] ? $fieldDiff['new_values'] : null,
             );
 
             return $request->fresh(['currentStage', 'creator', 'bank', 'merchant']);
@@ -271,6 +294,18 @@ class EngineTransitionService
 
             return $request->fresh(['currentStage', 'creator', 'bank', 'merchant']);
         });
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function resolveSensitiveFieldKeys(EngineRequest $request): array
+    {
+        return FieldDefinition::query()
+            ->where('workflow_version_id', $request->workflow_version_id)
+            ->where('semantic_tag', FieldSemanticTag::MERCHANT_TAX_NUMBER)
+            ->pluck('key')
+            ->all();
     }
 
     private function resolveStatusAfterTransition(WorkflowStage $toStage): string
