@@ -54,4 +54,17 @@ class ReportPresetTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data', []);
     }
+
+    public function test_save_preset_validation_returns_rich_error_envelope(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->postJson('/api/v1/report-presets', [])
+            ->assertUnprocessable()
+            ->assertJsonPath('error.code', 'VALIDATION_FAILED')
+            ->assertJsonStructure([
+                'error' => ['code', 'message', 'fields', 'request_id'],
+            ]);
+    }
 }

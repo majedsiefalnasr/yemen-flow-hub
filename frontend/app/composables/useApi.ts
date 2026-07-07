@@ -1,4 +1,10 @@
 import type { ApiError } from '../types/models'
+import {
+  extractApiErrorCode,
+  extractApiErrorMessage,
+  extractApiFieldErrors,
+  extractRequestId,
+} from '../utils/apiErrors'
 
 type ApiFetchOptions = NonNullable<Parameters<typeof $fetch>[1]>
 type ApiFetchBody = ApiFetchOptions['body']
@@ -155,5 +161,5 @@ export function useApi() {
     )
   }
 
-  return { get, post, put, patch, del, isApiError }
+  return { get, post, put, patch, del, isApiError, extractApiErrorMessage, extractApiErrorCode, extractApiFieldErrors, extractRequestId }
 }
