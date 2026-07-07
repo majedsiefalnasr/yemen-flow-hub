@@ -16,6 +16,7 @@ export const useReportsStore = defineStore('reports', {
     loading: false,
     exportLoading: false,
     error: null as string | null,
+    exportTruncationNotice: null as string | null,
   }),
 
   actions: {
@@ -68,8 +69,31 @@ export const useReportsStore = defineStore('reports', {
 
     async exportWorkflow(format: 'excel' | 'pdf'): Promise<void> {
       this.exportLoading = true
+      this.exportTruncationNotice = null
       try {
-        const { exportReport } = useReports()
+        const {
+          exportReport,
+          requestExport,
+          pollExportUntilComplete,
+          buildExportTruncationMessage,
+        } = useReports()
+
+        if (format === 'excel') {
+          const created = await requestExport('summary', {
+            from: this.filters.fromDate,
+            to: this.filters.toDate,
+          })
+          const completed = await pollExportUntilComplete(created.id, {
+            intervalMs: 0,
+            maxAttempts: 5,
+          })
+          const notice = buildExportTruncationMessage(completed)
+          if (notice) {
+            this.exportTruncationNotice = notice
+          }
+          return
+        }
+
         await exportReport('workflow', format, this.filters)
       } catch {
         this.error = 'تعذّر تصدير التقرير. يرجى المحاولة مرة أخرى.'
@@ -80,14 +104,41 @@ export const useReportsStore = defineStore('reports', {
 
     async exportBank(format: 'excel' | 'pdf'): Promise<void> {
       this.exportLoading = true
+      this.exportTruncationNotice = null
       try {
-        const { exportReport } = useReports()
+        const {
+          exportReport,
+          requestExport,
+          pollExportUntilComplete,
+          buildExportTruncationMessage,
+        } = useReports()
+
+        if (format === 'excel') {
+          const created = await requestExport('summary', {
+            from: this.filters.fromDate,
+            to: this.filters.toDate,
+          })
+          const completed = await pollExportUntilComplete(created.id, {
+            intervalMs: 0,
+            maxAttempts: 5,
+          })
+          const notice = buildExportTruncationMessage(completed)
+          if (notice) {
+            this.exportTruncationNotice = notice
+          }
+          return
+        }
+
         await exportReport('bank', format, this.filters)
       } catch {
         this.error = 'تعذّر تصدير التقرير. يرجى المحاولة مرة أخرى.'
       } finally {
         this.exportLoading = false
       }
+    },
+
+    clearExportTruncationNotice(): void {
+      this.exportTruncationNotice = null
     },
   },
 })

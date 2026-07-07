@@ -12,7 +12,24 @@ export interface ReportExportEntry {
   filters: Record<string, any> | null
   format: string
   status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED'
+  total_matching?: number | null
+  exported_count?: number | null
+  truncated?: boolean
+  truncation_note?: string | null
   created_at: string
+}
+
+export function buildExportTruncationMessage(entry: ReportExportEntry): string | null {
+  if (!entry.truncated) return null
+
+  const exported = entry.exported_count ?? 0
+  const total = entry.total_matching ?? exported
+
+  return `تم تصدير ${exported.toLocaleString('ar-EG')} من أصل ${total.toLocaleString('ar-EG')} صفًا مطابقًا. ضيّق الفلاتر لتصدير كامل.`
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 export interface EngineReportFilters {
@@ -343,6 +360,24 @@ export function useReports() {
     return response.data
   }
 
+  async function pollExportUntilComplete(
+    exportId: number,
+    options: { intervalMs?: number; maxAttempts?: number } = {},
+  ): Promise<ReportExportEntry> {
+    const intervalMs = options.intervalMs ?? 500
+    const maxAttempts = options.maxAttempts ?? 120
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const entry = await fetchExportStatus(exportId)
+      if (entry.status === 'COMPLETED' || entry.status === 'FAILED') {
+        return entry
+      }
+      await sleep(intervalMs)
+    }
+
+    throw new Error('EXPORT_POLL_TIMEOUT')
+  }
+
   async function fetchMyExports(): Promise<{ data: ReportExportEntry[]; meta: any }> {
     return get<{ data: ReportExportEntry[]; meta: any }>('/api/v1/reports/exports')
   }
@@ -366,6 +401,8 @@ export function useReports() {
     fetchTeamPerformance,
     requestExport,
     fetchExportStatus,
+    pollExportUntilComplete,
+    buildExportTruncationMessage,
     fetchMyExports,
   }
 }

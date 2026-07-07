@@ -18,6 +18,8 @@ class GenerateReportExport implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public const ROW_LIMIT = 10000;
+
     public function __construct(
         private readonly int $exportId,
     ) {}
@@ -73,9 +75,17 @@ class GenerateReportExport implements ShouldQueue
                 $query->whereHas('workflowVersion', fn ($q) => $q->where('workflow_definition_id', $filters['workflow']));
             }
 
-            $rows = $query->orderByDesc('created_at')->limit(50000)->get();
+            $totalMatching = (clone $query)->count();
+            $rows = $query->orderByDesc('created_at')->limit(self::ROW_LIMIT)->get();
+            $exportedCount = $rows->count();
+            $truncated = $totalMatching > $exportedCount;
+            $filterSummary = json_encode($filters, JSON_UNESCAPED_UNICODE) ?: '{}';
 
-            $csv = "\xEF\xBB\xBF".implode(',', [
+            $preamble = $truncated
+                ? "# Exported {$exportedCount} of {$totalMatching} matching rows. Applied filters: {$filterSummary}. truncated: yes. Narrow filters for a complete export.\n"
+                : "# Exported {$exportedCount} rows. Applied filters: {$filterSummary}. truncated: no.\n";
+
+            $csv = "\xEF\xBB\xBF".$preamble.implode(',', [
                 'ID', 'Reference', 'Bank', 'Merchant', 'Stage', 'Status',
                 'Amount', 'Currency', 'Created At',
             ])."\n";
@@ -97,13 +107,26 @@ class GenerateReportExport implements ShouldQueue
             $path = "exports/report-{$export->id}.csv";
             Storage::disk('private')->put($path, $csv);
 
-            $export->update(['status' => 'COMPLETED', 'file_path' => $path]);
+            $truncationNote = $truncated
+                ? "Exported {$exportedCount} of {$totalMatching} matching rows."
+                : null;
+
+            $export->update([
+                'status' => 'COMPLETED',
+                'file_path' => $path,
+                'total_matching' => $totalMatching,
+                'exported_count' => $exportedCount,
+                'truncated' => $truncated,
+                'truncation_note' => $truncationNote,
+            ]);
 
             $auditor = $export->requester;
             $auditService->log(AuditAction::REPORT_EXPORTED, $auditor, null, [
                 'export_id' => $export->id,
                 'report_type' => $export->report_type,
-                'row_count' => $rows->count(),
+                'row_count' => $exportedCount,
+                'total_matching' => $totalMatching,
+                'truncated' => $truncated,
                 'organization_id' => $auditor?->organization_id,
                 'classification' => $auditor?->organization?->classification,
                 'filters' => $export->filters,

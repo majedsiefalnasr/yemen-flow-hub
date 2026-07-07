@@ -127,6 +127,10 @@ class ReportExportController extends Controller
             'filters' => $export->filters,
             'format' => $export->format,
             'status' => $export->status,
+            'total_matching' => $export->total_matching,
+            'exported_count' => $export->exported_count,
+            'truncated' => (bool) $export->truncated,
+            'truncation_note' => $export->truncation_note,
             'created_at' => $export->created_at?->toISOString(),
         ];
     }

@@ -14,6 +14,10 @@ class ReportExport extends Model
         'format',
         'status',
         'file_path',
+        'total_matching',
+        'exported_count',
+        'truncated',
+        'truncation_note',
         'version',
     ];
 
@@ -22,6 +26,9 @@ class ReportExport extends Model
         return [
             'filters' => 'array',
             'version' => 'integer',
+            'truncated' => 'boolean',
+            'total_matching' => 'integer',
+            'exported_count' => 'integer',
         ];
     }
 
