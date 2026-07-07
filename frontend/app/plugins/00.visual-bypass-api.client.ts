@@ -64,8 +64,8 @@ function mockForPath(path: string, method: string, role: UserRole) {
   if (path === '/sanctum/csrf-cookie') return null
   if (path === '/api/auth/me') return apiOk(mockUser(role))
   if (path === '/api/dashboard/stats') return apiOk({})
-  if (path === '/api/notifications/unread-count') return apiOk({ count: 0 })
-  if (path === '/api/notifications') return apiOk(paginated([]))
+  if (path === '/api/v1/notifications/unread-count') return apiOk({ count: 0 })
+  if (path === '/api/v1/notifications') return apiOk(paginated([]))
   if (path === '/api/v1/banks') return apiOk([])
   if (path === '/api/v1/users') return apiOk([])
   if (path === '/api/merchants') return apiOk(paginated([]))

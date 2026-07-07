@@ -15,7 +15,7 @@ Base (merge-base main): TBD on first task
 
 ## Prerequisites (must be true before Task 10)
 - [x] Tasks 1–6 complete (all live consumers on V1)
-- [ ] Task 9 grep gate green (`scripts/verify-no-legacy-api-consumers.sh`)
+- [x] Task 9 grep gate green (`scripts/verify-no-legacy-api-consumers.sh`)
 - [ ] WP-11/WP-12/WP-13 merged to main (Wave 5 complete ✅)
 
 ## Tasks
@@ -27,7 +27,7 @@ Task 5 (migrate useAudit + audit.vue): complete — see task-5-report.md
 Task 6 (migrate useReports presets): complete — see task-6-report.md
 Task 7 (API envelope tolerance): complete — see task-7-report.md
 Task 8 (demo route production gate): complete — see task-8-report.md
-Task 9 (zero-legacy grep gate): pending
+Task 9 (zero-legacy grep gate): complete — scripts/verify-no-legacy-api-consumers.sh passes
 Task 10 (purge legacy route batch 1): pending — blocked on Task 9
 Task 11 (dead module + designer guard purge): pending
 Task 12 (stale reference sweep): pending
