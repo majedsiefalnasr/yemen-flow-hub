@@ -13,19 +13,49 @@ use App\Support\RoleCodes;
 
 class FxConfirmationAuthorizationService
 {
+    /**
+     * Per-workflow_version_id FX-stage lookup cache. Bound as a container
+     * singleton (see AppServiceProvider) so this survives across the per-row
+     * app(FxConfirmationAuthorizationService::class) resolutions in
+     * EngineRequestResource::toArray() during list serialization, eliminating
+     * a WorkflowStage query per row for requests sharing a workflow version.
+     * Keyed with array_key_exists (not isset) so a genuine "no FX stage"
+     * result (null) is cached too, rather than re-queried every row.
+     *
+     * @var array<int, WorkflowStage|null>
+     */
+    private array $fxStageCache = [];
+
+    /**
+     * Per-(user_id, stage_id, access_level) stage-access cache. StagePermissionResolver
+     * re-queries stage_permissions (plus the user's teams/roles) on every call; for a
+     * list of requests sharing the same FX stage and acting user, this collapses those
+     * repeated lookups to one per distinct combination.
+     *
+     * @var array<string, bool>
+     */
+    private array $stageAccessCache = [];
+
     public function __construct(private readonly StagePermissionResolver $resolver) {}
 
     public function resolveFxStage(EngineRequest $engineRequest): ?WorkflowStage
     {
+        $workflowVersionId = $engineRequest->workflow_version_id;
+        if (array_key_exists($workflowVersionId, $this->fxStageCache)) {
+            return $this->fxStageCache[$workflowVersionId];
+        }
+
         $code = (string) config('engine_hooks.fx_pdf_stage', 'FX_CONFIRM');
 
-        return WorkflowStage::query()
-            ->where('workflow_version_id', $engineRequest->workflow_version_id)
+        $stage = WorkflowStage::query()
+            ->where('workflow_version_id', $workflowVersionId)
             ->where(function ($query) use ($code): void {
                 $query->where('code', $code)
                     ->orWhere('semantic_role', StageSemanticRole::FX_CONFIRMATION);
             })
             ->first();
+
+        return $this->fxStageCache[$workflowVersionId] = $stage;
     }
 
     public function requestInScope(User $user, EngineRequest $engineRequest): bool
@@ -75,7 +105,7 @@ class FxConfirmationAuthorizationService
             return false;
         }
 
-        return $this->resolver->userCanAccessStage($user, $fxStage, StageAccessLevel::EXECUTE);
+        return $this->cachedUserCanAccessStage($user, $fxStage, StageAccessLevel::EXECUTE);
     }
 
     public function canDownloadArtifact(User $user, CustomsDeclaration $declaration): bool
@@ -99,7 +129,17 @@ class FxConfirmationAuthorizationService
             return false;
         }
 
-        return $this->resolver->userCanAccessStage($user, $fxStage, StageAccessLevel::VIEW);
+        return $this->cachedUserCanAccessStage($user, $fxStage, StageAccessLevel::VIEW);
+    }
+
+    private function cachedUserCanAccessStage(User $user, WorkflowStage $stage, StageAccessLevel $required): bool
+    {
+        $cacheKey = $user->getKey().':'.$stage->getKey().':'.$required->value;
+        if (array_key_exists($cacheKey, $this->stageAccessCache)) {
+            return $this->stageAccessCache[$cacheKey];
+        }
+
+        return $this->stageAccessCache[$cacheKey] = $this->resolver->userCanAccessStage($user, $stage, $required);
     }
 
     /**

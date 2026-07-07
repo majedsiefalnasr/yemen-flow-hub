@@ -3,9 +3,11 @@
 namespace App\Providers;
 
 use App\Services\Authorization\PermissionService;
+use App\Services\Customs\FxConfirmationAuthorizationService;
 use App\Services\Documents\PdfGeneratorService;
 use App\Services\Workflow\Effects\CustomsFxPdfEffect;
 use App\Services\Workflow\Effects\FinancingLedgerEffect;
+use App\Services\Workflow\StageFieldOutputFilter;
 use App\Services\Workflow\StageHookRegistry;
 use Illuminate\Support\ServiceProvider;
 use RuntimeException;
@@ -20,6 +22,13 @@ class AppServiceProvider extends ServiceProvider
         // registered once at boot and resolved by EngineTransitionService on every
         // transition. A transient binding would discard registered hooks.
         $this->app->singleton(StageHookRegistry::class, StageHookRegistry::class);
+        // Both resources are resolved fresh per row when serializing engine-request
+        // list responses (EngineRequestResource::toArray). Binding them as
+        // container singletons lets their internal per-(workflow_version_id,
+        // stage_id) memoization actually persist across rows within a single
+        // request, instead of resetting on every app() call.
+        $this->app->singleton(StageFieldOutputFilter::class, StageFieldOutputFilter::class);
+        $this->app->singleton(FxConfirmationAuthorizationService::class, FxConfirmationAuthorizationService::class);
     }
 
     public function boot(): void

@@ -20,6 +20,17 @@ use Illuminate\Support\Facades\Log;
 class StageFieldOutputFilter
 {
     /**
+     * Per-(workflow_version_id, stage_id) visible-field-key cache. Bound as a
+     * container singleton (see AppServiceProvider) so this survives across the
+     * per-row app(StageFieldOutputFilter::class) resolutions in
+     * EngineRequestResource::toArray() during list serialization, eliminating
+     * a FieldDefinition query per row for requests sharing a stage/version.
+     *
+     * @var array<string, list<string>>
+     */
+    private array $visibleFieldKeysCache = [];
+
+    /**
      * @return array<string, mixed>
      */
     public function filterRequestData(EngineRequest $request, ?User $viewer = null): array
@@ -78,9 +89,14 @@ class StageFieldOutputFilter
      */
     public function visibleFieldKeysForStage(int $workflowVersionId, WorkflowStage $stage): array
     {
+        $cacheKey = $workflowVersionId.':'.$stage->id;
+        if (array_key_exists($cacheKey, $this->visibleFieldKeysCache)) {
+            return $this->visibleFieldKeysCache[$cacheKey];
+        }
+
         $rulesByFieldId = $this->rulesForStage($stage)->keyBy('field_id');
 
-        return FieldDefinition::query()
+        $keys = FieldDefinition::query()
             ->where('workflow_version_id', $workflowVersionId)
             ->get()
             ->filter(function (FieldDefinition $field) use ($rulesByFieldId): bool {
@@ -90,6 +106,8 @@ class StageFieldOutputFilter
             })
             ->pluck('key')
             ->all();
+
+        return $this->visibleFieldKeysCache[$cacheKey] = $keys;
     }
 
     /**

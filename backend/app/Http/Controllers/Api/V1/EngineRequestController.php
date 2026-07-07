@@ -206,11 +206,16 @@ class EngineRequestController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
+        // User::hasRoleCode()/role() short-circuit on a loaded `roles` relation
+        // instead of querying. The same $user instance is reused by
+        // EngineRequestResource for every row during list serialization, so
+        // loading it once here avoids a hasRoleCode() query per row.
+        $user->loadMissing('roles');
         $accessibleStageIds = $this->permissionResolver->accessibleStageIds($user, StageAccessLevel::VIEW);
 
         $query = EngineRequest::query()
             ->withStageEntry()
-            ->with(['currentStage', 'bank', 'merchant', 'creator', 'workflowVersion.definition']);
+            ->with(['currentStage.stageFieldRules', 'bank', 'merchant', 'creator', 'workflowVersion.definition', 'customsDeclaration']);
 
         if (! $user->hasRoleCode(RoleCodes::SYSTEM_ADMIN)) {
             $query
@@ -232,6 +237,7 @@ class EngineRequestController extends Controller
     public function myQueue(Request $request): JsonResponse
     {
         $user = $request->user();
+        $user->loadMissing('roles');
         $executeStageIds = $this->permissionResolver->accessibleStageIds($user, StageAccessLevel::EXECUTE);
 
         $query = EngineRequest::query()
@@ -239,7 +245,7 @@ class EngineRequestController extends Controller
             ->active()
             ->forUser($user)
             ->whereIn('engine_requests.current_stage_id', $executeStageIds)
-            ->with(['currentStage', 'bank', 'merchant', 'creator', 'claimedBy', 'workflowVersion.definition']);
+            ->with(['currentStage.stageFieldRules', 'bank', 'merchant', 'creator', 'claimedBy', 'workflowVersion.definition', 'customsDeclaration']);
 
         $this->listQuery->applyFilters($query, $request);
 

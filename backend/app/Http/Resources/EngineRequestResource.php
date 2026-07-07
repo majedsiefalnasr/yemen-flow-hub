@@ -11,6 +11,23 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class EngineRequestResource extends JsonResource
 {
+    /**
+     * Per-(user_id, stage_id) can_execute cache. JsonResource::collection()
+     * instantiates a fresh EngineRequestResource per row, so an instance
+     * property cannot memoize across rows; this static cache stands in for
+     * that. Explicitly flushed by EngineRequestListQuery::paginatedResponse()
+     * before each collection build so stale results can never leak between
+     * requests (or between tests sharing a PHP process).
+     *
+     * @var array<string, bool>
+     */
+    private static array $canExecuteCache = [];
+
+    public static function flushCanExecuteCache(): void
+    {
+        self::$canExecuteCache = [];
+    }
+
     public function toArray(Request $request): array
     {
         return [
@@ -45,11 +62,18 @@ class EngineRequestResource extends JsonResource
             // loaded (list endpoints), where the client does not need it.
             'can_execute' => $this->when(
                 $request->user() !== null && $this->relationLoaded('currentStage') && $this->currentStage !== null,
-                fn (): bool => app(StagePermissionResolver::class)->userCanAccessStage(
-                    $request->user(),
-                    $this->currentStage,
-                    StageAccessLevel::EXECUTE,
-                ),
+                function () use ($request): bool {
+                    $cacheKey = $request->user()->getKey().':'.$this->currentStage->getKey();
+                    if (array_key_exists($cacheKey, self::$canExecuteCache)) {
+                        return self::$canExecuteCache[$cacheKey];
+                    }
+
+                    return self::$canExecuteCache[$cacheKey] = app(StagePermissionResolver::class)->userCanAccessStage(
+                        $request->user(),
+                        $this->currentStage,
+                        StageAccessLevel::EXECUTE,
+                    );
+                },
             ),
             'bank_id' => $this->bank_id,
             'bank' => $this->whenLoaded('bank', fn () => [

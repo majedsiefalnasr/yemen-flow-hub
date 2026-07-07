@@ -63,6 +63,13 @@ class EngineRequestListQuery
 
     public function paginatedResponse($page): JsonResponse
     {
+        // Flush the resource's static can_execute cache before each collection
+        // build: JsonResource::collection() creates one EngineRequestResource
+        // per row, so memoization lives in a static instead of an instance
+        // property. Flushing here (the sole call site) guarantees a stale
+        // result from a previous request/response can never leak forward.
+        EngineRequestResource::flushCanExecuteCache();
+
         return response()->json([
             'data' => EngineRequestResource::collection($page->items()),
             'meta' => [

@@ -27,6 +27,7 @@ use Database\Seeders\GovernanceSeeder;
 use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -415,6 +416,53 @@ class EngineRequestTest extends TestCase
 
         $response = $this->actingAs($this->outsideUser)->getJson('/api/v1/engine-requests');
         $response->assertOk()->assertJsonPath('meta.total', 0);
+    }
+
+    /**
+     * Regression guard for the N+1 identified in WP-8 final review: listing
+     * requests must not issue additional queries per row for per-stage field
+     * visibility (StageFieldOutputFilter::visibleFieldKeysForStage),
+     * FX-stage resolution (FxConfirmationAuthorizationService::resolveFxStage),
+     * or can_execute stage-permission checks — those are now eager-loaded or
+     * memoized per (workflow_version_id, stage_id) / (user_id, stage_id).
+     *
+     * One query per additional row remains by design: DataScope::forUser's
+     * per-request `EngineRequest::exists()` scope check
+     * (FxConfirmationAuthorizationService::requestInScope) is a genuine
+     * per-row authorization check keyed by request id and cannot be
+     * memoized across distinct rows. The assertion below allows for that
+     * single linear query but fails if the N+1 (dozens of queries/row)
+     * reappears.
+     */
+    public function test_list_query_count_does_not_scale_with_row_count(): void
+    {
+        for ($i = 0; $i < 2; $i++) {
+            $this->createRequest(['data' => ['amount' => 50000, 'currency' => 'USD', 'invoice_number' => 'INV-'.$i]]);
+        }
+
+        DB::enableQueryLog();
+        $this->actingAs($this->executor)->getJson('/api/v1/engine-requests')->assertOk()->assertJsonPath('meta.total', 2);
+        $smallCount = count(DB::getQueryLog());
+        DB::disableQueryLog();
+        DB::flushQueryLog();
+
+        for ($i = 2; $i < 10; $i++) {
+            $this->createRequest(['data' => ['amount' => 50000, 'currency' => 'USD', 'invoice_number' => 'INV-'.$i]]);
+        }
+
+        DB::enableQueryLog();
+        $this->actingAs($this->executor)->getJson('/api/v1/engine-requests')->assertOk()->assertJsonPath('meta.total', 10);
+        $largeCount = count(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        $additionalRows = 10 - 2;
+        $queryGrowth = $largeCount - $smallCount;
+
+        $this->assertLessThanOrEqual(
+            $additionalRows,
+            $queryGrowth,
+            "Query count grew by {$queryGrowth} across {$additionalRows} additional rows ({$smallCount} for 2 rows vs {$largeCount} for 10 rows), indicating an N+1 beyond the expected one-query-per-row authorization scope check.",
+        );
     }
 
     public function test_list_filters(): void
