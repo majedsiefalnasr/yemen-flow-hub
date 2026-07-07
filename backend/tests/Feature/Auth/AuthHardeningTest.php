@@ -3,9 +3,11 @@
 namespace Tests\Feature\Auth;
 
 use App\Enums\AuditAction;
+use App\Models\SystemSetting;
 use App\Models\TrustedDevice;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
@@ -18,15 +20,15 @@ class AuthHardeningTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        \Illuminate\Routing\Middleware\ThrottleRequests::shouldHashKeys(false);
+        ThrottleRequests::shouldHashKeys(false);
         RateLimiter::clear('|127.0.0.1');
-        $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
+        $this->withoutMiddleware(ThrottleRequests::class);
         $this->disableCookieEncryption();
     }
 
     protected function tearDown(): void
     {
-        \Illuminate\Routing\Middleware\ThrottleRequests::shouldHashKeys(true);
+        ThrottleRequests::shouldHashKeys(true);
         parent::tearDown();
     }
 
@@ -79,7 +81,7 @@ class AuthHardeningTest extends TestCase
 
     public function test_trusted_device_skips_mfa_re_prompt(): void
     {
-        config(['mfa.enabled' => true]);
+        SystemSetting::where('key', 'mfa_required')->update(['value' => true]);
         $this->makeUser(['email' => 'trusted@example.com']);
 
         $login = $this->withServerVariables(['HTTP_USER_AGENT' => 'TestAgent', 'REMOTE_ADDR' => '127.0.0.1'])
@@ -123,7 +125,7 @@ class AuthHardeningTest extends TestCase
 
     public function test_concurrent_mfa_challenge_reuses_existing_code(): void
     {
-        config(['mfa.enabled' => true]);
+        SystemSetting::where('key', 'mfa_required')->update(['value' => true]);
         $this->makeUser(['email' => 'mfa@example.com']);
 
         $first = $this->postJson('/api/auth/login', ['email' => 'mfa@example.com', 'password' => 'Password1']);
