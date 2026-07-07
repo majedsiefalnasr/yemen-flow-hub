@@ -8,6 +8,7 @@ use App\Enums\UserRole;
 use App\Jobs\SendEmailDelivery;
 use App\Models\AuditLog;
 use App\Models\Bank;
+use App\Models\SystemSetting;
 use App\Models\User;
 use App\Services\Auth\MfaService;
 use Illuminate\Auth\SessionGuard;
@@ -434,7 +435,7 @@ class AuthControllerTest extends TestCase
 
     public function test_login_returns_requires_mfa_when_mfa_enabled(): void
     {
-        config(['mfa.enabled' => true]);
+        SystemSetting::where('key', 'mfa_required')->update(['value' => true]);
         $this->makeUser();
 
         $response = $this->postJson('/api/auth/login', [
@@ -451,7 +452,7 @@ class AuthControllerTest extends TestCase
 
     public function test_login_does_not_return_requires_mfa_when_mfa_disabled(): void
     {
-        config(['mfa.enabled' => false]);
+        SystemSetting::where('key', 'mfa_required')->update(['value' => false]);
         $this->makeUser();
 
         $response = $this->postJson('/api/auth/login', [
@@ -465,7 +466,7 @@ class AuthControllerTest extends TestCase
 
     public function test_login_requires_mfa_when_user_has_totp_configured_even_if_global_mfa_disabled(): void
     {
-        config(['mfa.enabled' => false]);
+        SystemSetting::where('key', 'mfa_required')->update(['value' => false]);
         $this->makeUser([
             'totp_enabled' => true,
             'totp_secret' => 'JBSWY3DPEHPK3PXP',
@@ -690,7 +691,7 @@ class AuthControllerTest extends TestCase
     public function test_non_totp_login_dispatches_mfa_otp_email(): void
     {
         Queue::fake();
-        config(['mfa.enabled' => true]);
+        SystemSetting::where('key', 'mfa_required')->update(['value' => true]);
 
         $user = $this->makeUser(['totp_enabled' => false, 'totp_secret' => null]);
 
@@ -711,7 +712,7 @@ class AuthControllerTest extends TestCase
     public function test_totp_login_does_not_dispatch_mfa_otp_email(): void
     {
         Queue::fake();
-        config(['mfa.enabled' => false]);
+        SystemSetting::where('key', 'mfa_required')->update(['value' => false]);
 
         $this->makeUser([
             'totp_enabled' => true,

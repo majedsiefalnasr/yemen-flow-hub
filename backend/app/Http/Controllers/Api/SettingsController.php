@@ -128,7 +128,7 @@ class SettingsController extends Controller
             required: true,
             content: new OA\JsonContent(
                 properties: [
-                    new OA\Property(property: 'section', type: 'string', enum: ['workflow', 'email', 'security', 'general', 'theming', 'notif'], description: 'Settings section to save'),
+                    new OA\Property(property: 'section', type: 'string', enum: ['workflow', 'security', 'general', 'theming', 'notif'], description: 'Settings section to save'),
                     new OA\Property(property: 'data', type: 'object', description: 'Settings data'),
                 ]
             )
@@ -146,6 +146,10 @@ class SettingsController extends Controller
         $section = $request->input('section');
         $subsection = $request->input('subsection');
         $data = $request->input('data');
+
+        if ($request->hasFile('data.brandLogoFile')) {
+            $data['brandLogoFile'] = $request->file('data.brandLogoFile');
+        }
 
         try {
             if ($request->isSystemSection()) {

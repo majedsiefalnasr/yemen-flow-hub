@@ -459,8 +459,7 @@ class AuthController extends Controller
 
     private function mfaRequiredFor(User $user): bool
     {
-        return config('mfa.enabled', false)
-            || $this->authSecurity->mfaRequired()
+        return $this->authSecurity->mfaRequired()
             || $this->mfaService->hasTotpConfigured($user);
     }
 

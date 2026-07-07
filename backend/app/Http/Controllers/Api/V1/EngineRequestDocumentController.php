@@ -12,6 +12,7 @@ use App\Services\Documents\EngineRequestDocumentIntegrityService;
 use App\Services\Documents\EngineRequestDocumentReplacementService;
 use App\Services\Workflow\EngineClaimService;
 use App\Services\Workflow\StageFieldOutputFilter;
+use App\Support\UploadSizeLimit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -25,6 +26,7 @@ class EngineRequestDocumentController extends Controller
         private EngineRequestDocumentIntegrityService $documentIntegrity,
         private EngineRequestDocumentReplacementService $documentReplacement,
         private StageFieldOutputFilter $outputFilter,
+        private UploadSizeLimit $uploadSizeLimit,
     ) {}
 
     public function uploadDocument(Request $request, EngineRequest $engineRequest): JsonResponse
@@ -34,7 +36,7 @@ class EngineRequestDocumentController extends Controller
         $this->claimService->ensureClaimHeld($engineRequest, $request->user());
 
         $request->validate([
-            'file' => ['required', 'file', 'mimes:pdf', 'max:10240'],
+            'file' => ['required', 'file', 'mimes:pdf', 'max:'.$this->uploadSizeLimit->maxKilobytes()],
             'field_id' => [
                 'nullable',
                 'integer',
@@ -168,7 +170,7 @@ class EngineRequestDocumentController extends Controller
         $this->claimService->ensureClaimHeld($engineRequest, $request->user());
 
         $request->validate([
-            'file' => ['required', 'file', 'mimes:pdf', 'max:10240'],
+            'file' => ['required', 'file', 'mimes:pdf', 'max:'.$this->uploadSizeLimit->maxKilobytes()],
             'reason' => ['nullable', 'string', 'max:1000'],
         ]);
 

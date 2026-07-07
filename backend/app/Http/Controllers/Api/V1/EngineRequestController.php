@@ -19,6 +19,7 @@ use App\Services\Workflow\EngineTransitionService;
 use App\Services\Workflow\StageFieldOutputFilter;
 use App\Services\Workflow\StagePermissionResolver;
 use App\Services\Workflow\WorkflowGraphService;
+use App\Support\ApiResponse;
 use App\Support\EngineRequestListQuery;
 use App\Support\RequestCreationGate;
 use App\Support\RoleCodes;
@@ -43,6 +44,19 @@ class EngineRequestController extends Controller
     public function store(StoreEngineRequestRequest $request): JsonResponse
     {
         $version = WorkflowVersion::findOrFail($request->validated('workflow_version_id'));
+
+        $incomingInvoiceNumber = $request->validated('data')['invoice_number'] ?? null;
+        if ($incomingInvoiceNumber !== null) {
+            $precheck = $this->duplicateChecker->check($incomingInvoiceNumber);
+            if ($precheck !== null && $precheck['severity'] === 'block') {
+                return ApiResponse::error(
+                    'This invoice number matches an existing active request and cannot be submitted.',
+                    [],
+                    422,
+                    'DUPLICATE_INVOICE_BLOCKED',
+                );
+            }
+        }
 
         $engineRequest = $this->requestService->create(
             $version,
@@ -270,6 +284,19 @@ class EngineRequestController extends Controller
             'data' => ['nullable', 'array'],
             'version' => ['required', 'integer'],
         ]);
+
+        $incomingInvoiceNumber = $validated['data']['invoice_number'] ?? $engineRequest->invoice_number;
+        if ($incomingInvoiceNumber !== null) {
+            $precheck = $this->duplicateChecker->check($incomingInvoiceNumber, $engineRequest->id);
+            if ($precheck !== null && $precheck['severity'] === 'block') {
+                return ApiResponse::error(
+                    'This invoice number matches an existing active request and cannot be submitted.',
+                    [],
+                    422,
+                    'DUPLICATE_INVOICE_BLOCKED',
+                );
+            }
+        }
 
         $result = $this->transitionService->execute(
             $engineRequest,

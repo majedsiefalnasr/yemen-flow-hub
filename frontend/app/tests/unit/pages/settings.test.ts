@@ -38,15 +38,12 @@ vi.mock('../../../composables/useSettings', () => ({
 }))
 
 const fetchAdminSettingsMock = vi.hoisted(() => vi.fn())
-const fetchSmtpMock = vi.hoisted(() => vi.fn())
-const updateSmtpMock = vi.hoisted(() => vi.fn())
 const fetchSecurityMock = vi.hoisted(() => vi.fn())
 const updateSecurityPolicyMock = vi.hoisted(() => vi.fn())
 const updateAdminSettingMock = vi.hoisted(() => vi.fn())
 
 // Use real Vue refs so template reactivity works correctly
 const adminSettingsRef = ref<any>(null)
-const smtpRef = ref<any>(null)
 const securityRef = ref<any>(null)
 const pendingKeysRef = ref<Set<string>>(new Set())
 
@@ -55,9 +52,6 @@ vi.mock('../../../composables/useAdminSettings', () => ({
     get settings() {
       return adminSettingsRef
     },
-    get smtpSettings() {
-      return smtpRef
-    },
     get securityPolicies() {
       return securityRef
     },
@@ -65,8 +59,6 @@ vi.mock('../../../composables/useAdminSettings', () => ({
       return pendingKeysRef
     },
     fetchSettings: fetchAdminSettingsMock,
-    fetchSmtpSettings: fetchSmtpMock,
-    updateSmtpSettings: updateSmtpMock,
     fetchSecurityPolicies: fetchSecurityMock,
     updateSecurityPolicy: updateSecurityPolicyMock,
     updateSetting: updateAdminSettingMock,
@@ -113,7 +105,6 @@ describe('settings.vue', () => {
     // Reset real Vue refs by reassigning .value
     prefsRef.value = null
     adminSettingsRef.value = null
-    smtpRef.value = null
     securityRef.value = null
     pendingKeysRef.value = new Set()
     settingsLoadingRef.value = false
@@ -121,7 +112,6 @@ describe('settings.vue', () => {
     mockRole = UserRole.CBY_ADMIN
     fetchSettingsMock.mockResolvedValue(undefined)
     fetchAdminSettingsMock.mockResolvedValue(undefined)
-    fetchSmtpMock.mockResolvedValue(undefined)
     fetchSecurityMock.mockResolvedValue(undefined)
   })
 
@@ -206,19 +196,4 @@ describe('settings.vue', () => {
     expect(updateSettingsMock).toHaveBeenCalled()
   })
 
-  it.skip('calls updateSmtpSettings when CBY_ADMIN saves SMTP form', async () => {
-    // reka-ui TabsContent — email tab content not accessible after click trigger in JSDOM.
-    // Skipped per shadcn-vue test-compatibility policy (see CLAUDE.md).
-    updateSmtpMock.mockResolvedValue(true)
-    const wrapper = mount(settingsPage, { global: { stubs: { Teleport: true } } })
-    await flushPromises()
-
-    await wrapper.find('[data-testid="tab-email"]').trigger('click')
-    await flushPromises()
-
-    await wrapper.find('.btn-primary').trigger('click')
-    await flushPromises()
-
-    expect(updateSmtpMock).toHaveBeenCalled()
-  })
 })

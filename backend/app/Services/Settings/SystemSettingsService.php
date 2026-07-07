@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\Audit\AuditService;
 use App\Support\RoleCodes;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Http\UploadedFile;
 
 class SystemSettingsService
 {
@@ -23,7 +24,7 @@ class SystemSettingsService
     private const DEFAULT_BRANDING = [
         'brandColor' => '#0066cc',
         'brandLogoName' => 'yemen-emblem.svg',
-        'brandLogoDataUrl' => '/brand/yemen-emblem.svg',
+        'brandLogoPath' => '/brand/yemen-emblem.svg',
         'brandingPublished' => true,
         'brandingChannels' => [
             'securityQuestionnaires' => false,
@@ -32,8 +33,17 @@ class SystemSettingsService
         ],
     ];
 
+    private const PUBLIC_BRANDING_KEYS = [
+        'brandColor',
+        'brandLogoName',
+        'brandLogoUrl',
+        'brandingPublished',
+        'brandingChannels',
+    ];
+
     public function __construct(
-        private readonly AuditService $auditService
+        private readonly AuditService $auditService,
+        private readonly LogoStorageService $logoStorageService,
     ) {}
 
     public function saveSection(User $user, string $section, array $data, ?string $subsection = null): array
@@ -45,6 +55,10 @@ class SystemSettingsService
 
         // Save to system_settings table
         $key = $this->settingKey($section, $subsection);
+        if ($section === 'theming' && $subsection === 'branding') {
+            $existing = $this->arrayValue(SystemSetting::query()->where('key', $key)->value('value'));
+            $data = array_merge($existing, $data);
+        }
         $value = $this->normalizeSectionData($section, $data, $subsection);
         $setting = SystemSetting::updateOrCreate(
             ['key' => $key],
@@ -67,17 +81,6 @@ class SystemSettingsService
             ]
         );
 
-        if ($section === 'email' && isset($value['templates']) && is_array($value['templates'])) {
-            foreach (array_keys($value['templates']) as $type) {
-                $this->auditService->log(
-                    AuditAction::EMAIL_TEMPLATE_UPDATED,
-                    $user,
-                    null,
-                    ['template_type' => $type, 'changed_by' => $user->id]
-                );
-            }
-        }
-
         return [
             'key' => $setting->key,
             'value' => $setting->value,
@@ -99,16 +102,21 @@ class SystemSettingsService
             ->sortDesc()
             ->first();
 
+        $storedBranding = $this->arrayValue($settings->get('settings.branding')?->value);
+        $branding = array_merge(self::DEFAULT_BRANDING, $storedBranding);
+        $branding = $this->exposePublicBranding($branding, $storedBranding);
+        $branding = array_intersect_key($branding, array_flip(self::PUBLIC_BRANDING_KEYS));
+
         return [
             'version' => $version?->toJSON() ?? 'defaults-v1',
-            'general' => array_merge(
-                self::DEFAULT_GENERAL,
-                $this->arrayValue($settings->get('settings.general')?->value)
+            'general' => array_intersect_key(
+                array_merge(
+                    self::DEFAULT_GENERAL,
+                    $this->arrayValue($settings->get('settings.general')?->value)
+                ),
+                array_flip(array_keys(self::DEFAULT_GENERAL))
             ),
-            'branding' => array_merge(
-                self::DEFAULT_BRANDING,
-                $this->arrayValue($settings->get('settings.branding')?->value)
-            ),
+            'branding' => $branding,
         ];
     }
 
@@ -128,27 +136,15 @@ class SystemSettingsService
         }
 
         if ($section === 'theming' && $subsection === 'branding') {
-            return array_merge(self::DEFAULT_BRANDING, $data);
-        }
+            $normalized = array_merge(self::DEFAULT_BRANDING, $data);
 
-        if ($section === 'email') {
-            $types = ['approved', 'rejected', 'returned'];
-            $normalizedTemplates = [];
-            if (isset($data['templates']) && is_array($data['templates'])) {
-                foreach ($types as $type) {
-                    if (isset($data['templates'][$type]) && is_array($data['templates'][$type])) {
-                        $subject = is_string($data['templates'][$type]['subject'] ?? null)
-                            ? trim($data['templates'][$type]['subject'])
-                            : '';
-                        $body = is_string($data['templates'][$type]['body'] ?? null)
-                            ? trim($data['templates'][$type]['body'])
-                            : '';
-                        $normalizedTemplates[$type] = compact('subject', 'body');
-                    }
-                }
+            if (isset($normalized['brandLogoFile']) && $normalized['brandLogoFile'] instanceof UploadedFile) {
+                $normalized['brandLogoPath'] = $this->logoStorageService->store($normalized['brandLogoFile']);
             }
 
-            return ['templates' => $normalizedTemplates];
+            unset($normalized['brandLogoFile'], $normalized['brandLogoDataUrl']);
+
+            return $normalized;
         }
 
         return $data;
@@ -157,5 +153,24 @@ class SystemSettingsService
     private function arrayValue(mixed $value): array
     {
         return is_array($value) ? $value : [];
+    }
+
+    private function exposePublicBranding(array $branding, array $storedBranding = []): array
+    {
+        if (
+            ! array_key_exists('brandLogoPath', $storedBranding)
+            && isset($storedBranding['brandLogoDataUrl'])
+            && is_string($storedBranding['brandLogoDataUrl'])
+            && str_starts_with($storedBranding['brandLogoDataUrl'], 'data:')
+        ) {
+            $branding['brandLogoUrl'] = $storedBranding['brandLogoDataUrl'];
+        } else {
+            $path = $branding['brandLogoPath'] ?? self::DEFAULT_BRANDING['brandLogoPath'];
+            $branding['brandLogoUrl'] = $this->logoStorageService->url($path);
+        }
+
+        unset($branding['brandLogoPath'], $branding['brandLogoDataUrl']);
+
+        return $branding;
     }
 }

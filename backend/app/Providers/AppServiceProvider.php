@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Services\Authorization\PermissionService;
 use App\Services\Customs\FxConfirmationAuthorizationService;
 use App\Services\Documents\PdfGeneratorService;
+use App\Services\Settings\SettingResolver;
 use App\Services\Workflow\Effects\CustomsFxPdfEffect;
 use App\Services\Workflow\Effects\FinancingLedgerEffect;
 use App\Services\Workflow\StageFieldOutputFilter;
@@ -18,6 +19,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->singleton(PermissionService::class, PermissionService::class);
         $this->app->singleton(PdfGeneratorService::class, PdfGeneratorService::class);
+        $this->app->singleton(SettingResolver::class);
         // The engine stage-hook registry must be a singleton: domain effects are
         // registered once at boot and resolved by EngineTransitionService on every
         // transition. A transient binding would discard registered hooks.

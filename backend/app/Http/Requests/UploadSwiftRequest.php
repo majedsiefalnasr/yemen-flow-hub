@@ -2,8 +2,16 @@
 
 namespace App\Http\Requests;
 
+use App\Support\UploadSizeLimit;
+
 class UploadSwiftRequest extends ApiFormRequest
 {
+    public function __construct(
+        private readonly UploadSizeLimit $uploadSizeLimit,
+    ) {
+        parent::__construct();
+    }
+
     public function authorize(): bool
     {
         return true;
@@ -11,13 +19,15 @@ class UploadSwiftRequest extends ApiFormRequest
 
     public function rules(): array
     {
+        $maxKb = $this->uploadSizeLimit->maxKilobytes();
+
         return [
             // Legacy mode (single SWIFT PDF)
-            'file' => ['nullable', 'file', 'mimetypes:application/pdf', 'max:10240'],
+            'file' => ['nullable', 'file', 'mimetypes:application/pdf', 'max:'.$maxKb],
             // New package mode (SWIFT + FX request + reference)
             'swift_reference' => ['nullable', 'string', 'max:191', 'required_with:swift_file,fx_request_file'],
-            'swift_file' => ['nullable', 'file', 'mimetypes:application/pdf', 'max:10240', 'required_with:swift_reference,fx_request_file'],
-            'fx_request_file' => ['nullable', 'file', 'mimetypes:application/pdf', 'max:10240', 'required_with:swift_reference,swift_file'],
+            'swift_file' => ['nullable', 'file', 'mimetypes:application/pdf', 'max:'.$maxKb, 'required_with:swift_reference,fx_request_file'],
+            'fx_request_file' => ['nullable', 'file', 'mimetypes:application/pdf', 'max:'.$maxKb, 'required_with:swift_reference,swift_file'],
         ];
     }
 

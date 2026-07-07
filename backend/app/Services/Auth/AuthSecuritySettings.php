@@ -2,10 +2,14 @@
 
 namespace App\Services\Auth;
 
-use App\Models\SystemSetting;
+use App\Services\Settings\SettingResolver;
 
 class AuthSecuritySettings
 {
+    public function __construct(
+        private readonly SettingResolver $settings,
+    ) {}
+
     public function mfaRequired(): bool
     {
         return (bool) $this->resolve('mfa_required', 'auth_security.mfa_required');
@@ -43,12 +47,6 @@ class AuthSecuritySettings
 
     private function resolve(string $settingKey, string $configKey): mixed
     {
-        $stored = SystemSetting::findByKey($settingKey);
-
-        if ($stored !== null) {
-            return $stored->value;
-        }
-
-        return config($configKey);
+        return $this->settings->get($settingKey, config($configKey));
     }
 }

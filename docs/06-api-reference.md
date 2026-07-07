@@ -50,7 +50,7 @@ POST /api/auth/login
 
 ## Account Lockout Response
 
-After 10 consecutive failed credentials from the same account/source pair, the API returns HTTP `429 Too Many Requests` with a `Retry-After` header containing the seconds until the lockout window expires.
+After `login_lockout_attempts` consecutive failed credentials from the same account/source pair (default **5**), the API returns HTTP `429 Too Many Requests` with a `Retry-After` header containing the seconds until the lockout window expires (default **15** minutes / `900` seconds via `login_lockout_duration`).
 
 ```http
 HTTP/1.1 429 Too Many Requests
@@ -625,6 +625,121 @@ Data Entry users should primarily receive:
 - Completed requests
 
 Data Entry users should NOT receive detailed CBY workflow stages.
+
+---
+
+# Settings APIs
+
+Settings are split into three surfaces:
+
+1. **Public branding** — unauthenticated, safe metadata only (`GET /api/settings/public`).
+2. **User preferences** — per-user UI preferences (`GET/PUT /api/settings`, etc.).
+3. **Operational settings** — scalar DB-backed keys consumed at runtime (`GET/PUT /api/admin/settings/{key}`). Requires `CBY_ADMIN`.
+
+**Mail delivery is env-only.** The following SMTP admin endpoints were removed and must not be reintroduced without a runtime mailer that reads DB settings:
+
+- `GET /api/admin/settings/smtp` (removed)
+- `PUT /api/admin/settings/smtp` (removed)
+- `POST /api/admin/settings/email/test` (removed)
+
+Configure production SMTP via environment variables — see `docs/07-account-recovery-and-mail.md`.
+
+---
+
+# Public Settings (unauthenticated)
+
+## Endpoint
+
+```http
+GET /api/settings/public
+```
+
+No authentication required. Used by the login shell, layout branding, and frontend cache-busting.
+
+## Safe payload
+
+Exposes **only** `version`, `general`, and `branding`. Never operational, security, SMTP, claim, audit, or secret configuration.
+
+```json
+{
+  "success": true,
+  "message": "Public system settings retrieved.",
+  "data": {
+    "version": "defaults-v1",
+    "general": {
+      "platformName": "اللجنة الوطنية لتنظيم وتمويل الواردات",
+      "platformNameEn": "The National Committee for Regulating & Financing Imports",
+      "authority": "اللجنة الوطنية لتنظيم وتمويل الواردات",
+      "authorityEn": "The National Committee for Regulating & Financing Imports",
+      "language": "ar",
+      "timeZone": "GMT+3"
+    },
+    "branding": {
+      "brandColor": "#0066cc",
+      "brandLogoName": "yemen-emblem.svg",
+      "brandLogoUrl": "/brand/yemen-emblem.svg",
+      "brandingPublished": true,
+      "brandingChannels": {
+        "securityQuestionnaires": false,
+        "emails": true,
+        "vendorReports": true
+      }
+    }
+  }
+}
+```
+
+`version` is the latest `updated_at` timestamp among `settings.general` and `settings.branding` rows, or `defaults-v1` when no rows exist. The frontend should treat it as a cache-bust stamp.
+
+`brandLogoPath` and inline `brandLogoDataUrl` are never returned on this endpoint; only a resolved `brandLogoUrl` is exposed.
+
+---
+
+# User Preferences (authenticated)
+
+## Endpoints
+
+```http
+GET /api/settings
+PUT /api/settings
+POST /api/settings/reset
+POST /api/settings/save-section
+```
+
+`GET /api/settings` merges stored user preferences with defaults and includes `system` (same safe public payload as `GET /api/settings/public`).
+
+`POST /api/settings/save-section` accepts user sections (`theming`, `notif`) for any authenticated user. System sections (`general`, `workflow`, `security`, and `theming` + `subsection=branding`) require `CBY_ADMIN` and persist to `system_settings` under `settings.{section}` keys — e.g. `settings.general`, `settings.workflow`, `settings.security`, and `settings.branding` (for `theming` + `subsection=branding`).
+
+---
+
+# Admin Operational Settings (`CBY_ADMIN`)
+
+## Endpoints
+
+```http
+GET /api/admin/settings
+PUT /api/admin/settings/{key}
+POST /api/admin/settings/{key}/reset
+```
+
+`GET /api/admin/settings` returns all eight live scalar keys and their current values. `PUT` validates type/range per key; changes are audited and invalidate the `SettingResolver` cache for that key.
+
+## Live settings keys and runtime consumers
+
+| Key | Default | Validation | Runtime consumer |
+| --- | --- | --- | --- |
+| `support_claim_ttl` | `15` | 5–60 minutes | `EngineClaimService` — claim TTL and heartbeat extension |
+| `pdf_upload_size_limit` | `10` | 1–50 MB | `UploadSizeLimit` — PDF upload `max:` rules on document/SWIFT/FX confirmation requests |
+| `login_lockout_attempts` | `5` | 1–20 attempts | `AuthSecuritySettings` → `AuthController` account lockout threshold |
+| `login_lockout_duration` | `15` | 5–60 minutes | `AuthSecuritySettings` → `AuthController` lockout window |
+| `mfa_required` | `false` | boolean | `AuthSecuritySettings` → login MFA gate, profile MFA restrictions, admin display |
+| `duplicate_invoice_policy` | `warn` | `warn` \| `block` | `DuplicateInvoiceChecker` — duplicate invoice precheck severity on create/transition |
+| `trusted_device_ttl_hours` | `24` | 1–720 hours | `AuthSecuritySettings` → `TrustedDeviceService` remembered-device expiry |
+| `step_up_window_minutes` | `10` | 1–120 minutes | `AuthSecuritySettings` → `StepUpService` step-up verification window |
+
+All reads go through `SettingResolver::get()` (DB row first, config/bootstrap default fallback, 1-hour cache). Updates via `AdminSettingsService` call `SettingResolver::forget()` on write.
+
+Branding/general blobs (`settings.general`, `settings.branding`) are **not** part of the admin scalar index; they are managed via `POST /api/settings/save-section` and surfaced publicly through `GET /api/settings/public`.
 
 ---
 

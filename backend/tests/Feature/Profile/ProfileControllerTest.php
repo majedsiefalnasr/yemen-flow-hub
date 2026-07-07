@@ -351,51 +351,6 @@ class ProfileControllerTest extends TestCase
         $this->assertNotContains($codes[0], $user->totp_recovery_codes);
     }
 
-    // --- GET /api/admin/settings/smtp ---
-
-    public function test_get_smtp_returns_masked_password(): void
-    {
-        $this->seedGovernance();
-        $cbyAdmin = $this->assignGovernanceIdentity(User::query()->create([
-            'name' => 'CBY Admin',
-            'email' => 'admin@cby.ye',
-            'password' => Hash::make('Password123'),
-            'role' => UserRole::CBY_ADMIN,
-            'bank_id' => null,
-            'is_active' => true,
-        ]), UserRole::CBY_ADMIN);
-
-        // Seed an SMTP password setting
-        SystemSetting::query()->create([
-            'key' => 'smtp_password',
-            'value' => encrypt('secret123'),
-            'updated_by' => $cbyAdmin->id,
-        ]);
-
-        $response = $this->actingAs($cbyAdmin)->getJson('/api/admin/settings/smtp');
-
-        $response->assertStatus(200);
-        $response->assertJsonPath('success', true);
-        // Password must be masked
-        $this->assertStringContainsString('•', $response->json('data.password'));
-        $this->assertStringNotContainsString('secret123', $response->json('data.password'));
-    }
-
-    public function test_get_smtp_returns_403_for_non_cby_admin(): void
-    {
-        $bankUser = User::query()->create([
-            'name' => 'Bank User',
-            'email' => 'user@bank.com',
-            'password' => Hash::make('Password123'),
-            'role' => UserRole::BANK_REVIEWER,
-            'bank_id' => null,
-            'is_active' => true,
-        ]);
-
-        $this->actingAs($bankUser)->getJson('/api/admin/settings/smtp')
-            ->assertStatus(403);
-    }
-
     // --- POST /api/profile/mfa/toggle ---
 
     public function test_post_mfa_toggle_when_setting_not_registered(): void

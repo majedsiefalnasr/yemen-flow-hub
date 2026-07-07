@@ -9,8 +9,6 @@ import {
   ChevronsUpDown,
   Columns2,
   Cog,
-  Eye,
-  EyeOff,
   Image,
   KeyRound,
   Loader2,
@@ -129,7 +127,6 @@ const activeSection = computed<AnyTab>(() => {
 
 // ── Theming helpers ────────────────────────────────────────────────────────────
 const fontPickerOpen = ref(false)
-const showEmailPassword = ref(false)
 
 const themeOptions: Array<{
   value: ThemeMode
@@ -263,10 +260,6 @@ const workflowSettings = reactive({
 
 // ── CBY: Email settings ────────────────────────────────────────────────────────
 const emailSettings = reactive({
-  host: 'smtp.cby.gov.ye',
-  port: '587',
-  username: 'noreply@cby.gov.ye',
-  password: '************',
   approvalTemplate:
     'عزيزي {{importer}}،\nنخبركم باعتماد طلب التمويل رقم {{ref}} بمبلغ {{amount}} {{currency}}.',
 })
@@ -418,10 +411,6 @@ const notifPayload = computed(() => ({
 }))
 
 const emailPayload = computed(() => ({
-  host: emailSettings.host,
-  port: emailSettings.port,
-  username: emailSettings.username,
-  password: emailSettings.password,
   approvalTemplate: emailSettings.approvalTemplate,
 }))
 
@@ -1491,51 +1480,8 @@ async function saveBankSecurity() {
             <div>
               <h3 class="text-lg font-medium">إعدادات البريد الإلكتروني</h3>
               <p class="text-muted-foreground text-sm">
-                تكوين خادم البريد الصادر للإشعارات والمراسلات الرسمية
+                قوالب المراسلات الرسمية — يُدار خادم البريد عبر إعدادات البيئة فقط
               </p>
-            </div>
-            <Separator />
-            <div class="space-y-4">
-              <h3 class="text-sm font-semibold">إعدادات الخادم</h3>
-              <div class="grid gap-5 md:grid-cols-2">
-                <FieldGroup>
-                  <FieldLabel>SMTP Host</FieldLabel>
-                  <Input v-model="emailSettings.host" placeholder="smtp.example.com" />
-                </FieldGroup>
-                <FieldGroup>
-                  <FieldLabel>المنفذ (Port)</FieldLabel>
-                  <Input v-model="emailSettings.port" type="number" placeholder="587" />
-                </FieldGroup>
-              </div>
-            </div>
-            <Separator />
-            <div class="space-y-4">
-              <h3 class="text-sm font-semibold">بيانات الاعتماد</h3>
-              <div class="grid gap-5 md:grid-cols-2">
-                <FieldGroup>
-                  <FieldLabel>اسم المستخدم</FieldLabel>
-                  <Input v-model="emailSettings.username" />
-                </FieldGroup>
-                <FieldGroup>
-                  <FieldLabel>كلمة المرور</FieldLabel>
-                  <div class="relative">
-                    <Input
-                      v-model="emailSettings.password"
-                      :type="showEmailPassword ? 'text' : 'password'"
-                      placeholder="••••••••"
-                      class="pe-10"
-                    />
-                    <button
-                      type="button"
-                      class="text-muted-foreground hover:text-foreground absolute inset-y-0 end-0 flex cursor-pointer items-center px-3 transition-colors"
-                      @click="showEmailPassword = !showEmailPassword"
-                    >
-                      <EyeOff v-if="showEmailPassword" class="h-4 w-4" />
-                      <Eye v-else class="h-4 w-4" />
-                    </button>
-                  </div>
-                </FieldGroup>
-              </div>
             </div>
             <Separator />
             <div class="space-y-4">
