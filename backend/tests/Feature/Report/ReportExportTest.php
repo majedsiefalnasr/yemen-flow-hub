@@ -133,6 +133,22 @@ class ReportExportTest extends TestCase
             ->assertJsonPath('error.code', 'EXPORT_NOT_READY');
     }
 
+    public function test_download_returns_export_expired_for_expired_status(): void
+    {
+        $export = ReportExport::create([
+            'requested_by' => $this->admin->id,
+            'report_type' => 'summary',
+            'filters' => [],
+            'status' => 'EXPIRED',
+            'file_path' => null,
+        ]);
+
+        $this->actingAs($this->admin)
+            ->getJson("/api/v1/reports/exports/{$export->id}/download")
+            ->assertUnprocessable()
+            ->assertJsonPath('error.code', 'EXPORT_EXPIRED');
+    }
+
     public function test_index_returns_only_own_exports(): void
     {
         ReportExport::create([
