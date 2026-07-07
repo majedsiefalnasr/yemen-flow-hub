@@ -147,6 +147,23 @@ class NotificationInboxTest extends TestCase
         $this->assertSame(0, $unread);
     }
 
+    public function test_read_all_skips_archived_unread_notifications(): void
+    {
+        $activeNotification = $this->makeNotification([$this->userA->id]);
+        $archivedNotification = $this->makeNotification([$this->userA->id]);
+
+        $activeUnread = NotificationRecipient::where('notification_id', $activeNotification->id)->firstOrFail();
+        $archivedUnread = NotificationRecipient::where('notification_id', $archivedNotification->id)->firstOrFail();
+        $archivedUnread->update(['archived_at' => now()]);
+
+        $this->actingAs($this->userA)
+            ->postJson('/api/v1/notifications/read-all')
+            ->assertOk();
+
+        $this->assertNotNull($activeUnread->fresh()->read_at);
+        $this->assertNull($archivedUnread->fresh()->read_at);
+    }
+
     public function test_cannot_act_on_other_users_copy(): void
     {
         $this->makeNotification([$this->userB->id]);

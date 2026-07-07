@@ -5,9 +5,12 @@ import type {
   EngineHistoryEntry,
   EngineRequest,
   EngineRequestDocument,
+  EngineRequestStats,
   WorkflowGraph,
 } from '@/types/models'
+import type { ListOptions } from '@/composables/useEngineRequests'
 import { useEngineRequests } from '@/composables/useEngineRequests'
+import { useEngineRequestStats } from '@/composables/useEngineRequestStats'
 import { useEngineRequestActions } from '@/composables/useEngineRequestActions'
 import { useEngineRequestHistory } from '@/composables/useEngineRequestHistory'
 import { useEngineRequestDocuments } from '@/composables/useEngineRequestDocuments'
@@ -25,6 +28,8 @@ export const useEngineRequestsStore = defineStore('engineRequests', {
     instancesMeta: null as PaginationMeta | null,
     queue: [] as EngineRequest[],
     queueMeta: null as PaginationMeta | null,
+    queueStats: null as EngineRequestStats | null,
+    allStats: null as EngineRequestStats | null,
     availableWorkflows: [] as AvailableWorkflow[],
     current: null as EngineRequest | null,
     duplicateWarnings: [] as EngineDuplicateWarning[],
@@ -37,7 +42,7 @@ export const useEngineRequestsStore = defineStore('engineRequests', {
     fieldErrors: {} as Record<string, string | undefined>,
   }),
   actions: {
-    async loadList(options: Record<string, unknown> = {}) {
+    async loadList(options: ListOptions = {}) {
       const { instances, instancesMeta, loading, error, fetchList } = useEngineRequests()
       await fetchList(options)
       this.instances = instances.value
@@ -46,13 +51,23 @@ export const useEngineRequestsStore = defineStore('engineRequests', {
       this.error = error.value
     },
 
-    async loadQueue(options: Record<string, unknown> = {}) {
+    async loadQueue(options: ListOptions = {}) {
       const { queue, queueMeta, loading, error, fetchQueue } = useEngineRequests()
       await fetchQueue(options)
       this.queue = queue.value
       this.queueMeta = queueMeta.value
       this.loading = loading.value
       this.error = error.value
+    },
+
+    async loadStats(options: ListOptions & { scope: 'all' | 'queue' }) {
+      const { fetchStats, stats } = useEngineRequestStats()
+      await fetchStats(options)
+      if (options.scope === 'queue') {
+        this.queueStats = stats.value
+      } else {
+        this.allStats = stats.value
+      }
     },
 
     async loadAvailableWorkflows() {

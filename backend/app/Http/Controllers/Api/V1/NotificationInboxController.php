@@ -97,6 +97,7 @@ class NotificationInboxController extends Controller
         NotificationRecipient::query()
             ->where('user_id', $request->user()->id)
             ->whereNull('read_at')
+            ->whereNull('archived_at')
             ->update(['read_at' => now()]);
 
         return ApiResponse::success((object) [], 'All notifications marked as read.');

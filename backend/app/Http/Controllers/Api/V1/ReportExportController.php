@@ -76,6 +76,12 @@ class ReportExportController extends Controller
             abort(403);
         }
 
+        if ($reportExport->status === 'FAILED') {
+            return response()->json([
+                'error' => ['code' => 'EXPORT_FAILED', 'message' => 'Export failed and is not available for download.'],
+            ], 422);
+        }
+
         if ($reportExport->status !== 'COMPLETED' || $reportExport->file_path === null) {
             return response()->json([
                 'error' => ['code' => 'EXPORT_NOT_READY', 'message' => 'Export is not yet completed.'],
@@ -127,6 +133,10 @@ class ReportExportController extends Controller
             'filters' => $export->filters,
             'format' => $export->format,
             'status' => $export->status,
+            'total_matching' => $export->total_matching,
+            'exported_count' => $export->exported_count,
+            'truncated' => (bool) $export->truncated,
+            'truncation_note' => $export->truncation_note,
             'created_at' => $export->created_at?->toISOString(),
         ];
     }

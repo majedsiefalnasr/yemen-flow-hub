@@ -186,14 +186,14 @@ class EngineRequest extends Model
     public static function nowEpochSql(): string
     {
         return DB::connection()->getDriverName() === 'sqlite'
-            ? "strftime('%s','now')"
+            ? "CAST(strftime('%s','now') AS INTEGER)"
             : 'UNIX_TIMESTAMP()';
     }
 
     private static function epochSql(string $column): string
     {
         return DB::connection()->getDriverName() === 'sqlite'
-            ? "strftime('%s', {$column})"
+            ? "CAST(strftime('%s', {$column}) AS INTEGER)"
             : "UNIX_TIMESTAMP({$column})";
     }
 

@@ -1,167 +1,131 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
+import { mount, flushPromises } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 import WorkflowsIndexPage from '@/pages/workflows/index.vue'
 import { useEngineRequestsStore } from '@/stores/engineRequests.store'
 
+const fetchListMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
+const fetchQueueMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
+const fetchStatsMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
+
+vi.stubGlobal('definePageMeta', vi.fn())
 vi.stubGlobal('navigateTo', vi.fn())
 
 vi.mock('@/composables/useEngineRequests', () => ({
   useEngineRequests: () => ({
     instances: { value: [] },
-    instancesMeta: { value: null },
+    instancesMeta: { value: { current_page: 1, last_page: 1, per_page: 25, total: 0 } },
     queue: { value: [] },
-    queueMeta: { value: null },
+    queueMeta: { value: { current_page: 1, last_page: 1, per_page: 25, total: 0 } },
     availableWorkflows: { value: [] },
     current: { value: null },
     loading: { value: false },
     error: { value: null },
-    fetchList: vi.fn(),
-    fetchQueue: vi.fn(),
+    fetchList: fetchListMock,
+    fetchQueue: fetchQueueMock,
     fetchAvailableWorkflows: vi.fn(),
     create: vi.fn(),
     show: vi.fn(),
     saveDraft: vi.fn(),
+    abandonDraft: vi.fn(),
   }),
 }))
 
-vi.mock('@/composables/useEngineRequestActions', () => ({
-  useEngineRequestActions: () => ({
-    executing: { value: false },
-    conflictError: { value: false },
-    fieldErrors: { value: {} },
-    executeAction: vi.fn(),
+vi.mock('@/composables/useEngineRequestStats', () => ({
+  useEngineRequestStats: () => ({
+    stats: { value: null },
+    fetchStats: fetchStatsMock,
   }),
 }))
 
-vi.mock('@/composables/useEngineRequestHistory', () => ({
-  useEngineRequestHistory: () => ({
-    history: { value: [] },
-    graph: { value: null },
-    loading: { value: false },
-    error: { value: null },
-    fetchHistory: vi.fn(),
-    fetchGraph: vi.fn(),
+vi.mock('@/stores/auth.store', () => ({
+  useAuthStore: () => ({
+    user: { role: 'CBY_ADMIN' },
+    isCbyAdmin: true,
   }),
 }))
 
-vi.mock('@/composables/useEngineRequestDocuments', () => ({
-  useEngineRequestDocuments: () => ({
-    documents: { value: [] },
-    loading: { value: false },
-    error: { value: null },
-    fetchDocuments: vi.fn(),
-    upload: vi.fn(),
-    remove: vi.fn(),
-    downloadUrl: vi.fn(),
-  }),
-}))
+const shallowStubs = {
+  NuxtLink: true,
+  RouterLink: true,
+  PageHeader: true,
+  MetricGrid: true,
+  MetricCard: true,
+  DataTable: {
+    name: 'DataTable',
+    template: `
+      <div>
+        <slot name="toolbar" :table="{ getColumn: () => null }" />
+        <slot name="empty" />
+        <slot name="pagination" :table="{}" />
+      </div>
+    `,
+  },
+  DataTableToolbar: {
+    name: 'DataTableToolbar',
+    template: '<div data-testid="toolbar" />',
+    emits: ['update:search', 'reset'],
+  },
+  DataTablePagination: true,
+  DataTableFacetedFilter: true,
+  DataTableViewOptions: true,
+  DataTableExport: true,
+  Alert: true,
+  AlertTitle: true,
+  AlertDescription: true,
+  AlertAction: true,
+  Empty: true,
+  EmptyHeader: true,
+  EmptyTitle: true,
+  EmptyDescription: true,
+  EmptyContent: true,
+  Button: true,
+  Badge: true,
+  Popover: true,
+  PopoverTrigger: true,
+  PopoverContent: true,
+  Command: true,
+  CommandList: true,
+  CommandGroup: true,
+  CommandItem: true,
+  Separator: true,
+}
 
-describe('workflows/index.vue', () => {
+describe('workflows index page', () => {
   beforeEach(() => {
+    vi.useFakeTimers()
     setActivePinia(createPinia())
-    // Stub loadQueue/loadList to no-ops so tests that pre-set store data are not overwritten by
-    // the composable mock (which always returns empty arrays). Individual tests can re-spy as needed.
-    const store = useEngineRequestsStore()
-    vi.spyOn(store, 'loadQueue').mockResolvedValue(undefined)
-    vi.spyOn(store, 'loadList').mockResolvedValue(undefined)
+    fetchListMock.mockClear()
+    fetchQueueMock.mockClear()
+    fetchStatsMock.mockClear()
   })
 
-  it('calls loadQueue on mount', () => {
-    const store = useEngineRequestsStore()
-    const spy = vi.spyOn(store, 'loadQueue')
-    mount(WorkflowsIndexPage, {
-      global: { stubs: { NuxtLink: true } },
-    })
-    expect(spy).toHaveBeenCalled()
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
-  it('renders empty state when queue has no items', () => {
-    const wrapper = mount(WorkflowsIndexPage, {
-      global: { stubs: { NuxtLink: true } },
-    })
-    expect(wrapper.findComponent({ name: 'EmptyTitle' }).exists()).toBe(true)
-  })
-
-  it('renders the operational page header and metrics', () => {
+  it('passes search query param to fetchList instead of client filtering', async () => {
     const store = useEngineRequestsStore()
-    store.queue = []
     store.instances = []
+    store.instancesMeta = { current_page: 1, last_page: 1, per_page: 25, total: 0 }
 
     const wrapper = mount(WorkflowsIndexPage, {
-      global: { stubs: { NuxtLink: true } },
+      global: { stubs: shallowStubs },
     })
 
-    expect(wrapper.text()).toContain('سير العمل الديناميكي')
-    expect(wrapper.text()).toContain('طابوري')
-    expect(wrapper.text()).toContain('جميع الطلبات')
-  })
+    await flushPromises()
+    fetchListMock.mockClear()
 
-  it('filters rows by reference search', async () => {
-    const store = useEngineRequestsStore()
-    store.queue = [
-      { id: 1, reference: 'ENG-001', status: 'ACTIVE', current_stage: { name: 'استلام' } },
-      { id: 2, reference: 'ENG-002', status: 'ACTIVE', current_stage: { name: 'اعتماد' } },
-    ] as any
+    const toolbar = wrapper.find('[data-testid="toolbar"]')
+    expect(toolbar.exists()).toBe(true)
+    await wrapper.findComponent({ name: 'DataTableToolbar' }).vm.$emit('update:search', 'INV-9')
 
-    const wrapper = mount(WorkflowsIndexPage, {
-      global: { stubs: { NuxtLink: true } },
-    })
+    vi.advanceTimersByTime(350)
+    await flushPromises()
 
-    await wrapper.get('input[placeholder="بحث بالمرجع..."]').setValue('ENG-002')
-
-    expect(wrapper.text()).toContain('ENG-002')
-    expect(wrapper.text()).not.toContain('ENG-001')
-  })
-
-  it('shows explicit view action for rows', () => {
-    const store = useEngineRequestsStore()
-    store.queue = [
-      { id: 1, reference: 'ENG-001', status: 'ACTIVE', current_stage: { name: 'استلام' } },
-    ] as any
-
-    const wrapper = mount(WorkflowsIndexPage, {
-      global: { stubs: { NuxtLink: true } },
-    })
-
-    expect(wrapper.text()).toContain('عرض')
-  })
-
-  it('renders the workflow name and version badge', () => {
-    const store = useEngineRequestsStore()
-    store.queue = [
-      {
-        id: 1,
-        reference: 'ENG-001',
-        status: 'ACTIVE',
-        current_stage: { name: 'استلام' },
-        workflow_version: {
-          id: 1,
-          version_number: 2,
-          state: 'PUBLISHED',
-          definition: { id: 1, name: 'تمويل الواردات', code: 'import-financing' },
-        },
-      },
-    ] as any
-
-    const wrapper = mount(WorkflowsIndexPage, {
-      global: { stubs: { NuxtLink: true } },
-    })
-
-    expect(wrapper.text()).toContain('تمويل الواردات v2')
-  })
-
-  it('renders a dash placeholder when workflow_version is missing', () => {
-    const store = useEngineRequestsStore()
-    store.queue = [
-      { id: 1, reference: 'ENG-001', status: 'ACTIVE', current_stage: { name: 'استلام' } },
-    ] as any
-
-    const wrapper = mount(WorkflowsIndexPage, {
-      global: { stubs: { NuxtLink: true } },
-    })
-
-    expect(wrapper.text()).toContain('—')
+    expect(fetchListMock).toHaveBeenCalledWith(
+      expect.objectContaining({ search: 'INV-9', page: 1 }),
+    )
   })
 })

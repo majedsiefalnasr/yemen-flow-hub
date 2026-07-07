@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { ColumnDef, ColumnFiltersState, VisibilityState } from '@tanstack/vue-table'
+import type { ColumnDef, ColumnFiltersState, PaginationState, VisibilityState } from '@tanstack/vue-table'
+import { refDebounced } from '@vueuse/core'
 import { h } from 'vue'
 import {
   AlertCircle,
@@ -19,6 +20,7 @@ import {
   UserCheck,
 } from 'lucide-vue-next'
 import { useEngineRequestsStore } from '@/stores/engineRequests.store'
+import type { ListOptions } from '@/composables/useEngineRequests'
 import { useAuthStore } from '@/stores/auth.store'
 import { UserRole } from '@/types/enums'
 import type { EngineRequest } from '@/types/models'
@@ -74,7 +76,10 @@ const scopeLabel = computed(
   () => scopeOptions.find((o) => o.value === view.value)?.label ?? 'النطاق',
 )
 const query = ref('')
+const debouncedQuery = refDebounced(query, 300)
 const columnFilters = ref<ColumnFiltersState>([])
+const DEFAULT_PAGE_SIZE = 25
+const pagination = ref<PaginationState>({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE })
 // SLA and claim columns are oversight-only; hidden for participants, shown for
 // supervisors (toggled on in onMounted once the role is known).
 const columnVisibility = ref<VisibilityState>({
@@ -85,47 +90,88 @@ const columnVisibility = ref<VisibilityState>({
   claimed: false,
 })
 
-function load() {
-  if (view.value === 'queue') store.loadQueue()
-  else store.loadList()
+function columnFilterValue(id: string): string | undefined {
+  const filter = columnFilters.value.find((entry) => entry.id === id)
+  const value = filter?.value
+  if (!Array.isArray(value) || value.length !== 1) return undefined
+  return String(value[0])
+}
+
+function columnFilterNumber(id: string): number | undefined {
+  const raw = columnFilterValue(id)
+  if (raw === undefined) return undefined
+  const parsed = Number(raw)
+  return Number.isFinite(parsed) ? parsed : undefined
+}
+
+function buildListParams(): ListOptions {
+  return {
+    page: pagination.value.pageIndex + 1,
+    per_page: pagination.value.pageSize,
+    search: debouncedQuery.value.trim() || undefined,
+    status: columnFilterValue('status'),
+    sla_status: columnFilterValue('sla'),
+    claimed: columnFilterValue('claimed'),
+    stage_id: columnFilterNumber('stage'),
+    bank_id: columnFilterNumber('bank'),
+    workflow_version_id: columnFilterNumber('workflow'),
+  }
+}
+
+async function load() {
+  const params = buildListParams()
+  const loaders: Promise<void>[] = []
+
+  if (view.value === 'queue') {
+    loaders.push(store.loadQueue(params))
+  } else {
+    loaders.push(store.loadList(params))
+  }
+
+  if (!isSupervisor.value) {
+    loaders.push(store.loadStats({ ...params, scope: 'queue' }))
+    loaders.push(store.loadStats({ ...params, scope: 'all' }))
+  } else {
+    loaders.push(store.loadStats({ ...params, scope: 'all' }))
+  }
+
+  await Promise.all(loaders)
 }
 
 onMounted(() => {
-  // Pin supervisors to the platform-wide list; they have no personal queue, and
-  // surface the oversight columns for them.
   if (isSupervisor.value) {
     view.value = 'all'
     columnVisibility.value = { ...columnVisibility.value, sla: true, claimed: true }
   }
   load()
 })
+
 watch(view, () => {
   columnFilters.value = []
-  load()
+  pagination.value = { pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE }
 })
+
+watch([debouncedQuery, columnFilters, pagination], () => {
+  load()
+}, { deep: true })
 
 const rows = computed<EngineRequest[]>(() =>
   view.value === 'queue' ? store.queue : store.instances,
 )
 
-// Client-side search across the fields most people scan by.
-const filteredRows = computed(() => {
-  const q = query.value.trim().toLowerCase()
-  if (!q) return rows.value
-  return rows.value.filter((r) =>
-    [r.reference, r.current_stage?.name, r.bank?.name, r.merchant?.name, r.invoice_number].some(
-      (v) => (v ?? '').toString().toLowerCase().includes(q),
-    ),
-  )
-})
+const pageMeta = computed(() => (view.value === 'queue' ? store.queueMeta : store.instancesMeta))
+
+const viewScopedStats = computed(() =>
+  isSupervisor.value || view.value === 'all' ? store.allStats : store.queueStats,
+)
 
 const stats = computed(() => ({
-  queue: store.queue.length,
-  all: store.instances.length,
-  total: rows.value.length,
-  waiting: rows.value.filter((r) => r.status === 'ACTIVE').length,
-  breached: rows.value.filter((r) => r.sla_status === 'breached').length,
-  unclaimed: rows.value.filter((r) => r.status === 'ACTIVE' && r.claimed_by == null).length,
+  queue: store.queueStats?.total ?? 0,
+  all: store.allStats?.total ?? 0,
+  total: viewScopedStats.value?.total ?? 0,
+  waiting: viewScopedStats.value?.active ?? 0,
+  breached: viewScopedStats.value?.breached_sla ?? 0,
+  unclaimed: viewScopedStats.value?.unclaimed_active ?? 0,
 }))
 
 function statusLabel(status: string): string {
@@ -193,14 +239,38 @@ const statusFilterOptions = [
   { label: 'متروك', value: 'ABANDONED' },
 ]
 const stageFilterOptions = computed(() => {
-  const names = new Set<string>()
-  for (const r of rows.value) if (r.current_stage?.name) names.add(r.current_stage.name)
-  return [...names].sort().map((n) => ({ label: n, value: n }))
+  const seen = new Map<number, string>()
+  for (const r of rows.value) {
+    if (r.current_stage?.id && r.current_stage.name) {
+      seen.set(r.current_stage.id, r.current_stage.name)
+    }
+  }
+  return [...seen.entries()]
+    .sort((a, b) => a[1].localeCompare(b[1], 'ar'))
+    .map(([id, name]) => ({ label: name, value: String(id) }))
 })
 const bankFilterOptions = computed(() => {
-  const names = new Set<string>()
-  for (const r of rows.value) if (r.bank?.name) names.add(r.bank.name)
-  return [...names].sort().map((n) => ({ label: n, value: n }))
+  const seen = new Map<number, string>()
+  for (const r of rows.value) {
+    if (r.bank?.id && r.bank.name) {
+      seen.set(r.bank.id, r.bank.name)
+    }
+  }
+  return [...seen.entries()]
+    .sort((a, b) => a[1].localeCompare(b[1], 'ar'))
+    .map(([id, name]) => ({ label: name, value: String(id) }))
+})
+const workflowFilterOptions = computed(() => {
+  const seen = new Map<number, string>()
+  for (const r of rows.value) {
+    const version = r.workflow_version
+    if (version?.id && version.definition?.name) {
+      seen.set(version.id, `${version.definition.name} v${version.version_number}`)
+    }
+  }
+  return [...seen.entries()]
+    .sort((a, b) => a[1].localeCompare(b[1], 'ar'))
+    .map(([id, label]) => ({ label, value: String(id) }))
 })
 
 // Supervisor-only oversight filters.
@@ -254,8 +324,6 @@ const columns: ColumnDef<EngineRequest>[] = [
     id: 'workflow',
     header: ({ column }) => h(DataTableColumnHeader as any, { column, title: 'مسار العمل' }),
     accessorFn: (row) => row.workflow_version?.definition?.name ?? '—',
-    filterFn: (row, _id, value: string[]) =>
-      value.includes(row.original.workflow_version?.definition?.name ?? '—'),
     cell: ({ row }) => {
       const v = row.original.workflow_version
       if (!v?.definition) return h('span', { class: 'text-muted-foreground text-sm' }, '—')
@@ -270,8 +338,6 @@ const columns: ColumnDef<EngineRequest>[] = [
     id: 'stage',
     header: 'المرحلة الحالية',
     accessorFn: (row) => row.current_stage?.name ?? '—',
-    filterFn: (row, _id, value: string[]) =>
-      value.includes(row.original.current_stage?.name ?? '—'),
     cell: ({ row }) =>
       h('span', { class: 'text-sm text-foreground' }, row.original.current_stage?.name ?? '—'),
   },
@@ -279,7 +345,6 @@ const columns: ColumnDef<EngineRequest>[] = [
     id: 'bank',
     header: 'البنك',
     accessorFn: (row) => row.bank?.name ?? '—',
-    filterFn: (row, _id, value: string[]) => value.includes(row.original.bank?.name ?? '—'),
     cell: ({ row }) =>
       row.original.bank?.name
         ? h(Badge, { variant: 'outline', class: 'font-normal' }, () => [
@@ -445,6 +510,7 @@ function buildExportFilename(): string {
 }
 
 function setStatusFilter(status: EngineRequest['status']) {
+  pagination.value = { ...pagination.value, pageIndex: 0 }
   columnFilters.value = [{ id: 'status', value: [status] }]
 }
 
@@ -454,6 +520,7 @@ function isStatusActive(status: EngineRequest['status']): boolean {
 }
 
 function setColumnFilter(id: string, value: string) {
+  pagination.value = { ...pagination.value, pageIndex: 0 }
   columnFilters.value = [{ id, value: [value] }]
 }
 
@@ -463,11 +530,13 @@ function isColumnFilterActive(id: string, value: string): boolean {
 }
 
 function resetAllFilters() {
+  pagination.value = { ...pagination.value, pageIndex: 0 }
   columnFilters.value = []
 }
 
 function handleReset() {
   query.value = ''
+  pagination.value = { ...pagination.value, pageIndex: 0 }
   columnFilters.value = []
 }
 </script>
@@ -567,9 +636,11 @@ function handleReset() {
 
     <div v-else class="relative flex flex-col gap-4">
       <DataTable
-        :data="filteredRows"
+        v-model:pagination="pagination"
+        :data="rows"
         :columns="columns"
         :loading="store.loading"
+        :page-count="pageMeta?.last_page ?? -1"
         :column-filters="columnFilters"
         :column-visibility="columnVisibility"
         row-class="cursor-pointer"
@@ -580,7 +651,7 @@ function handleReset() {
         <template #toolbar="{ table }">
           <DataTableToolbar
             :table="table"
-            search-placeholder="بحث بالمرجع، المرحلة، البنك، أو المستورد"
+            search-placeholder="بحث بالمرجع أو رقم الفاتورة"
             :has-filters="hasActiveFilters"
             @update:search="(v) => (query = v)"
             @reset="handleReset"
@@ -628,6 +699,12 @@ function handleReset() {
                   </Command>
                 </PopoverContent>
               </Popover>
+              <DataTableFacetedFilter
+                v-if="table.getColumn('workflow') && workflowFilterOptions.length > 1"
+                :column="table.getColumn('workflow')!"
+                title="مسار العمل"
+                :options="workflowFilterOptions"
+              />
               <DataTableFacetedFilter
                 v-if="table.getColumn('status')"
                 :column="table.getColumn('status')!"
@@ -752,7 +829,7 @@ function handleReset() {
           </Empty>
         </template>
         <template #pagination="{ table }">
-          <DataTablePagination :table="table" />
+          <DataTablePagination :table="table" :total-rows="pageMeta?.total" />
         </template>
       </DataTable>
     </div>

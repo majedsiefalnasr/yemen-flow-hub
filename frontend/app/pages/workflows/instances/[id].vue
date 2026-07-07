@@ -143,7 +143,9 @@ function onClaimLost(code: string) {
 }
 
 async function runAction(transitionId: number, requiresComment: boolean) {
-  if (requiresComment && !comment.value.trim()) return
+  if (requiresComment && !comment.value.trim()) {
+    return
+  }
   // The view page shows the request data read-only; acting on a stage submits the
   // existing data unchanged with an optional comment. Field edits happen in the
   // creator wizard, not here.

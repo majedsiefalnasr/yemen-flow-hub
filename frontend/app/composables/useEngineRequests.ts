@@ -8,7 +8,7 @@ import type {
 import { useApi } from '@/composables/useApi'
 import { extractApiErrorMessage } from '@/utils/apiErrors'
 
-type ListOptions = {
+export type ListOptions = {
   page?: number
   per_page?: number
   workflow_id?: number
@@ -19,6 +19,9 @@ type ListOptions = {
   status?: string
   search?: string
   sla_status?: string
+  claimed?: string
+  created_from?: string
+  created_to?: string
 }
 
 export function useEngineRequests() {

@@ -332,6 +332,45 @@ const bankBreakdownColumns: ColumnDef<{
       </AlertAction>
     </Alert>
 
+    <Alert
+      v-if="store.exportFailureNotice"
+      variant="destructive"
+      role="alert"
+      data-testid="export-failure-notice"
+    >
+      <AlertTitle>فشل التصدير</AlertTitle>
+      <AlertDescription>{{ store.exportFailureNotice }}</AlertDescription>
+      <AlertAction>
+        <Button
+          variant="outline"
+          size="sm"
+          data-testid="export-retry"
+          :disabled="store.exportLoading"
+          @click="store.retryFailedExport()"
+        >
+          إعادة المحاولة
+        </Button>
+        <Button variant="ghost" size="sm" @click="store.clearExportFailureNotice()">
+          إغلاق
+        </Button>
+      </AlertAction>
+    </Alert>
+
+    <Alert
+      v-if="store.exportTruncationNotice"
+      variant="warning"
+      role="status"
+      data-testid="export-truncation-notice"
+    >
+      <AlertTitle>تم اقتصار التصدير على الحد الأقصى</AlertTitle>
+      <AlertDescription>{{ store.exportTruncationNotice }}</AlertDescription>
+      <AlertAction>
+        <Button variant="outline" size="sm" @click="store.clearExportTruncationNotice()">
+          إغلاق
+        </Button>
+      </AlertAction>
+    </Alert>
+
     <!-- Filter Bar -->
     <div class="filter-card">
       <div class="filter-row">

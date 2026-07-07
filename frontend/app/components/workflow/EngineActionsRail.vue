@@ -6,9 +6,23 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { AlertCircle } from 'lucide-vue-next'
+import { ref, watch } from 'vue'
+import { useTransitionConfirm } from '@/composables/useTransitionConfirm'
 
-defineProps<{
+const REQUIRED_COMMENT_MESSAGE = 'يجب إدخال ملاحظة قبل تنفيذ هذا الإجراء.'
+
+const props = defineProps<{
   availableActions: WorkflowGraphEdge[]
   canAct: boolean
   claimRequiredButNotHeld: boolean
@@ -19,6 +33,52 @@ defineProps<{
 
 const emit = defineEmits<{ run: [transitionId: number, requiresComment: boolean]; claim: [] }>()
 const comment = defineModel<string>('comment', { default: '' })
+const commentError = ref<string | null>(null)
+
+watch(comment, (value) => {
+  if (commentError.value && value.trim()) {
+    commentError.value = null
+  }
+})
+
+function actionDisabledReason(action: WorkflowGraphEdge): string | undefined {
+  if (!props.canAct || props.busy) return undefined
+  if (action.requires_comment && !comment.value.trim()) {
+    return REQUIRED_COMMENT_MESSAGE
+  }
+  return undefined
+}
+
+function isActionDisabled(_action: WorkflowGraphEdge): boolean {
+  return !props.canAct || props.busy
+}
+
+const {
+  confirmOpen,
+  pendingMessage,
+  confirmIfNeeded,
+  confirmPending,
+  cancelPending,
+} = useTransitionConfirm()
+
+async function onActionClick(action: WorkflowGraphEdge) {
+  if (!props.canAct || props.busy) return
+
+  if (action.requires_comment && !comment.value.trim()) {
+    commentError.value = REQUIRED_COMMENT_MESSAGE
+    return
+  }
+  commentError.value = null
+
+  const confirmed = await confirmIfNeeded(action)
+  if (!confirmed) return
+
+  emit('run', action.id, action.requires_comment)
+}
+
+function onConfirmDialogAction() {
+  confirmPending()
+}
 </script>
 
 <template>
@@ -48,12 +108,18 @@ const comment = defineModel<string>('comment', { default: '' })
           <Textarea id="action-comment" v-model="comment" rows="3" :disabled="!canAct" />
         </Field>
 
+        <Alert v-if="commentError" variant="destructive" role="alert">
+          <AlertCircle class="h-4 w-4" />
+          <AlertDescription>{{ commentError }}</AlertDescription>
+        </Alert>
+
         <div class="flex flex-col gap-2">
           <Button
             v-for="action in availableActions"
             :key="action.id"
-            :disabled="!canAct || busy"
-            @click="emit('run', action.id, action.requires_comment)"
+            :disabled="isActionDisabled(action)"
+            :title="actionDisabledReason(action)"
+            @click="onActionClick(action)"
           >
             {{ action.action_name ?? action.action_code }}
           </Button>
@@ -64,4 +130,17 @@ const comment = defineModel<string>('comment', { default: '' })
       </template>
     </CardContent>
   </Card>
+
+  <AlertDialog v-model:open="confirmOpen">
+    <AlertDialogContent dir="rtl">
+      <AlertDialogHeader>
+        <AlertDialogTitle>تأكيد الإجراء</AlertDialogTitle>
+        <AlertDialogDescription>{{ pendingMessage }}</AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancel @click="cancelPending">إلغاء</AlertDialogCancel>
+        <AlertDialogAction @click="onConfirmDialogAction">تأكيد</AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
 </template>
