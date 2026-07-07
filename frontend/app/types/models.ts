@@ -968,7 +968,8 @@ export interface EngineRequest {
   created_at: string | null
   updated_at: string | null
 }
-// DuplicateWarning): returned under `warnings` by create/transition/show.
+
+// Duplicate-invoice warning: returned under `warnings` by create/transition/show.
 export interface EngineDuplicateWarning {
   code: string
   message: string
