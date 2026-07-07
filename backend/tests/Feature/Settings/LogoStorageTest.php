@@ -68,7 +68,6 @@ class LogoStorageTest extends TestCase
             'name' => 'Admin User',
             'email' => 'logo-admin@example.com',
             'password' => bcrypt('password'),
-            'role' => UserRole::CBY_ADMIN,
             'bank_id' => null,
             'is_active' => true,
         ]), UserRole::CBY_ADMIN);

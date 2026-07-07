@@ -268,7 +268,7 @@ describe('CbyAdminDashboard 12.2 — governance stats optional fields', () => {
       title: 'موردون مكررون',
       description: 'تم رصد 3 مطابقات لفواتير من موردين متطابقين خلال 30 يوماً',
       severity: 'amber',
-      link_route: '/requests?flag=duplicate_suppliers',
+      link_route: '/workflows?flag=duplicate_suppliers',
       created_at: '2026-05-26T08:30:00.000000Z',
     }
     expect(signal.link_route).toContain('duplicate_suppliers')
@@ -282,7 +282,7 @@ describe('CbyAdminDashboard 12.2 — governance stats optional fields', () => {
       summary: 'تم اعتماد جلسة تصويت YFH-2026-000005 بقرار نهائي',
       actor_name: 'لجنة التنفيذية',
       created_at: '2026-05-26T10:00:00.000000Z',
-      link_route: '/requests/5',
+      link_route: '/workflows/instances/5',
     }
     expect(event.event_type).toBe('voting_finalized')
     expect(event.summary).toContain('YFH-2026')

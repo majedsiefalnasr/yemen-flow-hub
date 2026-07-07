@@ -25,7 +25,6 @@ class SettingsControllerTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('password'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => null,
             'is_active' => true,
             'user_preferences' => [
@@ -53,7 +52,6 @@ class SettingsControllerTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('password'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => null,
             'is_active' => true,
         ]);
@@ -125,7 +123,6 @@ class SettingsControllerTest extends TestCase
             'name' => 'Admin User',
             'email' => 'admin@example.com',
             'password' => Hash::make('password'),
-            'role' => UserRole::CBY_ADMIN,
             'bank_id' => null,
             'is_active' => true,
         ]), UserRole::CBY_ADMIN);
@@ -170,7 +167,6 @@ class SettingsControllerTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('password'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => null,
             'is_active' => true,
         ]);
@@ -195,7 +191,6 @@ class SettingsControllerTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('password'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => null,
             'is_active' => true,
         ]);
@@ -225,7 +220,6 @@ class SettingsControllerTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('password'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => null,
             'is_active' => true,
         ]);
@@ -246,7 +240,6 @@ class SettingsControllerTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('password'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => null,
             'is_active' => true,
         ]);
@@ -265,7 +258,6 @@ class SettingsControllerTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('password'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => null,
             'is_active' => true,
         ]);
@@ -284,7 +276,6 @@ class SettingsControllerTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('password'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => null,
             'is_active' => true,
         ]);
@@ -303,7 +294,6 @@ class SettingsControllerTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('password'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => null,
             'is_active' => true,
         ]);
@@ -322,7 +312,6 @@ class SettingsControllerTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('password'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => null,
             'is_active' => true,
         ]);
@@ -355,7 +344,6 @@ class SettingsControllerTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('password'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => null,
             'is_active' => true,
             'user_preferences' => [
@@ -380,7 +368,6 @@ class SettingsControllerTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('password'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => null,
             'is_active' => true,
             'user_preferences' => [
@@ -422,7 +409,6 @@ class SettingsControllerTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('password'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => null,
             'is_active' => true,
         ]);
@@ -472,7 +458,6 @@ class SettingsControllerTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('password'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => null,
             'is_active' => true,
         ]);
@@ -507,7 +492,6 @@ class SettingsControllerTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('password'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => null,
             'is_active' => true,
         ]);
@@ -559,7 +543,6 @@ class SettingsControllerTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('password'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => null,
             'is_active' => true,
             'user_preferences' => [

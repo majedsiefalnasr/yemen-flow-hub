@@ -26,7 +26,7 @@ trait AssignsGovernanceIdentity
         $this->seed(GovernanceSeeder::class);
     }
 
-    protected function assignGovernanceIdentity(User $user, UserRole $legacyRole): User
+    protected function assignGovernanceIdentity(User $user, UserRole $userRole): User
     {
         $map = [
             UserRole::DATA_ENTRY->value => ['commercial_banks', 'entry', 'intake', true],
@@ -39,7 +39,7 @@ trait AssignsGovernanceIdentity
             UserRole::CBY_ADMIN->value => ['system_administration', 'administration', 'system_admin', false],
         ];
 
-        [$organizationCode, $teamCode, $roleCode, $keepsBank] = $map[$legacyRole->value];
+        [$organizationCode, $teamCode, $roleCode, $keepsBank] = $map[$userRole->value];
         $organization = Organization::query()->where('code', $organizationCode)->firstOrFail();
         $team = Team::query()
             ->whereBelongsTo($organization)

@@ -44,7 +44,7 @@ class OutcomeSemanticsTest extends TestCase
     {
         parent::setUp();
         $this->seed([GovernanceSeeder::class, ScreenPermissionSeeder::class, BankSeeder::class, UserSeeder::class]);
-        $this->entry = User::query()->where('role', UserRole::DATA_ENTRY->value)->firstOrFail();
+        $this->entry = $this->firstUserWithRole(UserRole::DATA_ENTRY);
         $this->bankOrg = Organization::query()->where('code', 'commercial_banks')->firstOrFail();
         $this->entryRole = Role::query()->where('code', 'intake')->firstOrFail();
     }
@@ -171,7 +171,7 @@ class OutcomeSemanticsTest extends TestCase
             'version_number' => 1,
             'state' => WorkflowVersionState::DRAFT,
         ]);
-        $admin = User::query()->where('role', UserRole::CBY_ADMIN->value)->firstOrFail();
+        $admin = $this->firstUserWithRole(UserRole::CBY_ADMIN);
 
         $this->actingAs($admin)->postJson("/api/v1/workflow-versions/{$version->id}/stages", [
             'code' => 'done',
@@ -223,7 +223,7 @@ class OutcomeSemanticsTest extends TestCase
             ]);
         }
 
-        $admin = User::query()->where('role', UserRole::CBY_ADMIN->value)->firstOrFail();
+        $admin = $this->firstUserWithRole(UserRole::CBY_ADMIN);
 
         $this->actingAs($admin)->getJson('/api/v1/reports/summary')
             ->assertOk()

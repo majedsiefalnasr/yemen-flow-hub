@@ -9,7 +9,7 @@ use App\Models\Organization;
 use App\Models\Role;
 use App\Models\Team;
 use App\Models\User;
-use App\Support\LegacyRoleMapper;
+use App\Support\UserRoleMapper;
 use Database\Seeders\BankSeeder;
 use Database\Seeders\GovernanceSeeder;
 use Database\Seeders\UserSeeder;
@@ -34,10 +34,10 @@ class RoleModelTest extends TestCase
     {
         $this->seed(UserSeeder::class);
 
-        $user = User::query()->with('roles')->where('role', UserRole::DATA_ENTRY->value)->firstOrFail();
+        $user = User::query()->with('roles')->withUserRole(UserRole::DATA_ENTRY)->firstOrFail();
 
         $this->assertSame('intake', $user->role()?->code);
-        $this->assertSame(UserRole::DATA_ENTRY, $user->legacyRole());
+        $this->assertSame(UserRole::DATA_ENTRY, $user->asUserRole());
         $this->assertSame(1, $user->roles()->wherePivot('is_active', true)->count());
     }
 
@@ -64,10 +64,9 @@ class RoleModelTest extends TestCase
         $this->assertGreaterThanOrEqual(1, $user->roles()->wherePivot('is_active', false)->count());
     }
 
-    public function test_user_resource_serializes_role_from_pivot_not_stale_column(): void
+    public function test_user_resource_serializes_role_from_pivot(): void
     {
         $user = $this->makeBankUser(UserRole::DATA_ENTRY, 'pivot@bank.test');
-        $user->forceFill(['role' => UserRole::BANK_REVIEWER->value])->save();
 
         $payload = (new UserResource($user->load('roles', 'bank')))->resolve();
 
@@ -83,11 +82,19 @@ class RoleModelTest extends TestCase
         $this->assertSame(UserRole::SWIFT_OFFICER->value, $payload['user']['role']);
     }
 
-    public function test_legacy_role_mapper_maps_committee_director_code(): void
+    public function test_users_table_has_no_role_column(): void
+    {
+        $this->assertFalse(
+            \Illuminate\Support\Facades\Schema::hasColumn('users', 'role'),
+            'users.role column must be dropped after RM-3',
+        );
+    }
+
+    public function test_user_role_mapper_maps_committee_director_code(): void
     {
         $this->assertSame(
             UserRole::COMMITTEE_DIRECTOR,
-            LegacyRoleMapper::toLegacyEnum('committee_director')
+            UserRoleMapper::toUserRole('committee_director')
         );
     }
 
@@ -117,7 +124,6 @@ class RoleModelTest extends TestCase
             'name' => 'Admin',
             'email' => 'admin@test.gov',
             'password' => Hash::make('Password123'),
-            'role' => UserRole::CBY_ADMIN->value,
             'is_active' => true,
         ]), UserRole::CBY_ADMIN);
     }
@@ -130,7 +136,6 @@ class RoleModelTest extends TestCase
             'name' => $role->value,
             'email' => $email,
             'password' => Hash::make('Password123'),
-            'role' => $role->value,
             'bank_id' => $bank->id,
             'is_active' => true,
         ]), $role);

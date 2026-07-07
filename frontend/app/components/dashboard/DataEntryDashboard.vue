@@ -86,11 +86,11 @@ const draftColumns: ColumnDef<DraftRow>[] = [
         'a',
         {
           class: 'font-mono text-primary hover:underline',
-          href: `/requests/${row.original.id}/edit`,
+          href: `/workflows/instances/${row.original.id}/edit`,
           onClick: (event: MouseEvent) => {
             event.preventDefault()
             event.stopPropagation()
-            router.push(`/requests/${row.original.id}/edit`)
+            router.push(`/workflows/instances/${row.original.id}/edit`)
           },
         },
         row.original.reference_number,
@@ -117,7 +117,7 @@ const draftColumns: ColumnDef<DraftRow>[] = [
           size: 'sm',
           onClick: (event: MouseEvent) => {
             event.stopPropagation()
-            router.push(`/requests/${row.original.id}/edit`)
+            router.push(`/workflows/instances/${row.original.id}/edit`)
           },
         },
         () => 'متابعة',
@@ -134,11 +134,11 @@ const recentColumns: ColumnDef<RecentRow>[] = [
         'a',
         {
           class: 'font-mono text-primary hover:underline',
-          href: `/requests/${row.original.id}`,
+          href: `/workflows/instances/${row.original.id}`,
           onClick: (event: MouseEvent) => {
             event.preventDefault()
             event.stopPropagation()
-            router.push(`/requests/${row.original.id}`)
+            router.push(`/workflows/instances/${row.original.id}`)
           },
         },
         row.original.reference_number,
@@ -171,7 +171,7 @@ const recentColumns: ColumnDef<RecentRow>[] = [
           variant: 'outline',
           onClick: (event: MouseEvent) => {
             event.stopPropagation()
-            router.push(`/requests/${row.original.id}`)
+            router.push(`/workflows/instances/${row.original.id}`)
           },
         },
         () => 'عرض',
@@ -268,7 +268,7 @@ onMounted(() => {
           </EmptyDescription>
           <div class="flex flex-wrap items-center justify-center gap-2 pt-1">
             <Button @click="router.push('/workflows/new')">طلب جديد</Button>
-            <Button variant="outline" @click="router.push('/requests')">عرض طابور الطلبات</Button>
+            <Button variant="outline" @click="router.push('/workflows')">عرض طابور الطلبات</Button>
           </div>
         </EmptyContent>
       </Empty>
@@ -280,7 +280,7 @@ onMounted(() => {
         :count="actionRequiredCount"
         message="طلبات تحتاج تعديل"
         cta-label="ابدأ التعديل"
-        cta-route="/requests?tab=returned"
+        cta-route="/workflows?tab=returned"
         severity="amber"
         :detail="actionStripDetail"
       />
@@ -301,7 +301,7 @@ onMounted(() => {
                 : 'default'
           "
           :highlighted="kpi.variant === 'amber' && kpi.value > 0"
-          @click="router.push(`/requests?tab=${kpi.tab}`)"
+          @click="router.push(`/workflows?tab=${kpi.tab}`)"
         />
       </MetricGrid>
 
@@ -328,7 +328,7 @@ onMounted(() => {
 
           <!-- متابعة طلباتي -->
           <NuxtLink
-            to="/requests"
+            to="/workflows"
             class="bg-background border-border text-foreground hover:border-primary focus-visible:ring-primary flex flex-col items-start gap-1 rounded-2xl border p-4 transition-all hover:shadow-md focus-visible:ring-2 focus-visible:outline-none"
             aria-label="متابعة طلباتي"
           >
@@ -374,14 +374,14 @@ onMounted(() => {
                 variant="link"
                 size="sm"
                 class="h-auto p-0 text-xs"
-                @click="router.push('/requests?tab=draft')"
+                @click="router.push('/workflows?tab=draft')"
                 >عرض الكل</Button
               >
             </div>
             <DataTable
               :data="stats.draft_requests.slice(0, 5)"
               :columns="draftColumns"
-              @row-click="(row) => router.push(`/requests/${row.id}/edit`)"
+              @row-click="(row) => router.push(`/workflows/instances/${row.id}/edit`)"
             />
           </CardContent>
         </Card>
@@ -399,14 +399,14 @@ onMounted(() => {
                 variant="link"
                 size="sm"
                 class="h-auto p-0 text-xs"
-                @click="router.push('/requests')"
+                @click="router.push('/workflows')"
                 >عرض الكل</Button
               >
             </div>
             <DataTable
               :data="stats.recent_requests.slice(0, 5)"
               :columns="recentColumns"
-              @row-click="(row) => router.push(`/requests/${row.id}`)"
+              @row-click="(row) => router.push(`/workflows/instances/${row.id}`)"
             >
               <template #empty>ستظهر هنا آخر طلباتك بعد حفظ أول مسودة أو تقديم أول طلب.</template>
             </DataTable>

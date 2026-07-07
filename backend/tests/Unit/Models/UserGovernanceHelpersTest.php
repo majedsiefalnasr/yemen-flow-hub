@@ -3,6 +3,7 @@
 namespace Tests\Unit\Models;
 
 use App\Enums\UserRole;
+use App\Models\User;
 use Database\Seeders\BankSeeder;
 use Database\Seeders\GovernanceSeeder;
 use Database\Seeders\UserSeeder;
@@ -23,7 +24,7 @@ class UserGovernanceHelpersTest extends TestCase
 
     public function test_has_role_code_matches_assigned_pivot_role(): void
     {
-        $admin = \App\Models\User::query()->where('role', UserRole::CBY_ADMIN->value)->firstOrFail();
+        $admin = $this->firstUserWithRole(UserRole::CBY_ADMIN);
 
         $this->assertTrue($admin->hasRoleCode('system_admin'));
         $this->assertFalse($admin->hasRoleCode('committee_director'));
@@ -31,7 +32,7 @@ class UserGovernanceHelpersTest extends TestCase
 
     public function test_has_any_role_code_matches_one_of_several(): void
     {
-        $director = \App\Models\User::query()->where('role', UserRole::COMMITTEE_DIRECTOR->value)->firstOrFail();
+        $director = $this->firstUserWithRole(UserRole::COMMITTEE_DIRECTOR);
 
         $this->assertTrue($director->hasAnyRoleCode(['committee_director', 'system_admin']));
         $this->assertFalse($director->hasAnyRoleCode(['committee_manager', 'system_admin']));
@@ -39,8 +40,8 @@ class UserGovernanceHelpersTest extends TestCase
 
     public function test_in_organization_matches_assigned_org(): void
     {
-        $admin = \App\Models\User::query()->where('role', UserRole::CBY_ADMIN->value)->firstOrFail();
-        $bankAdmin = \App\Models\User::query()->where('role', UserRole::BANK_ADMIN->value)->firstOrFail();
+        $admin = $this->firstUserWithRole(UserRole::CBY_ADMIN);
+        $bankAdmin = $this->firstUserWithRole(UserRole::BANK_ADMIN);
 
         $this->assertTrue($admin->inOrganization('system_administration'));
         $this->assertFalse($admin->inOrganization('commercial_banks'));
@@ -49,9 +50,9 @@ class UserGovernanceHelpersTest extends TestCase
 
     public function test_has_role_code_works_with_preloaded_relation(): void
     {
-        $admin = \App\Models\User::query()
+        $admin = User::query()
             ->with('roles')
-            ->where('role', UserRole::CBY_ADMIN->value)
+            ->withUserRole(UserRole::CBY_ADMIN)
             ->firstOrFail();
 
         $this->assertTrue($admin->relationLoaded('roles'));

@@ -186,7 +186,7 @@ class EngineWorkflowFactory
      */
     public static function draftStageForAdmin(): array
     {
-        $admin = User::factory()->create(['role' => UserRole::CBY_ADMIN->value]);
+        $admin = User::factory()->create([]);
 
         $def = WorkflowDefinition::create([
             'code' => 'DESIGNER_WF_'.Str::random(8),

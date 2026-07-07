@@ -197,7 +197,7 @@ describe('GlobalSearch', () => {
     await wrapper.get('input').setValue('alpha')
 
     await wrapper.findAll('button.search-result-item')[0]!.trigger('click')
-    expect(mockPush).toHaveBeenCalledWith('/requests/1')
+    expect(mockPush).toHaveBeenCalledWith('/workflows/instances/1')
 
     await wrapper.get('input').setValue('alpha')
     await wrapper
@@ -206,6 +206,6 @@ describe('GlobalSearch', () => {
       .trigger('click')
     await wrapper.find('button.search-result-item').trigger('click')
 
-    expect(mockPush).toHaveBeenCalledWith('/requests/5')
+    expect(mockPush).toHaveBeenCalledWith('/workflows/instances/5')
   })
 })

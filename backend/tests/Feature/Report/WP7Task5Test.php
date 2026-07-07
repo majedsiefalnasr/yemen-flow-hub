@@ -47,7 +47,6 @@ class WP7Task5Test extends TestCase
             'name' => 'Admin',
             'email' => 'admin@cby.gov',
             'password' => bcrypt('password'),
-            'role' => UserRole::CBY_ADMIN,
             'organization_id' => $cbyOrg->id,
             'is_active' => true,
         ]);
@@ -61,7 +60,6 @@ class WP7Task5Test extends TestCase
             'name' => 'Entry',
             'email' => 'entry@test.bank',
             'password' => bcrypt('password'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => $this->bank->id,
             'organization_id' => $bankOrg->id,
             'is_active' => true,
@@ -71,7 +69,6 @@ class WP7Task5Test extends TestCase
             'name' => 'Bank Admin',
             'email' => 'admin@test.bank',
             'password' => bcrypt('password'),
-            'role' => UserRole::BANK_ADMIN,
             'bank_id' => $this->bank->id,
             'organization_id' => $bankOrg->id,
             'is_active' => true,

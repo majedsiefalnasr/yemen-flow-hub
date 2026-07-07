@@ -70,7 +70,6 @@ class ExpireEngineClaimsCommandTest extends TestCase
 
         $this->seedGovernance();
         $admin = $this->assignGovernanceIdentity(User::factory()->create([
-            'role' => UserRole::CBY_ADMIN,
             'is_active' => true,
         ]), UserRole::CBY_ADMIN);
 

@@ -31,7 +31,7 @@ class GovernanceLifecycleGuardTest extends TestCase
     {
         parent::setUp();
         $this->seed([GovernanceSeeder::class, ScreenPermissionSeeder::class, BankSeeder::class, UserSeeder::class]);
-        $this->admin = User::query()->where('role', UserRole::CBY_ADMIN->value)->firstOrFail();
+        $this->admin = $this->firstUserWithRole(UserRole::CBY_ADMIN);
     }
 
     public function test_delete_role_referenced_by_published_workflow_is_blocked_and_audited(): void
@@ -87,7 +87,7 @@ class GovernanceLifecycleGuardTest extends TestCase
 
     public function test_user_with_only_authored_requests_can_deactivate(): void
     {
-        $user = User::query()->where('role', UserRole::DATA_ENTRY->value)->firstOrFail();
+        $user = $this->firstUserWithRole(UserRole::DATA_ENTRY);
         $version = $this->createPublishedVersion();
         $stage = WorkflowStage::query()->create([
             'workflow_version_id' => $version->id,

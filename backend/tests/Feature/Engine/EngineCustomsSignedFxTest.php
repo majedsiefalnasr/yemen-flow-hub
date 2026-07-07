@@ -99,7 +99,7 @@ class EngineCustomsSignedFxTest extends TestCase
 
         ['request' => $request, 'declaration' => $declaration] = $this->seedDeclaration();
         $uploader = $this->assignGovernanceIdentity(
-            User::factory()->create(['role' => UserRole::COMMITTEE_DIRECTOR]),
+            User::factory()->create([]),
             UserRole::COMMITTEE_DIRECTOR
         );
         $this->grantFxExecute($request, $uploader);
@@ -132,7 +132,7 @@ class EngineCustomsSignedFxTest extends TestCase
 
         ['request' => $request] = $this->seedDeclaration();
         $reviewer = $this->assignGovernanceIdentity(
-            User::factory()->create(['role' => UserRole::BANK_REVIEWER]),
+            User::factory()->create([]),
             UserRole::BANK_REVIEWER
         );
         $fxStage = WorkflowStage::create([
@@ -162,7 +162,7 @@ class EngineCustomsSignedFxTest extends TestCase
 
         ['request' => $request, 'declaration' => $declaration] = $this->seedDeclaration();
         $uploader = $this->assignGovernanceIdentity(
-            User::factory()->create(['role' => UserRole::COMMITTEE_DIRECTOR]),
+            User::factory()->create([]),
             UserRole::COMMITTEE_DIRECTOR
         );
         $this->grantFxExecute($request, $uploader);
@@ -187,14 +187,14 @@ class EngineCustomsSignedFxTest extends TestCase
         $this->assertStringNotContainsString('old_signed.pdf', $fresh->signed_fx_doc_path);
     }
 
-    public function test_stage_permission_is_authoritative_for_fx_upload_even_when_legacy_role_disagrees(): void
+    public function test_stage_permission_is_authoritative_for_fx_upload_even_when_user_role_disagrees(): void
     {
         Storage::fake('local');
 
         ['request' => $request, 'declaration' => $declaration] = $this->seedDeclaration();
 
         $staleEnumUser = $this->assignGovernanceIdentity(
-            User::factory()->create(['role' => UserRole::COMMITTEE_DIRECTOR]),
+            User::factory()->create([]),
             UserRole::BANK_REVIEWER
         );
 
@@ -209,7 +209,7 @@ class EngineCustomsSignedFxTest extends TestCase
         $this->assertNull($declaration->fresh()->signed_fx_doc_path);
 
         $fxExecutor = $this->assignGovernanceIdentity(
-            User::factory()->create(['role' => UserRole::BANK_REVIEWER]),
+            User::factory()->create([]),
             UserRole::EXECUTIVE_MEMBER
         );
         $this->grantFxExecute($request, $fxExecutor);
@@ -234,7 +234,7 @@ class EngineCustomsSignedFxTest extends TestCase
 
         ['request' => $request] = EngineWorkflowFactory::seedClaimStageWithTransition();
         $uploader = $this->assignGovernanceIdentity(
-            User::factory()->create(['role' => UserRole::COMMITTEE_DIRECTOR]),
+            User::factory()->create([]),
             UserRole::COMMITTEE_DIRECTOR
         );
         $this->grantFxExecute($request, $uploader);
@@ -275,11 +275,11 @@ class EngineCustomsSignedFxTest extends TestCase
         $bankOrganization = Organization::query()->where('code', 'commercial_banks')->firstOrFail();
 
         $sameBankUser = $this->assignGovernanceIdentity(
-            User::factory()->create(['role' => UserRole::BANK_REVIEWER, 'bank_id' => $ownBank->id, 'organization_id' => $bankOrganization->id]),
+            User::factory()->create([, 'bank_id' => $ownBank->id, 'organization_id' => $bankOrganization->id]),
             UserRole::BANK_REVIEWER
         );
         $otherBankUser = $this->assignGovernanceIdentity(
-            User::factory()->create(['role' => UserRole::BANK_REVIEWER, 'bank_id' => $otherBank->id, 'organization_id' => $bankOrganization->id]),
+            User::factory()->create([, 'bank_id' => $otherBank->id, 'organization_id' => $bankOrganization->id]),
             UserRole::BANK_REVIEWER
         );
 
@@ -345,7 +345,7 @@ class EngineCustomsSignedFxTest extends TestCase
 
         ['request' => $request, 'declaration' => $declaration] = $this->seedDeclaration();
         $uploader = $this->assignGovernanceIdentity(
-            User::factory()->create(['role' => UserRole::COMMITTEE_DIRECTOR]),
+            User::factory()->create([]),
             UserRole::COMMITTEE_DIRECTOR,
         );
         $this->grantFxExecute($request, $uploader);
@@ -394,19 +394,19 @@ class EngineCustomsSignedFxTest extends TestCase
 
     // ── F-14: issuance semantics split ──────────────────────────────────
 
-    public function test_new_declaration_sets_generated_by_not_issued_by(): void
+    public function test_new_declaration_sets_generated_by_and_official_issuer(): void
     {
         Storage::fake('local');
 
         ['request' => $request, 'executor' => $executor] = EngineWorkflowFactory::seedClaimStageWithTransition();
         $this->grantFxExecute($request, $executor);
+        $director = $this->firstUserWithRole(UserRole::COMMITTEE_DIRECTOR);
 
-        // Simulate the effect that CustomsFxPdfEffect performs:
-        // create a declaration with generated_by = actor, issued_by = null.
         $declaration = CustomsDeclaration::create([
             'engine_request_id' => $request->id,
             'declaration_number' => 'FX-F14-'.Str::random(6),
             'generated_by' => $executor->id,
+            'issued_by' => $director->id,
             'issued_at' => now(),
             'pdf_path' => 'fx-confirmation/f14.pdf',
             'metadata' => [],
@@ -414,7 +414,7 @@ class EngineCustomsSignedFxTest extends TestCase
 
         $this->assertNotNull($declaration->generated_by);
         $this->assertSame($executor->id, $declaration->generated_by);
-        $this->assertNull($declaration->issued_by);
+        $this->assertSame($director->id, $declaration->issued_by);
     }
 
     public function test_backfill_sets_generated_by_from_existing_issued_by(): void
@@ -486,7 +486,7 @@ class EngineCustomsSignedFxTest extends TestCase
 
         ['request' => $request, 'declaration' => $declaration] = $this->seedDeclaration();
         $uploader = $this->assignGovernanceIdentity(
-            User::factory()->create(['role' => UserRole::COMMITTEE_DIRECTOR]),
+            User::factory()->create([]),
             UserRole::COMMITTEE_DIRECTOR,
         );
         $this->grantFxExecute($request, $uploader);

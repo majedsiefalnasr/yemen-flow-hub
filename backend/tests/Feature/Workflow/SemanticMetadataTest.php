@@ -40,7 +40,7 @@ class SemanticMetadataTest extends TestCase
     {
         parent::setUp();
         $this->seed([GovernanceSeeder::class, ScreenPermissionSeeder::class, BankSeeder::class, UserSeeder::class]);
-        $this->admin = User::query()->where('role', UserRole::CBY_ADMIN->value)->firstOrFail();
+        $this->admin = $this->firstUserWithRole(UserRole::CBY_ADMIN);
         $this->org = Organization::query()->firstOrFail();
         $this->role = Role::query()->where('organization_id', $this->org->id)->firstOrFail();
     }

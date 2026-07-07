@@ -78,7 +78,7 @@ class EngineDomainHooksTest extends TestCase
 
         $this->executor = User::create([
             'name' => 'Hook Executor', 'email' => 'hook@test.bank', 'password' => bcrypt('password'),
-            'role' => UserRole::DATA_ENTRY, 'bank_id' => $this->bank->id, 'organization_id' => $bankOrg->id, 'is_active' => true,
+, 'bank_id' => $this->bank->id, 'organization_id' => $bankOrg->id, 'is_active' => true,
         ]);
         $this->executor->teams()->attach($team);
         $this->executor->roles()->attach($role);

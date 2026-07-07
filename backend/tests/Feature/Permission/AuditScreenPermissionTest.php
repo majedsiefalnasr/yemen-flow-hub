@@ -27,7 +27,6 @@ class AuditScreenPermissionTest extends TestCase
             'name' => 'Entry',
             'email' => 'entry@test.bank',
             'password' => bcrypt('password'),
-            'role' => UserRole::DATA_ENTRY,
             'organization_id' => $bankOrg->id,
             'is_active' => true,
         ]);
@@ -52,7 +51,6 @@ class AuditScreenPermissionTest extends TestCase
             'name' => 'Support',
             'email' => 'support@test.cby',
             'password' => bcrypt('password'),
-            'role' => UserRole::SUPPORT_COMMITTEE,
             'organization_id' => $supportOrg->id,
             'is_active' => true,
         ]);

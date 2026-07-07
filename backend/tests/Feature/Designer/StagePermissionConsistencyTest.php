@@ -36,7 +36,7 @@ class StagePermissionConsistencyTest extends TestCase
     {
         parent::setUp();
         $this->seed([GovernanceSeeder::class, ScreenPermissionSeeder::class, BankSeeder::class, UserSeeder::class]);
-        $this->admin = User::query()->where('role', UserRole::CBY_ADMIN->value)->firstOrFail();
+        $this->admin = $this->firstUserWithRole(UserRole::CBY_ADMIN);
         $this->orgA = Organization::query()->where('code', 'commercial_banks')->firstOrFail();
         $this->orgB = Organization::query()->where('code', 'national_committee')->firstOrFail();
 

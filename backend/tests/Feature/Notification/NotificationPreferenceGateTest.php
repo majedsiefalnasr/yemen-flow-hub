@@ -30,7 +30,6 @@ class NotificationPreferenceGateTest extends TestCase
             'name' => 'Prefs User',
             'email' => uniqid('prefs_', true).'@test.cby',
             'password' => bcrypt('password'),
-            'role' => UserRole::CBY_ADMIN,
             'organization_id' => $org->id,
             'is_active' => true,
             'user_preferences' => $prefs === [] ? null : $prefs,

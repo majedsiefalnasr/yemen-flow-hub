@@ -43,7 +43,6 @@ class EngineSwiftUploadTest extends TestCase
             'name' => 'SWIFT Officer',
             'email' => 'swift@swift.test',
             'password' => bcrypt('pass'),
-            'role' => UserRole::SWIFT_OFFICER,
             'bank_id' => $this->bank->id,
             'is_active' => true,
         ]);
@@ -52,7 +51,6 @@ class EngineSwiftUploadTest extends TestCase
             'name' => 'Wrong Role',
             'email' => 'wrong@swift.test',
             'password' => bcrypt('pass'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => $this->bank->id,
             'is_active' => true,
         ]);

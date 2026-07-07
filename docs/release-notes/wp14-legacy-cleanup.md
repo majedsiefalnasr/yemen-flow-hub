@@ -56,23 +56,13 @@ Rewritten endpoints (e.g. V1 report presets validation) return the rich error sh
 - Data migration rewrites stored `/requests/{id}` notification URLs where mappable
 - Frontend `resolveNotificationTargetUrl()` prefers `action_url`, then maps legacy `request_id` / `engine_request` entity ids
 
-## Deferred (not in this wave)
+## WP-10 RM-3 — `users.role` column removed (post-WP-14)
 
-### Task 13 — `users.role` column drop
-
-**Status: deferred.** WP-10 RM-3 gate **not satisfied** — live readers remain, including:
-
-- `Bank::bankAdmin()` → `where('role', UserRole::BANK_ADMIN)`
-- `User` model `role` fillable/cast and `legacyRole()` fallback
-- V1 user create/update requests still accept `role` via `LegacyRoleMapper`
-- API resources exposing `legacyRole()` for transitional payloads
-
-Do **not** run `drop_users_role_column` migration until RM-3 verification passes.
-
-### Follow-up (out of scope)
-
-- Dashboard / command palette links still reference `/requests` list paths; canonical queue is `/workflows`.
-- `ImportRequest` type name retained in some unit-test fixtures (engine-shaped rows).
+- Migration `2026_07_07_000001_drop_users_role_column` drops `users.role` and its index.
+- Canonical role source: `user_roles` pivot only (`User::role()` governance `Role` model).
+- API `UserRole` enum exposure: `User::asUserRole()` + `UserRoleMapper` (replaces `legacyRole` / `LegacyRoleMapper`).
+- Dead form requests removed: `StoreUserRequest`, `UpdateUserRequest` (legacy `/api/users` surface).
+- Dashboard / nav deep links: `/requests*` → `/workflows*`.
 
 ## Verification (Task 14 gate)
 

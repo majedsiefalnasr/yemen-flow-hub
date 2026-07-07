@@ -21,7 +21,7 @@ class BankTest extends TestCase
     {
         parent::setUp();
         $this->seed([GovernanceSeeder::class, BankSeeder::class, UserSeeder::class]);
-        $this->admin = User::query()->where('role', UserRole::CBY_ADMIN->value)->firstOrFail();
+        $this->admin = $this->firstUserWithRole(UserRole::CBY_ADMIN);
     }
 
     public function test_create_bank_with_engine_fields_and_unique_swift(): void

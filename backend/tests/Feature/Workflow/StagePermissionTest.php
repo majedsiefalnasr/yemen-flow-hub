@@ -40,8 +40,8 @@ class StagePermissionTest extends TestCase
     {
         parent::setUp();
         $this->seed([GovernanceSeeder::class, ScreenPermissionSeeder::class, BankSeeder::class, UserSeeder::class]);
-        $this->admin = User::query()->where('role', UserRole::CBY_ADMIN->value)->firstOrFail();
-        $this->nonAdmin = User::query()->where('role', '!=', UserRole::CBY_ADMIN->value)->firstOrFail();
+        $this->admin = $this->firstUserWithRole(UserRole::CBY_ADMIN);
+        $this->nonAdmin = User::query()->withoutUserRole(UserRole::CBY_ADMIN)->firstOrFail();
 
         $this->org = Organization::query()->firstOrFail();
         $this->role = Role::query()->where('organization_id', $this->org->id)->firstOrFail();
@@ -204,7 +204,6 @@ class StagePermissionTest extends TestCase
             'name' => 'Member',
             'email' => 'member-'.uniqid().'@example.com',
             'password' => bcrypt('secret'),
-            'role' => UserRole::BANK_REVIEWER->value,
             'organization_id' => $this->org->id,
             'is_active' => true,
         ]);
@@ -226,7 +225,6 @@ class StagePermissionTest extends TestCase
             'name' => 'Outsider',
             'email' => 'outsider-'.uniqid().'@example.com',
             'password' => bcrypt('secret'),
-            'role' => UserRole::DATA_ENTRY->value,
             'organization_id' => $this->org->id,
             'is_active' => true,
         ]);

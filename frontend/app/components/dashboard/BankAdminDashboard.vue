@@ -132,11 +132,11 @@ const bankRecentColumns: ColumnDef<BankRecentRow>[] = [
         'a',
         {
           class: 'font-mono text-primary hover:underline',
-          href: `/requests/${row.original.id}`,
+          href: `/workflows/instances/${row.original.id}`,
           onClick: (event: MouseEvent) => {
             event.preventDefault()
             event.stopPropagation()
-            router.push(`/requests/${row.original.id}`)
+            router.push(`/workflows/instances/${row.original.id}`)
           },
         },
         row.original.reference_number,
@@ -193,7 +193,7 @@ const bankRecentColumns: ColumnDef<BankRecentRow>[] = [
           'aria-label': `عرض الطلب ${row.original.reference_number}`,
           onClick: (event: MouseEvent) => {
             event.stopPropagation()
-            router.push(`/requests/${row.original.id}`)
+            router.push(`/workflows/instances/${row.original.id}`)
           },
         },
         () => 'عرض',
@@ -276,7 +276,7 @@ onMounted(() => {
                   : 'default'
           "
           :highlighted="kpi.tab === 'rejected' && rejectionRate > REJECTION_THRESHOLD"
-          @click="router.push(`/requests?tab=${kpi.tab}`)"
+          @click="router.push(`/workflows?tab=${kpi.tab}`)"
         />
       </MetricGrid>
 
@@ -318,9 +318,9 @@ onMounted(() => {
             role="button"
             tabindex="0"
             aria-label="طلبات البنك"
-            @click="router.push('/requests')"
-            @keydown.enter="router.push('/requests')"
-            @keydown.space.prevent="router.push('/requests')"
+            @click="router.push('/workflows')"
+            @keydown.enter="router.push('/workflows')"
+            @keydown.space.prevent="router.push('/workflows')"
           >
             <FileText class="text-primary mb-1 size-5 flex-shrink-0" aria-hidden="true" />
             <span class="text-sm font-semibold">طلبات البنك</span>
@@ -456,7 +456,7 @@ onMounted(() => {
               variant="link"
               size="sm"
               class="h-auto p-0 text-xs"
-              @click="router.push('/requests')"
+              @click="router.push('/workflows')"
               >عرض الكل</Button
             >
           </div>
@@ -465,7 +465,7 @@ onMounted(() => {
           <DataTable
             :data="recentRequests.slice(0, 8)"
             :columns="bankRecentColumns"
-            @row-click="(row) => router.push(`/requests/${row.id}`)"
+            @row-click="(row) => router.push(`/workflows/instances/${row.id}`)"
           >
             <template #empty>لا توجد طلبات بعد</template>
           </DataTable>

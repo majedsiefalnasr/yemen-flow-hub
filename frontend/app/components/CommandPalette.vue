@@ -68,8 +68,8 @@ whenever(
 
 const shortcutByRoute: Record<string, string> = {
   '/dashboard': 'D',
-  '/requests': 'R',
-  '/requests/new': 'N',
+  '/workflows': 'R',
+  '/workflows/instances/new': 'N',
   '/workflows': 'W',
 
   '/merchants': 'M',
@@ -91,8 +91,8 @@ const shortcutByRoute: Record<string, string> = {
 
 const aliasesByRoute: Record<string, string> = {
   '/dashboard': 'dashboard home overview',
-  '/requests': 'requests list queue',
-  '/requests/new': 'new request create submit',
+  '/workflows': 'requests list queue',
+  '/workflows/instances/new': 'new request create submit',
   '/workflows': 'engine workflow dynamic requests دوري',
 
   '/merchants': 'merchants companies banks',
@@ -129,7 +129,7 @@ const QUICK_ACTIONS: Partial<Record<UserRole, PaletteAction[]>> = {
       id: 'qa-review-queue',
       title: 'طلبات تنتظر المراجعة',
       aliases: 'review queue pending requests',
-      url: '/requests',
+      url: '/workflows',
       icon: FileCheck,
       isQuickAction: true,
     },
@@ -149,7 +149,7 @@ const QUICK_ACTIONS: Partial<Record<UserRole, PaletteAction[]>> = {
       id: 'qa-support-queue',
       title: 'قائمة انتظار لجنة المساندة',
       aliases: 'support committee queue claim',
-      url: '/requests',
+      url: '/workflows',
       icon: Users,
       isQuickAction: true,
     },
@@ -159,7 +159,7 @@ const QUICK_ACTIONS: Partial<Record<UserRole, PaletteAction[]>> = {
       id: 'qa-swift-queue',
       title: 'رفع مستندات SWIFT',
       aliases: 'swift upload documents queue',
-      url: '/requests',
+      url: '/workflows',
       icon: FileText,
       isQuickAction: true,
     },
@@ -215,7 +215,7 @@ const QUICK_ACTIONS: Partial<Record<UserRole, PaletteAction[]>> = {
 // ── Group definition (route → group heading) ──────────────────────────
 
 const GROUP_DEFS: Array<{ heading: string; routes: string[] }> = [
-  { heading: 'الطلبات', routes: ['/requests', '/requests/new', '/workflows', '/workflows/new'] },
+  { heading: 'الطلبات', routes: ['/workflows', '/workflows/instances/new', '/workflows', '/workflows/new'] },
   { heading: 'الطوابير', routes: ['/dashboard', '/customs'] },
   {
     heading: 'الجهات والمستخدمون',

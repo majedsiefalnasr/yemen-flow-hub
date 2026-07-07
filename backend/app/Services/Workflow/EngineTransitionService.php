@@ -309,7 +309,12 @@ class EngineTransitionService
     {
         return FieldDefinition::query()
             ->where('workflow_version_id', $request->workflow_version_id)
-            ->where('semantic_tag', FieldSemanticTag::MERCHANT_TAX_NUMBER)
+            ->whereIn('semantic_tag', [
+                FieldSemanticTag::MERCHANT_TAX_NUMBER,
+                FieldSemanticTag::AMOUNT,
+                FieldSemanticTag::INVOICE_NUMBER,
+                FieldSemanticTag::REQUESTED_PERCENTAGE,
+            ])
             ->pluck('key')
             ->all();
     }

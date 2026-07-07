@@ -28,7 +28,7 @@ class PivotServiceAuthorizationTest extends TestCase
 
     public function test_cby_admin_can_save_system_settings(): void
     {
-        $admin = User::query()->where('role', UserRole::CBY_ADMIN->value)->firstOrFail();
+        $admin = $this->firstUserWithRole(UserRole::CBY_ADMIN);
 
         $this->app->make(SystemSettingsService::class)
             ->saveSection($admin, 'general', ['app_name' => 'Test']);
@@ -38,7 +38,7 @@ class PivotServiceAuthorizationTest extends TestCase
 
     public function test_non_admin_cannot_save_system_settings(): void
     {
-        $entry = User::query()->where('role', UserRole::DATA_ENTRY->value)->firstOrFail();
+        $entry = $this->firstUserWithRole(UserRole::DATA_ENTRY);
 
         $this->expectException(AuthorizationException::class);
         $this->app->make(SystemSettingsService::class)
@@ -47,8 +47,8 @@ class PivotServiceAuthorizationTest extends TestCase
 
     public function test_cby_admin_can_force_release_claim_held_by_another_user(): void
     {
-        $admin = User::query()->where('role', UserRole::CBY_ADMIN->value)->firstOrFail();
-        $support = User::query()->where('role', UserRole::SUPPORT_COMMITTEE->value)->firstOrFail();
+        $admin = $this->firstUserWithRole(UserRole::CBY_ADMIN);
+        $support = $this->firstUserWithRole(UserRole::SUPPORT_COMMITTEE);
 
         $claimService = $this->app->make(EngineClaimService::class);
         $request = EngineWorkflowFactory::seedRequestOnClaimStage();

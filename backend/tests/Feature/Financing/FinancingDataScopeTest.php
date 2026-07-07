@@ -88,25 +88,25 @@ class FinancingDataScopeTest extends TestCase
         // Setup Users
         $this->bank1User = User::query()->create([
             'name' => 'Bank 1 User', 'email' => 'b1@test.com', 'password' => Hash::make('password'),
-            'role' => UserRole::DATA_ENTRY, 'bank_id' => $this->bank1->id, 'organization_id' => $org1->id, 'is_active' => true,
+, 'bank_id' => $this->bank1->id, 'organization_id' => $org1->id, 'is_active' => true,
         ]);
         $this->bank1User->roles()->attach($role1->id);
 
         $this->bank2User = User::query()->create([
             'name' => 'Bank 2 User', 'email' => 'b2@test.com', 'password' => Hash::make('password'),
-            'role' => UserRole::DATA_ENTRY, 'bank_id' => $this->bank2->id, 'organization_id' => $org2->id, 'is_active' => true,
+, 'bank_id' => $this->bank2->id, 'organization_id' => $org2->id, 'is_active' => true,
         ]);
         $this->bank2User->roles()->attach($role2->id);
 
         $this->ncUser = User::query()->create([
             'name' => 'NC User', 'email' => 'nc@test.com', 'password' => Hash::make('password'),
-            'role' => UserRole::SUPPORT_COMMITTEE, 'organization_id' => $ncOrg->id, 'is_active' => true,
+, 'organization_id' => $ncOrg->id, 'is_active' => true,
         ]);
         $this->ncUser->roles()->attach($ncRole->id);
 
         $this->noOrgUser = User::query()->create([
             'name' => 'No Org User', 'email' => 'none@test.com', 'password' => Hash::make('password'),
-            'role' => UserRole::DATA_ENTRY, 'is_active' => true,
+, 'is_active' => true,
         ]);
 
         // Setup Merchants

@@ -198,7 +198,7 @@ async function mockApi(page: Parameters<typeof test>[0]['page'], role: Role) {
       return
     }
 
-    if (path === '/api/requests') {
+    if (path === '/api/workflows') {
       const items =
         role === 'COMMITTEE_DIRECTOR' ? [directorRequest] : [swiftWaitingRequest, swiftDoneRequest]
       await fulfillJson(
@@ -211,17 +211,17 @@ async function mockApi(page: Parameters<typeof test>[0]['page'], role: Role) {
       return
     }
 
-    if (path === '/api/requests/9001') {
+    if (path === '/api/workflows/instances/9001') {
       await fulfillJson(route, apiResponse(directorRequest))
       return
     }
 
-    if (path === '/api/requests/9101') {
+    if (path === '/api/workflows/instances/9101') {
       await fulfillJson(route, apiResponse(swiftWaitingRequest))
       return
     }
 
-    if (path === '/api/requests/9102') {
+    if (path === '/api/workflows/instances/9102') {
       await fulfillJson(route, apiResponse(swiftDoneRequest))
       return
     }
@@ -274,7 +274,7 @@ test.describe('Story 12-3 gate verification', () => {
       .getByRole('link', { name: /طلبات التمويل/ })
       .first()
       .click()
-    await expect(page).toHaveURL(/\/requests/)
+    await expect(page).toHaveURL(/\/workflows/instances/)
     await expect(page.getByRole('tab', { name: 'جاهزة للإغلاق' })).toBeVisible()
     await expect(page.getByRole('tab', { name: 'جاهزة للإصدار النهائي' })).toBeVisible()
     await expect(page.getByRole('tab', { name: 'تعادل — يحتاج حسماً' })).toBeVisible()
@@ -285,7 +285,7 @@ test.describe('Story 12-3 gate verification', () => {
     })
 
     await page.getByText('YFH-2026-009001').first().click()
-    await expect(page).toHaveURL(/\/requests\/9001/)
+    await expect(page).toHaveURL(/\/workflows\/9001/)
     await expect(page.getByRole('tab', { name: 'المعلومات' })).toBeVisible()
     await expect(page.getByText('بانتظار تأكيد المصارفة')).toBeVisible()
     await expect(page.getByText('رفع وثائق السويفت')).toHaveCount(0)
@@ -309,7 +309,7 @@ test.describe('Story 12-3 gate verification', () => {
       .getByRole('link', { name: /طلبات التمويل/ })
       .first()
       .click()
-    await expect(page).toHaveURL(/\/requests/)
+    await expect(page).toHaveURL(/\/workflows/instances/)
     await expect(page.getByRole('tab', { name: 'بانتظار رفع السويفت' })).toBeVisible()
     await expect(page.getByRole('tab', { name: 'تم رفع السويفت' })).toBeVisible()
     await expect(page.getByRole('tab', { name: 'مكتمل' })).toBeVisible()
@@ -319,9 +319,9 @@ test.describe('Story 12-3 gate verification', () => {
     })
 
     await page.getByText('YFH-2026-009101').first().click()
-    await expect(page).toHaveURL(/\/requests\/9101/)
+    await expect(page).toHaveURL(/\/workflows\/9101/)
     await page.getByRole('link', { name: 'رفع وثائق السويفت' }).first().click()
-    await expect(page).toHaveURL(/\/requests\/9101\/swift/)
+    await expect(page).toHaveURL(/\/workflows\/9101\/swift/)
     await expect(page.getByText('ملخص بيانات الطلب (مقفلة)')).toBeVisible()
     await expect(page.getByRole('button', { name: 'تسليم وثائق السويفت' })).toBeDisabled()
     await expect(page.getByText('أدخل رقم مرجع السويفت أولاً')).toBeVisible()
@@ -331,13 +331,13 @@ test.describe('Story 12-3 gate verification', () => {
     })
 
     await page.goBack()
-    await expect(page).toHaveURL(/\/requests\/9101/)
+    await expect(page).toHaveURL(/\/workflows\/9101/)
     await page
       .getByRole('link', { name: /طلبات التمويل/ })
       .first()
       .click()
     await page.getByText('YFH-2026-009102').first().click()
-    await expect(page).toHaveURL(/\/requests\/9102/)
+    await expect(page).toHaveURL(/\/workflows\/9102/)
     await expect(
       page.getByText(
         'تم تسليم السويفت — انتقلت المسؤولية إلى مدير اللجنة التنفيذية لإتمام تأكيد المصارفة الخارجية.',

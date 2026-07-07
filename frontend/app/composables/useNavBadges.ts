@@ -86,7 +86,7 @@ export function buildOperationalNavBadges(params: {
 
   const requestsBadge = requestsBadgeForRole(params.role, params.stats)
   if (requestsBadge) {
-    badges['/requests'] = requestsBadge
+    badges['/workflows'] = requestsBadge
   }
 
   if (params.role === UserRole.COMMITTEE_DIRECTOR) {

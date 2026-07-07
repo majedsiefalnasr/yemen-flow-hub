@@ -81,7 +81,6 @@ class ComplianceDataScopeTest extends TestCase
             'name' => 'NC User',
             'email' => 'nc@test.com',
             'password' => bcrypt('password'),
-            'role' => UserRole::CBY_ADMIN,
             'organization_id' => $ncOrg->id,
             'is_active' => true,
         ]);
@@ -91,7 +90,6 @@ class ComplianceDataScopeTest extends TestCase
             'name' => 'Bank 1 User',
             'email' => 'bank1@test.com',
             'password' => bcrypt('password'),
-            'role' => UserRole::BANK_ADMIN,
             'bank_id' => $this->bank1->id,
             'organization_id' => $bankingOrg->id,
             'is_active' => true,
@@ -114,7 +112,6 @@ class ComplianceDataScopeTest extends TestCase
             'name' => 'Other User',
             'email' => 'other@test.com',
             'password' => bcrypt('password'),
-            'role' => UserRole::DATA_ENTRY,
             'organization_id' => $otherOrg->id,
             'is_active' => true,
         ]);

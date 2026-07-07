@@ -62,7 +62,6 @@ class EngineFinancingCapacityTest extends TestCase
             'name' => 'Data Entry',
             'email' => 'de@cap.test',
             'password' => Hash::make('password'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => $bank->id,
             'organization_id' => $org->id,
             'is_active' => true,

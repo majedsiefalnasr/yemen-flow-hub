@@ -4,8 +4,9 @@ namespace App\Models;
 
 use App\Enums\UserRole;
 use App\Exceptions\UnmappedRoleException;
-use App\Support\LegacyRoleMapper;
 use App\Support\RoleCodes;
+use App\Support\UserRoleMapper;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -30,7 +31,6 @@ class User extends Authenticatable
         'password_changed_at',
         'pin_code_hash',
         'pin_enabled',
-        'role',
         'bank_id',
         'is_active',
         'mfa_enabled',
@@ -59,7 +59,6 @@ class User extends Authenticatable
             'must_change_password' => 'boolean',
             'temporary_password_set_at' => 'datetime',
             'password_changed_at' => 'datetime',
-            'role' => UserRole::class,
             'is_active' => 'boolean',
             'mfa_enabled' => 'boolean',
             'totp_enabled' => 'boolean',
@@ -113,21 +112,46 @@ class User extends Authenticatable
         return $this->activeRoles()->first();
     }
 
-    public function legacyRole(): ?UserRole
+    public function asUserRole(): ?UserRole
     {
         $code = $this->role()?->code;
 
         if ($code === null) {
-            return $this->getAttributes()['role'] ?? null
-                ? UserRole::from($this->getAttributes()['role'])
-                : null;
+            return null;
         }
 
         try {
-            return LegacyRoleMapper::toLegacyEnum($code);
+            return UserRoleMapper::toUserRole($code);
         } catch (UnmappedRoleException) {
             return null;
         }
+    }
+
+    public function scopeWithActiveRoleCode(Builder $query, string $roleCode): Builder
+    {
+        return $query->whereHas(
+            'roles',
+            fn (Builder $roleQuery) => $roleQuery
+                ->where('roles.code', $roleCode)
+                ->where('user_roles.is_active', true),
+        );
+    }
+
+    public function scopeWithUserRole(Builder $query, UserRole $userRole): Builder
+    {
+        return $query->withActiveRoleCode(UserRoleMapper::roleCodeFor($userRole));
+    }
+
+    public function scopeWithoutUserRole(Builder $query, UserRole $userRole): Builder
+    {
+        $roleCode = UserRoleMapper::roleCodeFor($userRole);
+
+        return $query->whereDoesntHave(
+            'roles',
+            fn (Builder $roleQuery) => $roleQuery
+                ->where('roles.code', $roleCode)
+                ->where('user_roles.is_active', true),
+        );
     }
 
     /**
@@ -182,17 +206,17 @@ class User extends Authenticatable
 
     public function hasRole(UserRole $role): bool
     {
-        return $this->legacyRole() === $role;
+        return $this->asUserRole() === $role;
     }
 
     public function isBankUser(): bool
     {
-        return $this->legacyRole()?->isBankRole() ?? false;
+        return $this->asUserRole()?->isBankRole() ?? false;
     }
 
     public function isCbyUser(): bool
     {
-        return $this->legacyRole()?->isCbyRole() ?? false;
+        return $this->asUserRole()?->isCbyRole() ?? false;
     }
 
     public function isSystemAdmin(): bool

@@ -26,7 +26,6 @@ class ResetPinTest extends TestCase
             'name' => 'Admin',
             'email' => 'admin-pin@test.gov',
             'password' => Hash::make('Password123'),
-            'role' => UserRole::CBY_ADMIN->value,
             'is_active' => true,
         ]), UserRole::CBY_ADMIN);
 
@@ -34,7 +33,6 @@ class ResetPinTest extends TestCase
             'name' => 'Support',
             'email' => 'support-pin@test.gov',
             'password' => Hash::make('Password123'),
-            'role' => UserRole::SUPPORT_COMMITTEE->value,
             'is_active' => true,
             'pin_enabled' => true,
             'pin_code_hash' => Hash::make('125812'),
@@ -53,7 +51,6 @@ class ResetPinTest extends TestCase
             'name' => 'Admin',
             'email' => 'admin-self-pin@test.gov',
             'password' => Hash::make('Password123'),
-            'role' => UserRole::CBY_ADMIN->value,
             'is_active' => true,
             'pin_enabled' => true,
             'pin_code_hash' => Hash::make('125812'),

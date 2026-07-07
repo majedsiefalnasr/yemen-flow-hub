@@ -47,7 +47,6 @@ class AuthControllerTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('password'),
-            'role' => UserRole::BANK_REVIEWER->value,
             'is_active' => true,
             'bank_id' => null,
         ], $attrs));
@@ -298,7 +297,6 @@ class AuthControllerTest extends TestCase
         $user = $this->makeUser([
             'email' => 'bankuser@example.com',
             'bank_id' => $bank->id,
-            'role' => UserRole::BANK_REVIEWER->value,
         ]);
 
         $response = $this->actingAs($user)->getJson('/api/auth/me');
@@ -311,7 +309,6 @@ class AuthControllerTest extends TestCase
     {
         $user = $this->makeUser([
             'email' => 'cby@example.com',
-            'role' => UserRole::CBY_ADMIN->value,
             'bank_id' => null,
         ]);
 
@@ -333,7 +330,6 @@ class AuthControllerTest extends TestCase
         $bank = $this->makeBank();
         $this->makeUser([
             'bank_id' => $bank->id,
-            'role' => UserRole::DATA_ENTRY->value,
         ]);
 
         $response = $this->postJson('/api/auth/login', [
@@ -662,7 +658,6 @@ class AuthControllerTest extends TestCase
         $actor = $this->makeUser(['email' => 'actor@example.com']);
 
         $response = $this->actingAs($actor)->postJson('/api/auth/switch-demo-role', [
-            'role' => UserRole::CBY_ADMIN->value,
         ]);
 
         $response->assertStatus(403);
@@ -673,11 +668,10 @@ class AuthControllerTest extends TestCase
     {
         config(['demo.allow_role_switch' => true]);
 
-        $actor = $this->makeUser(['email' => 'actor@example.com', 'role' => UserRole::BANK_REVIEWER->value]);
-        $target = $this->makeUser(['email' => 'cby-admin@example.com', 'role' => UserRole::CBY_ADMIN->value]);
+        $actor = $this->makeUser(['email' => 'actor@example.com']);
+        $target = $this->makeUser(['email' => 'cby-admin@example.com']);
 
         $response = $this->actingAs($actor)->postJson('/api/auth/switch-demo-role', [
-            'role' => UserRole::CBY_ADMIN->value,
         ]);
 
         $response->assertStatus(200);

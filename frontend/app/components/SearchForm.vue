@@ -31,8 +31,8 @@ whenever(commandShortcutPressed, () => {
 
 const shortcutByRoute: Record<string, string> = {
   '/dashboard': 'D',
-  '/requests': 'R',
-  '/requests/new': 'N',
+  '/workflows': 'R',
+  '/workflows/instances/new': 'N',
   '/workflows': 'W',
   '/merchants': 'M',
   '/staff': 'F',
@@ -52,7 +52,7 @@ const shortcutByRoute: Record<string, string> = {
 const commandGroupByRoute: Array<{ heading: string; routes: string[] }> = [
   {
     heading: 'الطلبات والطوابير',
-    routes: ['/dashboard', '/requests', '/requests/new', '/workflows', '/workflows/new', '/customs'],
+    routes: ['/dashboard', '/workflows', '/workflows/instances/new', '/workflows', '/workflows/new', '/customs'],
   },
   {
     heading: 'الإدارة',

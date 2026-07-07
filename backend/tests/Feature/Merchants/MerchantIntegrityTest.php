@@ -44,7 +44,6 @@ class MerchantIntegrityTest extends TestCase
             'name' => 'Bank Admin',
             'email' => 'ba@test.com',
             'password' => Hash::make('password'),
-            'role' => UserRole::BANK_ADMIN->value,
             'bank_id' => $this->bank->id,
             'is_active' => true,
         ]);
@@ -55,7 +54,6 @@ class MerchantIntegrityTest extends TestCase
             'name' => 'CBY Admin',
             'email' => 'cby@test.com',
             'password' => Hash::make('password'),
-            'role' => UserRole::CBY_ADMIN->value,
             'bank_id' => null,
             'is_active' => true,
         ]);

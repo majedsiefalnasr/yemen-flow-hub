@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\UserRole;
 use App\Models\Bank;
 use App\Models\Merchant;
 use App\Models\MerchantCompany;
@@ -26,7 +27,7 @@ class MerchantSeeder extends Seeder
         Bank::query()->where('is_active', true)->orderBy('id')->get()->each(function (Bank $bank, int $bankIndex) use ($templates): void {
             $manager = User::query()
                 ->where('bank_id', $bank->id)
-                ->where('role', 'DATA_ENTRY')
+                ->withUserRole(UserRole::DATA_ENTRY)
                 ->first();
 
             // Per-bank offset keeps tax/CR unique across banks while preserving

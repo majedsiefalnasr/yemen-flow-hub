@@ -73,7 +73,6 @@ class EngineClaimLifecycleTest extends TestCase
         $service = app(EngineClaimService::class);
         ['request' => $request, 'executor' => $holder] = EngineWorkflowFactory::seedClaimStageWithTransition();
         $admin = $this->assignGovernanceIdentity(User::factory()->create([
-            'role' => UserRole::CBY_ADMIN,
             'is_active' => true,
         ]), UserRole::CBY_ADMIN);
 

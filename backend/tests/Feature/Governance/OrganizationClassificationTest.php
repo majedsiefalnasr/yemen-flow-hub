@@ -38,7 +38,7 @@ class OrganizationClassificationTest extends TestCase
             BankSeeder::class,
             UserSeeder::class,
         ]);
-        $this->admin = User::query()->where('role', UserRole::CBY_ADMIN->value)->firstOrFail();
+        $this->admin = $this->firstUserWithRole(UserRole::CBY_ADMIN);
     }
 
     public function test_migration_classifies_seeded_organizations(): void
@@ -121,7 +121,7 @@ class OrganizationClassificationTest extends TestCase
 
     public function test_non_banking_user_cannot_create_engine_request(): void
     {
-        $support = User::query()->where('role', UserRole::SUPPORT_COMMITTEE->value)->firstOrFail();
+        $support = $this->firstUserWithRole(UserRole::SUPPORT_COMMITTEE);
         $version = $this->createPublishedWorkflowForBankCreators();
 
         $this->actingAs($support)->postJson('/api/v1/engine-requests', [
@@ -137,7 +137,7 @@ class OrganizationClassificationTest extends TestCase
 
     public function test_bank_user_can_still_create_engine_request(): void
     {
-        $entry = User::query()->where('role', UserRole::DATA_ENTRY->value)->firstOrFail();
+        $entry = $this->firstUserWithRole(UserRole::DATA_ENTRY);
         $version = $this->createPublishedWorkflowForBankCreators();
 
         $this->actingAs($entry)->postJson('/api/v1/engine-requests', [
@@ -183,7 +183,6 @@ class OrganizationClassificationTest extends TestCase
             'name' => 'Null Org',
             'email' => 'null-org@class.test',
             'password' => bcrypt('password'),
-            'role' => UserRole::DATA_ENTRY->value,
             'organization_id' => null,
             'is_active' => true,
         ]);

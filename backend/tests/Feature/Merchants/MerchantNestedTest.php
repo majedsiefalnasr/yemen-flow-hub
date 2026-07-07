@@ -31,7 +31,6 @@ class MerchantNestedTest extends TestCase
             'name' => 'Admin',
             'email' => 'admin@test.com',
             'password' => Hash::make('password'),
-            'role' => UserRole::BANK_ADMIN->value,
             'bank_id' => $this->bank->id,
             'is_active' => true,
         ]);

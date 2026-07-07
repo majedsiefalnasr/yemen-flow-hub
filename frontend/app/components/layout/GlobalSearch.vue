@@ -183,7 +183,7 @@ onBeforeUnmount(() => {
             :key="req.id"
             class="search-result-item hover:bg-muted/50 flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors"
             type="button"
-            @click="navigateTo(`/requests/${req.id}`)"
+            @click="navigateTo(`/workflows/instances/${req.id}`)"
           >
             <FileText class="text-muted-foreground h-4 w-4 flex-shrink-0" />
             <div class="min-w-0 flex-1">
@@ -241,7 +241,7 @@ onBeforeUnmount(() => {
             :key="customs.id"
             class="search-result-item hover:bg-muted/50 flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors"
             type="button"
-            @click="navigateTo(`/requests/${customs.request_id}`)"
+            @click="navigateTo(`/workflows/instances/${customs.request_id}`)"
           >
             <Stamp class="text-muted-foreground h-4 w-4 flex-shrink-0" />
             <div class="min-w-0 flex-1">

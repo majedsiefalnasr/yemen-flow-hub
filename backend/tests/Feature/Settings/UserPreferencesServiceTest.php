@@ -28,7 +28,6 @@ class UserPreferencesServiceTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('password'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => $bank->id,
             'is_active' => true,
         ]);

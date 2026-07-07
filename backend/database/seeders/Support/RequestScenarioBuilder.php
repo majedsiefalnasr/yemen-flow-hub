@@ -50,14 +50,14 @@ class RequestScenarioBuilder
         $status = $data['status'];
         $timeline = $this->timelineForStatus($status, $createdAt);
 
-        $entries = User::query()->where('bank_id', $bank->id)->where('role', UserRole::DATA_ENTRY->value)->get();
+        $entries = User::query()->where('bank_id', $bank->id)->withUserRole(UserRole::DATA_ENTRY)->get();
         $entry = $entries->random();
-        $reviewer = User::query()->where('bank_id', $bank->id)->where('role', UserRole::BANK_REVIEWER->value)->firstOrFail();
-        $swift = User::query()->where('bank_id', $bank->id)->where('role', UserRole::SWIFT_OFFICER->value)->firstOrFail();
-        $supportUsers = User::query()->where('role', UserRole::SUPPORT_COMMITTEE->value)->orderBy('id')->get();
+        $reviewer = User::query()->where('bank_id', $bank->id)->withUserRole(UserRole::BANK_REVIEWER)->firstOrFail();
+        $swift = User::query()->where('bank_id', $bank->id)->withUserRole(UserRole::SWIFT_OFFICER)->firstOrFail();
+        $supportUsers = User::query()->withUserRole(UserRole::SUPPORT_COMMITTEE)->orderBy('id')->get();
         $support = $supportUsers->firstOrFail();
-        $director = User::query()->where('role', UserRole::COMMITTEE_DIRECTOR->value)->firstOrFail();
-        $execs = User::query()->where('role', UserRole::EXECUTIVE_MEMBER->value)->orderBy('id')->get();
+        $director = User::query()->withUserRole(UserRole::COMMITTEE_DIRECTOR)->firstOrFail();
+        $execs = User::query()->withUserRole(UserRole::EXECUTIVE_MEMBER)->orderBy('id')->get();
         $merchant = Merchant::query()->where('bank_id', $bank->id)->inRandomOrder()->firstOrFail();
 
         [$claimedBy, $claimedAt, $claimExpiresAt] = $this->resolveClaim($data, $supportUsers);

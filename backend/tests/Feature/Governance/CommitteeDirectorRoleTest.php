@@ -37,7 +37,7 @@ class CommitteeDirectorRoleTest extends TestCase
         $this->seed(GovernanceSeeder::class);
         $this->seed(UserSeeder::class);
 
-        $director = User::query()->where('role', UserRole::COMMITTEE_DIRECTOR->value)->firstOrFail();
+        $director = $this->firstUserWithRole(UserRole::COMMITTEE_DIRECTOR);
 
         $this->assertTrue($director->roles->contains('code', 'committee_director'));
         $this->assertFalse($director->roles->contains('code', 'committee_manager'));
@@ -48,7 +48,7 @@ class CommitteeDirectorRoleTest extends TestCase
         $this->seed(GovernanceSeeder::class);
         $this->seed(UserSeeder::class);
 
-        $executive = User::query()->where('role', UserRole::EXECUTIVE_MEMBER->value)->firstOrFail();
+        $executive = $this->firstUserWithRole(UserRole::EXECUTIVE_MEMBER);
 
         $this->assertTrue($executive->roles->contains('code', 'committee_manager'));
         $this->assertFalse($executive->roles->contains('code', 'committee_director'));

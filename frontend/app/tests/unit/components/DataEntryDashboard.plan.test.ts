@@ -88,23 +88,23 @@ describe('DataEntryDashboard — return reason snippet in correction strip', () 
 
 function getDraftRowLink(req: ImportRequest): string {
   // Draft rows must link to the edit wizard, not the read-only detail page
-  return `/requests/${req.id}/edit`
+  return `/workflows/instances/${req.id}/edit`
 }
 
-describe('DataEntryDashboard — draft table links to /edit not /requests/[id]', () => {
-  it('draft row click target is /requests/[id]/edit', () => {
+describe('DataEntryDashboard — draft table links to /edit not /workflows/instances/[id]', () => {
+  it('draft row click target is /workflows/instances/[id]/edit', () => {
     const req = makeRequest({ id: 7 })
-    expect(getDraftRowLink(req)).toBe('/requests/7/edit')
+    expect(getDraftRowLink(req)).toBe('/workflows/instances/7/edit')
   })
 
   it('continue button routes to the same /edit path', () => {
     const req = makeRequest({ id: 42 })
-    expect(getDraftRowLink(req)).toBe('/requests/42/edit')
+    expect(getDraftRowLink(req)).toBe('/workflows/instances/42/edit')
   })
 
   it('never links a draft to the read-only detail page', () => {
     const req = makeRequest({ id: 5 })
-    expect(getDraftRowLink(req)).not.toBe(`/requests/${req.id}`)
+    expect(getDraftRowLink(req)).not.toBe(`/workflows/instances/${req.id}`)
   })
 })
 
@@ -141,11 +141,11 @@ describe('DataEntryDashboard — notifications quick-action unread badge', () =>
 
 // ── Correction strip routing ──────────────────────────────────────────────────
 
-describe('DataEntryDashboard — correction strip links to /requests?tab=returned', () => {
+describe('DataEntryDashboard — correction strip links to /workflows?tab=returned', () => {
   it('correction strip CTA routes to the returned tab', () => {
     // This test enforces the spec: "links to /requests pre-filtered to the returned tab"
-    const expectedRoute = '/requests?tab=returned'
-    expect(expectedRoute).toBe('/requests?tab=returned')
+    const expectedRoute = '/workflows?tab=returned'
+    expect(expectedRoute).toBe('/workflows?tab=returned')
   })
 
   it('correction strip shows first returned reference number', () => {

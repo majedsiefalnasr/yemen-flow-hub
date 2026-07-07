@@ -22,7 +22,7 @@ test.describe('requests table', () => {
 
   test('full table at 1440×1000', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 1000 })
-    await page.goto('/requests')
+    await page.goto('/workflows')
     // Wait for table rows to render
     await page.waitForSelector('table tbody tr, [role="row"]:not(:first-child)', {
       timeout: 15_000,
@@ -33,7 +33,7 @@ test.describe('requests table', () => {
 
   test('full table at 1280×900', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 })
-    await page.goto('/requests')
+    await page.goto('/workflows')
     await page.waitForSelector('table tbody tr, [role="row"]:not(:first-child)', {
       timeout: 15_000,
     })
@@ -43,7 +43,7 @@ test.describe('requests table', () => {
 
   test('filter toolbar is visible', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 1000 })
-    await page.goto('/requests')
+    await page.goto('/workflows')
     await page.waitForLoadState('networkidle')
     // Toolbar area with search and filters
     const toolbar = page
@@ -59,7 +59,7 @@ test.describe('requests table', () => {
 
   test('status badges render correct colors', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 1000 })
-    await page.goto('/requests')
+    await page.goto('/workflows')
     await page.waitForSelector('table tbody tr', { timeout: 15_000 })
     await page.waitForLoadState('networkidle')
     // Take screenshot of the status column area
@@ -71,7 +71,7 @@ test.describe('requests table', () => {
 
   test('requests table at compact 600px', async ({ page }) => {
     await page.setViewportSize({ width: 600, height: 812 })
-    await page.goto('/requests')
+    await page.goto('/workflows')
     await page.waitForLoadState('networkidle')
     await expect(page).toHaveScreenshot('requests-table-600.png')
   })

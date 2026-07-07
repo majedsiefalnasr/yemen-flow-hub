@@ -29,7 +29,6 @@ class AdminSettingsControllerTest extends TestCase
             'name' => 'CBY Admin',
             'email' => $email,
             'password' => Hash::make('password'),
-            'role' => UserRole::CBY_ADMIN,
             'bank_id' => null,
             'is_active' => true,
         ]), UserRole::CBY_ADMIN);
@@ -58,7 +57,6 @@ class AdminSettingsControllerTest extends TestCase
             'name' => 'Data Entry',
             'email' => 'entry@bank.com',
             'password' => Hash::make('password'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => null,
             'is_active' => true,
         ]);
@@ -169,7 +167,6 @@ class AdminSettingsControllerTest extends TestCase
             'name' => 'Data Entry',
             'email' => 'entry@bank.com',
             'password' => Hash::make('password'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => null,
             'is_active' => true,
         ]);
@@ -253,7 +250,6 @@ class AdminSettingsControllerTest extends TestCase
             'name' => 'Data Entry',
             'email' => 'entry@bank.com',
             'password' => Hash::make('password'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => null,
             'is_active' => true,
         ]);

@@ -110,11 +110,11 @@ const reviewQueueColumns: ColumnDef<ReviewerQueueRow>[] = [
         'a',
         {
           class: 'font-mono text-primary hover:underline',
-          href: `/requests/${row.original.id}`,
+          href: `/workflows/instances/${row.original.id}`,
           onClick: (event: MouseEvent) => {
             event.preventDefault()
             event.stopPropagation()
-            router.push(`/requests/${row.original.id}`)
+            router.push(`/workflows/instances/${row.original.id}`)
           },
         },
         row.original.reference_number,
@@ -169,7 +169,7 @@ const reviewQueueColumns: ColumnDef<ReviewerQueueRow>[] = [
           variant: 'outline',
           onClick: (event: MouseEvent) => {
             event.stopPropagation()
-            router.push(`/requests/${row.original.id}`)
+            router.push(`/workflows/instances/${row.original.id}`)
           },
         },
         () => 'بدء المراجعة',
@@ -187,11 +187,11 @@ const downstreamQueueColumns: ColumnDef<DownstreamQueueRow>[] = [
         'a',
         {
           class: 'font-mono text-primary hover:underline',
-          href: `/requests/${row.original.id}`,
+          href: `/workflows/instances/${row.original.id}`,
           onClick: (event: MouseEvent) => {
             event.preventDefault()
             event.stopPropagation()
-            router.push(`/requests/${row.original.id}`)
+            router.push(`/workflows/instances/${row.original.id}`)
           },
         },
         row.original.reference_number,
@@ -219,7 +219,7 @@ const downstreamQueueColumns: ColumnDef<DownstreamQueueRow>[] = [
           variant: 'outline',
           onClick: (event: MouseEvent) => {
             event.stopPropagation()
-            router.push(`/requests/${row.original.id}`)
+            router.push(`/workflows/instances/${row.original.id}`)
           },
         },
         () => 'عرض',
@@ -276,7 +276,7 @@ onMounted(() => {
         :count="supportRejectedCount"
         :message="`طلبات صنّفتها لجنة المساندة ${NOT_ELIGIBLE_LABEL_AR} وتنتظر قرارك`"
         cta-label="اتخاذ القرار"
-        cta-route="/requests?tab=support_rejected"
+        cta-route="/workflows?tab=support_rejected"
         severity="red"
       />
 
@@ -298,7 +298,7 @@ onMounted(() => {
                   : 'default'
           "
           :highlighted="(kpi.variant === 'amber' || kpi.variant === 'rose') && kpi.value > 0"
-          @click="router.push(`/requests?tab=${kpi.tab}`)"
+          @click="router.push(`/workflows?tab=${kpi.tab}`)"
         />
       </MetricGrid>
 
@@ -317,9 +317,9 @@ onMounted(() => {
             role="button"
             tabindex="0"
             aria-label="طابور المراجعة"
-            @click="router.push('/requests?tab=pending')"
-            @keydown.enter="router.push('/requests?tab=pending')"
-            @keydown.space.prevent="router.push('/requests?tab=pending')"
+            @click="router.push('/workflows?tab=pending')"
+            @keydown.enter="router.push('/workflows?tab=pending')"
+            @keydown.space.prevent="router.push('/workflows?tab=pending')"
           >
             <Users class="mb-1 h-5 w-5 flex-shrink-0" aria-hidden="true" />
             <span class="text-sm font-semibold">طابور المراجعة</span>
@@ -331,9 +331,9 @@ onMounted(() => {
             role="button"
             tabindex="0"
             aria-label="كل طلبات البنك"
-            @click="router.push('/requests')"
-            @keydown.enter="router.push('/requests')"
-            @keydown.space.prevent="router.push('/requests')"
+            @click="router.push('/workflows')"
+            @keydown.enter="router.push('/workflows')"
+            @keydown.space.prevent="router.push('/workflows')"
           >
             <FileText class="text-primary mb-1 h-5 w-5 flex-shrink-0" aria-hidden="true" />
             <span class="text-sm font-semibold">كل طلبات البنك</span>
@@ -352,7 +352,7 @@ onMounted(() => {
             variant="link"
             size="sm"
             class="h-auto p-0 text-xs"
-            @click="router.push('/requests?tab=pending')"
+            @click="router.push('/workflows?tab=pending')"
             >عرض الكل</Button
           >
         </div>
@@ -367,7 +367,7 @@ onMounted(() => {
         <DataTable
           :data="queue.slice(0, 8)"
           :columns="reviewQueueColumns"
-          @row-click="(row) => router.push(`/requests/${row.id}`)"
+          @row-click="(row) => router.push(`/workflows/instances/${row.id}`)"
         />
       </section>
 
@@ -381,14 +381,14 @@ onMounted(() => {
             variant="link"
             size="sm"
             class="h-auto p-0 text-xs"
-            @click="router.push('/requests?tab=at_cby')"
+            @click="router.push('/workflows?tab=at_cby')"
             >عرض الكل</Button
           >
         </div>
         <DataTable
           :data="downstreamQueue.slice(0, 5)"
           :columns="downstreamQueueColumns"
-          @row-click="(row) => router.push(`/requests/${row.id}`)"
+          @row-click="(row) => router.push(`/workflows/instances/${row.id}`)"
         />
       </section>
     </template>

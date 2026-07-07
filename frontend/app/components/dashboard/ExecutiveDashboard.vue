@@ -121,7 +121,7 @@ const votingQueueColumns: ColumnDef<VotingQueueItem>[] = [
           variant: 'outline',
           onClick: (e: Event) => {
             e.stopPropagation()
-            router.push(`/requests/${row.original.id}`)
+            router.push(`/workflows/instances/${row.original.id}`)
           },
         },
         () => rowAction(row.original),
@@ -174,7 +174,7 @@ const fxQueueColumns: ColumnDef<ImportRequest>[] = [
           variant: 'outline',
           onClick: (e: Event) => {
             e.stopPropagation()
-            router.push(`/requests/${row.original.id}`)
+            router.push(`/workflows/instances/${row.original.id}`)
           },
         },
         () => 'إتمام التأكيد',
@@ -240,7 +240,7 @@ onMounted(() => {
               v-if="(stats.sessions_ready_to_close ?? 0) > 0"
               variant="outline"
               class="h-auto justify-start gap-3 px-3 py-2 text-start"
-              @click="router.push('/requests?tab=ready_to_close')"
+              @click="router.push('/workflows?tab=ready_to_close')"
             >
               <AlertTriangle class="h-4 w-4" />
               <span class="text-sm"
@@ -251,7 +251,7 @@ onMounted(() => {
               v-if="(stats.sessions_with_tie ?? 0) > 0"
               variant="outline"
               class="h-auto justify-start gap-3 px-3 py-2 text-start"
-              @click="router.push('/requests?tab=tie_break')"
+              @click="router.push('/workflows?tab=tie_break')"
             >
               <Scale class="h-4 w-4" />
               <span class="text-sm"
@@ -262,7 +262,7 @@ onMounted(() => {
               v-if="(stats.fx_confirmation_pending ?? 0) > 0"
               variant="outline"
               class="h-auto justify-start gap-3 px-3 py-2 text-start"
-              @click="router.push('/requests?tab=fx_pending')"
+              @click="router.push('/workflows?tab=fx_pending')"
             >
               <FileCheck2 class="h-4 w-4" />
               <span class="text-sm"
@@ -280,7 +280,7 @@ onMounted(() => {
             :icon="Vote"
             tone="voting"
             :highlighted="stats.active_voting_sessions > 0"
-            @click="router.push('/requests?tab=active_voting')"
+            @click="router.push('/workflows?tab=active_voting')"
           />
           <MetricCard
             label="بانتظار تأكيد المصارفة"
@@ -288,14 +288,14 @@ onMounted(() => {
             :icon="FileCheck2"
             tone="warning"
             :highlighted="(stats.fx_confirmation_pending ?? stats.decisions_approved) > 0"
-            @click="router.push('/requests?tab=fx_pending')"
+            @click="router.push('/workflows?tab=fx_pending')"
           />
           <MetricCard
             label="قرارات مُعتمدة نهائياً"
             :value="stats.finalized_approved ?? stats.decisions_approved"
             :icon="CheckCircle2"
             tone="success"
-            @click="router.push('/requests?tab=finalized')"
+            @click="router.push('/workflows?tab=finalized')"
           />
           <MetricCard
             :label="`قرارات ${NOT_ELIGIBLE_LABEL_AR}`"
@@ -303,7 +303,7 @@ onMounted(() => {
             :icon="XCircle"
             tone="danger"
             :highlighted="(stats.finalized_rejected ?? stats.decisions_rejected) > 0"
-            @click="router.push('/requests?tab=rejected')"
+            @click="router.push('/workflows?tab=rejected')"
           />
         </MetricGrid>
 
@@ -315,7 +315,7 @@ onMounted(() => {
             <DataTable
               :data="votingQueue"
               :columns="votingQueueColumns"
-              @row-click="(row) => router.push(`/requests/${row.id}`)"
+              @row-click="(row) => router.push(`/workflows/instances/${row.id}`)"
             />
           </div>
         </section>
@@ -331,7 +331,7 @@ onMounted(() => {
             <DataTable
               :data="fxQueue"
               :columns="fxQueueColumns"
-              @row-click="(row) => router.push(`/requests/${row.id}`)"
+              @row-click="(row) => router.push(`/workflows/instances/${row.id}`)"
             />
           </div>
         </section>
@@ -350,7 +350,7 @@ onMounted(() => {
                 {{ oldestPendingVote.reference_number }}
               </p>
             </div>
-            <Button @click="oldestPendingVote && router.push(`/requests/${oldestPendingVote.id}`)">
+            <Button @click="oldestPendingVote && router.push(`/workflows/instances/${oldestPendingVote.id}`)">
               ابدأ التصويت
             </Button>
           </div>
@@ -363,14 +363,14 @@ onMounted(() => {
             :icon="Vote"
             tone="voting"
             :highlighted="pendingMyVoteCount > 0"
-            @click="router.push('/requests?tab=pending_my_vote')"
+            @click="router.push('/workflows?tab=pending_my_vote')"
           />
           <MetricCard
             label="قرارات اعتماد"
             :value="stats.decisions_approved"
             :icon="CheckCircle2"
             tone="success"
-            @click="router.push('/requests?tab=approved')"
+            @click="router.push('/workflows?tab=approved')"
           />
           <MetricCard
             :label="NOT_ELIGIBLE_EXECUTIVE_LABEL"
@@ -378,7 +378,7 @@ onMounted(() => {
             :icon="XCircle"
             tone="danger"
             :highlighted="stats.decisions_rejected > 0"
-            @click="router.push('/requests?tab=rejected')"
+            @click="router.push('/workflows?tab=rejected')"
           />
         </MetricGrid>
       </template>

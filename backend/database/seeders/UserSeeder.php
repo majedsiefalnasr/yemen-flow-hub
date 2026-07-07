@@ -40,7 +40,6 @@ class UserSeeder extends Seeder
                 [
                     'name' => $row['name'],
                     'password' => $password,
-                    'role' => $row['role'],
                     'bank_id' => null,
                     'is_active' => true,
                     'mfa_enabled' => true,
@@ -98,7 +97,6 @@ class UserSeeder extends Seeder
                     [
                         'name' => $row['name'],
                         'password' => $password,
-                        'role' => $row['role'],
                         'bank_id' => $bank->id,
                         'is_active' => true,
                         'mfa_enabled' => false,
@@ -151,7 +149,6 @@ class UserSeeder extends Seeder
             [
                 'name' => 'سلوى المروني',
                 'password' => $password,
-                'role' => UserRole::COMMITTEE_DIRECTOR,
                 'organization_id' => $organization->id,
                 'bank_id' => null,
                 'is_active' => true,
@@ -188,7 +185,7 @@ class UserSeeder extends Seeder
         ];
     }
 
-    private function assignIdentity(User $user, UserRole $legacyRole): void
+    private function assignIdentity(User $user, UserRole $userRole): void
     {
         $map = [
             UserRole::DATA_ENTRY->value => ['commercial_banks', 'entry', 'intake', true],
@@ -201,7 +198,7 @@ class UserSeeder extends Seeder
             UserRole::CBY_ADMIN->value => ['system_administration', 'administration', 'system_admin', false],
         ];
 
-        [$organizationCode, $teamCode, $roleCode, $keepsBank] = $map[$legacyRole->value];
+        [$organizationCode, $teamCode, $roleCode, $keepsBank] = $map[$userRole->value];
         $organization = Organization::query()->where('code', $organizationCode)->firstOrFail();
         $team = Team::query()
             ->whereBelongsTo($organization)

@@ -25,7 +25,7 @@ class AuthIdentityTest extends TestCase
 
     public function test_auth_me_returns_bank_identity_and_computed_permissions(): void
     {
-        $user = User::query()->where('role', UserRole::BANK_ADMIN->value)->firstOrFail();
+        $user = $this->firstUserWithRole(UserRole::BANK_ADMIN);
 
         $this->actingAs($user)
             ->getJson('/api/auth/me')
@@ -41,7 +41,7 @@ class AuthIdentityTest extends TestCase
 
     public function test_auth_me_returns_null_bank_for_committee_identity(): void
     {
-        $user = User::query()->where('role', UserRole::SUPPORT_COMMITTEE->value)->firstOrFail();
+        $user = $this->firstUserWithRole(UserRole::SUPPORT_COMMITTEE);
 
         $this->actingAs($user)
             ->getJson('/api/auth/me')

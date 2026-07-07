@@ -43,7 +43,6 @@ class ProfileActiveSessionsCountTest extends TestCase
             'name' => $email,
             'email' => $email,
             'password' => bcrypt('password'),
-            'role' => UserRole::DATA_ENTRY->value,
             'is_active' => true,
         ]), UserRole::DATA_ENTRY);
     }

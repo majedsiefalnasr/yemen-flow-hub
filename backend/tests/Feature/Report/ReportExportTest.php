@@ -36,7 +36,6 @@ class ReportExportTest extends TestCase
             'name' => 'Admin',
             'email' => 'admin@cby.gov',
             'password' => bcrypt('password'),
-            'role' => UserRole::CBY_ADMIN,
             'organization_id' => $cbyOrg->id,
             'is_active' => true,
         ]);
@@ -47,7 +46,6 @@ class ReportExportTest extends TestCase
             'name' => 'Entry',
             'email' => 'entry@test.bank',
             'password' => bcrypt('password'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => $bank->id,
             'organization_id' => $bankOrg->id,
             'is_active' => true,
@@ -101,7 +99,6 @@ class ReportExportTest extends TestCase
             'name' => 'Other',
             'email' => 'other@cby.gov',
             'password' => bcrypt('password'),
-            'role' => UserRole::COMMITTEE_DIRECTOR,
             'organization_id' => $this->admin->organization_id,
             'is_active' => true,
         ]);

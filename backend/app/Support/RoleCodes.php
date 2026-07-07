@@ -18,7 +18,7 @@ class RoleCodes
 
     public const COMMITTEE_DIRECTOR = 'committee_director';
 
-    /** FX confirmation officer; no legacy UserRole equivalent (maps to EXECUTIVE_MEMBER during transition). */
+    /** FX confirmation officer; maps to EXECUTIVE_MEMBER in UserRoleMapper for API serialization. */
     public const FX_CONFIRM = 'fx_confirm';
 
     public const SYSTEM_ADMIN = 'system_admin';

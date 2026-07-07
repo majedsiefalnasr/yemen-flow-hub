@@ -21,7 +21,6 @@ class PasswordRecoveryTest extends TestCase
             'name' => 'Recovery User',
             'email' => 'recovery@example.com',
             'password' => Hash::make('Password123'),
-            'role' => UserRole::CBY_ADMIN->value,
             'bank_id' => null,
             'is_active' => true,
         ], $attrs));

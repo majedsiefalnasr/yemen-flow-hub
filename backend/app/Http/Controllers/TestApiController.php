@@ -8,17 +8,16 @@ class TestApiController extends Controller
 {
     public function index()
     {
-        $users = User::with('bank')
+        $users = User::with(['bank', 'roles'])
             ->where('is_active', true)
-            ->orderBy('role')
-            ->orderBy('bank_id')
+            ->orderBy('id')
             ->get()
             ->map(fn ($u) => [
                 'id' => $u->id,
                 'name' => $u->name,
                 'email' => $u->email,
-                'role' => $u->legacyRole()?->value,
-                'role_label' => $u->role->label(),
+                'role' => $u->asUserRole()?->value,
+                'role_label' => $u->asUserRole()?->label(),
                 'bank_name' => $u->bank?->name,
                 'bank_code' => $u->bank?->code,
             ]);

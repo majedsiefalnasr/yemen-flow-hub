@@ -62,7 +62,6 @@ class EngineDuplicateMaskingTest extends TestCase
             'name' => 'Bank A User',
             'email' => 'a@bank.test',
             'password' => bcrypt('password'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => $this->bankA->id,
             'organization_id' => $bankOrg->id,
             'is_active' => true,
@@ -74,7 +73,6 @@ class EngineDuplicateMaskingTest extends TestCase
             'name' => 'Bank B User',
             'email' => 'b@bank.test',
             'password' => bcrypt('password'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => $this->bankB->id,
             'organization_id' => $bankOrg->id,
             'is_active' => true,
@@ -86,7 +84,6 @@ class EngineDuplicateMaskingTest extends TestCase
             'name' => 'NC User',
             'email' => 'nc@cby.test',
             'password' => bcrypt('password'),
-            'role' => UserRole::SUPPORT_COMMITTEE,
             'organization_id' => $ncOrg->id,
             'is_active' => true,
         ]);

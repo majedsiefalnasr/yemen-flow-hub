@@ -34,7 +34,6 @@ class AuditLogControllerTest extends TestCase
             'name' => 'Admin',
             'email' => 'admin@cby.gov',
             'password' => bcrypt('password'),
-            'role' => UserRole::CBY_ADMIN,
             'organization_id' => $cbyOrg->id,
             'is_active' => true,
         ]);
@@ -48,7 +47,6 @@ class AuditLogControllerTest extends TestCase
             'name' => 'Bank User',
             'email' => 'entry@test.bank',
             'password' => bcrypt('password'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => $bank->id,
             'organization_id' => $bankOrg->id,
             'is_active' => true,

@@ -35,7 +35,6 @@ class NotificationEventTest extends TestCase
             'name' => 'Admin',
             'email' => 'admin@test.cby',
             'password' => bcrypt('password'),
-            'role' => UserRole::CBY_ADMIN,
             'organization_id' => $sysOrg->id,
             'is_active' => true,
         ]);

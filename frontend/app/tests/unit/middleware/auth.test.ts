@@ -25,14 +25,14 @@ describe('auth middleware', () => {
 
     middleware(
       {
-        fullPath: '/requests?tab=active',
+        fullPath: '/workflows?tab=active',
       } as any,
       {} as any,
     )
 
     expect(navigateTo).toHaveBeenCalledWith({
       path: '/unauthorized',
-      query: { next: '/requests?tab=active' },
+      query: { next: '/workflows?tab=active' },
     })
   })
 

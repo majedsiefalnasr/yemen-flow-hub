@@ -31,7 +31,6 @@ class NotificationInboxTest extends TestCase
             'name' => 'User A',
             'email' => 'a@test.cby',
             'password' => bcrypt('password'),
-            'role' => UserRole::CBY_ADMIN,
             'organization_id' => $sysOrg->id,
             'is_active' => true,
         ]);
@@ -40,7 +39,6 @@ class NotificationInboxTest extends TestCase
             'name' => 'User B',
             'email' => 'b@test.cby',
             'password' => bcrypt('password'),
-            'role' => UserRole::CBY_ADMIN,
             'organization_id' => $sysOrg->id,
             'is_active' => true,
         ]);

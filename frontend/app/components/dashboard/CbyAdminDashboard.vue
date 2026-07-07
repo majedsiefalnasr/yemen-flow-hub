@@ -99,25 +99,25 @@ const KPI_CONFIGS: KpiConfig[] = [
     key: 'active_workflow_requests',
     label: 'طلبات نشطة في الدورة',
     icon: Activity,
-    drilldown: '/requests?tab=active',
+    drilldown: '/workflows?tab=active',
   },
   {
     key: 'sla_violations',
     label: 'انتهاكات SLA',
     icon: AlertTriangle,
-    drilldown: '/requests?tab=needs_attention',
+    drilldown: '/workflows?tab=needs_attention',
   },
   {
     key: 'open_voting_sessions',
     label: 'جلسات تصويت مفتوحة',
     icon: Vote,
-    drilldown: '/requests?tab=executive_voting',
+    drilldown: '/workflows?tab=executive_voting',
   },
   {
     key: 'fx_confirmation_pending',
     label: 'تأكيد مصارفة معلّق',
     icon: DollarSign,
-    drilldown: '/requests?tab=fx_pending',
+    drilldown: '/workflows?tab=fx_pending',
   },
   {
     key: 'bank_risk_alerts',
@@ -406,7 +406,7 @@ onMounted(() => {
           <DataTable
             :data="stats.workflow_pressure_map"
             :columns="workflowPressureColumns"
-            @row-click="(row) => router.push(`/requests?stage=${row.stage}`)"
+            @row-click="(row) => router.push(`/workflows?stage=${row.stage}`)"
           />
         </CardContent>
       </Card>
@@ -438,7 +438,7 @@ onMounted(() => {
                 v-for="session in stats.executive_voting_sessions"
                 :key="session.id"
                 class="border-border hover:border-primary/40 flex cursor-pointer flex-col gap-1.5 rounded-lg border p-3 transition-colors"
-                @click="router.push(`/requests/${session.id}`)"
+                @click="router.push(`/workflows/instances/${session.id}`)"
               >
                 <div class="flex items-center justify-between gap-2">
                   <span class="text-primary font-mono text-xs">{{ session.reference_number }}</span>
@@ -482,7 +482,7 @@ onMounted(() => {
             v-else
             :data="sortedBankRisk"
             :columns="bankRiskColumns"
-            @row-click="(row) => router.push(`/requests?bank=${row.bank_id}`)"
+            @row-click="(row) => router.push(`/workflows?bank=${row.bank_id}`)"
           />
         </RankedListCard>
       </div>

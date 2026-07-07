@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Enums\UserRole;
+use App\Support\RoleCodes;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -41,7 +41,9 @@ class Bank extends Model
 
     public function bankAdmin(): HasOne
     {
-        return $this->hasOne(User::class)->where('role', UserRole::BANK_ADMIN->value);
+        return $this->hasOne(User::class)
+            ->where('is_active', true)
+            ->withActiveRoleCode(RoleCodes::BANK_ADMIN);
     }
 
     public function engineRequests(): HasMany

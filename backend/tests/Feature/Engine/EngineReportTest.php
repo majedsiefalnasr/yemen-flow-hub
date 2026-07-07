@@ -43,7 +43,6 @@ class EngineReportTest extends TestCase
             'name' => 'CBY Admin',
             'email' => 'admin@report.test',
             'password' => bcrypt('pass'),
-            'role' => UserRole::CBY_ADMIN,
             'bank_id' => null,
             'is_active' => true,
         ]);
@@ -56,7 +55,6 @@ class EngineReportTest extends TestCase
             'name' => 'Bank Admin',
             'email' => 'bankadmin@report.test',
             'password' => bcrypt('pass'),
-            'role' => UserRole::BANK_ADMIN,
             'bank_id' => $this->bank->id,
             'is_active' => true,
         ]);
@@ -66,7 +64,6 @@ class EngineReportTest extends TestCase
             'name' => 'DE',
             'email' => 'de@report.test',
             'password' => bcrypt('pass'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => $this->bank->id,
             'is_active' => true,
         ]);

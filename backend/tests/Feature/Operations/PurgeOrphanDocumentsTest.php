@@ -48,7 +48,6 @@ class PurgeOrphanDocumentsTest extends TestCase
             'name' => 'Owner',
             'email' => 'owner@orphan.test',
             'password' => bcrypt('pass'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => $bank->id,
             'organization_id' => $bankOrg->id,
             'is_active' => true,

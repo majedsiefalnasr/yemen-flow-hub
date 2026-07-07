@@ -34,7 +34,7 @@ class DemoUserSwitchTest extends TestCase
 
         $response = $this->getJson('/api/auth/demo-users')->assertOk();
 
-        $bankAdmin = User::query()->where('role', UserRole::BANK_ADMIN->value)->firstOrFail();
+        $bankAdmin = $this->firstUserWithRole(UserRole::BANK_ADMIN);
         $entry = collect($response->json('data.users'))->firstWhere('id', $bankAdmin->id);
 
         $this->assertNotNull($entry);
@@ -50,7 +50,7 @@ class DemoUserSwitchTest extends TestCase
     {
         config(['demo.allow_role_switch' => true]);
 
-        $inactive = User::query()->where('role', UserRole::SUPPORT_COMMITTEE->value)->firstOrFail();
+        $inactive = $this->firstUserWithRole(UserRole::SUPPORT_COMMITTEE);
         $inactive->update(['is_active' => false]);
 
         $response = $this->getJson('/api/auth/demo-users')->assertOk();
@@ -63,7 +63,7 @@ class DemoUserSwitchTest extends TestCase
     {
         config(['demo.allow_role_switch' => false]);
 
-        $user = User::query()->where('role', UserRole::DATA_ENTRY->value)->firstOrFail();
+        $user = $this->firstUserWithRole(UserRole::DATA_ENTRY);
 
         $this->postJson('/api/auth/switch-demo-user', ['user_id' => $user->id])
             ->assertForbidden();
@@ -81,7 +81,7 @@ class DemoUserSwitchTest extends TestCase
     {
         config(['demo.allow_role_switch' => true]);
 
-        $inactive = User::query()->where('role', UserRole::SWIFT_OFFICER->value)->firstOrFail();
+        $inactive = $this->firstUserWithRole(UserRole::SWIFT_OFFICER);
         $inactive->update(['is_active' => false]);
 
         $this->postJson('/api/auth/switch-demo-user', ['user_id' => $inactive->id])
@@ -92,7 +92,7 @@ class DemoUserSwitchTest extends TestCase
     {
         config(['demo.allow_role_switch' => true]);
 
-        $target = User::query()->where('role', UserRole::COMMITTEE_DIRECTOR->value)->firstOrFail();
+        $target = $this->firstUserWithRole(UserRole::COMMITTEE_DIRECTOR);
 
         $response = $this->withHeader('Referer', 'http://'.config('sanctum.stateful.0'))
             ->postJson('/api/auth/switch-demo-user', ['user_id' => $target->id])

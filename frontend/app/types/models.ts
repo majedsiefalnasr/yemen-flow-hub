@@ -383,7 +383,7 @@ export interface RequestDocument {
   uploaded_at: string | null
 }
 
-/** Fields sent to POST /api/requests and PUT /api/requests/{id} */
+/** Fields sent to POST /api/requests and PUT /api/workflows/instances/{id} */
 export interface RequestFormData {
   merchant_id?: number | null
   currency: string

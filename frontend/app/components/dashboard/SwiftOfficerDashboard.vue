@@ -133,7 +133,7 @@ const swiftQueueColumns: ColumnDef<SwiftQueueRow>[] = [
             size: 'sm',
             onClick: (event: MouseEvent) => {
               event.stopPropagation()
-              router.push(`/requests/${row.original.id}/swift`)
+              router.push(`/workflows/instances/${row.original.id}`)
             },
           },
           () => 'رفع وثائق السويفت',
@@ -145,7 +145,7 @@ const swiftQueueColumns: ColumnDef<SwiftQueueRow>[] = [
             variant: 'outline',
             onClick: (event: MouseEvent) => {
               event.stopPropagation()
-              router.push(`/requests/${row.original.id}`)
+              router.push(`/workflows/instances/${row.original.id}`)
             },
           },
           () => 'عرض الطلب',
@@ -213,7 +213,7 @@ onMounted(() => {
           <Button
             size="sm"
             class="flex-shrink-0"
-            @click="router.push('/requests?tab=pending_swift')"
+            @click="router.push('/workflows?tab=pending_swift')"
           >
             ابدأ الرفع
           </Button>
@@ -228,21 +228,21 @@ onMounted(() => {
           :icon="Clock3"
           tone="warning"
           :highlighted="stats.pending_swift_upload > 0"
-          @click="router.push('/requests?tab=pending_swift')"
+          @click="router.push('/workflows?tab=pending_swift')"
         />
         <MetricCard
           label="تم رفع السويفت"
           :value="stats.uploaded"
           :icon="UploadCloud"
           tone="info"
-          @click="router.push('/requests?tab=swift_done')"
+          @click="router.push('/workflows?tab=swift_done')"
         />
         <MetricCard
           label="مكتمل"
           :value="stats.final_approved"
           :icon="CheckCircle2"
           tone="success"
-          @click="router.push('/requests?tab=completed')"
+          @click="router.push('/workflows?tab=completed')"
         />
         <MetricCard
           :label="NOT_ELIGIBLE_EXECUTIVE_LABEL"
@@ -250,7 +250,7 @@ onMounted(() => {
           :icon="XCircle"
           tone="danger"
           :highlighted="stats.final_rejected > 0"
-          @click="router.push('/requests?tab=rejected')"
+          @click="router.push('/workflows?tab=rejected')"
         />
       </MetricGrid>
 

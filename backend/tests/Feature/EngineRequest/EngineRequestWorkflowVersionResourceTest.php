@@ -21,7 +21,7 @@ class EngineRequestWorkflowVersionResourceTest extends TestCase
     public function test_show_includes_workflow_version_and_definition_name(): void
     {
         $this->seed([GovernanceSeeder::class, ScreenPermissionSeeder::class, BankSeeder::class, UserSeeder::class]);
-        $admin = User::query()->where('role', UserRole::CBY_ADMIN->value)->firstOrFail();
+        $admin = $this->firstUserWithRole(UserRole::CBY_ADMIN);
 
         $definition = WorkflowDefinition::query()->create(['code' => 'wv-flow', 'name' => 'تمويل الواردات']);
         $version = $definition->versions()->create(['version_number' => 3, 'state' => WorkflowVersionState::PUBLISHED]);
@@ -44,7 +44,7 @@ class EngineRequestWorkflowVersionResourceTest extends TestCase
     public function test_index_includes_workflow_version_for_each_row(): void
     {
         $this->seed([GovernanceSeeder::class, ScreenPermissionSeeder::class, BankSeeder::class, UserSeeder::class]);
-        $admin = User::query()->where('role', UserRole::CBY_ADMIN->value)->firstOrFail();
+        $admin = $this->firstUserWithRole(UserRole::CBY_ADMIN);
 
         $definition = WorkflowDefinition::query()->create(['code' => 'wv-flow-2', 'name' => 'Flow Two']);
         $version = $definition->versions()->create(['version_number' => 1, 'state' => WorkflowVersionState::PUBLISHED]);

@@ -53,7 +53,6 @@ class EngineRequestStatsTest extends TestCase
             'name' => 'Executor',
             'email' => 'executor@stats.test',
             'password' => bcrypt('password'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => $this->bank->id,
             'organization_id' => $bankOrg->id,
             'is_active' => true,

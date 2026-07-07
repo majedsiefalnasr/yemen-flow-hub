@@ -68,7 +68,6 @@ class FileFieldDocumentReferenceTest extends TestCase
             'name' => 'Executor',
             'email' => 'executor@test.bank',
             'password' => bcrypt('password'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => $this->bank->id,
             'organization_id' => $bankOrg->id,
             'is_active' => true,

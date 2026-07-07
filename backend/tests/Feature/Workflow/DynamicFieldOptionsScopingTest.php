@@ -45,20 +45,17 @@ class DynamicFieldOptionsScopingTest extends TestCase
         $this->bankB = Bank::create(['name' => 'Bank B', 'code' => 'BANKB', 'is_active' => true]);
 
         $this->bankAUser = User::factory()->create([
-            'role' => UserRole::DATA_ENTRY->value,
             'bank_id' => $this->bankA->id,
             'organization_id' => Organization::query()->where('classification', OrganizationClassification::BANKING_SECTOR)->first()->id,
         ]);
         $this->attachRole($this->bankAUser, 'intake');
 
         $this->ncUser = User::factory()->create([
-            'role' => UserRole::SUPPORT_COMMITTEE->value,
             'organization_id' => Organization::query()->where('classification', OrganizationClassification::NATIONAL_COMMITTEE)->first()->id,
         ]);
         $this->attachRole($this->ncUser, 'support');
 
         $this->adminUser = User::factory()->create([
-            'role' => UserRole::CBY_ADMIN->value,
             'organization_id' => Organization::query()->where('classification', OrganizationClassification::NATIONAL_COMMITTEE)->first()->id,
         ]);
         $this->attachRole($this->adminUser, 'system_admin');
@@ -123,7 +120,6 @@ class DynamicFieldOptionsScopingTest extends TestCase
         // Use the admin user but with a bank_id set to test scoping.
         // A regular bank user doesn't have 'workflow_designer' 'MANAGE' permission.
         $bankAAdmin = User::factory()->create([
-            'role' => UserRole::CBY_ADMIN->value,
             'bank_id' => $this->bankA->id,
             'organization_id' => Organization::query()->where('classification', OrganizationClassification::BANKING_SECTOR)->first()->id,
         ]);

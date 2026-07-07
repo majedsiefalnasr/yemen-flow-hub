@@ -197,7 +197,6 @@ class SecurityEmailRedactionTest extends TestCase
             'name' => 'Security User',
             'email' => $email,
             'password' => Hash::make('Password123'),
-            'role' => UserRole::CBY_ADMIN,
             'bank_id' => null,
             'is_active' => true,
         ]);

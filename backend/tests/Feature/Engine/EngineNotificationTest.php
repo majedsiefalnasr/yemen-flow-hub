@@ -23,7 +23,6 @@ class EngineNotificationTest extends TestCase
             'name' => 'Notif User',
             'email' => 'notif@notif.test',
             'password' => bcrypt('pass'),
-            'role' => UserRole::DATA_ENTRY,
             'is_active' => true,
         ]);
     }
@@ -142,7 +141,6 @@ class EngineNotificationTest extends TestCase
             'name' => 'Other',
             'email' => 'other@notif.test',
             'password' => bcrypt('pass'),
-            'role' => UserRole::DATA_ENTRY,
             'is_active' => true,
         ]);
         $recipient = $this->createNotification($otherUser);

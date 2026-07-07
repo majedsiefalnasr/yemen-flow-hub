@@ -55,7 +55,7 @@ class PivotFormRequestAuthorizationTest extends TestCase
 
     public function test_executive_member_without_fx_execute_cannot_upload_fx_confirmation(): void
     {
-        $executive = User::query()->where('role', UserRole::EXECUTIVE_MEMBER->value)->firstOrFail();
+        $executive = $this->firstUserWithRole(UserRole::EXECUTIVE_MEMBER);
         $request = EngineWorkflowFactory::seedRequestOnClaimStage();
         $this->grantViewToUser($request, $executive);
 
@@ -91,7 +91,7 @@ class PivotFormRequestAuthorizationTest extends TestCase
 
     public function test_cby_admin_can_update_admin_settings(): void
     {
-        $admin = User::query()->where('role', UserRole::CBY_ADMIN->value)->firstOrFail();
+        $admin = $this->firstUserWithRole(UserRole::CBY_ADMIN);
 
         $response = $this->actingAs($admin)->putJson('/api/admin/settings/app_name', [
             'value' => 'Test',
@@ -102,7 +102,7 @@ class PivotFormRequestAuthorizationTest extends TestCase
 
     public function test_non_admin_cannot_update_admin_settings(): void
     {
-        $entry = User::query()->where('role', UserRole::DATA_ENTRY->value)->firstOrFail();
+        $entry = $this->firstUserWithRole(UserRole::DATA_ENTRY);
 
         $response = $this->actingAs($entry)->putJson('/api/admin/settings/app_name', [
             'value' => 'Test',

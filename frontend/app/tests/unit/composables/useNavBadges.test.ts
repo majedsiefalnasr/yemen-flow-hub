@@ -20,7 +20,7 @@ describe('buildOperationalNavBadges', () => {
       unreadCount: 0,
     })
 
-    expect(badges['/requests']).toBe(4)
+    expect(badges['/workflows']).toBe(4)
   })
 
   it('sums support waiting + active for SUPPORT_COMMITTEE /requests badge', () => {
@@ -30,7 +30,7 @@ describe('buildOperationalNavBadges', () => {
       unreadCount: 0,
     })
 
-    expect(badges['/requests']).toBe(8)
+    expect(badges['/workflows']).toBe(8)
   })
 
   it('uses pending_my_vote for EXECUTIVE_MEMBER /requests badge', () => {
@@ -40,7 +40,7 @@ describe('buildOperationalNavBadges', () => {
       unreadCount: 0,
     })
 
-    expect(badges['/requests']).toBe(3)
+    expect(badges['/workflows']).toBe(3)
   })
 
   it('sets director /requests and /customs badges from real FX/voting counts', () => {
@@ -54,7 +54,7 @@ describe('buildOperationalNavBadges', () => {
       unreadCount: 0,
     })
 
-    expect(badges['/requests']).toBe(8)
+    expect(badges['/workflows']).toBe(8)
     expect(badges['/customs']).toBe(5)
   })
 
@@ -65,7 +65,7 @@ describe('buildOperationalNavBadges', () => {
       unreadCount: 0,
     })
 
-    expect(badges['/requests']).toBe(11)
+    expect(badges['/workflows']).toBe(11)
   })
 
   it('omits zero/negative badges', () => {
@@ -75,7 +75,7 @@ describe('buildOperationalNavBadges', () => {
       unreadCount: -3,
     })
 
-    expect(badges['/requests']).toBeUndefined()
+    expect(badges['/workflows']).toBeUndefined()
     expect(badges['/notifications']).toBeUndefined()
   })
 })

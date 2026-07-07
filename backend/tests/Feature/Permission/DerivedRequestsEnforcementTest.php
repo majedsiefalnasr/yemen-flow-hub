@@ -39,7 +39,6 @@ class DerivedRequestsEnforcementTest extends TestCase
         ]);
         $user = User::factory()->create([
             'organization_id' => $org->id,
-            'role' => UserRole::DATA_ENTRY,
         ]);
         $user->roles()->attach($role->id);
 
@@ -138,7 +137,6 @@ class DerivedRequestsEnforcementTest extends TestCase
 
         $admin = User::factory()->create([
             'organization_id' => $org->id,
-            'role' => UserRole::CBY_ADMIN,
         ]);
         $admin->roles()->attach($adminRole->id);
 
@@ -175,7 +173,6 @@ class DerivedRequestsEnforcementTest extends TestCase
         $adminOrg = Organization::where('code', 'system_administration')->firstOrFail();
         $admin = User::factory()->create([
             'organization_id' => $adminOrg->id,
-            'role' => UserRole::CBY_ADMIN,
         ]);
         $systemAdminRole = Role::where('code', 'system_admin')->firstOrFail();
         $admin->roles()->attach($systemAdminRole->id);
@@ -230,7 +227,6 @@ class DerivedRequestsEnforcementTest extends TestCase
         ]);
         $user = User::factory()->create([
             'organization_id' => $org->id,
-            'role' => UserRole::DATA_ENTRY,
         ]);
         $user->roles()->attach($role->id);
         $user->teams()->attach($team->id);
@@ -292,7 +288,6 @@ class DerivedRequestsEnforcementTest extends TestCase
         ]);
         $user = User::factory()->create([
             'organization_id' => $org->id,
-            'role' => UserRole::DATA_ENTRY,
         ]);
         $user->roles()->attach($role->id);
         $user->teams()->attach($memberTeam->id);

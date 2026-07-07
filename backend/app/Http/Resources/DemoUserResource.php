@@ -15,8 +15,8 @@ class DemoUserResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'email' => $this->email,
-            'role' => $this->legacyRole()?->value,
-            'role_label' => $this->legacyRole()?->label(),
+            'role' => $this->asUserRole()?->value,
+            'role_label' => $this->asUserRole()?->label(),
             'organization' => $this->organization ? [
                 'id' => $this->organization->id,
                 'code' => $this->organization->code,

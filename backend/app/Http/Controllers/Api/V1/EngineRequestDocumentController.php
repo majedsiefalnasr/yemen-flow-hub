@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Enums\AuditAction;
 use App\Enums\DocumentStatus;
 use App\Http\Controllers\Api\Controller;
+use App\Jobs\ScanEngineRequestDocument;
 use App\Models\EngineRequest;
 use App\Models\EngineRequestDocument;
 use App\Services\Audit\AuditService;
@@ -69,6 +70,10 @@ class EngineRequestDocumentController extends Controller
             ['request_id' => $engineRequest->id, 'original_name' => $doc->original_name],
             workflowInstanceId: $engineRequest->id,
         );
+
+        if ($doc->scan_status?->value === 'pending') {
+            ScanEngineRequestDocument::dispatch($doc->id);
+        }
 
         return response()->json([
             'success' => true,

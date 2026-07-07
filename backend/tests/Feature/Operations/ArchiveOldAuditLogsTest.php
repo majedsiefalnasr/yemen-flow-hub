@@ -31,7 +31,6 @@ class ArchiveOldAuditLogsTest extends TestCase
             'name' => 'Admin',
             'email' => 'admin@audit-archive.test',
             'password' => bcrypt('password'),
-            'role' => UserRole::CBY_ADMIN,
             'organization_id' => $cbyOrg->id,
             'is_active' => true,
         ]);

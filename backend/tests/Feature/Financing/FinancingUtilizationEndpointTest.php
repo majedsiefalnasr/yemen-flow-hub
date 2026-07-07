@@ -62,7 +62,6 @@ class FinancingUtilizationEndpointTest extends TestCase
             'name' => 'Data Entry',
             'email' => 'de@util.test',
             'password' => Hash::make('password'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => $bank->id,
             'organization_id' => $org->id,
             'is_active' => true,
@@ -134,7 +133,6 @@ class FinancingUtilizationEndpointTest extends TestCase
             'name' => 'Reviewer',
             'email' => 'rev@util.test',
             'password' => Hash::make('password'),
-            'role' => UserRole::BANK_REVIEWER,
             'bank_id' => $bank->id,
             'is_active' => true,
         ]);

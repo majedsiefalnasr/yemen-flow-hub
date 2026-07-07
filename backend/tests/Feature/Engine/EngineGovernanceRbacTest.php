@@ -40,7 +40,7 @@ class EngineGovernanceRbacTest extends TestCase
         $this->sysOrg = Organization::where('code', 'system_administration')->firstOrFail();
     }
 
-    private function makeUser(string $email, UserRole $legacyRole, Organization $org, string $roleCode, string $teamCode, ?Bank $bank = null): User
+    private function makeUser(string $email, UserRole $userRole, Organization $org, string $roleCode, string $teamCode, ?Bank $bank = null): User
     {
         $governanceRole = Role::where('code', $roleCode)->firstOrFail();
         $team = Team::where('code', $teamCode)->firstOrFail();
@@ -49,13 +49,12 @@ class EngineGovernanceRbacTest extends TestCase
             'name' => $email,
             'email' => $email,
             'password' => bcrypt('password'),
-            'role' => $legacyRole,
             'organization_id' => $org->id,
             'bank_id' => $bank?->id,
             'is_active' => true,
         ]);
         $user->teams()->attach($team);
-        $user->roles()->attach($governanceRole);
+        $user->assignActiveRole($governanceRole->id);
 
         return $user;
     }

@@ -370,7 +370,7 @@ class AuthController extends Controller
 
         $role = UserRole::from($validated['role']);
         $user = User::query()
-            ->where('role', $role->value)
+            ->withUserRole($role)
             ->where('is_active', true)
             ->orderBy('id')
             ->first();

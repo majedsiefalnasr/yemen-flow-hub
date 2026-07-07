@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\WorkflowTransition;
 use App\Services\Audit\AuditService;
 use App\Services\Customs\CustomsDeclarationGenerator;
+use App\Services\Customs\FxOfficialIssuerResolver;
 use App\Services\Workflow\SemanticResolver;
 
 class CustomsFxPdfEffect
@@ -20,6 +21,7 @@ class CustomsFxPdfEffect
         private CustomsDeclarationGenerator $generator,
         private AuditService $auditService,
         private SemanticResolver $resolver,
+        private FxOfficialIssuerResolver $officialIssuerResolver,
     ) {}
 
     public function __invoke(EngineRequest $request, WorkflowTransition $transition, User $actor): void
@@ -31,10 +33,13 @@ class CustomsFxPdfEffect
         $request->loadMissing('bank', 'workflowVersion');
         $artifacts = $this->generator->generate($this->snapshot($request), $actor, $request->id);
 
+        $officialIssuer = $this->officialIssuerResolver->resolve();
+
         $declaration = CustomsDeclaration::create([
             'engine_request_id' => $request->id,
             'declaration_number' => $artifacts['declaration_number'],
             'generated_by' => $actor->id,
+            'issued_by' => $officialIssuer?->id,
             'issued_at' => $artifacts['issued_at'],
             'pdf_path' => $artifacts['pdf_path'],
             'metadata' => $artifacts['snapshot'],

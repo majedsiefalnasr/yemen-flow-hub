@@ -19,7 +19,6 @@ use App\Services\Audit\AuditService;
 use App\Services\Auth\SessionInvalidationService;
 use App\Services\Workflow\StagePermissionAudience;
 use App\Support\GovernanceExecutorSimulation;
-use App\Support\LegacyRoleMapper;
 use App\Support\PasswordPolicy;
 use App\Support\RoleCodes;
 use Illuminate\Http\JsonResponse;
@@ -84,7 +83,6 @@ class UserController extends Controller
                     'password' => $data['password'],
                     'is_active' => $data['is_active'] ?? true,
                     'mfa_enabled' => $data['mfa_enabled'] ?? false,
-                    'role' => LegacyRoleMapper::toLegacyValue($role->code),
                 ])->refresh();
                 $user->teams()->sync([$data['team_id']]);
                 $user->assignActiveRole($data['role_id']);
@@ -120,7 +118,6 @@ class UserController extends Controller
                     'phone' => $data['phone'] ?? null,
                     'is_active' => $data['is_active'] ?? $locked->is_active,
                     'mfa_enabled' => $data['mfa_enabled'] ?? $locked->mfa_enabled,
-                    'role' => LegacyRoleMapper::toLegacyValue($role->code),
                     'version' => $locked->version + 1,
                 ]);
                 $locked->teams()->sync([$data['team_id']]);

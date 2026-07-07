@@ -164,7 +164,7 @@ test.describe('RTL component alignment', () => {
 
   test('requests page with popover open', async ({ page }) => {
     await page.setViewportSize(VIEWPORTS.desktop1440)
-    await page.goto('/requests')
+    await page.goto('/workflows')
     await page.waitForLoadState('networkidle')
     await expect(page).toHaveScreenshot('rtl-requests-page.png')
   })

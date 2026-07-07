@@ -24,7 +24,7 @@ class PivotScopedControllerQueriesTest extends TestCase
 
     public function test_search_users_forbidden_for_data_entry(): void
     {
-        $entry = User::query()->where('role', UserRole::DATA_ENTRY->value)->firstOrFail();
+        $entry = $this->firstUserWithRole(UserRole::DATA_ENTRY);
 
         $response = $this->actingAs($entry)->getJson('/api/search?q=test&type=users');
         $response->assertOk();

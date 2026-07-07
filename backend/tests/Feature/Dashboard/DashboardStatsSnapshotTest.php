@@ -54,7 +54,6 @@ class DashboardStatsSnapshotTest extends TestCase
             'name' => 'No Pivot Role',
             'email' => 'no-pivot-role@example.test',
             'password' => Hash::make('password'),
-            'role' => UserRole::DATA_ENTRY->value,
             'is_active' => true,
         ]);
 

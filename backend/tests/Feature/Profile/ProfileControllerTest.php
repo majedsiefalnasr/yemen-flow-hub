@@ -26,7 +26,6 @@ class ProfileControllerTest extends TestCase
             'name' => 'Ahmed Ali',
             'email' => 'ahmed@bank.com',
             'password' => Hash::make('password'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => null,
             'is_active' => true,
         ]);
@@ -55,7 +54,6 @@ class ProfileControllerTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('oldPassword123'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => null,
             'is_active' => true,
         ]);
@@ -86,7 +84,6 @@ class ProfileControllerTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('oldPassword123'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => null,
             'is_active' => true,
         ]);
@@ -111,7 +108,6 @@ class ProfileControllerTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('oldPassword123'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => null,
             'is_active' => true,
         ]);
@@ -153,7 +149,6 @@ class ProfileControllerTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('oldPassword123'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => null,
             'is_active' => true,
         ]);
@@ -183,7 +178,6 @@ class ProfileControllerTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('oldPassword123'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => null,
             'is_active' => true,
         ]);
@@ -208,7 +202,6 @@ class ProfileControllerTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('CurrentPassword123'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => null,
             'is_active' => true,
         ]);
@@ -230,7 +223,6 @@ class ProfileControllerTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('CorrectPassword123'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => null,
             'is_active' => true,
         ]);
@@ -253,7 +245,6 @@ class ProfileControllerTest extends TestCase
             'name' => 'Stats User',
             'email' => 'stats@bank.com',
             'password' => Hash::make('Password123'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => null,
             'is_active' => true,
         ]);
@@ -282,7 +273,6 @@ class ProfileControllerTest extends TestCase
             'name' => 'Old Name',
             'email' => 'old@bank.com',
             'password' => Hash::make('Password123'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => null,
             'is_active' => true,
         ]);
@@ -323,7 +313,6 @@ class ProfileControllerTest extends TestCase
             'name' => 'MFA User',
             'email' => 'mfa-user@bank.com',
             'password' => Hash::make('Password123'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => null,
             'is_active' => true,
         ]);
@@ -359,7 +348,6 @@ class ProfileControllerTest extends TestCase
             'name' => 'MFA User',
             'email' => 'mfa@bank.com',
             'password' => Hash::make('Password123'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => null,
             'is_active' => true,
             'mfa_enabled' => false,
@@ -382,7 +370,6 @@ class ProfileControllerTest extends TestCase
             'name' => 'MFA User',
             'email' => 'mfa@bank.com',
             'password' => Hash::make('Password123'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => null,
             'is_active' => true,
             'mfa_enabled' => false,

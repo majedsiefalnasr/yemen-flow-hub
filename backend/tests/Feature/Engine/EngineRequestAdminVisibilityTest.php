@@ -26,7 +26,7 @@ class EngineRequestAdminVisibilityTest extends TestCase
         $this->seed(BankSeeder::class);
         $this->seed(UserSeeder::class);
 
-        $admin = User::query()->where('role', UserRole::CBY_ADMIN->value)->firstOrFail();
+        $admin = $this->firstUserWithRole(UserRole::CBY_ADMIN);
 
         // Simulate the exact bug scenario: pivot row missing/desynced even though
         // the legacy `role` column correctly says CBY_ADMIN.
@@ -59,7 +59,7 @@ class EngineRequestAdminVisibilityTest extends TestCase
         $this->seed(BankSeeder::class);
         $this->seed(UserSeeder::class);
 
-        $dataEntry = User::query()->where('role', UserRole::DATA_ENTRY->value)->firstOrFail();
+        $dataEntry = $this->firstUserWithRole(UserRole::DATA_ENTRY);
 
         $this->makeEngineRequests(3);
 

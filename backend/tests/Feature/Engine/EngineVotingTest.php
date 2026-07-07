@@ -50,7 +50,6 @@ class EngineVotingTest extends TestCase
             'name' => 'Executive',
             'email' => 'exec@vote.test',
             'password' => bcrypt('pass'),
-            'role' => UserRole::EXECUTIVE_MEMBER,
             'bank_id' => null,
             'is_active' => true,
         ]);
@@ -59,7 +58,6 @@ class EngineVotingTest extends TestCase
             'name' => 'Director',
             'email' => 'dir@vote.test',
             'password' => bcrypt('pass'),
-            'role' => UserRole::COMMITTEE_DIRECTOR,
             'bank_id' => null,
             'is_active' => true,
         ]);
@@ -68,7 +66,6 @@ class EngineVotingTest extends TestCase
             'name' => 'Non Voter',
             'email' => 'nonvoter@vote.test',
             'password' => bcrypt('pass'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => $bank->id,
             'is_active' => true,
         ]);

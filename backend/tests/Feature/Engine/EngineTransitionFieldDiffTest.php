@@ -54,7 +54,6 @@ class EngineTransitionFieldDiffTest extends TestCase
             'name' => 'Executor',
             'email' => 'executor@diff.test',
             'password' => bcrypt('pass'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => $bank->id,
             'organization_id' => $bankOrg->id,
             'is_active' => true,

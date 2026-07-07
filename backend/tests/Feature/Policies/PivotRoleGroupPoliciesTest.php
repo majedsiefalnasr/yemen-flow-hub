@@ -31,7 +31,7 @@ class PivotRoleGroupPoliciesTest extends TestCase
 
     public function test_fx_stage_viewer_can_download_customs_declaration_via_pivot(): void
     {
-        $director = User::query()->where('role', UserRole::COMMITTEE_DIRECTOR->value)->firstOrFail();
+        $director = $this->firstUserWithRole(UserRole::COMMITTEE_DIRECTOR);
         $request = $this->makeEngineRequest(null);
         $declaration = $this->makeEngineDeclaration($request);
         $this->grantFxView($request, $director);
@@ -41,7 +41,7 @@ class PivotRoleGroupPoliciesTest extends TestCase
 
     public function test_data_entry_cannot_download_customs_declaration_for_other_bank(): void
     {
-        $entry = User::query()->where('role', UserRole::DATA_ENTRY->value)->firstOrFail();
+        $entry = $this->firstUserWithRole(UserRole::DATA_ENTRY);
         $otherBank = Bank::query()->where('id', '!=', $entry->bank_id)->firstOrFail();
         $otherBankRequest = $this->makeEngineRequest($otherBank->id);
         $declaration = $this->makeEngineDeclaration($otherBankRequest);
@@ -52,30 +52,30 @@ class PivotRoleGroupPoliciesTest extends TestCase
 
     public function test_cby_admin_can_create_bank_via_pivot(): void
     {
-        $admin = User::query()->where('role', UserRole::CBY_ADMIN->value)->firstOrFail();
+        $admin = $this->firstUserWithRole(UserRole::CBY_ADMIN);
 
         $this->assertTrue($admin->can('create', Bank::class));
     }
 
     public function test_bank_admin_cannot_create_bank(): void
     {
-        $bankAdmin = User::query()->where('role', UserRole::BANK_ADMIN->value)->firstOrFail();
+        $bankAdmin = $this->firstUserWithRole(UserRole::BANK_ADMIN);
 
         $this->assertFalse($bankAdmin->can('create', Bank::class));
     }
 
     public function test_cby_admin_can_view_any_user(): void
     {
-        $admin = User::query()->where('role', UserRole::CBY_ADMIN->value)->firstOrFail();
+        $admin = $this->firstUserWithRole(UserRole::CBY_ADMIN);
 
         $this->assertTrue($admin->can('viewAny', User::class));
     }
 
     public function test_bank_admin_can_manage_own_bank_data_entry_user(): void
     {
-        $bankAdmin = User::query()->where('role', UserRole::BANK_ADMIN->value)->firstOrFail();
+        $bankAdmin = $this->firstUserWithRole(UserRole::BANK_ADMIN);
         $entry = User::query()
-            ->where('role', UserRole::DATA_ENTRY->value)
+            ->withUserRole(UserRole::DATA_ENTRY)
             ->where('bank_id', $bankAdmin->bank_id)
             ->firstOrFail();
 

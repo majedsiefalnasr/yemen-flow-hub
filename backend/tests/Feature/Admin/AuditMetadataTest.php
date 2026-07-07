@@ -50,7 +50,6 @@ class AuditMetadataTest extends TestCase
             'name' => 'Admin',
             'email' => 'admin@cby.gov.ye',
             'password' => Hash::make('password'),
-            'role' => UserRole::CBY_ADMIN->value,
             'is_active' => true,
         ]), UserRole::CBY_ADMIN);
     }

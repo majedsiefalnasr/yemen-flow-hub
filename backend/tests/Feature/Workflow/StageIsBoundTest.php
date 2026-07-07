@@ -29,7 +29,7 @@ class StageIsBoundTest extends TestCase
     {
         parent::setUp();
         $this->seed([GovernanceSeeder::class, ScreenPermissionSeeder::class, BankSeeder::class, UserSeeder::class]);
-        $this->admin = User::query()->where('role', UserRole::CBY_ADMIN->value)->firstOrFail();
+        $this->admin = $this->firstUserWithRole(UserRole::CBY_ADMIN);
 
         $definition = WorkflowDefinition::query()->create(['code' => 'bound-check', 'name' => 'Bound Check']);
         $this->draft = $definition->versions()->create([

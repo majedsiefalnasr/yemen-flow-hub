@@ -18,7 +18,7 @@ class CustomsDeclarationResource extends JsonResource
                 'id' => $this->issuer->id,
                 'name' => $this->issuer->name,
                 'email' => $this->issuer->email,
-                'role' => $this->issuer->legacyRole()?->value,
+                'role' => $this->issuer->asUserRole()?->value,
             ] : null,
             'generated_by' => $this->generated_by,
             'generated_by_user' => $this->whenLoaded('generatedBy', fn () => $this->generatedBy === null ? null : [

@@ -26,7 +26,7 @@ export function makeKpi(overrides: Partial<CbyAdminKpi> = {}): CbyAdminKpi {
     delta: 0,
     severity: 'blue',
     sparkline: [],
-    drilldown_route: '/requests',
+    drilldown_route: '/workflows',
     ...overrides,
   }
 }
@@ -43,7 +43,7 @@ export function resolvedKpi(
     delta: 0,
     severity: 'blue',
     sparkline: [],
-    drilldown_route: '/requests',
+    drilldown_route: '/workflows',
   }
 }
 

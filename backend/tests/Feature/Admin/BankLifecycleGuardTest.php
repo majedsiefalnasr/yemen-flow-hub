@@ -105,7 +105,6 @@ class BankLifecycleGuardTest extends TestCase
             'name' => 'CBY Admin',
             'email' => 'wp0-admin@example.test',
             'password' => Hash::make('password'),
-            'role' => UserRole::CBY_ADMIN->value,
             'is_active' => true,
         ]), UserRole::CBY_ADMIN);
     }
@@ -126,7 +125,6 @@ class BankLifecycleGuardTest extends TestCase
             'name' => 'Bank User',
             'email' => 'bank-user-'.$bank->id.'@example.test',
             'password' => Hash::make('password'),
-            'role' => UserRole::DATA_ENTRY->value,
             'bank_id' => $bank->id,
             'is_active' => true,
         ]), UserRole::DATA_ENTRY);

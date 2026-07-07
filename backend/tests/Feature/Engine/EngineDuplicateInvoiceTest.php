@@ -51,7 +51,6 @@ class EngineDuplicateInvoiceTest extends TestCase
             'name' => 'DE User',
             'email' => 'de@dup.test',
             'password' => bcrypt('password'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => $bank->id,
             'organization_id' => $bankOrg->id,
             'is_active' => true,

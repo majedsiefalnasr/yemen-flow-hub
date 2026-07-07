@@ -184,7 +184,7 @@ export const CBY_ROLES: UserRole[] = [
 /** Roles that see simplified business statuses — never CBY operational internals */
 export const DATA_ENTRY_ROLES: UserRole[] = [UserRole.DATA_ENTRY]
 
-/** Operational roles with full internal status visibility on /requests */
+/** Operational roles with full internal status visibility on /workflows */
 export const CBY_OPERATIONAL_ROLES: UserRole[] = [
   UserRole.SWIFT_OFFICER,
   UserRole.SUPPORT_COMMITTEE,
@@ -193,7 +193,7 @@ export const CBY_OPERATIONAL_ROLES: UserRole[] = [
   UserRole.CBY_ADMIN,
 ]
 
-/** Roles that see operational filters (search + status dropdown) on /requests */
+/** Roles that see operational filters (search + status dropdown) on /workflows */
 export const OPERATIONAL_FILTER_ROLES: UserRole[] = [
   UserRole.BANK_REVIEWER,
   UserRole.BANK_ADMIN,
@@ -877,7 +877,7 @@ export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
 
 /**
  * Default "attention-needed" statuses per role — applied as the initial filter
- * when the user lands on /requests with no explicit status filter in the URL.
+ * when the user lands on /workflows with no explicit status filter in the URL.
  * Roles not listed here (DATA_ENTRY, BANK_ADMIN, CBY_ADMIN) see all requests
  * by default because their queue is already organisation-scoped by the backend.
  */

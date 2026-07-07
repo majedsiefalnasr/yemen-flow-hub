@@ -33,7 +33,7 @@ function goToTotpSetup() {
     v-if="showBanner"
     role="status"
     aria-live="polite"
-    class="rounded-none border-x-0 border-t-0"
+    class="mb-4"
   >
     <ShieldAlert class="h-4 w-4" />
     <AlertTitle>عزّز أمان حسابك</AlertTitle>

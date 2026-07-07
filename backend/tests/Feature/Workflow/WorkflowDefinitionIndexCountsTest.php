@@ -21,7 +21,7 @@ class WorkflowDefinitionIndexCountsTest extends TestCase
     public function test_index_exposes_stage_transition_and_field_counts_per_version(): void
     {
         $this->seed([GovernanceSeeder::class, ScreenPermissionSeeder::class, BankSeeder::class, UserSeeder::class]);
-        $admin = User::query()->where('role', UserRole::CBY_ADMIN->value)->firstOrFail();
+        $admin = $this->firstUserWithRole(UserRole::CBY_ADMIN);
 
         $definition = WorkflowDefinition::query()->create(['code' => 'counts', 'name' => 'Counts Flow']);
         $version = $definition->versions()->create(['version_number' => 1, 'state' => WorkflowVersionState::DRAFT]);

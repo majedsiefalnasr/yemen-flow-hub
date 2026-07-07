@@ -25,7 +25,7 @@ class PivotDashboardDispatchTest extends TestCase
     public function test_each_role_gets_a_dashboard_response(): void
     {
         foreach (UserRole::cases() as $role) {
-            $user = User::query()->where('role', $role->value)->first();
+            $user = User::query()->withUserRole($role)->first();
             if ($user === null) {
                 continue;
             }
@@ -37,8 +37,8 @@ class PivotDashboardDispatchTest extends TestCase
 
     public function test_committee_director_and_executive_member_get_different_dashboards(): void
     {
-        $director = User::query()->where('role', UserRole::COMMITTEE_DIRECTOR->value)->firstOrFail();
-        $executive = User::query()->where('role', UserRole::EXECUTIVE_MEMBER->value)->firstOrFail();
+        $director = $this->firstUserWithRole(UserRole::COMMITTEE_DIRECTOR);
+        $executive = $this->firstUserWithRole(UserRole::EXECUTIVE_MEMBER);
 
         $directorResponse = $this->actingAs($director)->getJson('/api/dashboard/stats')->json();
         $executiveResponse = $this->actingAs($executive)->getJson('/api/dashboard/stats')->json();
@@ -48,7 +48,7 @@ class PivotDashboardDispatchTest extends TestCase
 
     public function test_committee_director_can_access_audit_log(): void
     {
-        $director = User::query()->where('role', UserRole::COMMITTEE_DIRECTOR->value)->firstOrFail();
+        $director = $this->firstUserWithRole(UserRole::COMMITTEE_DIRECTOR);
 
         $response = $this->actingAs($director)->getJson('/api/v1/audit-logs');
         $response->assertOk();
@@ -56,7 +56,7 @@ class PivotDashboardDispatchTest extends TestCase
 
     public function test_executive_member_can_access_audit_log_when_granted(): void
     {
-        $executive = User::query()->where('role', UserRole::EXECUTIVE_MEMBER->value)->firstOrFail();
+        $executive = $this->firstUserWithRole(UserRole::EXECUTIVE_MEMBER);
 
         $response = $this->actingAs($executive)->getJson('/api/v1/audit-logs');
         $response->assertOk();
@@ -64,7 +64,7 @@ class PivotDashboardDispatchTest extends TestCase
 
     public function test_cby_admin_can_access_audit_log(): void
     {
-        $admin = User::query()->where('role', UserRole::CBY_ADMIN->value)->firstOrFail();
+        $admin = $this->firstUserWithRole(UserRole::CBY_ADMIN);
 
         $response = $this->actingAs($admin)->getJson('/api/v1/audit-logs');
         $response->assertOk();

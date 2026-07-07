@@ -16,11 +16,11 @@ class AuthMeResource extends JsonResource
         $user = (new UserResource($this->resource))->resolve($request);
 
         // Nested governance identity (`organization`/`team`/`role`/`bank`) is the
-        // authoritative shape and deliberately overrides the legacy scalar keys of
+        // authoritative shape and deliberately overrides the scalar keys of
         // the same name spread from UserResource — both the frontend identity
         // hydration and AuthIdentityTest read `data.role.code`, `data.bank`, etc.
-        // The legacy scalars (`role_label`, `bank_id`, `bank_name`) remain spread
-        // for back-compat consumers.
+        // Compatibility scalars (`role_label`, `bank_id`, `bank_name`) remain spread
+        // for older consumers.
         return array_merge($user, [
             'user' => $user,
             'organization' => $this->organization ? [

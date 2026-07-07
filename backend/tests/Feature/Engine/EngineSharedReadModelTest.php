@@ -26,11 +26,9 @@ class EngineSharedReadModelTest extends TestCase
         $bankB = $this->bank('B');
         $creator = User::factory()->create(['bank_id' => $bankA->id]);
         $bankUser = User::factory()->create([
-            'role' => UserRole::BANK_REVIEWER->value,
             'bank_id' => $bankA->id,
         ]);
         $cbyUser = User::factory()->create([
-            'role' => UserRole::SUPPORT_COMMITTEE->value,
             'bank_id' => null,
         ]);
 

@@ -64,7 +64,6 @@ class AdminResetPasswordCoverageTest extends TestCase
             'name' => 'System Admin',
             'email' => 'sysadmin@test.gov',
             'password' => Hash::make('Password123'),
-            'role' => UserRole::CBY_ADMIN->value,
             'is_active' => true,
         ]), UserRole::CBY_ADMIN);
     }
@@ -75,7 +74,7 @@ class AdminResetPasswordCoverageTest extends TestCase
             'fx_swift' => ['commercial_banks', 'fx_ops', UserRole::SWIFT_OFFICER, true],
             'fx_confirm' => ['national_committee', 'executive', UserRole::EXECUTIVE_MEMBER, false],
         ];
-        [$orgCode, $teamCode, $legacyRole, $keepsBank] = $map[$roleCode];
+        [$orgCode, $teamCode, $userRole, $keepsBank] = $map[$roleCode];
         $organization = Organization::query()->where('code', $orgCode)->firstOrFail();
         $team = Team::query()->whereBelongsTo($organization)->where('code', $teamCode)->firstOrFail();
         $role = Role::query()->whereBelongsTo($organization)->where('code', $roleCode)->firstOrFail();
@@ -92,7 +91,6 @@ class AdminResetPasswordCoverageTest extends TestCase
             'name' => $roleCode,
             'email' => $email,
             'password' => Hash::make('Password123'),
-            'role' => $legacyRole->value,
             'organization_id' => $organization->id,
             'bank_id' => $keepsBank ? $bank?->id : null,
             'is_active' => true,

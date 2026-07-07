@@ -48,7 +48,7 @@ class PublishedWorkflowReferenceGuardTest extends TestCase
     {
         $org = Organization::query()->where('code', 'commercial_banks')->firstOrFail();
         $role = Role::query()->where('code', 'intake')->firstOrFail();
-        $user = User::query()->where('role', UserRole::DATA_ENTRY->value)->firstOrFail();
+        $user = $this->firstUserWithRole(UserRole::DATA_ENTRY);
         $user->roles()->sync([$role->id]);
 
         $stage = $this->seedPublishedStageWithRole($role);
@@ -67,7 +67,6 @@ class PublishedWorkflowReferenceGuardTest extends TestCase
             'name' => 'Backup User',
             'email' => 'backup-intake@test.local',
             'password' => bcrypt('password'),
-            'role' => UserRole::DATA_ENTRY->value,
             'organization_id' => $org->id,
             'is_active' => true,
         ]);

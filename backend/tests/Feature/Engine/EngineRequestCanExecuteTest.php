@@ -58,7 +58,7 @@ class EngineRequestCanExecuteTest extends TestCase
 
         // System admin sees every request (policy view === true) but is not
         // assigned to execute this stage, so must not be offered stage actions.
-        $admin = User::factory()->create(['role' => UserRole::CBY_ADMIN->value]);
+        $admin = User::factory()->create([]);
         $admin->roles()->attach(Role::query()->where('code', 'system_admin')->firstOrFail()->id);
 
         $this->actingAs($admin)

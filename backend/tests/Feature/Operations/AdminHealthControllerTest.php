@@ -29,7 +29,6 @@ class AdminHealthControllerTest extends TestCase
             'name' => 'CBY Admin',
             'email' => 'admin-health@cby.gov.ye',
             'password' => Hash::make('password'),
-            'role' => UserRole::CBY_ADMIN,
             'bank_id' => null,
             'is_active' => true,
         ]), UserRole::CBY_ADMIN);
@@ -41,7 +40,6 @@ class AdminHealthControllerTest extends TestCase
             'name' => 'Bank User',
             'email' => 'bank-user@bank.com',
             'password' => Hash::make('password'),
-            'role' => UserRole::DATA_ENTRY,
             'bank_id' => null,
             'is_active' => true,
         ]), UserRole::DATA_ENTRY);
