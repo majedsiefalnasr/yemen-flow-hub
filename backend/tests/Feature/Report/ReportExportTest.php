@@ -133,6 +133,39 @@ class ReportExportTest extends TestCase
             ->assertJsonPath('error.code', 'EXPORT_NOT_READY');
     }
 
+    public function test_failed_export_has_no_downloadable_file(): void
+    {
+        $export = ReportExport::create([
+            'requested_by' => $this->admin->id,
+            'report_type' => 'summary',
+            'filters' => [],
+            'status' => 'FAILED',
+            'file_path' => null,
+        ]);
+
+        $this->actingAs($this->admin)
+            ->getJson("/api/v1/reports/exports/{$export->id}/download")
+            ->assertUnprocessable()
+            ->assertJsonPath('error.code', 'EXPORT_FAILED');
+    }
+
+    public function test_job_failed_handler_clears_file_path(): void
+    {
+        $export = ReportExport::create([
+            'requested_by' => $this->admin->id,
+            'report_type' => 'summary',
+            'filters' => [],
+            'status' => 'PROCESSING',
+            'file_path' => 'exports/report-stale.csv',
+        ]);
+
+        (new GenerateReportExport($export->id))->failed(new \RuntimeException('disk full'));
+
+        $export->refresh();
+        $this->assertSame('FAILED', $export->status);
+        $this->assertNull($export->file_path);
+    }
+
     public function test_index_returns_only_own_exports(): void
     {
         ReportExport::create([

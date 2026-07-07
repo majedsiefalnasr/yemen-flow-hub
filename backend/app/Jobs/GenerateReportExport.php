@@ -133,7 +133,10 @@ class GenerateReportExport implements ShouldQueue
                 'format' => $export->format,
             ]);
         } catch (\Throwable $e) {
-            $export->update(['status' => 'FAILED']);
+            $export->update([
+                'status' => 'FAILED',
+                'file_path' => null,
+            ]);
 
             throw $e;
         }
@@ -147,7 +150,10 @@ class GenerateReportExport implements ShouldQueue
     {
         $export = ReportExport::find($this->exportId);
         if ($export !== null && ! in_array($export->status, ['COMPLETED', 'FAILED'], true)) {
-            $export->update(['status' => 'FAILED']);
+            $export->update([
+                'status' => 'FAILED',
+                'file_path' => null,
+            ]);
         }
     }
 

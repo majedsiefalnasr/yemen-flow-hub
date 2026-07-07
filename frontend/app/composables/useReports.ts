@@ -28,6 +28,16 @@ export function buildExportTruncationMessage(entry: ReportExportEntry): string |
   return `تم تصدير ${exported.toLocaleString('ar-EG')} من أصل ${total.toLocaleString('ar-EG')} صفًا مطابقًا. ضيّق الفلاتر لتصدير كامل.`
 }
 
+export function buildExportFailureMessage(entry: ReportExportEntry): string | null {
+  if (entry.status !== 'FAILED') return null
+
+  return 'تعذّر إكمال التصدير. يرجى المحاولة مرة أخرى.'
+}
+
+export function isExportFailed(entry: ReportExportEntry): boolean {
+  return entry.status === 'FAILED'
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -403,6 +413,8 @@ export function useReports() {
     fetchExportStatus,
     pollExportUntilComplete,
     buildExportTruncationMessage,
+    buildExportFailureMessage,
+    isExportFailed,
     fetchMyExports,
   }
 }

@@ -76,6 +76,12 @@ class ReportExportController extends Controller
             abort(403);
         }
 
+        if ($reportExport->status === 'FAILED') {
+            return response()->json([
+                'error' => ['code' => 'EXPORT_FAILED', 'message' => 'Export failed and is not available for download.'],
+            ], 422);
+        }
+
         if ($reportExport->status !== 'COMPLETED' || $reportExport->file_path === null) {
             return response()->json([
                 'error' => ['code' => 'EXPORT_NOT_READY', 'message' => 'Export is not yet completed.'],

@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import type {
   BankReport,
+  EngineReportFilters,
+  ReportExportEntry,
   ReportFilter,
   ReportPreset,
   WorkflowReport,
@@ -17,6 +19,12 @@ export const useReportsStore = defineStore('reports', {
     exportLoading: false,
     error: null as string | null,
     exportTruncationNotice: null as string | null,
+    exportFailureNotice: null as string | null,
+    lastFailedExportRequest: null as {
+      reportType: string
+      filters: EngineReportFilters
+      format: 'csv' | 'pdf'
+    } | null,
   }),
 
   actions: {
@@ -70,23 +78,32 @@ export const useReportsStore = defineStore('reports', {
     async exportWorkflow(format: 'excel' | 'pdf'): Promise<void> {
       this.exportLoading = true
       this.exportTruncationNotice = null
+      this.exportFailureNotice = null
       try {
         const {
           exportReport,
           requestExport,
           pollExportUntilComplete,
           buildExportTruncationMessage,
+          buildExportFailureMessage,
+          isExportFailed,
         } = useReports()
 
         if (format === 'excel') {
-          const created = await requestExport('summary', {
+          const filters = {
             from: this.filters.fromDate,
             to: this.filters.toDate,
-          })
+          }
+          const created = await requestExport('summary', filters)
           const completed = await pollExportUntilComplete(created.id, {
             intervalMs: 0,
             maxAttempts: 5,
           })
+          if (isExportFailed(completed)) {
+            this.exportFailureNotice = buildExportFailureMessage(completed)
+            this.lastFailedExportRequest = { reportType: 'summary', filters, format: 'csv' }
+            return
+          }
           const notice = buildExportTruncationMessage(completed)
           if (notice) {
             this.exportTruncationNotice = notice
@@ -105,23 +122,32 @@ export const useReportsStore = defineStore('reports', {
     async exportBank(format: 'excel' | 'pdf'): Promise<void> {
       this.exportLoading = true
       this.exportTruncationNotice = null
+      this.exportFailureNotice = null
       try {
         const {
           exportReport,
           requestExport,
           pollExportUntilComplete,
           buildExportTruncationMessage,
+          buildExportFailureMessage,
+          isExportFailed,
         } = useReports()
 
         if (format === 'excel') {
-          const created = await requestExport('summary', {
+          const filters = {
             from: this.filters.fromDate,
             to: this.filters.toDate,
-          })
+          }
+          const created = await requestExport('summary', filters)
           const completed = await pollExportUntilComplete(created.id, {
             intervalMs: 0,
             maxAttempts: 5,
           })
+          if (isExportFailed(completed)) {
+            this.exportFailureNotice = buildExportFailureMessage(completed)
+            this.lastFailedExportRequest = { reportType: 'summary', filters, format: 'csv' }
+            return
+          }
           const notice = buildExportTruncationMessage(completed)
           if (notice) {
             this.exportTruncationNotice = notice
@@ -135,6 +161,47 @@ export const useReportsStore = defineStore('reports', {
       } finally {
         this.exportLoading = false
       }
+    },
+
+    async retryFailedExport(): Promise<void> {
+      if (!this.lastFailedExportRequest) return
+
+      const { reportType, filters, format } = this.lastFailedExportRequest
+      this.exportLoading = true
+      this.exportFailureNotice = null
+      try {
+        const {
+          requestExport,
+          pollExportUntilComplete,
+          buildExportTruncationMessage,
+          buildExportFailureMessage,
+          isExportFailed,
+        } = useReports()
+
+        const created = await requestExport(reportType, filters, format)
+        const completed = await pollExportUntilComplete(created.id, {
+          intervalMs: 0,
+          maxAttempts: 5,
+        })
+        if (isExportFailed(completed)) {
+          this.exportFailureNotice = buildExportFailureMessage(completed)
+          return
+        }
+
+        this.lastFailedExportRequest = null
+        const notice = buildExportTruncationMessage(completed)
+        if (notice) {
+          this.exportTruncationNotice = notice
+        }
+      } catch {
+        this.error = 'تعذّر تصدير التقرير. يرجى المحاولة مرة أخرى.'
+      } finally {
+        this.exportLoading = false
+      }
+    },
+
+    clearExportFailureNotice(): void {
+      this.exportFailureNotice = null
     },
 
     clearExportTruncationNotice(): void {

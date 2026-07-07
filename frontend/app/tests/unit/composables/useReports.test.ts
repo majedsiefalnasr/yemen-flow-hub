@@ -404,6 +404,39 @@ describe('useReports — V1 report exports (Story 18.6.4)', () => {
     expect(result.truncated).toBe(true)
     expect(mockGet).toHaveBeenCalledTimes(2)
   })
+
+  it('pollExportUntilComplete resolves when export fails', async () => {
+    mockGet.mockResolvedValueOnce({
+      data: {
+        id: 3,
+        report_type: 'summary',
+        status: 'FAILED',
+        filters: {},
+        format: 'csv',
+        created_at: '2026-06-23T10:00:00Z',
+      },
+    })
+
+    const { pollExportUntilComplete } = useReports()
+    const result = await pollExportUntilComplete(3, { intervalMs: 0, maxAttempts: 3 })
+
+    expect(result.status).toBe('FAILED')
+  })
+
+  it('buildExportFailureMessage returns Arabic retry guidance for FAILED exports', async () => {
+    const { buildExportFailureMessage, isExportFailed } = useReports()
+    const entry = {
+      id: 1,
+      report_type: 'summary',
+      filters: {},
+      format: 'csv',
+      status: 'FAILED' as const,
+      created_at: '2026-06-23T10:00:00Z',
+    }
+
+    expect(isExportFailed(entry)).toBe(true)
+    expect(buildExportFailureMessage(entry)).toContain('تعذّر')
+  })
 })
 
 describe('useReports — V1 engine reports (Story 18.6.3)', () => {
