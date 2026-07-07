@@ -122,49 +122,6 @@ class AdminSettingsService
         });
     }
 
-    public function getSmtpSettings(): array
-    {
-        $smtpPassword = SystemSetting::findByKey('smtp_password');
-        $passwordMask = '';
-        if ($smtpPassword) {
-            $decrypted = decrypt($smtpPassword->value);
-            $passwordMask = str_repeat('•', strlen($decrypted));
-        }
-
-        return [
-            'host' => SystemSetting::findByKey('smtp_host')?->value ?? '',
-            'port' => SystemSetting::findByKey('smtp_port')?->value ?? 587,
-            'username' => SystemSetting::findByKey('smtp_username')?->value ?? '',
-            'password' => $passwordMask,
-            'template' => SystemSetting::findByKey('smtp_template')?->value ?? '',
-        ];
-    }
-
-    public function updateSmtpSettings(array $data, User $actor): void
-    {
-        DB::transaction(function () use ($data, $actor) {
-            foreach (['host', 'port', 'username', 'template'] as $field) {
-                if (isset($data[$field])) {
-                    $this->upsertRawSetting("smtp_{$field}", $data[$field], $actor);
-                }
-            }
-            // Encrypt password
-            if (! empty($data['password'])) {
-                $this->upsertRawSetting('smtp_password', encrypt($data['password']), $actor);
-            }
-        });
-    }
-
-    private function upsertRawSetting(string $key, mixed $value, User $actor): void
-    {
-        $setting = SystemSetting::findByKey($key);
-        if (! $setting) {
-            SystemSetting::query()->create(['key' => $key, 'value' => $value, 'updated_by' => $actor->id]);
-        } else {
-            $setting->update(['value' => $value, 'updated_by' => $actor->id]);
-        }
-    }
-
     private function validateKey(string $key): void
     {
         if (! array_key_exists($key, self::DEFAULTS)) {

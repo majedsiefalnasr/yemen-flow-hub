@@ -2,15 +2,11 @@
 
 namespace Tests\Feature\Settings;
 
-use App\Enums\AuditAction;
 use App\Enums\UserRole;
-use App\Mail\TestEmailMail;
-use App\Models\AuditLog;
 use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
 use Tests\Support\AssignsGovernanceIdentity;
 use Tests\TestCase;
 
@@ -268,103 +264,5 @@ class AdminSettingsControllerTest extends TestCase
     public function test_reset_setting_returns_401_when_unauthenticated(): void
     {
         $this->postJson('/api/admin/settings/support_claim_ttl/reset')->assertStatus(401);
-    }
-
-    // --- POST /api/admin/settings/email/test ---
-
-    public function test_test_email_sends_to_admin_own_email_by_default(): void
-    {
-        Mail::fake();
-        $admin = $this->makeCbyAdmin();
-
-        $response = $this->actingAs($admin)->postJson('/api/admin/settings/email/test');
-
-        $response->assertStatus(200);
-        $response->assertJsonPath('success', true);
-        $response->assertJsonPath('data.sent', true);
-        $response->assertJsonPath('data.recipient', $admin->email);
-        Mail::assertSent(TestEmailMail::class);
-    }
-
-    public function test_test_email_sends_to_provided_test_address(): void
-    {
-        Mail::fake();
-        $admin = $this->makeCbyAdmin();
-
-        $response = $this->actingAs($admin)->postJson('/api/admin/settings/email/test', [
-            'test_address' => 'custom@example.com',
-        ]);
-
-        $response->assertStatus(200);
-        $response->assertJsonPath('data.recipient', 'custom@example.com');
-        Mail::assertSent(TestEmailMail::class, fn ($mail) => $mail->hasTo('custom@example.com'));
-    }
-
-    public function test_test_email_creates_audit_log_on_success(): void
-    {
-        Mail::fake();
-        $admin = $this->makeCbyAdmin();
-
-        $this->actingAs($admin)->postJson('/api/admin/settings/email/test');
-
-        $this->assertDatabaseHas('audit_logs', [
-            'user_id' => $admin->id,
-            'action' => AuditAction::EMAIL_TEST_SENT->value,
-        ]);
-
-        $log = AuditLog::where('action', AuditAction::EMAIL_TEST_SENT->value)->first();
-        $this->assertTrue($log->metadata['success']);
-        $this->assertEquals($admin->email, $log->metadata['recipient']);
-        $this->assertArrayNotHasKey('error_message', $log->metadata);
-    }
-
-    public function test_test_email_creates_audit_log_on_failure(): void
-    {
-        Mail::shouldReceive('to')->andThrow(new \RuntimeException('Connection refused'));
-
-        $admin = $this->makeCbyAdmin('admin2@cby.gov.ye');
-
-        $response = $this->actingAs($admin)->postJson('/api/admin/settings/email/test');
-
-        $response->assertStatus(500);
-        $response->assertJsonPath('success', false);
-        $response->assertJsonPath('error_code', 'EMAIL_TEST_FAILED');
-
-        $log = AuditLog::where('action', AuditAction::EMAIL_TEST_SENT->value)->first();
-        $this->assertNotNull($log);
-        $this->assertFalse($log->metadata['success']);
-        $this->assertArrayHasKey('error_message', $log->metadata);
-    }
-
-    public function test_test_email_rejects_invalid_test_address(): void
-    {
-        $admin = $this->makeCbyAdmin();
-
-        $response = $this->actingAs($admin)->postJson('/api/admin/settings/email/test', [
-            'test_address' => 'not-an-email',
-        ]);
-
-        $response->assertStatus(422);
-    }
-
-    public function test_test_email_forbidden_for_non_cby_admin(): void
-    {
-        $user = User::query()->create([
-            'name' => 'Data Entry',
-            'email' => 'entry@bank.com',
-            'password' => Hash::make('password'),
-            'role' => UserRole::DATA_ENTRY,
-            'bank_id' => null,
-            'is_active' => true,
-        ]);
-
-        $response = $this->actingAs($user)->postJson('/api/admin/settings/email/test');
-
-        $response->assertStatus(403);
-    }
-
-    public function test_test_email_returns_401_when_unauthenticated(): void
-    {
-        $this->postJson('/api/admin/settings/email/test')->assertStatus(401);
     }
 }

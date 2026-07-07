@@ -20,14 +20,6 @@ export interface AdminSettings {
   duplicate_invoice_policy: 'warn' | 'block'
 }
 
-export interface SmtpSettings {
-  host: string
-  port: number
-  username: string
-  password: string
-  template: string
-}
-
 export interface SecurityPolicies {
   mfa_required: boolean
   password_expiry_90_days: boolean
@@ -45,7 +37,6 @@ export const useAdminSettings = () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
   const pendingKeys = ref<Set<string>>(new Set())
-  const smtpSettings = ref<SmtpSettings | null>(null)
   const securityPolicies = ref<SecurityPolicies | null>(null)
 
   const fetchSettings = async () => {
@@ -76,38 +67,6 @@ export const useAdminSettings = () => {
       settings.value = null
     } finally {
       loading.value = false
-    }
-  }
-
-  const fetchSmtpSettings = async () => {
-    error.value = null
-    try {
-      const response = await $fetch<ApiResponse<SmtpSettings>>('/api/admin/settings/smtp', {
-        baseURL,
-        credentials: 'include',
-        headers: { Accept: 'application/json' },
-      })
-      smtpSettings.value = response.data
-    } catch (err: any) {
-      error.value = err.data?.message || 'Failed to load SMTP settings'
-    }
-  }
-
-  const updateSmtpSettings = async (data: SmtpSettings): Promise<boolean> => {
-    error.value = null
-    try {
-      const response = await $fetch<ApiResponse<SmtpSettings>>('/api/admin/settings/smtp', {
-        method: 'PUT',
-        baseURL,
-        credentials: 'include',
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-        body: data,
-      })
-      smtpSettings.value = response.data
-      return true
-    } catch (err: any) {
-      error.value = err.data?.message || 'Failed to update SMTP settings'
-      return false
     }
   }
 
@@ -230,11 +189,8 @@ export const useAdminSettings = () => {
     loading,
     error,
     pendingKeys,
-    smtpSettings,
     securityPolicies,
     fetchSettings,
-    fetchSmtpSettings,
-    updateSmtpSettings,
     fetchSecurityPolicies,
     updateSecurityPolicy,
     updateSetting,

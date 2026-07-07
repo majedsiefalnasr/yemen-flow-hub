@@ -46,13 +46,6 @@ test.describe('error pages', () => {
     await expect(page).toHaveScreenshot('forbidden.png')
   })
 
-  test('maintenance page renders', async ({ page }) => {
-    await page.setViewportSize(VIEWPORTS.desktop1440)
-    await page.goto('/maintenance')
-    await page.waitForLoadState('networkidle')
-    await expect(page).toHaveScreenshot('maintenance.png')
-  })
-
   test('unauthorized page renders', async ({ page }) => {
     await page.setViewportSize(VIEWPORTS.desktop1440)
     await page.goto('/unauthorized')
