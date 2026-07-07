@@ -1,6 +1,6 @@
 # Implementation Wave Plan — Yemen Flow Hub Review → Specs → Execution
 
-**Status:** Approved 2026-07-06 — **Wave 4 ✅ complete (WP-7 + WP-8 merged to main); next: Wave 5**
+**Status:** Approved 2026-07-06 — **Wave 5 Track A ✅ WP-11 merged to main; Wave 5 Tracks B–C (WP-12, WP-13) next**
 **Authority:** the 15 approved work-package specs under `docs/superpowers/specs/2026-07-06-wp*` + `2026-07-06-wp0` / `wpr`; phase record in `2026-07-05-feature-review-notes.md`.
 **Purpose:** collapse 14 implementation specs into 6 execution waves that preserve dependency safety while letting parallel-capable packages run together.
 
@@ -45,11 +45,11 @@ Multiple WPs may be developed in parallel; **merge order always respects depende
 - WP-8 notes: F-16 terminology verified already-shipped (no new commit); F-8 scanning shipped schema-ready with enforcement config-gated; F-14 official-issuer source (`issued_by`) remains an open business question — `generated_by` carries the transition actor.
 
 ### Wave 5 — Runtime UX + settings + operations
-**WPs:** WP-11, WP-12, WP-13. **Parallel tracks:**
-- Track A: WP-11 Settings truth wave
+**WPs:** WP-11 ✅, WP-12, WP-13. **Parallel tracks:**
+- Track A: WP-11 Settings truth wave ✅ (merged to `main`; merge commit includes `42b39bca` gate fixes)
 - Track B: WP-12 Runtime UX pack
 - Track C: WP-13 Retention + operations (docs/jobs)
-- **Constraint:** WP-6 (Wave 3) and WP-11 must agree on auth setting defaults — especially `mfa_required` and `login_lockout_*`. If Wave 3 ships before Wave 5, WP-6 uses documented fallback defaults that WP-11 then makes canonical.
+- **Constraint:** WP-6 (Wave 3) and WP-11 must agree on auth setting defaults — especially `mfa_required` and `login_lockout_*`. WP-11 now canonical: `mfa_required=false`, lockout 5 attempts / 15 min via DB rows.
 
 ### Wave 6 — Terminal cleanup
 **WPs:** WP-14.
