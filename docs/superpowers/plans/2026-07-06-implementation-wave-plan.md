@@ -1,6 +1,6 @@
 # Implementation Wave Plan — Yemen Flow Hub Review → Specs → Execution
 
-**Status:** Approved 2026-07-06 — **Wave 4 WP-7 ✅ complete; WP-8 🔄 in progress**
+**Status:** Approved 2026-07-06 — **Wave 4 ✅ complete (WP-7 + WP-8 merged to main); next: Wave 5**
 **Authority:** the 15 approved work-package specs under `docs/superpowers/specs/2026-07-06-wp*` + `2026-07-06-wp0` / `wpr`; phase record in `2026-07-05-feature-review-notes.md`.
 **Purpose:** collapse 14 implementation specs into 6 execution waves that preserve dependency safety while letting parallel-capable packages run together.
 
@@ -39,11 +39,10 @@ Multiple WPs may be developed in parallel; **merge order always respects depende
 - **Constraint:** WP-10 RM-3 (`users.role` drop) stays deferred — verification window first.
 - **Cross-track coordination:** WP-6 consumes WP-11 auth settings (mfa_required, lockout) — if Wave 5 hasn't shipped them, WP-6 uses fallback defaults; align defaults across both waves.
 
-### Wave 4 — Visibility + documents + FX (highest-risk product wave) 🔄 IN PROGRESS
-**WPs:** WP-7 ✅, WP-8 🔄. **Internal order:** WP-7 → WP-8 (WP-7 merged to `main`).
-**WP-8 branch:** `feat/wp8-documents-fields-fx`
+### Wave 4 — Visibility + documents + FX (highest-risk product wave) ✅ COMPLETE
+**WPs:** WP-7 ✅, WP-8 ✅. **Internal order:** WP-7 → WP-8 (both merged to `main`; WP-8 merge commit `00fe8655`).
 - WP-8 hard-depends on WP-4 (semantic mapping) + WP-7 (DataScope/output visibility).
-- Strong tests; no unrelated cleanup mixed here.
+- WP-8 notes: F-16 terminology verified already-shipped (no new commit); F-8 scanning shipped schema-ready with enforcement config-gated; F-14 official-issuer source (`issued_by`) remains an open business question — `generated_by` carries the transition actor.
 
 ### Wave 5 — Runtime UX + settings + operations
 **WPs:** WP-11, WP-12, WP-13. **Parallel tracks:**
