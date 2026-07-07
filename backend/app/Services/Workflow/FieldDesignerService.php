@@ -198,18 +198,17 @@ class FieldDesignerService
     }
 
     /**
-     * A field is "used" once a request references its key in stored data. The
-     * `requests` table arrives in Epic 18.5; until then no field is used.
+     * A field is "used" once an engine request on this workflow version exists.
      */
     private function fieldIsUsed(FieldDefinition $field): bool
     {
-        if (! DB::getSchemaBuilder()->hasTable('requests')) {
+        if (! DB::getSchemaBuilder()->hasTable('engine_requests')) {
             return false;
         }
 
-        // Request instances bind to a specific workflow_version_id; any request on
-        // this version means its fields are frozen against edits.
-        return DB::table('requests')->where('workflow_version_id', $field->workflow_version_id)->exists();
+        return DB::table('engine_requests')
+            ->where('workflow_version_id', $field->workflow_version_id)
+            ->exists();
     }
 
     private function ensureDraft(WorkflowVersion $version): void

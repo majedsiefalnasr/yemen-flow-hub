@@ -8,9 +8,6 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $this->call([DocumentTypeSeeder::class]);
-        $this->command?->info('Seeded document types.');
-
         $this->call([GovernanceSeeder::class]);
         $this->command?->info('Seeded governance identity.');
 

@@ -794,8 +794,8 @@ class WorkflowDesignerService
             }
         }
 
-        if (DB::getSchemaBuilder()->hasTable('requests')) {
-            return DB::table('requests')->where('current_stage_id', $stage->getKey())->exists();
+        if (DB::getSchemaBuilder()->hasTable('engine_requests')) {
+            return DB::table('engine_requests')->where('current_stage_id', $stage->getKey())->exists();
         }
 
         return false;

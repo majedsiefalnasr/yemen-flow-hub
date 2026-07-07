@@ -68,8 +68,7 @@ function mockForPath(path: string, method: string, role: UserRole) {
   if (path === '/api/v1/notifications') return apiOk(paginated([]))
   if (path === '/api/v1/banks') return apiOk([])
   if (path === '/api/v1/users') return apiOk([])
-  if (path === '/api/merchants') return apiOk(paginated([]))
-  if (path === '/api/document-types') return apiOk([])
+  if (path === '/api/v1/merchants') return apiOk(paginated([]))
   if (path === '/api/v1/audit-logs' || path.startsWith('/api/v1/audit-logs/')) {
     return { data: [], meta: { current_page: 1, last_page: 1, per_page: 30, total: 0 } }
   }

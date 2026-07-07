@@ -43,7 +43,7 @@ class ExpireEngineClaimsCommand extends Command
                         body: null,
                         entityType: 'engine_request',
                         entityId: $id,
-                        actionUrl: "/requests/{$id}",
+                        actionUrl: $dispatcher->engineRequestActionUrl($id),
                         recipientUserIds: $this->resolveCbyAdminIds(),
                     );
 
