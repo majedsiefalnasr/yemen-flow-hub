@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\AdminHealthController;
 use App\Http\Controllers\Api\Admin\NotificationTemplateController;
 use App\Http\Controllers\Api\AdminSettingsController;
 use App\Http\Controllers\Api\AuditController;
@@ -276,6 +277,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('audit/duplicates', [AuditController::class, 'duplicates']);
     Route::get('audit/risk-indicators', [AuditController::class, 'riskIndicators']);
 
+    Route::get('admin/health', [AdminHealthController::class, 'index']);
     Route::get('admin/settings', [AdminSettingsController::class, 'index']);
     Route::put('admin/settings/{key}', [AdminSettingsController::class, 'update'])->middleware('throttle:10,60');
     Route::post('admin/settings/{key}/reset', [AdminSettingsController::class, 'reset'])->middleware('throttle:10,60');

@@ -2,6 +2,7 @@
 
 use App\Console\Commands\ArchiveOldAuditLogsCommand;
 use App\Console\Commands\ArchiveSupersededDocumentsCommand;
+use App\Console\Commands\CheckSchedulerHealthCommand;
 use App\Console\Commands\ExpireEngineClaimsCommand;
 use App\Console\Commands\NotifySlaSignalsCommand;
 use App\Console\Commands\PurgeOldNotificationsCommand;
@@ -22,3 +23,4 @@ Schedule::command(PurgeOldReportExportsCommand::class)->dailyAt('02:20');
 Schedule::command(ArchiveSupersededDocumentsCommand::class)->dailyAt('02:30');
 Schedule::command(PurgeOrphanDocumentsCommand::class)->dailyAt('02:40');
 Schedule::command(ArchiveOldAuditLogsCommand::class)->dailyAt('03:00');
+Schedule::command(CheckSchedulerHealthCommand::class)->dailyAt('06:00');

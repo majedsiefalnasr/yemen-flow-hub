@@ -7,6 +7,7 @@ use App\Models\EngineRequest;
 use App\Models\ReportExport;
 use App\Services\Audit\AuditService;
 use App\Services\Authorization\DataScope;
+use App\Services\Operations\OperationalAlertLogger;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -110,6 +111,7 @@ class GenerateReportExport implements ShouldQueue
                 'format' => $export->format,
             ]);
         } catch (\Throwable $e) {
+            OperationalAlertLogger::failure('report_export', $e, ['export_id' => $this->exportId]);
             $export->update(['status' => 'FAILED']);
 
             throw $e;
@@ -122,6 +124,8 @@ class GenerateReportExport implements ShouldQueue
      */
     public function failed(\Throwable $exception): void
     {
+        OperationalAlertLogger::failure('report_export', $exception, ['export_id' => $this->exportId]);
+
         $export = ReportExport::find($this->exportId);
         if ($export !== null && ! in_array($export->status, ['COMPLETED', 'FAILED'], true)) {
             $export->update(['status' => 'FAILED']);

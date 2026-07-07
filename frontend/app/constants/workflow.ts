@@ -1009,6 +1009,7 @@ export const ROUTE_ROLE_MAP: Record<string, UserRole[]> = {
   '/admin/banks': rolesForSurface('nav.admin.banks'),
   '/admin/orgs': rolesForSurface('nav.admin.orgs'),
   '/admin/settings': rolesForSurface('nav.admin.system_settings'),
+  '/admin/health': [UserRole.CBY_ADMIN],
   '/admin/roles': rolesForSurface('nav.admin.roles'),
   '/admin/workflows': rolesForSurface('nav.admin.workflow_designer'),
   '/admin/teams': rolesForSurface('nav.admin.teams'),

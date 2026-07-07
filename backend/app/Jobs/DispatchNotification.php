@@ -4,11 +4,14 @@ namespace App\Jobs;
 
 use App\Models\EngineNotification;
 use App\Models\NotificationRecipient;
+use App\Services\Operations\OperationalAlertLogger;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\InteractsWithQueue;
 
 class DispatchNotification implements ShouldQueue
 {
+    use InteractsWithQueue;
     use Queueable;
 
     public function __construct(
@@ -52,5 +55,13 @@ class DispatchNotification implements ShouldQueue
         // insertOrIgnore so a retry after a partial write cannot fail on the
         // unique(notification_id, user_id) constraint.
         NotificationRecipient::insertOrIgnore($rows);
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        OperationalAlertLogger::failure('notification_dispatch', $exception, [
+            'type' => $this->type,
+            'recipient_count' => count($this->recipientUserIds),
+        ]);
     }
 }
