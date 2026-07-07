@@ -1,6 +1,6 @@
 # Implementation Wave Plan — Yemen Flow Hub Review → Specs → Execution
 
-**Status:** Approved 2026-07-06 — **Wave 5 Track A ✅ WP-11 merged to main; Wave 5 Tracks B–C (WP-12, WP-13) next**
+**Status:** Approved 2026-07-06 — **Wave 5 ✅ complete (WP-11 + WP-12 + WP-13 merged to main); next: Wave 6 / WP-14**
 **Authority:** the 15 approved work-package specs under `docs/superpowers/specs/2026-07-06-wp*` + `2026-07-06-wp0` / `wpr`; phase record in `2026-07-05-feature-review-notes.md`.
 **Purpose:** collapse 14 implementation specs into 6 execution waves that preserve dependency safety while letting parallel-capable packages run together.
 
@@ -44,13 +44,13 @@ Multiple WPs may be developed in parallel; **merge order always respects depende
 - WP-8 hard-depends on WP-4 (semantic mapping) + WP-7 (DataScope/output visibility).
 - WP-8 notes: F-16 terminology verified already-shipped (no new commit); F-8 scanning shipped schema-ready with enforcement config-gated; F-14 official-issuer source (`issued_by`) remains an open business question — `generated_by` carries the transition actor.
 
-### Wave 5 — Runtime UX + settings + operations
-**WPs:** WP-11 ✅, WP-12 🔄, WP-13 🔄. **Parallel tracks (in flight):**
-- Track A: WP-11 Settings truth wave ✅ (merged to `main`; merge commit `e02cce5d`)
-- Track B: WP-12 Runtime UX pack — branch `worktree-wp12-runtime-ux`, plan `docs/superpowers/plans/2026-07-07-wp12-runtime-ux-pack.md`
-- Track C: WP-13 Retention + operations — branch `worktree-wp13-retention-ops`, plan `docs/superpowers/plans/2026-07-07-wp13-retention-and-operations.md`
-- **Merge order:** WP-12 and WP-13 have no hard dependency; prefer WP-12 before WP-13 on `ReportExport` touchpoints (FAILED UX vs EXPIRED/purge)
-- **Constraint:** WP-6 (Wave 3) and WP-11 auth defaults now canonical: `mfa_required=false`, lockout 5 attempts / 15 min via DB rows.
+### Wave 5 — Runtime UX + settings + operations ✅ COMPLETE
+**WPs:** WP-11 ✅, WP-12 ✅, WP-13 ✅. **Parallel tracks (all merged to `main`):**
+- Track A: WP-11 Settings truth wave ✅ (`e02cce5d`)
+- Track B: WP-12 Runtime UX pack ✅ (merge includes stats, confirmations, audit diffs, export UX)
+- Track C: WP-13 Retention + operations ✅ (`aa2767e0` — retention jobs, audit archive, admin health, runbook)
+- **Merge note:** WP-12 merged before WP-13; export stack reconciled (`FAILED` + `EXPIRED` + ops logging)
+- **Constraint:** WP-6 auth defaults canonical via WP-11: `mfa_required=false`, lockout 5/15 min
 
 ### Wave 6 — Terminal cleanup
 **WPs:** WP-14.
