@@ -12,8 +12,10 @@ trait RecordsSchedulerHeartbeat
         $logger = app(SchedulerRunLogger::class);
 
         try {
-            $affected = (int) $callback();
-            $logger->recordSuccess($command, $affected);
+            $result = $callback();
+            $affected = is_array($result) ? (int) ($result['affected'] ?? 0) : (int) $result;
+            $meta = is_array($result) ? ($result['meta'] ?? []) : [];
+            $logger->recordSuccess($command, $affected, $meta);
 
             return self::SUCCESS;
         } catch (\Throwable $e) {
