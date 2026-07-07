@@ -24,6 +24,11 @@ class LogoStorageService
             return null;
         }
 
+        // Legacy unmigrated rows may still store inline data URLs.
+        if (str_starts_with($path, 'data:')) {
+            return $path;
+        }
+
         // Existing default static emblem (no upload yet) — serve as-is.
         if (str_starts_with($path, '/')) {
             return $path;

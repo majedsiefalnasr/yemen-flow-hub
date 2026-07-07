@@ -76,6 +76,8 @@ class SettingsControllerTest extends TestCase
 
     public function test_get_public_settings_returns_system_branding_without_authentication(): void
     {
+        \Illuminate\Support\Facades\Storage::fake('public');
+
         SystemSetting::query()->create([
             'key' => 'settings.general',
             'value' => [
@@ -88,7 +90,7 @@ class SettingsControllerTest extends TestCase
             'value' => [
                 'brandColor' => '#0055aa',
                 'brandLogoName' => 'custom-logo.svg',
-                'brandLogoDataUrl' => 'data:image/svg+xml;base64,PHN2Zy8+',
+                'brandLogoPath' => 'logos/custom-logo.svg',
             ],
         ]);
 
@@ -99,6 +101,10 @@ class SettingsControllerTest extends TestCase
         $response->assertJsonPath('data.general.authority', 'جهة الاختبار');
         $response->assertJsonPath('data.branding.brandColor', '#0055aa');
         $response->assertJsonPath('data.branding.brandLogoName', 'custom-logo.svg');
+        $brandLogoUrl = $response->json('data.branding.brandLogoUrl');
+        $this->assertNotEmpty($brandLogoUrl);
+        $this->assertStringContainsString('logos/custom-logo.svg', (string) $brandLogoUrl);
+        $this->assertStringNotContainsString('data:image', $response->getContent());
     }
 
     public function test_get_public_settings_returns_national_committee_defaults(): void
@@ -124,6 +130,15 @@ class SettingsControllerTest extends TestCase
             'is_active' => true,
         ]), UserRole::CBY_ADMIN);
 
+        SystemSetting::query()->create([
+            'key' => 'settings.branding',
+            'value' => [
+                'brandColor' => '#0066cc',
+                'brandLogoName' => 'existing-logo.svg',
+                'brandLogoPath' => 'logos/existing-logo.svg',
+            ],
+        ]);
+
         $response = $this->actingAs($user)->postJson('/api/settings/save-section', [
             'section' => 'theming',
             'subsection' => 'branding',
@@ -138,8 +153,13 @@ class SettingsControllerTest extends TestCase
         $response->assertJsonPath('data.key', 'settings.branding');
         $response->assertJsonPath('data.value.brandColor', '#0055aa');
         $response->assertJsonPath('data.value.brandLogoName', 'custom-logo.svg');
+        $response->assertJsonPath('data.value.brandLogoPath', 'logos/existing-logo.svg');
+        $response->assertJsonMissingPath('data.value.brandLogoDataUrl');
 
         $this->assertDatabaseHas('system_settings', ['key' => 'settings.branding']);
+        $setting = SystemSetting::query()->where('key', 'settings.branding')->first();
+        $this->assertSame('logos/existing-logo.svg', $setting?->value['brandLogoPath'] ?? null);
+        $this->assertArrayNotHasKey('brandLogoDataUrl', $setting?->value ?? []);
         $user->refresh();
         $this->assertNull($user->user_preferences);
     }

@@ -47,6 +47,10 @@ class SystemSettingsService
 
         // Save to system_settings table
         $key = $this->settingKey($section, $subsection);
+        if ($section === 'theming' && $subsection === 'branding') {
+            $existing = $this->arrayValue(SystemSetting::query()->where('key', $key)->value('value'));
+            $data = array_merge($existing, $data);
+        }
         $value = $this->normalizeSectionData($section, $data, $subsection);
         $setting = SystemSetting::updateOrCreate(
             ['key' => $key],
@@ -101,11 +105,9 @@ class SystemSettingsService
             ->sortDesc()
             ->first();
 
-        $branding = array_merge(
-            self::DEFAULT_BRANDING,
-            $this->arrayValue($settings->get('settings.branding')?->value)
-        );
-        $branding = $this->exposePublicBranding($branding);
+        $storedBranding = $this->arrayValue($settings->get('settings.branding')?->value);
+        $branding = array_merge(self::DEFAULT_BRANDING, $storedBranding);
+        $branding = $this->exposePublicBranding($branding, $storedBranding);
 
         return [
             'version' => $version?->toJSON() ?? 'defaults-v1',
@@ -172,13 +174,20 @@ class SystemSettingsService
         return is_array($value) ? $value : [];
     }
 
-    private function exposePublicBranding(array $branding): array
+    private function exposePublicBranding(array $branding, array $storedBranding = []): array
     {
-        $path = $branding['brandLogoPath']
-            ?? $branding['brandLogoDataUrl']
-            ?? self::DEFAULT_BRANDING['brandLogoPath'];
+        if (
+            ! array_key_exists('brandLogoPath', $storedBranding)
+            && isset($storedBranding['brandLogoDataUrl'])
+            && is_string($storedBranding['brandLogoDataUrl'])
+            && str_starts_with($storedBranding['brandLogoDataUrl'], 'data:')
+        ) {
+            $branding['brandLogoUrl'] = $storedBranding['brandLogoDataUrl'];
+        } else {
+            $path = $branding['brandLogoPath'] ?? self::DEFAULT_BRANDING['brandLogoPath'];
+            $branding['brandLogoUrl'] = $this->logoStorageService->url($path);
+        }
 
-        $branding['brandLogoUrl'] = $this->logoStorageService->url($path);
         unset($branding['brandLogoPath'], $branding['brandLogoDataUrl']);
 
         return $branding;
