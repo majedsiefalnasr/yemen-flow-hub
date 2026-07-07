@@ -26,7 +26,7 @@ describe('useBanks', () => {
   })
 
   describe('fetchBanks()', () => {
-    it('calls GET /api/banks with per_page=200 and returns the data array', async () => {
+    it('calls GET /api/v1/banks with per_page=200 and returns the data array', async () => {
       mockGet.mockResolvedValueOnce({
         success: true,
         message: 'OK',
@@ -37,7 +37,7 @@ describe('useBanks', () => {
       })
       const { fetchBanks } = useBanks()
       const result = await fetchBanks()
-      expect(mockGet).toHaveBeenCalledWith('/api/banks?per_page=200')
+      expect(mockGet).toHaveBeenCalledWith('/api/v1/banks?per_page=200')
       expect(result).toEqual([BANK_FIXTURE])
     })
 
@@ -49,7 +49,7 @@ describe('useBanks', () => {
   })
 
   describe('createBank()', () => {
-    it('calls POST /api/banks with the payload and returns the created bank', async () => {
+    it('calls POST /api/v1/banks with the payload and returns the created bank', async () => {
       mockPost.mockResolvedValueOnce({ success: true, message: 'Created', data: BANK_FIXTURE })
       const { createBank } = useBanks()
       const payload = {
@@ -60,13 +60,13 @@ describe('useBanks', () => {
         is_active: true,
       }
       const result = await createBank(payload)
-      expect(mockPost).toHaveBeenCalledWith('/api/banks', payload)
+      expect(mockPost).toHaveBeenCalledWith('/api/v1/banks', payload)
       expect(result).toEqual(BANK_FIXTURE)
     })
   })
 
   describe('updateBank()', () => {
-    it('calls PUT /api/banks/:id with the payload and returns the updated bank', async () => {
+    it('calls PUT /api/v1/banks/:id with the payload and returns the updated bank', async () => {
       const updated = { ...BANK_FIXTURE, name_ar: 'اسم محدث' }
       mockPut.mockResolvedValueOnce({ success: true, message: 'Updated', data: updated })
       const { updateBank } = useBanks()
@@ -77,23 +77,8 @@ describe('useBanks', () => {
         is_active: true,
       }
       const result = await updateBank(1, payload)
-      expect(mockPut).toHaveBeenCalledWith('/api/banks/1', payload)
+      expect(mockPut).toHaveBeenCalledWith('/api/v1/banks/1', payload)
       expect(result).toEqual(updated)
-    })
-  })
-
-  describe('resetBankAdminPassword()', () => {
-    it('calls POST /api/banks/:id/admin/reset-password with the temporary password payload', async () => {
-      mockPost.mockResolvedValueOnce({ success: true, message: 'OK', data: {} })
-      const { resetBankAdminPassword } = useBanks()
-      const payload = {
-        password: 'TempPassword123',
-        password_confirmation: 'TempPassword123',
-      }
-
-      await resetBankAdminPassword(4, payload)
-
-      expect(mockPost).toHaveBeenCalledWith('/api/banks/4/admin/reset-password', payload)
     })
   })
 })

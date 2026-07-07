@@ -66,7 +66,7 @@ function mockForPath(path: string, method: string, role: UserRole) {
   if (path === '/api/dashboard/stats') return apiOk({})
   if (path === '/api/notifications/unread-count') return apiOk({ count: 0 })
   if (path === '/api/notifications') return apiOk(paginated([]))
-  if (path === '/api/banks') return apiOk([])
+  if (path === '/api/v1/banks') return apiOk([])
   if (path === '/api/v1/users') return apiOk([])
   if (path === '/api/merchants') return apiOk(paginated([]))
   if (path === '/api/document-types') return apiOk([])

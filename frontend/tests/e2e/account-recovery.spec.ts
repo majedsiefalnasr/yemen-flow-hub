@@ -194,7 +194,7 @@ async function mockApi(page: Parameters<typeof test>[0]['page'], options: MockAp
       return
     }
 
-    if (path === '/api/banks') {
+    if (path === '/api/v1/banks') {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
