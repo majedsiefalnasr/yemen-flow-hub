@@ -50,7 +50,7 @@ POST /api/auth/login
 
 ## Account Lockout Response
 
-After 10 consecutive failed credentials from the same account/source pair, the API returns HTTP `429 Too Many Requests` with a `Retry-After` header containing the seconds until the lockout window expires.
+After `login_lockout_attempts` consecutive failed credentials from the same account/source pair (default **5**), the API returns HTTP `429 Too Many Requests` with a `Retry-After` header containing the seconds until the lockout window expires (default **15** minutes / `900` seconds via `login_lockout_duration`).
 
 ```http
 HTTP/1.1 429 Too Many Requests
@@ -708,7 +708,7 @@ POST /api/settings/save-section
 
 `GET /api/settings` merges stored user preferences with defaults and includes `system` (same safe public payload as `GET /api/settings/public`).
 
-`POST /api/settings/save-section` accepts user sections (`theming`, `notif`) for any authenticated user. System sections (`general`, `workflow`, `security`, and `theming` + `subsection=branding`) require `CBY_ADMIN` and persist to `system_settings` under keys `settings.general` and `settings.branding`.
+`POST /api/settings/save-section` accepts user sections (`theming`, `notif`) for any authenticated user. System sections (`general`, `workflow`, `security`, and `theming` + `subsection=branding`) require `CBY_ADMIN` and persist to `system_settings` under `settings.{section}` keys — e.g. `settings.general`, `settings.workflow`, `settings.security`, and `settings.branding` (for `theming` + `subsection=branding`).
 
 ---
 

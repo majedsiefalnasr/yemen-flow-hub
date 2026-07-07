@@ -33,6 +33,14 @@ class SystemSettingsService
         ],
     ];
 
+    private const PUBLIC_BRANDING_KEYS = [
+        'brandColor',
+        'brandLogoName',
+        'brandLogoUrl',
+        'brandingPublished',
+        'brandingChannels',
+    ];
+
     public function __construct(
         private readonly AuditService $auditService,
         private readonly LogoStorageService $logoStorageService,
@@ -97,12 +105,16 @@ class SystemSettingsService
         $storedBranding = $this->arrayValue($settings->get('settings.branding')?->value);
         $branding = array_merge(self::DEFAULT_BRANDING, $storedBranding);
         $branding = $this->exposePublicBranding($branding, $storedBranding);
+        $branding = array_intersect_key($branding, array_flip(self::PUBLIC_BRANDING_KEYS));
 
         return [
             'version' => $version?->toJSON() ?? 'defaults-v1',
-            'general' => array_merge(
-                self::DEFAULT_GENERAL,
-                $this->arrayValue($settings->get('settings.general')?->value)
+            'general' => array_intersect_key(
+                array_merge(
+                    self::DEFAULT_GENERAL,
+                    $this->arrayValue($settings->get('settings.general')?->value)
+                ),
+                array_flip(array_keys(self::DEFAULT_GENERAL))
             ),
             'branding' => $branding,
         ];
