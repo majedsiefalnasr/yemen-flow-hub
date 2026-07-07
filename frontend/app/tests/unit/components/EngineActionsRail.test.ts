@@ -106,6 +106,60 @@ describe('EngineActionsRail', () => {
     expect(wrapper.emitted('run')).toEqual([[1, false]])
   })
 
+  it('shows inline error when required-comment action clicked with empty comment', async () => {
+    const rejectEdge: WorkflowGraphEdge = {
+      ...baseEdge,
+      id: 3,
+      action_code: 'REJECT',
+      action_name: 'رفض',
+      requires_comment: true,
+    }
+
+    const wrapper = mount(EngineActionsRail, {
+      props: {
+        availableActions: [rejectEdge],
+        canAct: true,
+        claimRequiredButNotHeld: false,
+        showClaimButton: false,
+        busy: false,
+        viewOnly: false,
+      },
+    })
+
+    const rejectButton = wrapper.findAll('button').find((b) => b.text().includes('رفض'))
+    await rejectButton!.trigger('click')
+
+    expect(wrapper.text()).toContain('يجب إدخال ملاحظة')
+    expect(wrapper.emitted('run')).toBeUndefined()
+  })
+
+  it('emits run when required comment is provided', async () => {
+    const rejectEdge: WorkflowGraphEdge = {
+      ...baseEdge,
+      id: 4,
+      action_code: 'REJECT',
+      action_name: 'رفض',
+      requires_comment: true,
+    }
+
+    const wrapper = mount(EngineActionsRail, {
+      props: {
+        availableActions: [rejectEdge],
+        canAct: true,
+        claimRequiredButNotHeld: false,
+        showClaimButton: false,
+        busy: false,
+        viewOnly: false,
+        comment: 'سبب الرفض',
+      },
+    })
+
+    const rejectButton = wrapper.findAll('button').find((b) => b.text().includes('رفض'))
+    await rejectButton!.trigger('click')
+
+    expect(wrapper.emitted('run')).toEqual([[4, true]])
+  })
+
   it('gates destructive actions behind confirmation dialog', async () => {
     const destructiveEdge: WorkflowGraphEdge = {
       ...baseEdge,

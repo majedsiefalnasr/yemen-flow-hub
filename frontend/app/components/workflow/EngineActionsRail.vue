@@ -17,7 +17,10 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { AlertCircle } from 'lucide-vue-next'
+import { ref, watch } from 'vue'
 import { useTransitionConfirm } from '@/composables/useTransitionConfirm'
+
+const REQUIRED_COMMENT_MESSAGE = 'يجب إدخال ملاحظة قبل تنفيذ هذا الإجراء.'
 
 const props = defineProps<{
   availableActions: WorkflowGraphEdge[]
@@ -30,6 +33,25 @@ const props = defineProps<{
 
 const emit = defineEmits<{ run: [transitionId: number, requiresComment: boolean]; claim: [] }>()
 const comment = defineModel<string>('comment', { default: '' })
+const commentError = ref<string | null>(null)
+
+watch(comment, (value) => {
+  if (commentError.value && value.trim()) {
+    commentError.value = null
+  }
+})
+
+function actionDisabledReason(action: WorkflowGraphEdge): string | undefined {
+  if (!props.canAct || props.busy) return undefined
+  if (action.requires_comment && !comment.value.trim()) {
+    return REQUIRED_COMMENT_MESSAGE
+  }
+  return undefined
+}
+
+function isActionDisabled(_action: WorkflowGraphEdge): boolean {
+  return !props.canAct || props.busy
+}
 
 const {
   confirmOpen,
@@ -42,6 +64,12 @@ const {
 
 async function onActionClick(action: WorkflowGraphEdge) {
   if (!props.canAct || props.busy) return
+
+  if (action.requires_comment && !comment.value.trim()) {
+    commentError.value = REQUIRED_COMMENT_MESSAGE
+    return
+  }
+  commentError.value = null
 
   const confirmed = await confirmIfNeeded(action)
   if (!confirmed) return
@@ -81,11 +109,17 @@ function onConfirmDialogAction() {
           <Textarea id="action-comment" v-model="comment" rows="3" :disabled="!canAct" />
         </Field>
 
+        <Alert v-if="commentError" variant="destructive" role="alert">
+          <AlertCircle class="h-4 w-4" />
+          <AlertDescription>{{ commentError }}</AlertDescription>
+        </Alert>
+
         <div class="flex flex-col gap-2">
           <Button
             v-for="action in availableActions"
             :key="action.id"
-            :disabled="!canAct || busy"
+            :disabled="isActionDisabled(action)"
+            :title="actionDisabledReason(action)"
             @click="onActionClick(action)"
           >
             {{ action.action_name ?? action.action_code }}
