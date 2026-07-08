@@ -4,6 +4,7 @@ namespace Tests\Feature\Governance;
 
 use App\Enums\UserRole;
 use App\Models\Bank;
+use App\Models\Organization;
 use App\Models\User;
 use Database\Seeders\BankSeeder;
 use Database\Seeders\GovernanceSeeder;
@@ -26,7 +27,7 @@ class BankTest extends TestCase
 
     public function test_create_bank_with_engine_fields_and_unique_swift(): void
     {
-        $bankOrg = \App\Models\Organization::query()->where('code', 'commercial_banks')->firstOrFail();
+        $bankOrg = Organization::query()->where('code', 'commercial_banks')->firstOrFail();
         $payload = ['organization_id' => $bankOrg->id, 'code' => 'NEW', 'name' => 'New Bank', 'license_number' => 'LIC-1', 'swift_code' => 'NEWBYESA', 'status' => 'ACTIVE'];
         $this->actingAs($this->admin)->postJson('/api/v1/banks', $payload)
             ->assertCreated()

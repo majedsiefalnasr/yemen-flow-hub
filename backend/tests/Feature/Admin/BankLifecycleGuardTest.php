@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Models\Bank;
 use App\Models\EngineRequest;
 use App\Models\Merchant;
+use App\Models\Organization;
 use App\Models\User;
 use App\Models\WorkflowDefinition;
 use App\Models\WorkflowStage;
@@ -115,7 +116,7 @@ class BankLifecycleGuardTest extends TestCase
 
     private function bank(array $attributes = []): Bank
     {
-        $organization = \App\Models\Organization::query()->where('code', 'commercial_banks')->firstOrFail();
+        $organization = Organization::query()->where('code', 'commercial_banks')->firstOrFail();
 
         return Bank::query()->create(array_merge([
             'name' => 'WP0 Test Bank',
