@@ -8,6 +8,7 @@ use App\Models\AuditLog;
 use App\Models\Bank;
 use App\Models\SystemSetting;
 use App\Models\User;
+use App\Services\Auth\StepUpService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use PragmaRX\Google2FA\Google2FA;
@@ -73,6 +74,10 @@ class ProfileControllerTest extends TestCase
             'is_active' => true,
         ]);
         $user = $this->assignGovernanceIdentity($user, UserRole::DATA_ENTRY);
+        // changePassword() requires a fresh step-up (StepUpService::hasValidStepUp)
+        // before validation runs — grant one, as a real client would after
+        // completing the /api/profile/step-up/* challenge.
+        app(StepUpService::class)->recordStepUp($user);
 
         $response = $this->actingAs($user)->postJson('/api/profile/change-password', [
             'current_password' => 'oldPassword123',
@@ -201,6 +206,7 @@ class ProfileControllerTest extends TestCase
             'is_active' => true,
         ]);
         $user = $this->assignGovernanceIdentity($user, UserRole::DATA_ENTRY);
+        app(StepUpService::class)->recordStepUp($user);
 
         $this->actingAs($user)->postJson('/api/profile/change-password', [
             'current_password' => 'oldPassword123',
@@ -235,7 +241,9 @@ class ProfileControllerTest extends TestCase
 
         $response->assertStatus(422);
         $response->assertJsonValidationErrors('password');
-        $response->assertJsonPath('errors.password.0', 'The new password must be different from the current password.');
+        // PasswordPolicy::isReused() checks current-password reuse and history
+        // reuse under one unified message.
+        $response->assertJsonPath('errors.password.0', 'You cannot reuse a recent password.');
     }
 
     public function test_change_password_with_wrong_current_password(): void
@@ -290,8 +298,12 @@ class ProfileControllerTest extends TestCase
 
     // --- PUT /api/profile ---
 
-    public function test_put_profile_updates_name_email_phone(): void
+    public function test_put_profile_updates_name_and_phone(): void
     {
+        // ProfileController::update() only validates name/phone/avatar_variant
+        // (app/Http/Controllers/Api/ProfileController.php) — email is not
+        // self-editable via this endpoint, matching the frontend's
+        // useProfile.ts, which never sends an email field on update.
         $user = User::query()->create([
             'name' => 'Old Name',
             'email' => 'old@bank.com',
@@ -303,19 +315,17 @@ class ProfileControllerTest extends TestCase
 
         $response = $this->actingAs($user)->putJson('/api/profile', [
             'name' => 'New Name',
-            'email' => 'new@bank.com',
             'phone' => '+9671234567',
         ]);
 
         $response->assertStatus(200);
         $response->assertJsonPath('success', true);
         $response->assertJsonPath('data.name', 'New Name');
-        $response->assertJsonPath('data.email', 'new@bank.com');
         $response->assertJsonPath('data.phone', '+9671234567');
 
         $user->refresh();
         $this->assertEquals('New Name', $user->name);
-        $this->assertEquals('new@bank.com', $user->email);
+        $this->assertEquals('old@bank.com', $user->email);
         $this->assertEquals('+9671234567', $user->phone);
     }
 
@@ -367,8 +377,12 @@ class ProfileControllerTest extends TestCase
 
     // --- POST /api/profile/mfa/toggle ---
 
-    public function test_post_mfa_toggle_when_setting_not_registered(): void
+    public function test_post_mfa_toggle_when_setting_at_default_value(): void
     {
+        // A migration (2026_07_07_000001_seed_live_settings_defaults) always
+        // seeds a `mfa_required` row from AdminSettingsService::getDefaults(),
+        // which defaults to false — so MFA is not system-enforced by default,
+        // and toggling succeeds.
         $user = User::query()->create([
             'name' => 'MFA User',
             'email' => 'mfa@bank.com',
@@ -379,15 +393,13 @@ class ProfileControllerTest extends TestCase
         ]);
         $user = $this->assignGovernanceIdentity($user, UserRole::DATA_ENTRY);
 
-        // When mfa_required setting doesn't exist, it defaults to true (secure-first)
         $response = $this->actingAs($user)->postJson('/api/profile/mfa/toggle');
 
-        $response->assertStatus(403);
-        $response->assertJsonPath('message', 'MFA is system-enforced');
+        $response->assertStatus(200);
 
-        // Verify MFA was NOT toggled
+        // Verify MFA WAS toggled on.
         $user->refresh();
-        $this->assertFalse($user->mfa_enabled);
+        $this->assertTrue($user->mfa_enabled);
     }
 
     public function test_post_mfa_toggle_returns_403_when_system_enforced(): void
@@ -402,12 +414,14 @@ class ProfileControllerTest extends TestCase
         ]);
         $user = $this->assignGovernanceIdentity($user, UserRole::DATA_ENTRY);
 
-        // Set system-enforced MFA policy
-        SystemSetting::query()->create([
-            'key' => 'mfa_required',
-            'value' => true,
-            'updated_by' => 1,
-        ]);
+        // Set system-enforced MFA policy. A migration
+        // (2026_07_07_000001_seed_live_settings_defaults) always seeds a
+        // `mfa_required` row with the default value, so this must update the
+        // existing row rather than create a new one.
+        SystemSetting::query()->updateOrCreate(
+            ['key' => 'mfa_required'],
+            ['value' => true, 'updated_by' => 1],
+        );
 
         $response = $this->actingAs($user)->postJson('/api/profile/mfa/toggle');
 
