@@ -400,7 +400,12 @@ class EngineCustomsSignedFxTest extends TestCase
 
         ['request' => $request, 'executor' => $executor] = EngineWorkflowFactory::seedClaimStageWithTransition();
         $this->grantFxExecute($request, $executor);
-        $director = $this->firstUserWithRole(UserRole::COMMITTEE_DIRECTOR);
+        // setUp() only seeds governance structure (orgs/roles/teams), not users —
+        // create and identity-assign a director like every other actor in this file.
+        $director = $this->assignGovernanceIdentity(
+            User::factory()->create([]),
+            UserRole::COMMITTEE_DIRECTOR
+        );
 
         $declaration = CustomsDeclaration::create([
             'engine_request_id' => $request->id,
