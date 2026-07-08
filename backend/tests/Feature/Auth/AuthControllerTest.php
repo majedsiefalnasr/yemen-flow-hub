@@ -8,6 +8,7 @@ use App\Enums\UserRole;
 use App\Jobs\SendEmailDelivery;
 use App\Models\AuditLog;
 use App\Models\Bank;
+use App\Models\Role;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Services\Auth\MfaService;
@@ -432,6 +433,7 @@ class AuthControllerTest extends TestCase
     public function test_login_returns_requires_mfa_when_mfa_enabled(): void
     {
         SystemSetting::where('key', 'mfa_required')->update(['value' => true]);
+        Queue::fake();
         $this->makeUser();
 
         $response = $this->postJson('/api/auth/login', [
@@ -669,9 +671,16 @@ class AuthControllerTest extends TestCase
         config(['demo.allow_role_switch' => true]);
 
         $actor = $this->makeUser(['email' => 'actor@example.com']);
-        $target = $this->makeUser(['email' => 'cby-admin@example.com']);
+        $target = $this->makeUser([
+            'email' => 'cby-admin@example.com',
+        ]);
+        $target->assignActiveRole(Role::query()
+            ->where('code', 'system_admin')
+            ->firstOrFail()
+            ->id);
 
         $response = $this->actingAs($actor)->postJson('/api/auth/switch-demo-role', [
+            'role' => UserRole::CBY_ADMIN->value,
         ]);
 
         $response->assertStatus(200);

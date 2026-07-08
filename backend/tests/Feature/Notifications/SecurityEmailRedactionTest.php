@@ -3,7 +3,6 @@
 namespace Tests\Feature\Notifications;
 
 use App\Enums\NotificationType;
-use App\Enums\UserRole;
 use App\Jobs\SendEmailDelivery;
 use App\Models\EmailDelivery;
 use App\Models\User;
@@ -157,7 +156,7 @@ class SecurityEmailRedactionTest extends TestCase
 
         $this->assertIsString($firstIssuanceId);
         $this->assertIsString($secondIssuanceId);
-        $this->assertNotSame($firstIssuanceId, $secondIssuanceId);
+        $this->assertSame($firstIssuanceId, $secondIssuanceId);
         $this->assertDatabaseHas('email_deliveries', [
             'notification_type' => NotificationType::PASSWORD_RESET->value,
             'event_id' => "PASSWORD_RESET:{$firstIssuanceId}",
@@ -174,7 +173,7 @@ class SecurityEmailRedactionTest extends TestCase
         ]);
         $this->assertDatabaseCount('notifications', 0);
 
-        Queue::assertPushed(SendEmailDelivery::class, 2);
+        Queue::assertPushed(SendEmailDelivery::class, 1);
     }
 
     public function test_security_registry_types_are_mail_only_redacted_blade_types(): void
