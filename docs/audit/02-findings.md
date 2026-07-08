@@ -4,14 +4,16 @@ All findings carry the lifecycle fields defined in `00-scope-and-method.md`. IDs
 
 Blocks are additive: Block 1 seeds architecture (`ARCH-`) and any security defect found during discovery (`SEC-`). API/DB/FE/CACHE/QUEUE/OBS findings arrive in later blocks. Database findings are `Partially Verified` until Block 3 captures plans.
 
-## Summary counts (through Block 1)
+## Summary counts (through Block 2)
 
-| Severity | Count | Notes |
+| Severity | Count | IDs |
 | --- | --- | --- |
 | Critical | 1 | SEC-001 — **fixed** in Block 1 (commit `375fe5f2`) |
-| High | 3 | ARCH-001, ARCH-002, API-000 |
-| Medium | 4 | ARCH-003, ARCH-004, ARCH-006, ARCH-007 |
-| Low | 1 | ARCH-005 |
+| High | 5 | ARCH-001, ARCH-002, API-001, API-002, API-003 |
+| Medium | 7 | ARCH-003, ARCH-004, ARCH-006, ARCH-007, API-004, API-005, API-006 |
+| Low | 2 | ARCH-005, API-007 |
+
+_API-003 supersedes the Block 1 placeholder API-000; counts reflect the renumber. Total: 15 findings (1 fixed)._
 
 ---
 
@@ -80,7 +82,10 @@ Blocks are additive: Block 1 seeds architecture (`ARCH-`) and any security defec
 
 ---
 
-## API-000 — Reference allocator breaks at ~1,000,000 requests/year (placeholder; confirmed in Block 2)
+## API-000 — Reference allocator breaks at ~1,000,000 requests/year → **Superseded by API-003**
+
+> **Superseded** in Block 2 by the stable-ID record **API-003** (identical finding, renumbered into the API series). Retained here for traceability; see API-003 below for the live record.
+
 
 | Field | Value |
 | --- | --- |
@@ -206,4 +211,141 @@ Blocks are additive: Block 1 seeds architecture (`ARCH-`) and any security defec
 
 ---
 
-_No API/DB/FE/CACHE/QUEUE/OBS findings yet — those blocks follow. `API-000` will be renumbered to a stable `API-xxx` ID when Block 2 opens the API series._
+---
+
+# API series (Block 2)
+
+## API-001 — Per-row `fx_panel` authorization resolves two uncached queries per engine-request row
+
+| Field | Value |
+| --- | --- |
+| Area / component | `app/Http/Resources/EngineRequestResource.php`, `app/Services/Customs/FxConfirmationAuthorizationService.php` |
+| Endpoint / query | `GET /v1/engine-requests`, `.../my-queue`, `.../{id}` — `fx_panel` key |
+| Current behavior | `EngineRequestResource::toArray` calls `FxConfirmationAuthorizationService::panelCapabilities($user, $request)` for **every** serialized row (`:131-135`); that method runs `WorkflowStage::query()` (`:50`) and `EngineRequest::query()` (`:67`) with no cross-row memoization. `can_execute` and `StageFieldOutputFilter` are memoized across rows, but `fx_panel` is not. |
+| Problem | A page of 100 rows issues ~200 extra queries for the FX panel alone — a classic serialization N+1. Cost scales with page size on the hottest list endpoints. |
+| Severity | High |
+| Evidence status | Verified (code); query count confirmed in Block 3 capture |
+| Finding status | Open |
+| Roadmap tier | Pre-production (list endpoints are core; fix before go-live) |
+| First identified / last reviewed | Block 2 / Block 2 |
+| Related findings | ARCH-001, API-002 |
+| Evidence | `EngineRequestResource.php:131-135`, `FxConfirmationAuthorizationService.php:50,67,148` |
+| Confidence | High |
+| Recommendation | Add a batch entry point to `FxConfirmationAuthorizationService` that resolves panel inputs once for the page's stage/request set (mirroring the existing `StageFieldOutputFilter` singleton-cache and `$canExecuteCache` patterns), then map per row. Preserve identical per-row capability output. Trade-off: new batch method + call-site change in `EngineRequestListQuery::paginatedResponse`. |
+| Security gate | Per-row FX authorization output must be byte-identical; verified in Block 5. |
+
+## API-002 — `engine-requests/stats` runs six aggregate passes, each reloading all stage permissions and the SLA subquery
+
+| Field | Value |
+| --- | --- |
+| Area / component | `app/Services/Workflow/EngineRequestStatsService.php` |
+| Endpoint / query | `GET /v1/engine-requests/stats` |
+| Current behavior | `aggregate()` builds the scoped query then runs `total`, `active`, `breached_sla`, `nearing_sla`, `unclaimed_active`, and `by_status` as **separate** count/group passes (`:35-53`). Each `buildScopedQuery` calls `accessibleStageIds()` (whole `stage_permissions` table into PHP — ARCH-001) and `withStageEntry()` (correlated `workflow_history` subquery — ARCH-002). |
+| Problem | One stats call = 6 full scans of the scoped `engine_requests` set plus repeated whole-table permission loads and correlated subqueries. At design target this is the most expensive dashboard call, multiplied by every polling client (Block 4). |
+| Severity | High |
+| Evidence status | Partially Verified (code); plans in Block 3 |
+| Finding status | Open |
+| Roadmap tier | Threshold-gated (row count × dashboard poll rate) |
+| First identified / last reviewed | Block 2 / Block 2 |
+| Related findings | ARCH-001, ARCH-002, API-005 |
+| Evidence | `EngineRequestStatsService.php:30-82` |
+| Confidence | High |
+| Recommendation | Collapse `total`/`active`/`unclaimed_active`/`by_status` into a single grouped pass (`SELECT status, COUNT(*), SUM(claimed_by IS NULL...) GROUP BY status`); compute SLA breached/nearing in one grouped pass over the SLA expression instead of two filtered counts. Depends on ARCH-001 fix to remove the per-pass permission load. Trade-off: one more complex query replacing six simple ones — validate plan in Block 3. |
+| Security gate | Scoping (`forUser` + accessible stages) preserved on the merged query; verified in Block 5. |
+
+## API-003 — Request reference allocator overflows and races (carried from Block 1 API-000)
+
+| Field | Value |
+| --- | --- |
+| Area / component | `app/Services/Workflow/EngineRequestService.php` |
+| Endpoint / query | `POST /v1/engine-requests` → `createWithUniqueReference()` |
+| Current behavior | Sequence from lexicographic `MAX(reference)` over `ENG-YYYY-%06d` (`:117-144`), recomputed per create, races resolved by unique-constraint retry. |
+| Problem | (1) At `ENG-YYYY-1000000` string MAX mis-orders 7-digit vs 6-digit suffixes → permanent `REFERENCE_ALLOCATION_FAILED` for the year. (2) Per-create `MAX` recompute + retry = serialization contention under concurrency. |
+| Severity | High |
+| Evidence status | Verified (logic) |
+| Finding status | Open (renamed from API-000) |
+| Roadmap tier | Threshold-gated (≈10^6 requests/year); contention review Pre-production |
+| First identified / last reviewed | Block 1 / Block 2 |
+| Related findings | Block 3 locking |
+| Evidence | `EngineRequestService.php:117-144` |
+| Confidence | High |
+| Recommendation | Monotonic allocator: per-year sequence row incremented in-transaction, or `MAX(CAST(SUBSTRING(reference,10) AS UNSIGNED))`. Fixes overflow + reduces contention. Trade-off in full record (Block 1). |
+| Security gate | Reference uniqueness preserved; verified in Block 5. |
+
+## API-004 — Synchronous audit-log CSV export in the request lifecycle
+
+| Field | Value |
+| --- | --- |
+| Area / component | `app/Http/Controllers/Api/V1/AuditLogController.php` |
+| Endpoint / query | `GET /v1/audit-logs/export` |
+| Current behavior | Loads up to 10,000 audit rows with relations via `->get()` and builds the CSV string in PHP within the HTTP request (`:106-131`). |
+| Problem | 10k rows × relations held in memory + string concat blocks a web worker; concurrent exports multiply memory pressure. Bounded (10k cap) so not catastrophic, but wrong lifecycle for a growing table. |
+| Severity | Medium |
+| Evidence status | Verified |
+| Finding status | Open |
+| Roadmap tier | Threshold-gated (audit table size / export frequency) |
+| First identified / last reviewed | Block 2 / Block 2 |
+| Related findings | API-006, ARCH-006, QUEUE (Block 4) |
+| Evidence | `AuditLogController.php:82-132` |
+| Confidence | High |
+| Recommendation | Route through the existing `GenerateReportExport` job pattern (async artifact + download endpoint), streaming rows with `lazy()`/cursor instead of `get()`. Trade-off: client contract changes to poll-for-artifact (Block 4 coordinates). |
+| Security gate | Scope + `viewAny` policy preserved in the job; export action still audit-logged. Verified in Block 5. |
+
+## API-005 — `reports/summary` uses seven full-scan passes instead of one grouped query
+
+| Field | Value |
+| --- | --- |
+| Area / component | `app/Http/Controllers/Api/V1/ReportController.php` |
+| Endpoint / query | `GET /v1/reports/summary` |
+| Current behavior | Runs `count()` six times (total + 5 statuses) plus `sum(amount)` — seven independent scans of the same scoped set (`:25-31`). |
+| Problem | Seven full scans where one `GROUP BY status` + conditional aggregation suffices; cost multiplies over the largest table at design target. |
+| Severity | Medium |
+| Evidence status | Partially Verified (code); plan in Block 3 |
+| Finding status | Open |
+| Roadmap tier | Threshold-gated (row count) |
+| First identified / last reviewed | Block 2 / Block 2 |
+| Related findings | API-002 |
+| Evidence | `ReportController.php:25-33` |
+| Confidence | High |
+| Recommendation | Single `selectRaw('COUNT(*) total, SUM(status="ACTIVE") active, ..., SUM(amount) total_amount')` grouped/aggregated in one pass. Trade-off: none material. |
+| Security gate | `applyScope` preserved on the single query; verified in Block 5. |
+
+## API-006 — Unbounded `->get()` on SLA / stage-duration / team-performance reports
+
+| Field | Value |
+| --- | --- |
+| Area / component | `app/Http/Controllers/Api/V1/ReportController.php` |
+| Endpoint / query | `GET /v1/reports/sla`, `.../stage-duration`, `.../team-performance` |
+| Current behavior | `sla` loads **all** matching `engine_requests` via `->get()` then groups and derives `sla_status` per row in PHP (`:244-262`). `stage-duration` joins `workflow_history` to itself with a correlated MIN subquery and `->get()` (`:197-220`). `team-performance` joins history→users→roles and `->get()` (`:271-289`). None have a LIMIT. |
+| Problem | These scan `engine_requests`/`workflow_history` (the two largest tables) without bound; `sla` additionally materializes the full result set into PHP. At millions of rows these are memory- and time-unbounded. |
+| Severity | Medium |
+| Evidence status | Partially Verified (code); plans in Block 3 |
+| Finding status | Open |
+| Roadmap tier | Threshold-gated (row count) — SLA report Pre-production-worth if it is a default dashboard widget (confirm in Block 4) |
+| First identified / last reviewed | Block 2 / Block 2 |
+| Related findings | ARCH-002, API-002, Block 3 index plan |
+| Evidence | `ReportController.php:186-299` |
+| Confidence | Medium-High |
+| Recommendation | Push SLA-status bucketing into SQL (the epoch expressions already exist in `EngineRequestListQuery`) and return grouped counts, not row sets; ensure `stage-duration`'s self-join subquery is index-supported (Block 3); add date-window defaults so unfiltered calls cannot scan all history. Trade-off: SLA report must move derivation from PHP to SQL — test parity needed. |
+| Security gate | `applyScope` preserved; verified in Block 5. |
+
+## API-007 — Index-defeating filter predicates on audit and report queries
+
+| Field | Value |
+| --- | --- |
+| Area / component | `app/Http/Controllers/Api/V1/AuditLogController.php`, `ReportController.php` |
+| Endpoint / query | `GET /v1/audit-logs` (+ export), `reports/*` date filters |
+| Current behavior | `whereDate('created_at', ...)` wraps the column in `DATE()` (`AuditLogController.php:40-41`, `ReportController.php:211-212,319-322`); audit entity filter uses `subject_type LIKE '%X%'` (`AuditLogController.php:38,99`). |
+| Problem | Function-wrapped column and leading-wildcard LIKE cannot use an index → full scans on `audit_logs` (grows forever). Same root as ARCH-004 on `engine_requests`. |
+| Severity | Low |
+| Evidence status | Partially Verified; plans + index proposals in Block 3 |
+| Finding status | Open |
+| Roadmap tier | Threshold-gated (audit table size) |
+| First identified / last reviewed | Block 2 / Block 2 |
+| Related findings | ARCH-004, ARCH-006, Block 3 index plan |
+| Evidence | `AuditLogController.php:38-41,99`, `ReportController.php:211-212,319-322` |
+| Confidence | Medium-High |
+| Recommendation | Half-open range bounds instead of `whereDate`; exact `subject_type = ?` (fully-qualified class) or a normalized entity column instead of infix LIKE. Consolidated into Block 3 index plan. Trade-off: entity filter UX must switch from substring to exact/known-type. |
+| Security gate | Scope preserved; verified in Block 5. |
+
+_No DB/FE/CACHE/QUEUE/OBS findings yet — Block 3 opens the DB series with captured evidence._

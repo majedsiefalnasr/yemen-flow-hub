@@ -77,7 +77,8 @@ During the audit:
 
 | Block | Approval date | Approved commit SHA | Decisions / scope changes | Deferred findings |
 | --- | --- | --- | --- | --- |
-| 1 — Discovery & architecture | 2026-07-08 | (this docs commit) | SEC-001 approved for immediate fix (committed `375fe5f2`, `fix(backend): remove unauthenticated test-api endpoint`) — the only application-code change in the audit. Block 2 scope approved. | None |
+| 1 — Discovery & architecture | 2026-07-08 | `62e6a395` | SEC-001 approved for immediate fix (committed `375fe5f2`, `fix(backend): remove unauthenticated test-api endpoint`) — the only application-code change in the audit. Block 2 scope approved. | None |
+| 2 — API & Laravel | 2026-07-08 | (this docs commit) | 7 API findings; API-000 superseded by API-003. Block 3 scope approved. Highest-leverage fix identified: ARCH-001. | None |
 
 (one row appended per approved block)
 
