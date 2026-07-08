@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Services;
 
+use App\Enums\OrganizationClassification;
 use App\Enums\WorkflowVersionState;
 use App\Models\Organization;
 use App\Models\Role;
@@ -95,7 +96,7 @@ class PermissionServiceDerivedRequestsTest extends TestCase
 
     public function test_org_only_stage_permission_row_grants_requests_access_to_roles_in_that_org(): void
     {
-        $orgId = DB::table('organizations')->insertGetId(['code' => 'ORG1', 'name' => 'Org One', 'created_at' => now(), 'updated_at' => now()]);
+        $orgId = DB::table('organizations')->insertGetId(['code' => 'ORG1', 'name' => 'Org One', 'classification' => OrganizationClassification::OTHER->value, 'created_at' => now(), 'updated_at' => now()]);
         $roleId = DB::table('roles')->insertGetId([
             'organization_id' => $orgId,
             'code' => 'reviewer',
@@ -141,7 +142,7 @@ class PermissionServiceDerivedRequestsTest extends TestCase
 
     public function test_role_matching_only_second_definitions_stage_still_gets_capabilities(): void
     {
-        $orgId = DB::table('organizations')->insertGetId(['code' => 'ORG2', 'name' => 'Org Two', 'created_at' => now(), 'updated_at' => now()]);
+        $orgId = DB::table('organizations')->insertGetId(['code' => 'ORG2', 'name' => 'Org Two', 'classification' => OrganizationClassification::BANKING_SECTOR->value, 'created_at' => now(), 'updated_at' => now()]);
         $roleId = DB::table('roles')->insertGetId([
             'organization_id' => $orgId,
             'code' => 'reviewer-2',
@@ -206,7 +207,7 @@ class PermissionServiceDerivedRequestsTest extends TestCase
 
     public function test_role_with_no_matching_row_across_multiple_definitions_gets_all_false(): void
     {
-        $orgId = DB::table('organizations')->insertGetId(['code' => 'ORG3', 'name' => 'Org Three', 'created_at' => now(), 'updated_at' => now()]);
+        $orgId = DB::table('organizations')->insertGetId(['code' => 'ORG3', 'name' => 'Org Three', 'classification' => OrganizationClassification::OTHER->value, 'created_at' => now(), 'updated_at' => now()]);
         $roleId = DB::table('roles')->insertGetId([
             'organization_id' => $orgId,
             'code' => 'no-access',

@@ -26,15 +26,16 @@ class BankTest extends TestCase
 
     public function test_create_bank_with_engine_fields_and_unique_swift(): void
     {
-        $payload = ['code' => 'NEW', 'name' => 'New Bank', 'license_number' => 'LIC-1', 'swift_code' => 'NEWBYESA', 'status' => 'ACTIVE'];
+        $bankOrg = \App\Models\Organization::query()->where('code', 'commercial_banks')->firstOrFail();
+        $payload = ['organization_id' => $bankOrg->id, 'code' => 'NEW', 'name' => 'New Bank', 'license_number' => 'LIC-1', 'swift_code' => 'NEWBYESA', 'status' => 'ACTIVE'];
         $this->actingAs($this->admin)->postJson('/api/v1/banks', $payload)
             ->assertCreated()
             ->assertJsonPath('data.organization.code', 'commercial_banks')
             ->assertJsonPath('data.swift_code', 'NEWBYESA');
         $this->actingAs($this->admin)->postJson('/api/v1/banks', [...$payload, 'code' => 'NEW2'])->assertUnprocessable();
 
-        $this->actingAs($this->admin)->postJson('/api/v1/banks', ['code' => 'NULL1', 'name' => 'Null One', 'swift_code' => null, 'status' => 'ACTIVE'])->assertCreated();
-        $this->actingAs($this->admin)->postJson('/api/v1/banks', ['code' => 'NULL2', 'name' => 'Null Two', 'swift_code' => null, 'status' => 'ACTIVE'])->assertCreated();
+        $this->actingAs($this->admin)->postJson('/api/v1/banks', ['organization_id' => $bankOrg->id, 'code' => 'NULL1', 'name' => 'Null One', 'swift_code' => null, 'status' => 'ACTIVE'])->assertCreated();
+        $this->actingAs($this->admin)->postJson('/api/v1/banks', ['organization_id' => $bankOrg->id, 'code' => 'NULL2', 'name' => 'Null Two', 'swift_code' => null, 'status' => 'ACTIVE'])->assertCreated();
     }
 
     public function test_existing_banks_are_backfilled_and_suspend_allowed_with_history(): void

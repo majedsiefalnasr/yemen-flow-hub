@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Governance;
 
+use App\Enums\OrganizationClassification;
 use App\Models\Organization;
 use App\Models\Role;
 use App\Models\Team;
@@ -30,12 +31,14 @@ class IdentityGovernanceTest extends TestCase
         $organization = Organization::query()->create([
             'code' => 'test_org',
             'name' => 'Test organization',
+            'classification' => OrganizationClassification::OTHER,
         ]);
 
         $this->expectException(QueryException::class);
         Organization::query()->create([
             'code' => 'test_org',
             'name' => 'Duplicate organization',
+            'classification' => OrganizationClassification::OTHER,
         ]);
     }
 
@@ -44,6 +47,7 @@ class IdentityGovernanceTest extends TestCase
         $organization = Organization::query()->create([
             'code' => 'test_org',
             'name' => 'Test organization',
+            'classification' => OrganizationClassification::OTHER,
         ]);
 
         Team::query()->create([
