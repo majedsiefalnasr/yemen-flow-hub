@@ -4,6 +4,7 @@
 
 - Command: `cd backend && php artisan test --compact`
 - Result before remediation: `75 failed, 53 passed, 1084 deprecated`
+- Provenance: the source report snapshot recorded `72 failed, 53 passed, 1087 deprecated`; this plan's fresh rerun on the current branch/baseline recorded `75 failed, 53 passed, 1084 deprecated` in `683.35s`.
 - Duration before remediation: `683.35s`
 
 ## Cluster Decisions
