@@ -6,20 +6,22 @@ use App\Enums\UserRole;
 use App\Models\Bank;
 use App\Models\EngineRequest;
 use App\Models\Merchant;
-use App\Models\Role;
 use App\Models\User;
 use App\Models\WorkflowDefinition;
 use App\Models\WorkflowStage;
 use App\Models\WorkflowVersion;
+use Database\Seeders\GovernanceSeeder;
 use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Tests\Support\AssignsGovernanceIdentity;
 use Tests\TestCase;
 
 class MerchantIntegrityTest extends TestCase
 {
+    use AssignsGovernanceIdentity;
     use RefreshDatabase;
 
     private Bank $bank;
@@ -36,6 +38,7 @@ class MerchantIntegrityTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->seed(GovernanceSeeder::class);
         $this->seed(ScreenPermissionSeeder::class);
 
         $this->bank = Bank::query()->create(['name' => 'Bank A', 'code' => 'BKA', 'is_active' => true]);
@@ -47,8 +50,7 @@ class MerchantIntegrityTest extends TestCase
             'bank_id' => $this->bank->id,
             'is_active' => true,
         ]);
-        $bankAdminRole = Role::query()->where('code', 'bank_admin')->firstOrFail();
-        $this->bankAdmin->roles()->attach($bankAdminRole->id);
+        $this->bankAdmin = $this->assignGovernanceIdentity($this->bankAdmin, UserRole::BANK_ADMIN);
 
         $this->cbyadmin = User::query()->create([
             'name' => 'CBY Admin',
@@ -57,16 +59,13 @@ class MerchantIntegrityTest extends TestCase
             'bank_id' => null,
             'is_active' => true,
         ]);
-        // cbyadmin needs merchants:MANAGE to reach MerchantController::update()'s
-        // authorization gate at all before the immutability guard inside it can
-        // fire (test_bank_change_blocked_after_first_request below). No
-        // non-bank-user governance role is granted merchants:MANAGE by
-        // ScreenPermissionSeeder (system_admin is deliberately denied it), so
-        // this attaches bank_admin's governance Role for its screen_permissions
-        // grant only -- isBankUser() still reads false from the legacy
-        // CBY_ADMIN enum above, so this does not turn cbyadmin into a
-        // bank-scoped actor for policy purposes.
-        $this->cbyadmin->roles()->attach($bankAdminRole->id);
+        // CBY_ADMIN's governance role (system_admin) is deliberately restricted
+        // to merchants:VIEW + EXPORT -- never MANAGE (see ScreenPermissionSeeder,
+        // "system_admin is intentionally restricted on merchants"). So cbyadmin
+        // cannot reach MerchantController::update()'s authorization gate; it is
+        // kept here only for the out-of-scope/view-adjacent assertions a system
+        // actor is entitled to, not for the immutable-bank guard below.
+        $this->cbyadmin = $this->assignGovernanceIdentity($this->cbyadmin, UserRole::CBY_ADMIN);
 
         $this->workflow = $this->makeWorkflow();
     }
@@ -206,10 +205,16 @@ class MerchantIntegrityTest extends TestCase
 
     public function test_bank_change_blocked_after_first_request(): void
     {
+        // Uses bankAdmin (not cbyadmin): merchants:MANAGE is required to reach
+        // MerchantController::update()'s authorization gate at all, and
+        // system_admin (cbyadmin's governance role) is intentionally denied
+        // that capability -- see setUp() note. bankAdmin owns $this->bank,
+        // which matches the merchant's bank_id, so it passes guardMerchantScope
+        // and MerchantPolicy::update before reaching the immutability guard.
         $merchant = $this->makeMerchant();
         $this->createEngineRequest($merchant, 'CLOSED');
 
-        $this->actingAs($this->cbyadmin)->putJson("/api/v1/merchants/{$merchant->id}", [
+        $this->actingAs($this->bankAdmin)->putJson("/api/v1/merchants/{$merchant->id}", [
             'bank_id' => $this->otherBank->id,
             'version' => 1,
         ])->assertConflict()

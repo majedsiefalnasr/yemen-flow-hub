@@ -45,14 +45,18 @@ class BankLifecycleGuardTest extends TestCase
 
     public function test_bank_with_user_is_blocked_from_lifecycle_removal(): void
     {
+        // WP-9 (fd136b1f) intentionally split bank suspend vs delete semantics:
+        // deactivate/suspend is reversible and no longer blocked by usage, only
+        // hard delete is (BankController::isUsed() gates destroy(), not
+        // deactivate()). Assert current, documented behavior for both actions.
         $admin = $this->admin();
         $bank = $this->bank(['code' => 'USEDUSER']);
         $this->bankUser($bank);
 
         $this->actingAs($admin)
             ->postJson("/api/v1/banks/{$bank->id}/deactivate")
-            ->assertStatus(422)
-            ->assertJsonPath('error.code', 'BANK_IN_USE');
+            ->assertOk()
+            ->assertJsonPath('data.status', 'SUSPENDED');
 
         $this->actingAs($admin)
             ->deleteJson("/api/v1/banks/{$bank->id}")
@@ -111,9 +115,12 @@ class BankLifecycleGuardTest extends TestCase
 
     private function bank(array $attributes = []): Bank
     {
+        $organization = \App\Models\Organization::query()->where('code', 'commercial_banks')->firstOrFail();
+
         return Bank::query()->create(array_merge([
             'name' => 'WP0 Test Bank',
             'code' => 'WP0BANK',
+            'organization_id' => $organization->id,
             'status' => 'ACTIVE',
             'is_active' => true,
         ], $attributes));
