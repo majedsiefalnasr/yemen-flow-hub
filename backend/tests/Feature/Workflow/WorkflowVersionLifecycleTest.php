@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Workflow;
 
+use App\Enums\FinalOutcome;
 use App\Enums\StageAccessLevel;
 use App\Enums\UserRole;
 use App\Enums\WorkflowVersionState;
@@ -288,7 +289,13 @@ class WorkflowVersionLifecycleTest extends TestCase
         $role = Role::query()->where('organization_id', $org->id)->firstOrFail();
 
         $intake = $version->stages()->create(['code' => 'intake', 'name' => 'Intake', 'is_initial' => true, 'sort_order' => 0]);
-        $done = $version->stages()->create(['code' => 'done', 'name' => 'Done', 'is_final' => true, 'sort_order' => 1]);
+        $done = $version->stages()->create([
+            'code' => 'done',
+            'name' => 'Done',
+            'is_final' => true,
+            'final_outcome' => FinalOutcome::COMPLETED,
+            'sort_order' => 1,
+        ]);
         $intake->stagePermissions()->create([
             'organization_id' => $org->id,
             'role_id' => $role->id,

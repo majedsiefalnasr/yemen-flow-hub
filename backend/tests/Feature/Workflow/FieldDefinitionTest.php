@@ -7,6 +7,7 @@ use App\Enums\UserRole;
 use App\Enums\WorkflowVersionState;
 use App\Models\Bank;
 use App\Models\Merchant;
+use App\Models\Organization;
 use App\Models\ReferenceTable;
 use App\Models\ReferenceValue;
 use App\Models\User;
@@ -169,9 +170,19 @@ class FieldDefinitionTest extends TestCase
 
     public function test_dynamic_select_options_resolve_from_merchants(): void
     {
+        // DynamicFieldOptionsResolver scopes MERCHANTS by DataScope::forUser(), which
+        // only grants system-wide visibility to NATIONAL_COMMITTEE-classified
+        // organizations. CBY_ADMIN's seeded org is system_administration (OTHER),
+        // so it sees nothing by default; attach the admin to national_committee here
+        // so the designer preview endpoint can resolve options. This does not affect
+        // the admin's workflow_designer capability, which is role-based, not org-based.
+        $this->admin->forceFill([
+            'organization_id' => Organization::query()->where('code', 'national_committee')->firstOrFail()->id,
+        ])->save();
+
         $bank = Bank::query()->firstOrFail();
-        Merchant::query()->create(['name' => 'تاجر أ', 'bank_id' => $bank->id, 'tax_number' => '100']);
-        Merchant::query()->create(['name' => 'تاجر ب', 'bank_id' => $bank->id, 'tax_number' => '200']);
+        Merchant::query()->create(['name' => 'تاجر أ', 'bank_id' => $bank->id, 'tax_number' => '100', 'status' => 'ACTIVE']);
+        Merchant::query()->create(['name' => 'تاجر ب', 'bank_id' => $bank->id, 'tax_number' => '200', 'status' => 'ACTIVE']);
 
         $field = $this->draft->fieldDefinitions()->create([
             'field_group_id' => $this->groupId,

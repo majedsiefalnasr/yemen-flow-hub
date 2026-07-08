@@ -4,8 +4,6 @@ namespace Tests\Feature\Workflow;
 
 use App\Enums\UserRole;
 use App\Enums\WorkflowVersionState;
-use App\Models\Organization;
-use App\Models\StagePermission;
 use App\Models\User;
 use App\Models\WorkflowAction;
 use App\Models\WorkflowDefinition;
@@ -97,22 +95,19 @@ class WorkflowGraphTest extends TestCase
         $this->assertTrue($return['requires_comment']);
     }
 
-    public function test_node_display_label_comes_from_stage_permissions(): void
+    public function test_node_display_label_comes_from_stage_name(): void
     {
-        StagePermission::query()->create([
-            'stage_id' => $this->intake->id,
-            'organization_id' => Organization::query()->value('id'),
-            'access_level' => 'VIEW',
-            'display_label' => 'موظفو الإدخال',
-        ]);
-
+        // WorkflowGraphService::build() resolves display_label from the stage's own
+        // `name` when it is non-empty; the first StagePermission.display_label is
+        // only a fallback for stages with no name. The intake stage here has a name
+        // ("Intake"), so that wins regardless of any StagePermission row.
         $nodes = collect(
             $this->actingAs($this->admin)
                 ->getJson("/api/v1/workflow-versions/{$this->version->id}/graph")
                 ->json('data.nodes'),
         );
 
-        $this->assertSame('موظفو الإدخال', $nodes->firstWhere('code', 'intake')['display_label']);
+        $this->assertSame('Intake', $nodes->firstWhere('code', 'intake')['display_label']);
     }
 
     public function test_non_admin_cannot_view_graph(): void

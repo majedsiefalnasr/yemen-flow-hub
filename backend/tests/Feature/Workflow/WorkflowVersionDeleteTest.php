@@ -49,9 +49,11 @@ class WorkflowVersionDeleteTest extends TestCase
 
     public function test_delete_version_with_requests_is_rejected(): void
     {
+        // ARCHIVED (not PUBLISHED) so this isolates the request-in-use guard from
+        // the separate PUBLISHED_NOT_DELETABLE guard, which runs first in the service.
         $version = $this->definition->versions()->create([
             'version_number' => 1,
-            'state' => WorkflowVersionState::PUBLISHED,
+            'state' => WorkflowVersionState::ARCHIVED,
         ]);
         $stage = $version->stages()->create(['code' => 'intake', 'name' => 'Intake']);
         EngineRequest::query()->create([
@@ -83,7 +85,7 @@ class WorkflowVersionDeleteTest extends TestCase
         $this->assertDatabaseHas('workflow_versions', ['id' => $version->id]);
     }
 
-    public function test_delete_published_version_with_no_requests_is_allowed(): void
+    public function test_delete_published_version_with_no_requests_is_rejected(): void
     {
         $version = $this->definition->versions()->create([
             'version_number' => 1,
@@ -92,8 +94,9 @@ class WorkflowVersionDeleteTest extends TestCase
 
         $this->actingAs($this->admin)
             ->deleteJson("/api/v1/workflow-versions/{$version->id}")
-            ->assertNoContent();
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'PUBLISHED_NOT_DELETABLE');
 
-        $this->assertDatabaseMissing('workflow_versions', ['id' => $version->id]);
+        $this->assertDatabaseHas('workflow_versions', ['id' => $version->id]);
     }
 }

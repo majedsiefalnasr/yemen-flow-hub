@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Workflow;
 
+use App\Enums\FinalOutcome;
 use App\Enums\UserRole;
 use App\Enums\WorkflowVersionState;
 use App\Models\User;
@@ -155,6 +156,7 @@ class WorkflowStageTest extends TestCase
                 'name' => 'Weird',
                 'is_initial' => true,
                 'is_final' => true,
+                'final_outcome' => FinalOutcome::COMPLETED->value,
             ])->assertUnprocessable()
             ->assertJsonValidationErrors('is_final');
     }
@@ -170,6 +172,7 @@ class WorkflowStageTest extends TestCase
         $this->actingAs($this->admin)
             ->putJson("/api/v1/workflow-versions/{$this->draft->id}/stages/{$stage->id}", [
                 'is_final' => true,
+                'final_outcome' => FinalOutcome::COMPLETED->value,
                 'version' => 1,
             ])->assertUnprocessable()
             ->assertJsonValidationErrors('is_final');

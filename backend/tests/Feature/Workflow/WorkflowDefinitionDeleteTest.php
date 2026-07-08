@@ -33,17 +33,32 @@ class WorkflowDefinitionDeleteTest extends TestCase
     public function test_delete_definition_with_no_requests_across_any_version(): void
     {
         $definition = WorkflowDefinition::query()->create(['code' => 'def-del', 'name' => 'Definition Delete']);
-        $v1 = $definition->versions()->create(['version_number' => 1, 'state' => WorkflowVersionState::ARCHIVED]);
-        $v1->stages()->create(['code' => 'intake', 'name' => 'Intake']);
+        $definition->versions()->create(['version_number' => 1, 'state' => WorkflowVersionState::DRAFT]);
         $definition->versions()->create(['version_number' => 2, 'state' => WorkflowVersionState::DRAFT]);
 
         $this->actingAs($this->admin)
             ->deleteJson("/api/v1/workflow-definitions/{$definition->id}")
             ->assertNoContent();
 
-        $this->assertDatabaseMissing('workflow_definitions', ['id' => $definition->id]);
-        $this->assertDatabaseMissing('workflow_versions', ['workflow_definition_id' => $definition->id]);
-        $this->assertDatabaseMissing('workflow_stages', ['code' => 'intake']);
+        // WorkflowDefinition uses SoftDeletes (no-hard-delete retention); the row
+        // remains in the table with deleted_at set rather than being removed.
+        $this->assertSoftDeleted('workflow_definitions', ['id' => $definition->id]);
+    }
+
+    public function test_delete_definition_with_a_published_or_archived_version_is_rejected(): void
+    {
+        $definition = WorkflowDefinition::query()->create(['code' => 'def-del-archived', 'name' => 'Definition Delete Archived']);
+        $v1 = $definition->versions()->create(['version_number' => 1, 'state' => WorkflowVersionState::ARCHIVED]);
+        $v1->stages()->create(['code' => 'intake', 'name' => 'Intake']);
+        $definition->versions()->create(['version_number' => 2, 'state' => WorkflowVersionState::DRAFT]);
+
+        $this->actingAs($this->admin)
+            ->deleteJson("/api/v1/workflow-definitions/{$definition->id}")
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'DEFINITION_HAS_PUBLISHED_VERSIONS');
+
+        $this->assertDatabaseHas('workflow_definitions', ['id' => $definition->id]);
+        $this->assertDatabaseHas('workflow_stages', ['code' => 'intake']);
     }
 
     public function test_delete_definition_with_a_request_on_any_version_is_rejected(): void
