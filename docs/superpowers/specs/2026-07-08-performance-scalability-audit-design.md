@@ -1,7 +1,7 @@
 # Performance & Scalability Audit — Design
 
 **Date:** 2026-07-08
-**Status:** Approved design, pending implementation plan
+**Status:** Approved design — ready for implementation planning
 **Type:** Read-only technical audit (no application changes)
 
 ## 1. Purpose
@@ -49,6 +49,17 @@ During the audit:
 - Local timings are comparative context only. Query shape, examined rows, index usage, filesort/temporary-table behavior, and join strategy are the primary dynamic evidence, not raw execution time.
 - Both the application-generated SQL (from Eloquent/query builder) and its query plan are captured, so each finding links plan evidence to the actual implementation that produces the query.
 
+### Repository audit baseline
+
+Recorded in `00-scope-and-method.md` and mirrored in `evidence/environment.md` at audit start:
+
+- Repository branch and starting commit SHA
+- Audit start date and time
+- Initial `git status` output and relevant pre-existing dirty files
+- Backend and frontend dependency lockfile hashes where practical (`composer.lock`, `pnpm-lock.yaml`)
+
+All `file:line` evidence refers to this baseline commit unless a later block explicitly records a different SHA. Line numbers alone are not durable evidence if the branch changes during the audit.
+
 ### Environment capture
 
 `docs/audit/evidence/environment.md` records the exact local environment used for dynamic evidence: MySQL version, PHP version, Laravel environment/config relevant to queries, dataset size and distribution summary, available CPU and memory, and relevant database configuration (buffer pool size, etc.).
@@ -65,11 +76,24 @@ The seeded dataset models realistic distributions, not uniform random rows:
 
 Dataset profile documented in `docs/audit/evidence/dataset-profile.md`.
 
+### Synthetic-volume fallback
+
+Goal: at least one million rows in the hot tables. Controlled fallback:
+
+- Seed progressively (e.g., 100k → 500k → 1M+ rows).
+- Use 1M+ where the local environment supports it safely.
+- If local hardware prevents the intended volume, record the maximum achieved dataset, the limiting resource, and how that weakens the evidence.
+- Never present results from a smaller dataset as proof of design-target performance.
+
 ### EXPLAIN safety protocol
 
 - `EXPLAIN ANALYZE` only for safe read queries.
 - Write, locking, or destructive operations: disposable local database, transaction safeguards (wrap + rollback), plain `EXPLAIN`, or safe local reproduction and transaction inspection instead.
 - Never force `EXPLAIN ANALYZE` onto behavior-changing statements.
+
+### Evidence sanitization
+
+Committed SQL and plans must contain no secrets, tokens, credentials, real personal data, or sensitive business values. Application-generated SQL is stored with placeholders by preference; bindings may be recorded separately only when they are synthetic and useful for reproducing the plan.
 
 ### EXPLAIN scope (bounded)
 
@@ -91,11 +115,11 @@ Full request lifecycle: Nuxt composable → API route → middleware → control
 
 ### Block 2 — API & Laravel backend audit (Phases 2 + 5)
 
-Owns **backend endpoint behavior, Laravel execution, serialization, and response construction**. All routes in `backend/routes/api.php`: unbounded `get()`/`all()`, pagination strategy per list endpoint (offset vs simple vs cursor/keyset with justification), N+1, over-fetching of columns/relations, API-resource-triggered queries, repeated queries, expensive authorization, sync work that should queue, rate limits, response-shape consistency, HTTP status correctness. Laravel specifics: accessors/appends, global scopes, observers, events, middleware cost, Sanctum overhead, validation, config/route caching, Octane suitability assessment.
+Owns **backend endpoint behavior, Laravel execution, serialization, and response construction**. All registered API routes — beginning with `backend/routes/api.php` and including every route file imported or registered from it, verified against `php artisan route:list` output so split route groups cannot be silently excluded: unbounded `get()`/`all()`, pagination strategy per list endpoint (offset vs simple vs cursor/keyset with justification), N+1, over-fetching of columns/relations, API-resource-triggered queries, repeated queries, expensive authorization, sync work that should queue, rate limits, response-shape consistency, HTTP status correctness. Laravel specifics: accessors/appends, global scopes, observers, events, middleware cost, Sanctum overhead, validation, config/route caching, Octane suitability assessment.
 
 ### Block 3 — Database audit + seeded EXPLAIN (Phases 3 + 4)
 
-All 131 migrations consolidated into a schema model (tables, types, keys, indexes, JSON columns, pivot/audit/history tables, soft deletes). Index inventory cross-checked against actual query patterns collected in Blocks 1–2. Local audit database seeded to design-target volume with the realistic distribution profile; SQL + plans captured for the bounded hot-query set (queue lists, filters, dashboards, history/audit reads, counts, locking paths in `EngineTransitionService`). Growth-forever tables, archival/retention needs, locking/deadlock/contention risks, connection exhaustion. Every index proposal includes table, columns, order, benefiting query/endpoint, expected benefit, write-cost trade-off, and suggested migration + rollback.
+All 131 migrations consolidated into a schema model (tables, types, keys, indexes, JSON columns, pivot/audit/history tables, soft deletes). Index inventory cross-checked against actual query patterns collected in Blocks 1–2. Local audit database seeded to design-target volume with the realistic distribution profile; SQL + plans captured for the bounded hot-query set (queue lists, filters, dashboards, history/audit reads, counts). Locking paths (e.g., `EngineTransitionService`) follow the safety protocol: safe read components may receive `EXPLAIN` or `EXPLAIN ANALYZE`; locking and write paths are assessed through transaction-boundary inspection, generated-SQL review, lock-order analysis, and safe concurrent reproduction against the disposable audit database; no behavior-changing statement receives `EXPLAIN ANALYZE`. Growth-forever tables, archival/retention needs, locking/deadlock/contention risks, connection exhaustion. Every index proposal includes table, columns, order, benefiting query/endpoint, expected benefit, write-cost trade-off, and suggested migration + rollback.
 
 ### Block 4 — Frontend consumption + caching + queues (Phases 6 + 7 + 8)
 
@@ -136,6 +160,8 @@ Each checkpoint summary contains:
 
 Approval covers both the findings and the next block's priorities.
 
+Approvals are recorded in a compact checkpoint history inside `00-scope-and-method.md`, one entry per block: block number, approval date, approved commit SHA, important decisions or scope changes, and any findings intentionally deferred.
+
 ## 8. Deliverable Layout
 
 ```text
@@ -153,15 +179,22 @@ docs/audit/
 └── evidence/
     ├── environment.md            ← exact local environment for dynamic evidence
     ├── dataset-profile.md        ← synthetic data volumes and distributions
-    ├── queries/                  ← captured application SQL, one file per finding (DB-001.sql …)
-    └── explain/                  ← captured plans, one file per finding
+    ├── queries/                  ← captured application SQL, prefixed by finding ID
+    └── explain/                  ← captured plans, prefixed by finding ID
 ```
 
-Raw evidence stays out of narrative documents; each finding links to its captured SQL and plan files.
+Raw evidence stays out of narrative documents; each finding links to its captured SQL and plan files. A finding may have multiple evidence files when it covers multiple authorization scopes, filters, or before/after plans, named with the finding ID plus a descriptive suffix, e.g.:
+
+```text
+evidence/queries/DB-001-bank-queue.sql
+evidence/queries/DB-001-admin-queue.sql
+evidence/explain/DB-001-bank-queue-before.txt
+evidence/explain/DB-001-bank-queue-after.txt
+```
 
 ### `00-scope-and-method.md` — decision & assumption register
 
-Contains: locked audit decisions, scale assumptions (design target + initial business scale), known evidence limitations, deferred questions, approved deviations from the original audit prompt, and the infrastructure trigger rules. Prevents findings from being read without calibration context. `README.md` stays navigation + status + executive summary only.
+Contains: locked audit decisions, scale assumptions (design target + initial business scale), known evidence limitations, deferred questions, approved deviations from the original audit prompt, the infrastructure trigger rules, the repository audit baseline (branch, starting SHA, start timestamp, initial `git status`, lockfile hashes), and the checkpoint approval history. Prevents findings from being read without calibration context. `README.md` stays navigation + status + executive summary only.
 
 ## 9. Finding Schema
 
@@ -184,14 +217,22 @@ Every finding carries:
 
 Lifecycle rules: later evidence updates a finding in place under its stable ID (severity/status change), never duplicates it. Invalidated findings are marked **Superseded** with a short explanation, never silently removed.
 
+**`Accepted`** means the finding and its roadmap disposition were approved during a checkpoint. It does **not** mean the underlying problem has been fixed, nor that the risk was waived. Implementation status remains outside this audit.
+
 ## 10. Commit Conventions
 
 - Signed conventional commits, one per approved block, from the repository root.
-- **Scope decision pending:** the preferred scope `docs(audit)` is not in the AGENTS.md allowed-scope list (`auth, backend, docs, frontend, repo, settings, testing, ui, workflow`). The root repo currently has no commit-msg hook, but AGENTS.md is normative. Options:
-  - **(a)** Approve adding `audit` to the allowed scopes (one-line AGENTS.md edit + `scope-enum` additions in `backend/commitlint.config.cjs` and `frontend/commitlint.config.cjs` for consistency) — a deliberate, approved deviation from the audit's no-config-change rule, recorded in the register.
-  - **(b)** Use `docs(docs)` for all audit commits with no config change.
-  - Default if undecided: **(b)**.
-- Message pattern per block, e.g. `docs(<scope>): document architecture and request lifecycle`, `…: record API and Laravel audit findings`, `…: add database plans and query evidence`, `…: document frontend caching and queue findings`, `…: add security observability and load-test plans`, `…: compile final roadmap and executive summary`.
+- **Scope decision (resolved):** all audit commits use `docs(docs)`. The preferred `docs(audit)` scope is not in the AGENTS.md allowed-scope list, and adding it (AGENTS.md + both commitlint configs) was rejected as an unnecessary exception to the audit's read-only rule for only six documentation commits.
+- Block commit messages:
+
+  ```text
+  docs(docs): document architecture and request lifecycle
+  docs(docs): record API and Laravel audit findings
+  docs(docs): add database plans and query evidence
+  docs(docs): document frontend caching and queue findings
+  docs(docs): add security observability and load-test plans
+  docs(docs): compile final roadmap and executive summary
+  ```
 
 ## 11. Out of Scope
 
