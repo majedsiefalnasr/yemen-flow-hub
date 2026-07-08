@@ -5,7 +5,6 @@ namespace Tests\Feature\Engine;
 use App\Enums\DocumentScanStatus;
 use App\Enums\DocumentStatus;
 use App\Enums\StageAccessLevel;
-use App\Enums\UserRole;
 use App\Models\Bank;
 use App\Models\EngineRequest;
 use App\Models\EngineRequestDocument;
@@ -22,6 +21,7 @@ use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -222,6 +222,10 @@ class EngineDocumentTest extends TestCase
 
     public function test_upload_sets_scan_status_pending_when_enforcement_enabled(): void
     {
+        // Prevent ScanEngineRequestDocument from running synchronously (sync
+        // queue driver in tests) and immediately flipping status to Clean —
+        // this test asserts the pre-scan state.
+        Queue::fake();
         Config::set('workflow.document_scan_enforced', true);
         $request = $this->makeRequest();
         $docId = $this->uploadDoc($request, 'scan_pending.pdf');
@@ -234,6 +238,7 @@ class EngineDocumentTest extends TestCase
 
     public function test_download_blocked_when_scan_pending_and_enforcement_enabled(): void
     {
+        Queue::fake();
         Config::set('workflow.document_scan_enforced', true);
         $request = $this->makeRequest();
         $docId = $this->uploadDoc($request, 'pending_scan.pdf');
