@@ -35,7 +35,7 @@ class SeederCatalogIntegrityTest extends TestCase
         foreach ($values as $ref) {
             $this->assertTrue(
                 SeederCatalog::isValidReference($ref),
-                "Anchor ref '$ref' does not match pattern ^ENG-2026-(YBRD|CAC)-[AB]\d{3}$"
+                "Anchor ref '$ref' does not match pattern ^ENG-2026-(YBRD|TIIB)-[AB]\d{3}$"
             );
         }
     }
@@ -130,10 +130,10 @@ class SeederCatalogIntegrityTest extends TestCase
         $anchors = require $baseDir . '/database/seeders/catalog/anchor-catalog.php';
         
         $ybrdCount = count(array_filter($anchors, fn ($s) => $s['bank'] === 'YBRD'));
-        $cacCount = count(array_filter($anchors, fn ($s) => $s['bank'] === 'CAC'));
+        $tiibCount = count(array_filter($anchors, fn ($s) => $s['bank'] === 'TIIB'));
         
         $this->assertEquals(28, $ybrdCount, 'Must have 28 YBRD anchors');
-        $this->assertEquals(28, $cacCount, 'Must have 28 CAC anchors');
+        $this->assertEquals(28, $tiibCount, 'Must have 28 TIIB anchors');
     }
 
     /**
@@ -180,9 +180,9 @@ class SeederCatalogIntegrityTest extends TestCase
     public function test_reference_builders(): void
     {
         $this->assertEquals('ENG-2026-YBRD-A001', SeederCatalog::anchorRef('YBRD', 1));
-        $this->assertEquals('ENG-2026-CAC-A028', SeederCatalog::anchorRef('CAC', 28));
+        $this->assertEquals('ENG-2026-TIIB-A028', SeederCatalog::anchorRef('TIIB', 28));
         $this->assertEquals('ENG-2026-YBRD-B001', SeederCatalog::bulkRef('YBRD', 1));
-        $this->assertEquals('ENG-2026-CAC-B125', SeederCatalog::bulkRef('CAC', 125));
+        $this->assertEquals('ENG-2026-TIIB-B125', SeederCatalog::bulkRef('TIIB', 125));
     }
 
     /**
@@ -192,7 +192,7 @@ class SeederCatalogIntegrityTest extends TestCase
     {
         // Valid
         $this->assertTrue(SeederCatalog::isValidReference('ENG-2026-YBRD-A001'));
-        $this->assertTrue(SeederCatalog::isValidReference('ENG-2026-CAC-B125'));
+        $this->assertTrue(SeederCatalog::isValidReference('ENG-2026-TIIB-B125'));
         
         // Invalid
         $this->assertFalse(SeederCatalog::isValidReference('ENG-2026-YBRD-C001')); // wrong kind

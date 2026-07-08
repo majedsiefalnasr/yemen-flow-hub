@@ -5,8 +5,8 @@ namespace Database\Seeders\Catalog;
 /**
  * Central constants for engine demo seeder catalogs.
  *
- * Anchors: 56 fixed references (28 YBRD + 28 CAC).
- * Bulk: 250 requests (125 YBRD + 125 CAC).
+ * Anchors: 56 fixed references (28 YBRD + 28 TIIB).
+ * Bulk: 250 requests (125 YBRD + 125 TIIB).
  * Total: 306 engine requests.
  */
 class SeederCatalog
@@ -24,7 +24,7 @@ class SeederCatalog
     
     // A016 — completed state (base Lovable sample)
     public const ANCHOR_FX_CONFIRM_COMPLETED_PRIMARY = 'ENG-2026-YBRD-A016';
-    public const ANCHOR_FX_CONFIRM_COMPLETED_SECONDARY = 'ENG-2026-CAC-A016';
+    public const ANCHOR_FX_CONFIRM_COMPLETED_SECONDARY = 'ENG-2026-TIIB-A016';
 
     // A017 — FX_CONFIRM active (base Lovable sample for panel tests)
     public const ANCHOR_FX_CONFIRM_PANEL = 'ENG-2026-YBRD-A017';
@@ -46,7 +46,7 @@ class SeederCatalog
 
     // A023 — duplicate invoice pair
     public const ANCHOR_DUPLICATE_YBRD = 'ENG-2026-YBRD-A023';
-    public const ANCHOR_DUPLICATE_CAC = 'ENG-2026-CAC-A023';
+    public const ANCHOR_DUPLICATE_TIIB = 'ENG-2026-TIIB-A023';
 
     // A024 — document scan pending
     public const ANCHOR_SCAN_PENDING = 'ENG-2026-YBRD-A024';
@@ -66,7 +66,7 @@ class SeederCatalog
     /**
      * Reference builder helper for anchor specs.
      *
-     * @param string $bank 'YBRD' | 'CAC'
+     * @param string $bank 'YBRD' | 'TIIB'
      * @param int $seq 1–28
      * @return string e.g. 'ENG-2026-YBRD-A001'
      */
@@ -78,7 +78,7 @@ class SeederCatalog
     /**
      * Reference builder helper for bulk specs.
      *
-     * @param string $bank 'YBRD' | 'CAC'
+     * @param string $bank 'YBRD' | 'TIIB'
      * @param int $seq 1–125 per bank
      * @return string e.g. 'ENG-2026-YBRD-B001'
      */
@@ -90,10 +90,10 @@ class SeederCatalog
     /**
      * Validate reference format.
      *
-     * @return bool true if matches ^ENG-2026-(YBRD|CAC)-[AB][0-9]{3}$
+     * @return bool true if matches ^ENG-2026-(YBRD|TIIB)-[AB][0-9]{3}$
      */
     public static function isValidReference(string $ref): bool
     {
-        return preg_match('/^ENG-2026-(YBRD|CAC)-[AB]\d{3}$/', $ref) === 1;
+        return preg_match('/^ENG-2026-(YBRD|TIIB)-[AB]\d{3}$/', $ref) === 1;
     }
 }

@@ -6,7 +6,7 @@
  * Each row: [scenario_key, count, days_ago_min, days_ago_max]
  * Sum of counts must equal exactly 250.
  *
- * Split evenly: 125 YBRD + 125 CAC.
+ * Split evenly: 125 YBRD + 125 TIIB.
  * Date ranges control age spread for dashboard analytics.
  */
 return [

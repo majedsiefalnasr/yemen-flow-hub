@@ -13,8 +13,8 @@
 ## Global Constraints
 
 - Anchors: **56**; bulk: **250**; full total: **306**; minimal mode: **56** anchors only.
-- Reference format: `ENG-2026-{YBRD|CAC}-{A|B}{SEQ}`; year **fixed 2026** (`SeederCatalog::DEMO_YEAR`).
-- Normal invoices: `INV-YBRD-*` / `INV-CAC-*`; only `A023` pair shares normalized invoice intentionally.
+- Reference format: `ENG-2026-{YBRD|TIIB}-{A|B}{SEQ}`; year **fixed 2026** (`SeederCatalog::DEMO_YEAR`).
+- Normal invoices: `INV-YBRD-*` / `INV-TIIB-*`; only `A023` pair shares normalized invoice intentionally.
 - No legacy `import_requests`, no voting-session data.
 - **No** transition-built `CANCELLED`/`ABANDONED` anchors on v1; A027=`claim_released`, A028=`document_replaced`.
 - `final_outcome` on `workflow_stages` only — Task 0 must verify terminal model before transition-built completed/rejected fixtures.
@@ -165,7 +165,7 @@ Run: `php artisan test tests/Unit/Seeders/DemoSeedGuardTest.php`
 
 - [ ] **Step 1: SeederCatalogIntegrityTest (failing)**
 
-Assert unique constants, regex `^ENG-2026-(YBRD|CAC)-[AB][0-9]{3}$`, bulk sum 250, anchor count 56.
+Assert unique constants, regex `^ENG-2026-(YBRD|TIIB)-[AB][0-9]{3}$`, bulk sum 250, anchor count 56.
 
 - [ ] **Step 2: Implement catalogs**
 

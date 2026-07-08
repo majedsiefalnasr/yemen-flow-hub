@@ -197,7 +197,7 @@ ENG-{YYYY}-{BANK}-{KIND}{SEQ}
 | Part | Rule |
 | --- | --- |
 | `YYYY` | **Fixed `2026`** — demo catalog version; never derived from current date (`SeederCatalog::DEMO_YEAR`) |
-| `BANK` | `YBRD`, `CAC` |
+| `BANK` | `YBRD`, `TIIB` |
 | `KIND` | `A` = anchor, `B` = bulk |
 | `SEQ` | `001`–`999` zero-padded |
 
@@ -235,14 +235,14 @@ Bulk row **timestamps** may be relative to seeding date; **anchor references nev
 
 Base Lovable rows already include **`completed`** (`CLOSED`/`CLOSED`/`COMPLETED`) and **`rejected`** (`CLOSED`/`REJECTED`/`REJECTED`) per bank. **`scan_clean`** is covered by default commercial-invoice document on `ENG-2026-{BANK}-A001` (and bulk rows).
 
-**Cross-bank duplicate pair:** `ENG-2026-YBRD-A023` and `ENG-2026-CAC-A023` share `invoice_number` / `invoice_number_normalized` intentionally.
+**Cross-bank duplicate pair:** `ENG-2026-YBRD-A023` and `ENG-2026-TIIB-A023` share `invoice_number` / `invoice_number_normalized` intentionally.
 
 ### Bank-specific invoice transformation (normal samples only)
 
 | Bank | `invoice_number` pattern | Example |
 | --- | --- | --- |
 | YBRD | `INV-YBRD-{nnnnn}` | `INV-YBRD-10000` (from Lovable index 0) |
-| CAC | `INV-CAC-{nnnnn}` | `INV-CAC-10000` |
+| TIIB | `INV-TIIB-{nnnnn}` | `INV-TIIB-10000` |
 
 Only `duplicate_invoice` anchors share a normalized key (e.g. `INV-DUP-SEED-001`). All other anchors must not trigger `DuplicateInvoiceChecker` warnings.
 
@@ -254,10 +254,10 @@ Only `duplicate_invoice` anchors share a normalized key (e.g. `INV-DUP-SEED-001`
 | `ANCHOR_SUPPORT_CLAIM_ACTIVE` | `ENG-2026-YBRD-A021` |
 | `ANCHOR_FX_CONFIRM_PANEL` | `ENG-2026-YBRD-A017` (base Lovable FX_CONFIRM sample) |
 | `ANCHOR_FX_CONFIRM_COMPLETED_PRIMARY` | `ENG-2026-YBRD-A016` (base CLOSED/COMPLETED) |
-| `ANCHOR_FX_CONFIRM_COMPLETED_SECONDARY` | `ENG-2026-CAC-A016` |
+| `ANCHOR_FX_CONFIRM_COMPLETED_SECONDARY` | `ENG-2026-TIIB-A016` |
 | `ANCHOR_REJECTED_NOTIFICATION` | `ENG-2026-YBRD-A017` base rejected row |
 | `ANCHOR_SCAN_PENDING` | `ENG-2026-YBRD-A024` |
-| `ANCHOR_DUPLICATE_YBRD` / `ANCHOR_DUPLICATE_CAC` | `A023` pair |
+| `ANCHOR_DUPLICATE_YBRD` / `ANCHOR_DUPLICATE_TIIB` | `A023` pair |
 
 Terminology: **External FX Confirmation** document/deliverable — not “customs” in user-facing seed docs.
 
@@ -464,7 +464,7 @@ Idempotent upsert on rerun. No duplicate auxiliary rows.
 
 Seeded dataset must exercise:
 
-- Both `commercial_banks` orgs (`YBRD`, `CAC`) have requests.
+- Both `commercial_banks` orgs (`YBRD`, `TIIB`) have requests.
 - Bank users see only their bank’s requests.
 - `NATIONAL_COMMITTEE` users see system-wide only via capabilities — add demo users proving positive and negative cases.
 - `OTHER`/null-org users without capabilities: no broad visibility.
@@ -551,7 +551,7 @@ Failures print a **structured diff** (missing/extra/changed keys).
 ## Seed catalog integrity test (`SeederCatalogIntegrityTest`)
 
 - All anchor constants unique.
-- References match regex `^ENG-2026-(YBRD|CAC)-[AB][0-9]{3}$`.
+- References match regex `^ENG-2026-(YBRD|TIIB)-[AB][0-9]{3}$`.
 - Auxiliary hooks resolve to existing requests.
 - Bank code in reference matches request `bank_id`.
 - No duplicate seq per bank/kind namespace.

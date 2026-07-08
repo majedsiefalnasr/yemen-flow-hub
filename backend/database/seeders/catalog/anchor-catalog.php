@@ -1,14 +1,14 @@
 <?php
 
 /**
- * Anchor catalog: 56 fixed request specifications (28 YBRD + 28 CAC).
+ * Anchor catalog: 56 fixed request specifications (28 YBRD + 28 TIIB).
  *
- * A001–A017: Base Lovable SAMPLE_REQUESTS × 2 banks, mapped to INV-YBRD-* / INV-CAC-* invoices
+ * A001–A017: Base Lovable SAMPLE_REQUESTS × 2 banks, mapped to INV-YBRD-* / INV-TIIB-* invoices
  * A018–A028: Edge scenarios per spec (returned_to_entry, claim_active, scan_pending, etc.)
  *
  * Each spec includes:
  *  - reference: ENG-2026-{BANK}-{A###}
- *  - bank: 'YBRD' | 'CAC'
+ *  - bank: 'YBRD' | 'TIIB'
  *  - scenario_key: identifies the active state / history path
  *  - current_stage: active stage code (CREATE, INTERNAL, SUPPORT, EXEC, FX, FX_CONFIRM, FINAL, CLOSED_*)
  *  - runtime_status: ACTIVE | CLOSED | REJECTED
@@ -654,10 +654,10 @@ return [
         'document_replaced' => true,
     ],
 
-    // ── CAC Base (A001–A017 from Lovable) ──
+    // ── TIIB Base (A001–A017 from Lovable) ──
     [
-        'reference' => 'ENG-2026-CAC-A001',
-        'bank' => 'CAC',
+        'reference' => 'ENG-2026-TIIB-A001',
+        'bank' => 'TIIB',
         'scenario_key' => 'lovable_sample_create',
         'current_stage' => 'CREATE',
         'runtime_status' => 'ACTIVE',
@@ -666,7 +666,7 @@ return [
         ],
         'sample' => [
             'amount' => 120000,
-            'invoice_number' => 'INV-CAC-10000',
+            'invoice_number' => 'INV-TIIB-10000',
             'request_percentage' => 100,
             'import_type' => 'مواد غذائية',
             'importer_name' => 'شركة هائل سعيد أنعم',
@@ -675,8 +675,8 @@ return [
         ],
     ],
     [
-        'reference' => 'ENG-2026-CAC-A002',
-        'bank' => 'CAC',
+        'reference' => 'ENG-2026-TIIB-A002',
+        'bank' => 'TIIB',
         'scenario_key' => 'lovable_sample_internal',
         'current_stage' => 'INTERNAL',
         'runtime_status' => 'ACTIVE',
@@ -686,7 +686,7 @@ return [
         ],
         'sample' => [
             'amount' => 340000,
-            'invoice_number' => 'INV-CAC-10011',
+            'invoice_number' => 'INV-TIIB-10011',
             'request_percentage' => 100,
             'import_type' => 'قطع غيار',
             'importer_name' => 'مجموعة الشيباني',
@@ -695,8 +695,8 @@ return [
         ],
     ],
     [
-        'reference' => 'ENG-2026-CAC-A003',
-        'bank' => 'CAC',
+        'reference' => 'ENG-2026-TIIB-A003',
+        'bank' => 'TIIB',
         'scenario_key' => 'lovable_sample_support',
         'current_stage' => 'SUPPORT',
         'runtime_status' => 'ACTIVE',
@@ -707,7 +707,7 @@ return [
         ],
         'sample' => [
             'amount' => 510000,
-            'invoice_number' => 'INV-CAC-10022',
+            'invoice_number' => 'INV-TIIB-10022',
             'request_percentage' => 100,
             'import_type' => 'أدوية ومستلزمات طبية',
             'importer_name' => 'شركة ثابت إخوان',
@@ -716,8 +716,8 @@ return [
         ],
     ],
     [
-        'reference' => 'ENG-2026-CAC-A004',
-        'bank' => 'CAC',
+        'reference' => 'ENG-2026-TIIB-A004',
+        'bank' => 'TIIB',
         'scenario_key' => 'lovable_sample_support',
         'current_stage' => 'SUPPORT',
         'runtime_status' => 'ACTIVE',
@@ -728,7 +728,7 @@ return [
         ],
         'sample' => [
             'amount' => 89000,
-            'invoice_number' => 'INV-CAC-10033',
+            'invoice_number' => 'INV-TIIB-10033',
             'request_percentage' => 100,
             'import_type' => 'أدوية ومستلزمات طبية',
             'importer_name' => 'شركة الكميم للأدوية',
@@ -737,8 +737,8 @@ return [
         ],
     ],
     [
-        'reference' => 'ENG-2026-CAC-A005',
-        'bank' => 'CAC',
+        'reference' => 'ENG-2026-TIIB-A005',
+        'bank' => 'TIIB',
         'scenario_key' => 'lovable_sample_exec',
         'current_stage' => 'EXEC',
         'runtime_status' => 'ACTIVE',
@@ -750,7 +750,7 @@ return [
         ],
         'sample' => [
             'amount' => 720000,
-            'invoice_number' => 'INV-CAC-10044',
+            'invoice_number' => 'INV-TIIB-10044',
             'request_percentage' => 100,
             'import_type' => 'مشتقات نفطية',
             'importer_name' => 'مجموعة الأهدل',
@@ -759,8 +759,8 @@ return [
         ],
     ],
     [
-        'reference' => 'ENG-2026-CAC-A006',
-        'bank' => 'CAC',
+        'reference' => 'ENG-2026-TIIB-A006',
+        'bank' => 'TIIB',
         'scenario_key' => 'lovable_sample_exec',
         'current_stage' => 'EXEC',
         'runtime_status' => 'ACTIVE',
@@ -772,7 +772,7 @@ return [
         ],
         'sample' => [
             'amount' => 145000,
-            'invoice_number' => 'INV-CAC-10055',
+            'invoice_number' => 'INV-TIIB-10055',
             'request_percentage' => 100,
             'import_type' => 'إلكترونيات',
             'importer_name' => 'شركة هائل سعيد أنعم',
@@ -781,8 +781,8 @@ return [
         ],
     ],
     [
-        'reference' => 'ENG-2026-CAC-A007',
-        'bank' => 'CAC',
+        'reference' => 'ENG-2026-TIIB-A007',
+        'bank' => 'TIIB',
         'scenario_key' => 'lovable_sample_fx',
         'current_stage' => 'FX',
         'runtime_status' => 'ACTIVE',
@@ -795,7 +795,7 @@ return [
         ],
         'sample' => [
             'amount' => 980000,
-            'invoice_number' => 'INV-CAC-10066',
+            'invoice_number' => 'INV-TIIB-10066',
             'request_percentage' => 100,
             'import_type' => 'مواد غذائية',
             'importer_name' => 'مجموعة الشيباني',
@@ -804,8 +804,8 @@ return [
         ],
     ],
     [
-        'reference' => 'ENG-2026-CAC-A008',
-        'bank' => 'CAC',
+        'reference' => 'ENG-2026-TIIB-A008',
+        'bank' => 'TIIB',
         'scenario_key' => 'lovable_sample_fx',
         'current_stage' => 'FX',
         'runtime_status' => 'ACTIVE',
@@ -818,7 +818,7 @@ return [
         ],
         'sample' => [
             'amount' => 230000,
-            'invoice_number' => 'INV-CAC-10077',
+            'invoice_number' => 'INV-TIIB-10077',
             'request_percentage' => 100,
             'import_type' => 'مواد بناء',
             'importer_name' => 'شركة ثابت إخوان',
@@ -827,8 +827,8 @@ return [
         ],
     ],
     [
-        'reference' => 'ENG-2026-CAC-A009',
-        'bank' => 'CAC',
+        'reference' => 'ENG-2026-TIIB-A009',
+        'bank' => 'TIIB',
         'scenario_key' => 'lovable_sample_fx_confirm',
         'current_stage' => 'FX_CONFIRM',
         'runtime_status' => 'ACTIVE',
@@ -842,7 +842,7 @@ return [
         ],
         'sample' => [
             'amount' => 415000,
-            'invoice_number' => 'INV-CAC-10088',
+            'invoice_number' => 'INV-TIIB-10088',
             'request_percentage' => 100,
             'import_type' => 'أدوية ومستلزمات طبية',
             'importer_name' => 'شركة الكميم للأدوية',
@@ -851,8 +851,8 @@ return [
         ],
     ],
     [
-        'reference' => 'ENG-2026-CAC-A010',
-        'bank' => 'CAC',
+        'reference' => 'ENG-2026-TIIB-A010',
+        'bank' => 'TIIB',
         'scenario_key' => 'lovable_sample_fx_confirm',
         'current_stage' => 'FX_CONFIRM',
         'runtime_status' => 'ACTIVE',
@@ -866,7 +866,7 @@ return [
         ],
         'sample' => [
             'amount' => 1250000,
-            'invoice_number' => 'INV-CAC-10099',
+            'invoice_number' => 'INV-TIIB-10099',
             'request_percentage' => 100,
             'import_type' => 'مشتقات نفطية',
             'importer_name' => 'مجموعة الأهدل',
@@ -875,8 +875,8 @@ return [
         ],
     ],
     [
-        'reference' => 'ENG-2026-CAC-A011',
-        'bank' => 'CAC',
+        'reference' => 'ENG-2026-TIIB-A011',
+        'bank' => 'TIIB',
         'scenario_key' => 'lovable_sample_final',
         'current_stage' => 'FINAL',
         'runtime_status' => 'ACTIVE',
@@ -891,7 +891,7 @@ return [
         ],
         'sample' => [
             'amount' => 640000,
-            'invoice_number' => 'INV-CAC-10110',
+            'invoice_number' => 'INV-TIIB-10110',
             'request_percentage' => 100,
             'import_type' => 'مواد غذائية',
             'importer_name' => 'شركة هائل سعيد أنعم',
@@ -900,8 +900,8 @@ return [
         ],
     ],
     [
-        'reference' => 'ENG-2026-CAC-A012',
-        'bank' => 'CAC',
+        'reference' => 'ENG-2026-TIIB-A012',
+        'bank' => 'TIIB',
         'scenario_key' => 'lovable_sample_final',
         'current_stage' => 'FINAL',
         'runtime_status' => 'ACTIVE',
@@ -916,7 +916,7 @@ return [
         ],
         'sample' => [
             'amount' => 1100000,
-            'invoice_number' => 'INV-CAC-10121',
+            'invoice_number' => 'INV-TIIB-10121',
             'request_percentage' => 100,
             'import_type' => 'مشتقات نفطية',
             'importer_name' => 'مجموعة الشيباني',
@@ -925,8 +925,8 @@ return [
         ],
     ],
     [
-        'reference' => 'ENG-2026-CAC-A013',
-        'bank' => 'CAC',
+        'reference' => 'ENG-2026-TIIB-A013',
+        'bank' => 'TIIB',
         'scenario_key' => 'lovable_sample_final',
         'current_stage' => 'FINAL',
         'runtime_status' => 'ACTIVE',
@@ -941,7 +941,7 @@ return [
         ],
         'sample' => [
             'amount' => 420000,
-            'invoice_number' => 'INV-CAC-10132',
+            'invoice_number' => 'INV-TIIB-10132',
             'request_percentage' => 100,
             'import_type' => 'إلكترونيات',
             'importer_name' => 'شركة ثابت إخوان',
@@ -950,8 +950,8 @@ return [
         ],
     ],
     [
-        'reference' => 'ENG-2026-CAC-A014',
-        'bank' => 'CAC',
+        'reference' => 'ENG-2026-TIIB-A014',
+        'bank' => 'TIIB',
         'scenario_key' => 'completed',
         'current_stage' => 'CLOSED_COMPLETED',
         'runtime_status' => 'CLOSED',
@@ -967,7 +967,7 @@ return [
         ],
         'sample' => [
             'amount' => 540000,
-            'invoice_number' => 'INV-CAC-10143',
+            'invoice_number' => 'INV-TIIB-10143',
             'request_percentage' => 100,
             'import_type' => 'مواد غذائية',
             'importer_name' => 'مجموعة الأهدل',
@@ -976,8 +976,8 @@ return [
         ],
     ],
     [
-        'reference' => 'ENG-2026-CAC-A015',
-        'bank' => 'CAC',
+        'reference' => 'ENG-2026-TIIB-A015',
+        'bank' => 'TIIB',
         'scenario_key' => 'completed',
         'current_stage' => 'CLOSED_COMPLETED',
         'runtime_status' => 'CLOSED',
@@ -993,7 +993,7 @@ return [
         ],
         'sample' => [
             'amount' => 1280000,
-            'invoice_number' => 'INV-CAC-10154',
+            'invoice_number' => 'INV-TIIB-10154',
             'request_percentage' => 100,
             'import_type' => 'قطع غيار',
             'importer_name' => 'شركة الكميم للأدوية',
@@ -1002,8 +1002,8 @@ return [
         ],
     ],
     [
-        'reference' => 'ENG-2026-CAC-A016',
-        'bank' => 'CAC',
+        'reference' => 'ENG-2026-TIIB-A016',
+        'bank' => 'TIIB',
         'scenario_key' => 'rejected',
         'current_stage' => 'CLOSED_REJECTED',
         'runtime_status' => 'REJECTED',
@@ -1016,7 +1016,7 @@ return [
         ],
         'sample' => [
             'amount' => 980000,
-            'invoice_number' => 'INV-CAC-10165',
+            'invoice_number' => 'INV-TIIB-10165',
             'request_percentage' => 100,
             'import_type' => 'مشتقات نفطية',
             'importer_name' => 'شركة هائل سعيد أنعم',
@@ -1025,8 +1025,8 @@ return [
         ],
     ],
     [
-        'reference' => 'ENG-2026-CAC-A017',
-        'bank' => 'CAC',
+        'reference' => 'ENG-2026-TIIB-A017',
+        'bank' => 'TIIB',
         'scenario_key' => 'rejected',
         'current_stage' => 'CLOSED_REJECTED',
         'runtime_status' => 'REJECTED',
@@ -1039,7 +1039,7 @@ return [
         ],
         'sample' => [
             'amount' => 350000,
-            'invoice_number' => 'INV-CAC-10176',
+            'invoice_number' => 'INV-TIIB-10176',
             'request_percentage' => 100,
             'import_type' => 'أجهزة كهربائية',
             'importer_name' => 'مجموعة الشيباني',
@@ -1048,10 +1048,10 @@ return [
         ],
     ],
 
-    // ── CAC Edge Scenarios (A018–A028) ──
+    // ── TIIB Edge Scenarios (A018–A028) ──
     [
-        'reference' => 'ENG-2026-CAC-A018',
-        'bank' => 'CAC',
+        'reference' => 'ENG-2026-TIIB-A018',
+        'bank' => 'TIIB',
         'scenario_key' => 'returned_to_entry',
         'current_stage' => 'CREATE',
         'runtime_status' => 'ACTIVE',
@@ -1062,7 +1062,7 @@ return [
         ],
         'sample' => [
             'amount' => 200000,
-            'invoice_number' => 'INV-CAC-A018-001',
+            'invoice_number' => 'INV-TIIB-A018-001',
             'request_percentage' => 100,
             'import_type' => 'مواد كيميائية',
             'importer_name' => 'شركة هائل سعيد أنعم',
@@ -1071,8 +1071,8 @@ return [
         ],
     ],
     [
-        'reference' => 'ENG-2026-CAC-A019',
-        'bank' => 'CAC',
+        'reference' => 'ENG-2026-TIIB-A019',
+        'bank' => 'TIIB',
         'scenario_key' => 'returned_to_fx',
         'current_stage' => 'FX',
         'runtime_status' => 'ACTIVE',
@@ -1087,7 +1087,7 @@ return [
         ],
         'sample' => [
             'amount' => 375000,
-            'invoice_number' => 'INV-CAC-A019-001',
+            'invoice_number' => 'INV-TIIB-A019-001',
             'request_percentage' => 100,
             'import_type' => 'نسيج وملابس',
             'importer_name' => 'مجموعة الأهدل',
@@ -1096,8 +1096,8 @@ return [
         ],
     ],
     [
-        'reference' => 'ENG-2026-CAC-A020',
-        'bank' => 'CAC',
+        'reference' => 'ENG-2026-TIIB-A020',
+        'bank' => 'TIIB',
         'scenario_key' => 'returned_to_fx_confirm',
         'current_stage' => 'FX_CONFIRM',
         'runtime_status' => 'ACTIVE',
@@ -1113,7 +1113,7 @@ return [
         ],
         'sample' => [
             'amount' => 550000,
-            'invoice_number' => 'INV-CAC-A020-001',
+            'invoice_number' => 'INV-TIIB-A020-001',
             'request_percentage' => 100,
             'import_type' => 'معدات صناعية',
             'importer_name' => 'شركة ثابت إخوان',
@@ -1122,8 +1122,8 @@ return [
         ],
     ],
     [
-        'reference' => 'ENG-2026-CAC-A021',
-        'bank' => 'CAC',
+        'reference' => 'ENG-2026-TIIB-A021',
+        'bank' => 'TIIB',
         'scenario_key' => 'claim_active',
         'current_stage' => 'SUPPORT',
         'runtime_status' => 'ACTIVE',
@@ -1134,7 +1134,7 @@ return [
         ],
         'sample' => [
             'amount' => 300000,
-            'invoice_number' => 'INV-CAC-A021-001',
+            'invoice_number' => 'INV-TIIB-A021-001',
             'request_percentage' => 100,
             'import_type' => 'معادن ثمينة',
             'importer_name' => 'شركة الكميم للأدوية',
@@ -1144,8 +1144,8 @@ return [
         'claim_active' => true,
     ],
     [
-        'reference' => 'ENG-2026-CAC-A022',
-        'bank' => 'CAC',
+        'reference' => 'ENG-2026-TIIB-A022',
+        'bank' => 'TIIB',
         'scenario_key' => 'claim_expired',
         'current_stage' => 'SUPPORT',
         'runtime_status' => 'ACTIVE',
@@ -1156,7 +1156,7 @@ return [
         ],
         'sample' => [
             'amount' => 250000,
-            'invoice_number' => 'INV-CAC-A022-001',
+            'invoice_number' => 'INV-TIIB-A022-001',
             'request_percentage' => 100,
             'import_type' => 'أغذية مجمدة',
             'importer_name' => 'مجموعة الأهدل',
@@ -1166,8 +1166,8 @@ return [
         'claim_expired' => true,
     ],
     [
-        'reference' => 'ENG-2026-CAC-A023',
-        'bank' => 'CAC',
+        'reference' => 'ENG-2026-TIIB-A023',
+        'bank' => 'TIIB',
         'scenario_key' => 'duplicate_invoice',
         'current_stage' => 'INTERNAL',
         'runtime_status' => 'ACTIVE',
@@ -1186,8 +1186,8 @@ return [
         ],
     ],
     [
-        'reference' => 'ENG-2026-CAC-A024',
-        'bank' => 'CAC',
+        'reference' => 'ENG-2026-TIIB-A024',
+        'bank' => 'TIIB',
         'scenario_key' => 'scan_pending',
         'current_stage' => 'INTERNAL',
         'runtime_status' => 'ACTIVE',
@@ -1197,7 +1197,7 @@ return [
         ],
         'sample' => [
             'amount' => 220000,
-            'invoice_number' => 'INV-CAC-A024-001',
+            'invoice_number' => 'INV-TIIB-A024-001',
             'request_percentage' => 100,
             'import_type' => 'معدات كهربائية',
             'importer_name' => 'مجموعة الشيباني',
@@ -1207,8 +1207,8 @@ return [
         'scan_status' => 'pending',
     ],
     [
-        'reference' => 'ENG-2026-CAC-A025',
-        'bank' => 'CAC',
+        'reference' => 'ENG-2026-TIIB-A025',
+        'bank' => 'TIIB',
         'scenario_key' => 'scan_failed',
         'current_stage' => 'INTERNAL',
         'runtime_status' => 'ACTIVE',
@@ -1218,7 +1218,7 @@ return [
         ],
         'sample' => [
             'amount' => 290000,
-            'invoice_number' => 'INV-CAC-A025-001',
+            'invoice_number' => 'INV-TIIB-A025-001',
             'request_percentage' => 100,
             'import_type' => 'قطع الآلات',
             'importer_name' => 'شركة ثابت إخوان',
@@ -1228,8 +1228,8 @@ return [
         'scan_status' => 'failed',
     ],
     [
-        'reference' => 'ENG-2026-CAC-A026',
-        'bank' => 'CAC',
+        'reference' => 'ENG-2026-TIIB-A026',
+        'bank' => 'TIIB',
         'scenario_key' => 'scan_infected',
         'current_stage' => 'INTERNAL',
         'runtime_status' => 'ACTIVE',
@@ -1239,7 +1239,7 @@ return [
         ],
         'sample' => [
             'amount' => 160000,
-            'invoice_number' => 'INV-CAC-A026-001',
+            'invoice_number' => 'INV-TIIB-A026-001',
             'request_percentage' => 100,
             'import_type' => 'أوراق وكرتون',
             'importer_name' => 'شركة الكميم للأدوية',
@@ -1249,8 +1249,8 @@ return [
         'scan_status' => 'infected',
     ],
     [
-        'reference' => 'ENG-2026-CAC-A027',
-        'bank' => 'CAC',
+        'reference' => 'ENG-2026-TIIB-A027',
+        'bank' => 'TIIB',
         'scenario_key' => 'claim_released',
         'current_stage' => 'EXEC',
         'runtime_status' => 'ACTIVE',
@@ -1262,7 +1262,7 @@ return [
         ],
         'sample' => [
             'amount' => 425000,
-            'invoice_number' => 'INV-CAC-A027-001',
+            'invoice_number' => 'INV-TIIB-A027-001',
             'request_percentage' => 100,
             'import_type' => 'أنسجة تقنية',
             'importer_name' => 'مجموعة الأهدل',
@@ -1271,8 +1271,8 @@ return [
         ],
     ],
     [
-        'reference' => 'ENG-2026-CAC-A028',
-        'bank' => 'CAC',
+        'reference' => 'ENG-2026-TIIB-A028',
+        'bank' => 'TIIB',
         'scenario_key' => 'document_replaced',
         'current_stage' => 'INTERNAL',
         'runtime_status' => 'ACTIVE',
@@ -1282,7 +1282,7 @@ return [
         ],
         'sample' => [
             'amount' => 315000,
-            'invoice_number' => 'INV-CAC-A028-001',
+            'invoice_number' => 'INV-TIIB-A028-001',
             'request_percentage' => 100,
             'import_type' => 'الآلات الصناعية',
             'importer_name' => 'شركة هائل سعيد أنعم',
