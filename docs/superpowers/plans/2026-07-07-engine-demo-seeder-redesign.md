@@ -36,7 +36,7 @@
 **Interfaces:**
 - Produces: manifest array structure consumed by Task 3 parity test; documented terminal stage codes for anchor catalog.
 
-- [ ] **Step 1: Write audit test**
+- [x] **Step 1: Write audit test**
 
 ```php
 // ImportFinancingTerminalOutcomeAuditTest.php
@@ -64,13 +64,13 @@ public function test_import_financing_v1_terminal_stages_match_publish_rules(): 
 }
 ```
 
-- [ ] **Step 2: Run audit**
+- [x] **Step 2: Run audit**
 
 Run: `cd backend && php artisan test tests/Feature/Engine/ImportFinancingTerminalOutcomeAuditTest.php -v`
 
 Expected: PASS or FAIL exposing single-`CLOSED` outcome conflict.
 
-- [ ] **Step 3: If audit fails — apply reviewed v1 data-fix**
+- [x] **Step 3: If audit fails — apply reviewed v1 data-fix**
 
 Split terminal stages in `ImportFinancingWorkflowSeeder` (immutable v1 **data-fix** only):
 
@@ -79,11 +79,11 @@ Split terminal stages in `ImportFinancingWorkflowSeeder` (immutable v1 **data-fi
 
 Update transitions; update manifest; **do not** add CANCELLED/ABANDONED stages.
 
-- [ ] **Step 4: Bootstrap manifest from actual DB**
+- [x] **Step 4: Bootstrap manifest from actual DB**
 
 Populate `import-financing-v1-manifest.php` with stages, transitions, fields, permissions, documented YFH deltas (`requires_claim` on SUPPORT, FX_CONFIRM bank VIEW). Comment: derived from `seed.ts` + audit; CI contract.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/tests/Fixtures/import-financing-v1-manifest.php backend/tests/Feature/Engine/ImportFinancingTerminalOutcomeAuditTest.php
@@ -103,7 +103,7 @@ git commit -m "test(backend): audit import financing v1 terminal outcomes and ad
 **Interfaces:**
 - Produces: `GuardsDemoSeedEnvironment::ensureDemoSeedAllowed(): void` — throws in production; checks `seed_demo_data` + allowed env.
 
-- [ ] **Step 1: Write failing test**
+- [x] **Step 1: Write failing test**
 
 ```php
 // tests/Unit/Seeders/DemoSeedGuardTest.php
@@ -115,7 +115,7 @@ public function test_production_environment_blocks_demo_seed(): void
 }
 ```
 
-- [ ] **Step 2: Implement guard + config**
+- [x] **Step 2: Implement guard + config**
 
 ```php
 // config/demo.php
@@ -138,14 +138,14 @@ trait GuardsDemoSeedEnvironment {
 }
 ```
 
-- [ ] **Step 3: phpunit.xml env**
+- [x] **Step 3: phpunit.xml env**
 
 ```xml
 <env name="DEMO_SEED_DATA" value="true"/>
 <env name="DEMO_SEED_SIZE" value="minimal"/>
 ```
 
-- [ ] **Step 4: Run test; commit**
+- [x] **Step 4: Run test; commit**
 
 Run: `php artisan test tests/Unit/Seeders/DemoSeedGuardTest.php`
 
@@ -163,15 +163,15 @@ Run: `php artisan test tests/Unit/Seeders/DemoSeedGuardTest.php`
 - Produces: `anchor-catalog.php` — 28 specs/bank including Lovable base A001–A017 + A018–A028 edge rows with explicit `path` arrays.
 - Produces: `engine-request-scenarios.php` — matrix summing to **250** (per approved spec).
 
-- [ ] **Step 1: SeederCatalogIntegrityTest (failing)**
+- [x] **Step 1: SeederCatalogIntegrityTest (failing)**
 
 Assert unique constants, regex `^ENG-2026-(YBRD|TIIB)-[AB][0-9]{3}$`, bulk sum 250, anchor count 56.
 
-- [ ] **Step 2: Implement catalogs**
+- [x] **Step 2: Implement catalogs**
 
 Lovable `SAMPLE_REQUESTS` mapped to A001–A017 with bank invoice prefixes. A027=`claim_released`, A028=`document_replaced`. Duplicate pair A023 cross-bank.
 
-- [ ] **Step 3: Run integrity test; commit**
+- [x] **Step 3: Run integrity test; commit**
 
 ---
 
@@ -180,13 +180,13 @@ Lovable `SAMPLE_REQUESTS` mapped to A001–A017 with bank invoice prefixes. A027
 **Files:**
 - Create: `backend/tests/Feature/Engine/ImportFinancingWorkflowParityTest.php`
 
-- [ ] **Step 1: Parity test with diff output**
+- [x] **Step 1: Parity test with diff output**
 
 Compare DB after `ImportFinancingWorkflowSeeder` to manifest: stages (order, `is_initial`, `is_final`, `final_outcome`, `requires_claim` delta), transitions (action codes, `transition_type`, `is_default_submit`, destructive flags), fields (keys, types, semantic tags), field rules, stage permissions.
 
 On failure: print structured diff (`missing`, `extra`, `changed`).
 
-- [ ] **Step 2: Run; commit**
+- [x] **Step 2: Run; commit**
 
 ---
 
@@ -199,13 +199,13 @@ On failure: print structured diff (`missing`, `extra`, `changed`).
 **Interfaces:**
 - Produces: `EngineRequestAnchorInvariantValidator::validate(EngineRequest $request): void` — throws `InvalidArgumentException` on violation.
 
-- [ ] **Step 1: Failing tests** for each rule in spec § Invariant validator + invalid claim states.
+- [x] **Step 1: Failing tests** for each rule in spec § Invariant validator + invalid claim states.
 
-- [ ] **Step 2: Implement validator**
+- [x] **Step 2: Implement validator**
 
-- [ ] **Step 3: History path tests** (`EngineRequestAnchorHistoryTest.php`) for five required v1 paths.
+- [x] **Step 3: History path tests** (`EngineRequestAnchorHistoryTest.php`) for five required v1 paths.
 
-- [ ] **Step 4: Run tests; commit**
+- [x] **Step 4: Run tests; commit**
 
 ---
 
@@ -218,11 +218,11 @@ On failure: print structured diff (`missing`, `extra`, `changed`).
 **Interfaces:**
 - Produces: `DemoSeedContext::run(callable $callback): mixed` — wraps `Mail::fake()`, `Queue::fake()`, optional `Notification::fake()`; asserts zero mail sent and zero jobs dispatched after callback.
 
-- [ ] **Step 1: Test transition seed emits no mail/jobs**
+- [x] **Step 1: Test transition seed emits no mail/jobs**
 
-- [ ] **Step 2: Implement context binding** (no `if (seeding)` in `EngineTransitionService`).
+- [x] **Step 2: Implement context binding** (no `if (seeding)` in `EngineTransitionService`).
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ---
 
@@ -235,15 +235,15 @@ On failure: print structured diff (`missing`, `extra`, `changed`).
 - Consumes: `anchor-catalog.php`, `engine-request-scenarios.php`, `DemoSeedContext`, `EngineRequestAnchorInvariantValidator`, `InvoiceKey`, `RequestProjectionSync` patterns.
 - Produces: `buildAnchor(array $spec): EngineRequest`, `buildBulk(string $scenario, Bank $bank, Carbon $at): EngineRequest`, helpers `applyClaimState`, `applyDocumentScanState`, `applyDuplicatePair`, `enrichRequestData`.
 
-- [ ] **Step 1: Unit tests** for invoice transform, enrichment, history builder monotonic timestamps.
+- [x] **Step 1: Unit tests** for invoice transform, enrichment, history builder monotonic timestamps.
 
-- [ ] **Step 2: Implement builder** — one DB transaction per anchor/bulk row; seed-owned doc/history cleanup on `ANCHOR_SPEC_VERSION` bump.
+- [x] **Step 2: Implement builder** — one DB transaction per anchor/bulk row; seed-owned doc/history cleanup on `ANCHOR_SPEC_VERSION` bump.
 
-- [ ] **Step 3: Terminal rows** use manifest terminal stage codes from Task 0 only.
+- [x] **Step 3: Terminal rows** use manifest terminal stage codes from Task 0 only.
 
-- [ ] **Step 4: `abandoned_via_api` bulk** via abandon service inside `DemoSeedContext`, not fake CLOSED transition.
+- [x] **Step 4: `abandoned_via_api` bulk** via abandon service inside `DemoSeedContext`, not fake CLOSED transition.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ---
 
@@ -256,11 +256,11 @@ On failure: print structured diff (`missing`, `extra`, `changed`).
 **Interfaces:**
 - Consumes: `GuardsDemoSeedEnvironment`, `EngineRequestScenarioBuilder`, `SeederCatalog`.
 
-- [ ] **Step 1: EngineDemoSeederTest skeleton** — assert 56 anchors after minimal seed, exact refs exist.
+- [x] **Step 1: EngineDemoSeederTest skeleton** — assert 56 anchors after minimal seed, exact refs exist.
 
-- [ ] **Step 2: Implement seeder** — `updateOrCreate` by `reference`; log `Seeding 56 demo anchors…`.
+- [x] **Step 2: Implement seeder** — `updateOrCreate` by `reference`; log `Seeding 56 demo anchors…`.
 
-- [ ] **Step 3: Run test; commit**
+- [x] **Step 3: Run test; commit**
 
 ---
 
@@ -269,13 +269,13 @@ On failure: print structured diff (`missing`, `extra`, `changed`).
 **Files:**
 - Create: `backend/database/seeders/EngineRequestBulkSeeder.php`
 
-- [ ] **Step 1: Skip when `config('demo.seed_size') === 'minimal'`**
+- [x] **Step 1: Skip when `config('demo.seed_size') === 'minimal'`**
 
-- [ ] **Step 2: Seed 250 rows** with deterministic refs `ENG-2026-{BANK}-B001…B125`; `seed_batch = demo-bulk-v1` metadata.
+- [x] **Step 2: Seed 250 rows** with deterministic refs `ENG-2026-{BANK}-B001…B125`; `seed_batch = demo-bulk-v1` metadata.
 
-- [ ] **Step 3: Full-seed test** (separate file or group `@group full-seed`) asserting exact 306 total.
+- [x] **Step 3: Full-seed test** (separate file or group `@group full-seed`) asserting exact 306 total.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ---
 
@@ -285,13 +285,13 @@ On failure: print structured diff (`missing`, `extra`, `changed`).
 - Create: `backend/database/seeders/DemoSystemSettingsSeeder.php`
 - Modify: `backend/database/seeders/EngineAuxiliaryDemoSeeder.php`
 
-- [ ] **Step 1: DemoSystemSettingsSeeder** — `document_scan_enforced`, `duplicate_invoice_policy=warn`; uses `GuardsDemoSeedEnvironment`.
+- [x] **Step 1: DemoSystemSettingsSeeder** — `document_scan_enforced`, `duplicate_invoice_policy=warn`; uses `GuardsDemoSeedEnvironment`.
 
-- [ ] **Step 2: Rewrite auxiliary seeder** — External FX Confirmation terminology; natural keys; upsert notifications, email_deliveries, report_exports (completed/truncated/failed), FX docs with superseded version on `document_replaced` anchor.
+- [x] **Step 2: Rewrite auxiliary seeder** — External FX Confirmation terminology; natural keys; upsert notifications, email_deliveries, report_exports (completed/truncated/failed), FX docs with superseded version on `document_replaced` anchor.
 
-- [ ] **Step 3: Tests** for auxiliary idempotency + hook resolution.
+- [x] **Step 3: Tests** for auxiliary idempotency + hook resolution.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ---
 
@@ -304,23 +304,25 @@ On failure: print structured diff (`missing`, `extra`, `changed`).
 - Create: `backend/tests/Feature/Engine/DemoSeedDuplicateInvoiceTest.php`
 - Modify: `backend/tests/Feature/Engine/EngineDemoSeederTest.php`
 
-- [ ] **Idempotency:** clean seed, second run, partial anchors, non-demo request present, missing auxiliary backfill.
+- [x] **Idempotency:** clean seed, second run, partial anchors, non-demo request present, missing auxiliary backfill.
 
-- [ ] **Scope:** bank isolation, committee capability, cross-bank duplicate masking.
+- [x] **Scope:** bank isolation, committee capability, cross-bank duplicate masking.
 
-- [ ] **Scan:** clean downloadable; pending/failed/infected blocked when enforcement on; superseded doc excluded from required evidence.
+- [x] **Scan:** clean downloadable; pending/failed/infected blocked when enforcement on; superseded doc excluded from required evidence.
 
-- [ ] **Duplicate:** normal samples no warning; A023 pair warns; cross-bank masking for bank user.
+- [x] **Duplicate:** normal samples no warning; A023 pair warns; cross-bank masking for bank user.
 
-- [ ] **Projection:** reject camelCase keys; assert `InvoiceKey` normalization.
+- [x] **Projection:** reject camelCase keys; assert `InvoiceKey` normalization.
 
-- [ ] **Permission:** EXEC action panel via stage permission; negative director without EXECUTE.
+- [x] **Permission:** EXEC action panel via stage permission; negative director without EXECUTE.
 
-- [ ] **Commit**
+- [x] **Commit**
 
 ---
 
 ### Task 11: CI full-seed job
+
+**Deferred (2026-07-08):** No `.github/workflows/` exists anywhere in this repo yet — there is no baseline CI pipeline to add a full-seed job to. Building one from scratch (PHP/MySQL/Redis service setup, base test job, path filters) is a separate, larger undertaking than "add a job." The full-seed test group (`EngineRequestBulkSeederTest`'s `#[Group('full-seed')]` tests) already exists and passes locally with `DEMO_SEED_SIZE=full`; wiring it into CI is tracked as follow-up work once base CI exists.
 
 **Files:**
 - Create or modify: `.github/workflows/backend-tests.yml` (or project CI config)
@@ -337,12 +339,14 @@ On failure: print structured diff (`missing`, `extra`, `changed`).
 
 ### Task 12: Playwright + frontend reference updates
 
+**Investigated (2026-07-08), no-op:** No `e2e/` directory exists. Real Playwright specs (`frontend/tests/e2e/`, `frontend/tests/visual/`) have zero hardcoded `ENG-2026-*` references. The two frontend unit-test files that do contain `ENG-2026-000NNN` strings (`useEngineRequests.test.ts`, `workflows-instance-detail.test.ts`) use them as arbitrary mocked-API-response fixtures, unrelated to the real seeded backend — nothing to rewire. Nothing changed.
+
 **Files:**
 - Grep/update: `frontend/` and `e2e/` for `ENG-2026-0020`
 
-- [ ] **Step 1: Replace hard-coded old refs** with `SeederCatalog` equivalents documented in plan README comment.
+- [x] **Step 1: Replace hard-coded old refs** with `SeederCatalog` equivalents documented in plan README comment.
 
-- [ ] **Step 2: Run focused Playwright if present; commit**
+- [x] **Step 2: Run focused Playwright if present; commit**
 
 ---
 
@@ -360,9 +364,9 @@ php artisan test --filter=DemoSeed
 php artisan test tests/Feature/Engine/ImportFinancingWorkflowParityTest.php
 ```
 
-- [ ] **Step 1: Verify gate**
+- [x] **Step 1: Verify gate**
 
-- [ ] **Step 2: Delete files; commit**
+- [x] **Step 2: Delete files; commit**
 
 ```bash
 git commit -m "chore(backend): remove legacy import request demo seeders"
@@ -372,9 +376,9 @@ git commit -m "chore(backend): remove legacy import request demo seeders"
 
 ### Task 14: graphify + docs
 
-- [ ] Run `graphify update .` after code changes (local only, do not commit `graphify-out/`).
+- [x] Run `graphify update .` after code changes (local only, do not commit `graphify-out/`).
 
-- [ ] Update spec status if Task 0 changed terminal stage codes.
+- [x] Update spec status if Task 0 changed terminal stage codes.
 
 ---
 
