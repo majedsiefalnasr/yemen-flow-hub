@@ -56,11 +56,14 @@ class TeamTest extends TestCase
             ->assertConflict()->assertJsonPath('error.code', 'STALE_RESOURCE');
     }
 
-    public function test_in_use_and_system_teams_are_protected(): void
+    public function test_system_teams_are_protected(): void
     {
+        // `administration` is seeded with `is_system = true` (ProtectsSystemRecords),
+        // so both deactivate and delete are blocked by the system-protection guard,
+        // not a usage/in-use guard.
         $team = Team::query()->where('code', 'administration')->firstOrFail();
         $this->actingAs($this->admin)->postJson("/api/v1/teams/{$team->id}/deactivate")
-            ->assertStatus(422)->assertJsonPath('error.code', 'TEAM_IN_USE');
+            ->assertStatus(422)->assertJsonPath('error.code', 'TEAM_PROTECTED');
         $this->actingAs($this->admin)->deleteJson("/api/v1/teams/{$team->id}")
             ->assertStatus(422)->assertJsonPath('error.code', 'TEAM_PROTECTED');
     }
