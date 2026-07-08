@@ -16,6 +16,7 @@ use App\Support\InvoiceKey;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 
 /**
@@ -323,6 +324,11 @@ final class EngineRequestScenarioBuilder
         $scanStatus = $spec['scan_status'] ?? 'clean';
 
         if (($spec['document_replaced'] ?? false) === true) {
+            $v1Path = "demo/{$request->reference}/commercial-invoice-v1.pdf";
+            $v2Path = "demo/{$request->reference}/commercial-invoice-v2.pdf";
+            $v1Checksum = $this->putPdf($v1Path, $request->reference.'-v1');
+            $v2Checksum = $this->putPdf($v2Path, $request->reference.'-v2');
+
             $superseded = EngineRequestDocument::updateOrCreate(
                 [
                     'request_id' => $request->id,
@@ -333,10 +339,10 @@ final class EngineRequestScenarioBuilder
                     'uploaded_by' => $creator->id,
                     'stage_id' => $stage->id,
                     'original_name' => 'commercial-invoice-v1.pdf',
-                    'path' => "demo/{$request->reference}/commercial-invoice-v1.pdf",
+                    'path' => $v1Path,
                     'mime' => 'application/pdf',
-                    'size' => 102400,
-                    'checksum' => hash('sha256', $request->reference.'-v1'),
+                    'size' => Storage::disk('private')->size($v1Path),
+                    'checksum' => $v1Checksum,
                     'scan_status' => 'clean',
                     'status' => 'superseded',
                 ],
@@ -352,10 +358,10 @@ final class EngineRequestScenarioBuilder
                     'uploaded_by' => $creator->id,
                     'stage_id' => $stage->id,
                     'original_name' => 'commercial-invoice-v2.pdf',
-                    'path' => "demo/{$request->reference}/commercial-invoice-v2.pdf",
+                    'path' => $v2Path,
                     'mime' => 'application/pdf',
-                    'size' => 104800,
-                    'checksum' => hash('sha256', $request->reference.'-v2'),
+                    'size' => Storage::disk('private')->size($v2Path),
+                    'checksum' => $v2Checksum,
                     'scan_status' => 'clean',
                     'status' => 'active',
                 ],
@@ -365,6 +371,9 @@ final class EngineRequestScenarioBuilder
 
             return;
         }
+
+        $path = "demo/{$request->reference}/commercial-invoice.pdf";
+        $checksum = $this->putPdf($path, $request->reference);
 
         EngineRequestDocument::updateOrCreate(
             [
@@ -376,14 +385,27 @@ final class EngineRequestScenarioBuilder
                 'uploaded_by' => $creator->id,
                 'stage_id' => $stage->id,
                 'original_name' => 'commercial-invoice.pdf',
-                'path' => "demo/{$request->reference}/commercial-invoice.pdf",
+                'path' => $path,
                 'mime' => 'application/pdf',
-                'size' => 102400,
-                'checksum' => hash('sha256', $request->reference),
+                'size' => Storage::disk('private')->size($path),
+                'checksum' => $checksum,
                 'scan_status' => $scanStatus,
                 'status' => 'active',
             ],
         );
+    }
+
+    /**
+     * Writes a fake PDF to the private disk and returns its sha256 checksum,
+     * matching what EngineRequestDocumentIntegrityService::assertDownloadAllowed()
+     * recomputes from the file on disk at download time.
+     */
+    private function putPdf(string $path, string $title): string
+    {
+        $body = "%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\n% {$title}\n%%EOF\n";
+        Storage::disk('private')->put($path, $body);
+
+        return hash('sha256', $body);
     }
 
     /**
