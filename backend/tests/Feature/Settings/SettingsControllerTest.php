@@ -9,6 +9,7 @@ use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Tests\Support\AssignsGovernanceIdentity;
 use Tests\TestCase;
 
@@ -16,6 +17,12 @@ class SettingsControllerTest extends TestCase
 {
     use AssignsGovernanceIdentity;
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seedGovernance();
+    }
 
     // --- GET /api/settings ---
 
@@ -32,6 +39,7 @@ class SettingsControllerTest extends TestCase
                 'page_size' => 50,
             ],
         ]);
+        $user = $this->assignGovernanceIdentity($user, UserRole::CBY_ADMIN);
 
         $response = $this->actingAs($user)->getJson('/api/settings');
 
@@ -55,6 +63,7 @@ class SettingsControllerTest extends TestCase
             'bank_id' => null,
             'is_active' => true,
         ]);
+        $user = $this->assignGovernanceIdentity($user, UserRole::CBY_ADMIN);
 
         $response = $this->actingAs($user)->getJson('/api/settings');
 
@@ -74,7 +83,7 @@ class SettingsControllerTest extends TestCase
 
     public function test_get_public_settings_returns_system_branding_without_authentication(): void
     {
-        \Illuminate\Support\Facades\Storage::fake('public');
+        Storage::fake('public');
 
         SystemSetting::query()->create([
             'key' => 'settings.general',
@@ -170,6 +179,7 @@ class SettingsControllerTest extends TestCase
             'bank_id' => null,
             'is_active' => true,
         ]);
+        $user = $this->assignGovernanceIdentity($user, UserRole::BANK_ADMIN);
 
         $response = $this->actingAs($user)->postJson('/api/settings/save-section', [
             'section' => 'theming',
@@ -194,6 +204,7 @@ class SettingsControllerTest extends TestCase
             'bank_id' => null,
             'is_active' => true,
         ]);
+        $user = $this->assignGovernanceIdentity($user, UserRole::CBY_ADMIN);
 
         $response = $this->actingAs($user)->putJson('/api/settings', [
             'language' => 'en',
@@ -223,6 +234,7 @@ class SettingsControllerTest extends TestCase
             'bank_id' => null,
             'is_active' => true,
         ]);
+        $user = $this->assignGovernanceIdentity($user, UserRole::CBY_ADMIN);
 
         $response = $this->actingAs($user)->putJson('/api/settings', [
             'language' => 'en',
@@ -243,6 +255,7 @@ class SettingsControllerTest extends TestCase
             'bank_id' => null,
             'is_active' => true,
         ]);
+        $user = $this->assignGovernanceIdentity($user, UserRole::CBY_ADMIN);
 
         $response = $this->actingAs($user)->putJson('/api/settings', [
             'language' => 'fr',
@@ -261,6 +274,7 @@ class SettingsControllerTest extends TestCase
             'bank_id' => null,
             'is_active' => true,
         ]);
+        $user = $this->assignGovernanceIdentity($user, UserRole::CBY_ADMIN);
 
         $response = $this->actingAs($user)->putJson('/api/settings', [
             'dashboard_view' => 'invalid',
@@ -279,6 +293,7 @@ class SettingsControllerTest extends TestCase
             'bank_id' => null,
             'is_active' => true,
         ]);
+        $user = $this->assignGovernanceIdentity($user, UserRole::CBY_ADMIN);
 
         $response = $this->actingAs($user)->putJson('/api/settings', [
             'table_density' => 'invalid',
@@ -297,6 +312,7 @@ class SettingsControllerTest extends TestCase
             'bank_id' => null,
             'is_active' => true,
         ]);
+        $user = $this->assignGovernanceIdentity($user, UserRole::CBY_ADMIN);
 
         $response = $this->actingAs($user)->putJson('/api/settings', [
             'page_size' => 15,
@@ -315,6 +331,7 @@ class SettingsControllerTest extends TestCase
             'bank_id' => null,
             'is_active' => true,
         ]);
+        $user = $this->assignGovernanceIdentity($user, UserRole::CBY_ADMIN);
 
         $this->actingAs($user)->putJson('/api/settings', [
             'language' => 'en',
@@ -326,7 +343,7 @@ class SettingsControllerTest extends TestCase
             ->first();
 
         $this->assertNotNull($auditLog);
-        $this->assertEquals($user->role->value, $auditLog->user_role);
+        $this->assertSame($user->asUserRole()?->value, $auditLog->user_role);
     }
 
     public function test_update_settings_returns_401_when_unauthenticated(): void
@@ -351,6 +368,7 @@ class SettingsControllerTest extends TestCase
                 'page_size' => 100,
             ],
         ]);
+        $user = $this->assignGovernanceIdentity($user, UserRole::CBY_ADMIN);
 
         $response = $this->actingAs($user)->postJson('/api/settings/reset');
 
@@ -374,6 +392,7 @@ class SettingsControllerTest extends TestCase
                 'language' => 'en',
             ],
         ]);
+        $user = $this->assignGovernanceIdentity($user, UserRole::CBY_ADMIN);
 
         $this->actingAs($user)->postJson('/api/settings/reset');
 
@@ -412,6 +431,7 @@ class SettingsControllerTest extends TestCase
             'bank_id' => null,
             'is_active' => true,
         ]);
+        $user = $this->assignGovernanceIdentity($user, UserRole::CBY_ADMIN);
 
         $response = $this->actingAs($user)->postJson('/api/settings/save-section', [
             'section' => 'theming',
@@ -461,6 +481,7 @@ class SettingsControllerTest extends TestCase
             'bank_id' => null,
             'is_active' => true,
         ]);
+        $user = $this->assignGovernanceIdentity($user, UserRole::CBY_ADMIN);
 
         $response = $this->actingAs($user)->getJson('/api/settings');
 
@@ -495,6 +516,7 @@ class SettingsControllerTest extends TestCase
             'bank_id' => null,
             'is_active' => true,
         ]);
+        $user = $this->assignGovernanceIdentity($user, UserRole::CBY_ADMIN);
 
         $response = $this->actingAs($user)->postJson('/api/settings/save-section', [
             'section' => 'theming',
@@ -551,6 +573,7 @@ class SettingsControllerTest extends TestCase
                 ],
             ],
         ]);
+        $user = $this->assignGovernanceIdentity($user, UserRole::CBY_ADMIN);
 
         $response = $this->actingAs($user)->postJson('/api/settings/save-section', [
             'section' => 'theming',

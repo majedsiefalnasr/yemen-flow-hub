@@ -270,14 +270,17 @@ class ReportController extends Controller
 
         $query = WorkflowHistoryEntry::query()
             ->join('users as u', 'u.id', '=', 'workflow_history.performed_by')
-            ->leftJoin('user_roles as ur', 'ur.user_id', '=', 'u.id')
+            ->leftJoin('user_roles as ur', function ($join) {
+                $join->on('ur.user_id', '=', 'u.id')
+                    ->where('ur.is_active', true);
+            })
             ->leftJoin('roles as r', 'r.id', '=', 'ur.role_id')
             ->join('engine_requests', 'engine_requests.id', '=', 'workflow_history.request_id')
             // COUNT(DISTINCT workflow_history.id) — the user_roles fan-out would otherwise
             // multiply each action by the number of roles the performing user holds.
-            ->selectRaw("COALESCE(r.name, u.role, 'Unknown') as role_name, COUNT(DISTINCT workflow_history.id) as actions")
+            ->selectRaw("COALESCE(r.name, 'Unknown') as role_name, COUNT(DISTINCT workflow_history.id) as actions")
             ->selectRaw('COUNT(DISTINCT workflow_history.performed_by) as members')
-            ->groupByRaw("COALESCE(r.name, u.role, 'Unknown')")
+            ->groupByRaw("COALESCE(r.name, 'Unknown')")
             ->orderByDesc('actions');
 
         $this->applyScope($request, $query);

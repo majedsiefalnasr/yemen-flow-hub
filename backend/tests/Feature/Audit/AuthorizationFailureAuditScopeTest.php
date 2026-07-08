@@ -10,11 +10,19 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Route;
+use Tests\Support\AssignsGovernanceIdentity;
 use Tests\TestCase;
 
 class AuthorizationFailureAuditScopeTest extends TestCase
 {
+    use AssignsGovernanceIdentity;
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seedGovernance();
+    }
 
     private function makeBank(): Bank
     {
@@ -30,14 +38,15 @@ class AuthorizationFailureAuditScopeTest extends TestCase
         static $counter = 0;
         $counter++;
 
-        return User::query()->create([
+        $user = User::query()->create([
             'name' => "User {$counter}",
             'email' => "authz{$counter}@example.test",
             'password' => Hash::make('password'),
-            'role' => $role->value,
             'bank_id' => $bank?->id,
             'is_active' => true,
         ]);
+
+        return $this->assignGovernanceIdentity($user, $role);
     }
 
     public function test_framework_abort_403_does_not_create_authorization_failure_audit(): void

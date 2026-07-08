@@ -5,6 +5,7 @@ namespace Tests\Feature\Profile;
 use App\Enums\AuditAction;
 use App\Enums\UserRole;
 use App\Models\AuditLog;
+use App\Models\Bank;
 use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -18,6 +19,19 @@ class ProfileControllerTest extends TestCase
     use AssignsGovernanceIdentity;
     use RefreshDatabase;
 
+    private Bank $bank;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seedGovernance();
+        $this->bank = Bank::query()->create([
+            'name' => 'Profile Bank',
+            'code' => 'PRF',
+            'is_active' => true,
+        ]);
+    }
+
     // --- GET /api/profile ---
 
     public function test_get_profile_returns_authenticated_user_data(): void
@@ -26,9 +40,10 @@ class ProfileControllerTest extends TestCase
             'name' => 'Ahmed Ali',
             'email' => 'ahmed@bank.com',
             'password' => Hash::make('password'),
-            'bank_id' => null,
+            'bank_id' => $this->bank->id,
             'is_active' => true,
         ]);
+        $user = $this->assignGovernanceIdentity($user, UserRole::DATA_ENTRY);
 
         $response = $this->actingAs($user)->getJson('/api/profile');
 
@@ -37,7 +52,7 @@ class ProfileControllerTest extends TestCase
         $response->assertJsonPath('data.id', $user->id);
         $response->assertJsonPath('data.name', 'Ahmed Ali');
         $response->assertJsonPath('data.email', 'ahmed@bank.com');
-        $response->assertJsonPath('data.role', $user->role->value);
+        $response->assertJsonPath('data.role', $user->asUserRole()?->value);
         $response->assertJsonPath('data.is_active', true);
     }
 
@@ -54,9 +69,10 @@ class ProfileControllerTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('oldPassword123'),
-            'bank_id' => null,
+            'bank_id' => $this->bank->id,
             'is_active' => true,
         ]);
+        $user = $this->assignGovernanceIdentity($user, UserRole::DATA_ENTRY);
 
         $response = $this->actingAs($user)->postJson('/api/profile/change-password', [
             'current_password' => 'oldPassword123',
@@ -84,9 +100,10 @@ class ProfileControllerTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('oldPassword123'),
-            'bank_id' => null,
+            'bank_id' => $this->bank->id,
             'is_active' => true,
         ]);
+        $user = $this->assignGovernanceIdentity($user, UserRole::DATA_ENTRY);
 
         $response = $this->actingAs($user)->postJson('/api/profile/change-password', [
             'current_password' => 'wrongPassword',
@@ -108,9 +125,10 @@ class ProfileControllerTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('oldPassword123'),
-            'bank_id' => null,
+            'bank_id' => $this->bank->id,
             'is_active' => true,
         ]);
+        $user = $this->assignGovernanceIdentity($user, UserRole::DATA_ENTRY);
 
         // Password too short (less than 8 characters)
         $response = $this->actingAs($user)->postJson('/api/profile/change-password', [
@@ -149,9 +167,10 @@ class ProfileControllerTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('oldPassword123'),
-            'bank_id' => null,
+            'bank_id' => $this->bank->id,
             'is_active' => true,
         ]);
+        $user = $this->assignGovernanceIdentity($user, UserRole::DATA_ENTRY);
 
         $response = $this->actingAs($user)->postJson('/api/profile/change-password', [
             'current_password' => 'oldPassword123',
@@ -178,9 +197,10 @@ class ProfileControllerTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('oldPassword123'),
-            'bank_id' => null,
+            'bank_id' => $this->bank->id,
             'is_active' => true,
         ]);
+        $user = $this->assignGovernanceIdentity($user, UserRole::DATA_ENTRY);
 
         $this->actingAs($user)->postJson('/api/profile/change-password', [
             'current_password' => 'oldPassword123',
@@ -193,7 +213,7 @@ class ProfileControllerTest extends TestCase
             ->first();
 
         $this->assertNotNull($auditLog);
-        $this->assertEquals($user->role->value, $auditLog->user_role);
+        $this->assertSame($user->asUserRole()?->value, $auditLog->user_role);
     }
 
     public function test_change_password_rejects_same_password_as_current(): void
@@ -202,9 +222,10 @@ class ProfileControllerTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('CurrentPassword123'),
-            'bank_id' => null,
+            'bank_id' => $this->bank->id,
             'is_active' => true,
         ]);
+        $user = $this->assignGovernanceIdentity($user, UserRole::DATA_ENTRY);
 
         $response = $this->actingAs($user)->postJson('/api/profile/change-password', [
             'current_password' => 'CurrentPassword123',
@@ -223,9 +244,10 @@ class ProfileControllerTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('CorrectPassword123'),
-            'bank_id' => null,
+            'bank_id' => $this->bank->id,
             'is_active' => true,
         ]);
+        $user = $this->assignGovernanceIdentity($user, UserRole::DATA_ENTRY);
 
         $response = $this->actingAs($user)->postJson('/api/profile/change-password', [
             'current_password' => 'WrongPassword123',
@@ -245,9 +267,10 @@ class ProfileControllerTest extends TestCase
             'name' => 'Stats User',
             'email' => 'stats@bank.com',
             'password' => Hash::make('Password123'),
-            'bank_id' => null,
+            'bank_id' => $this->bank->id,
             'is_active' => true,
         ]);
+        $user = $this->assignGovernanceIdentity($user, UserRole::DATA_ENTRY);
 
         $response = $this->actingAs($user)->getJson('/api/profile');
 
@@ -273,9 +296,10 @@ class ProfileControllerTest extends TestCase
             'name' => 'Old Name',
             'email' => 'old@bank.com',
             'password' => Hash::make('Password123'),
-            'bank_id' => null,
+            'bank_id' => $this->bank->id,
             'is_active' => true,
         ]);
+        $user = $this->assignGovernanceIdentity($user, UserRole::DATA_ENTRY);
 
         $response = $this->actingAs($user)->putJson('/api/profile', [
             'name' => 'New Name',
@@ -313,9 +337,10 @@ class ProfileControllerTest extends TestCase
             'name' => 'MFA User',
             'email' => 'mfa-user@bank.com',
             'password' => Hash::make('Password123'),
-            'bank_id' => null,
+            'bank_id' => $this->bank->id,
             'is_active' => true,
         ]);
+        $user = $this->assignGovernanceIdentity($user, UserRole::DATA_ENTRY);
 
         $setup = $this->actingAs($user)->postJson('/api/profile/mfa/setup')->assertOk();
         $secret = $setup->json('data.secret');
@@ -348,10 +373,11 @@ class ProfileControllerTest extends TestCase
             'name' => 'MFA User',
             'email' => 'mfa@bank.com',
             'password' => Hash::make('Password123'),
-            'bank_id' => null,
+            'bank_id' => $this->bank->id,
             'is_active' => true,
             'mfa_enabled' => false,
         ]);
+        $user = $this->assignGovernanceIdentity($user, UserRole::DATA_ENTRY);
 
         // When mfa_required setting doesn't exist, it defaults to true (secure-first)
         $response = $this->actingAs($user)->postJson('/api/profile/mfa/toggle');
@@ -370,10 +396,11 @@ class ProfileControllerTest extends TestCase
             'name' => 'MFA User',
             'email' => 'mfa@bank.com',
             'password' => Hash::make('Password123'),
-            'bank_id' => null,
+            'bank_id' => $this->bank->id,
             'is_active' => true,
             'mfa_enabled' => false,
         ]);
+        $user = $this->assignGovernanceIdentity($user, UserRole::DATA_ENTRY);
 
         // Set system-enforced MFA policy
         SystemSetting::query()->create([
