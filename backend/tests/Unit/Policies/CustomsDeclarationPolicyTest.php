@@ -56,11 +56,11 @@ class CustomsDeclarationPolicyTest extends TestCase
         $declaration = $this->makeEngineDeclaration($engineRequest);
 
         $sameReviewer = $this->assignGovernanceIdentity(
-            User::factory()->create([, 'bank_id' => $bank->id]),
+            User::factory()->create(['bank_id' => $bank->id]),
             UserRole::BANK_REVIEWER
         );
         $otherReviewer = $this->assignGovernanceIdentity(
-            User::factory()->create([, 'bank_id' => $otherBank->id]),
+            User::factory()->create(['bank_id' => $otherBank->id]),
             UserRole::BANK_REVIEWER
         );
         $this->grantFxView($engineRequest, $sameReviewer);
@@ -93,11 +93,11 @@ class CustomsDeclarationPolicyTest extends TestCase
         $declaration = $this->makeEngineDeclaration($engineRequest);
 
         $sameDataEntry = $this->assignGovernanceIdentity(
-            User::factory()->create([, 'bank_id' => $bank->id]),
+            User::factory()->create(['bank_id' => $bank->id]),
             UserRole::DATA_ENTRY
         );
         $otherDataEntry = $this->assignGovernanceIdentity(
-            User::factory()->create([, 'bank_id' => $otherBank->id]),
+            User::factory()->create(['bank_id' => $otherBank->id]),
             UserRole::DATA_ENTRY
         );
         $this->grantFxView($engineRequest, $sameDataEntry);

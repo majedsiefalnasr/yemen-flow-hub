@@ -275,11 +275,11 @@ class EngineCustomsSignedFxTest extends TestCase
         $bankOrganization = Organization::query()->where('code', 'commercial_banks')->firstOrFail();
 
         $sameBankUser = $this->assignGovernanceIdentity(
-            User::factory()->create([, 'bank_id' => $ownBank->id, 'organization_id' => $bankOrganization->id]),
+            User::factory()->create(['bank_id' => $ownBank->id, 'organization_id' => $bankOrganization->id]),
             UserRole::BANK_REVIEWER
         );
         $otherBankUser = $this->assignGovernanceIdentity(
-            User::factory()->create([, 'bank_id' => $otherBank->id, 'organization_id' => $bankOrganization->id]),
+            User::factory()->create(['bank_id' => $otherBank->id, 'organization_id' => $bankOrganization->id]),
             UserRole::BANK_REVIEWER
         );
 
