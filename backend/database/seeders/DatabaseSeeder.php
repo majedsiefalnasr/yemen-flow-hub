@@ -32,8 +32,17 @@ class DatabaseSeeder extends Seeder
         $this->call([MerchantSeeder::class]);
         $this->command?->info('Seeded merchants.');
 
+        // TODO(Task 13): EngineRequestDemoSeeder is replaced by
+        // EngineRequestAnchorSeeder + EngineRequestBulkSeeder. It still runs
+        // here until EngineAuxiliaryDemoSeeder is rewritten off its legacy
+        // ENG-2026-000NNN references (Task 9) and the removal gate passes.
         $this->call([EngineRequestDemoSeeder::class]);
         $this->command?->info('Seeded engine request demo data.');
+
+        if (config('demo.seed_demo_data') && in_array(app()->environment(), config('demo.allowed_seed_environments', []), true)) {
+            $this->call([EngineRequestAnchorSeeder::class]);
+            $this->command?->info('Seeded engine request anchors.');
+        }
 
         $this->call([AuditLogSeeder::class]);
         $this->command?->info('Seeded login audit logs.');
