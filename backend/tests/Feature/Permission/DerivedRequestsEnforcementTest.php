@@ -2,8 +2,9 @@
 
 namespace Tests\Feature\Permission;
 
-use App\Enums\UserRole;
+use App\Enums\FinalOutcome;
 use App\Enums\WorkflowVersionState;
+use App\Models\Bank;
 use App\Models\Organization;
 use App\Models\Role;
 use App\Models\Team;
@@ -186,7 +187,7 @@ class DerivedRequestsEnforcementTest extends TestCase
         ]);
         $stageId = DB::table('workflow_stages')->insertGetId([
             'workflow_version_id' => $draftId, 'code' => 'intake', 'name' => 'Intake',
-            'is_initial' => true, 'is_final' => true,
+            'is_initial' => true, 'is_final' => true, 'final_outcome' => FinalOutcome::COMPLETED->value,
             'status' => 'ACTIVE', 'created_at' => now(), 'updated_at' => now(),
         ]);
         DB::table('stage_permissions')->insert([
@@ -225,8 +226,17 @@ class DerivedRequestsEnforcementTest extends TestCase
             'code' => 'team_scoped_test_team',
             'name' => 'Team Scoped Test Team',
         ]);
+        // RequestCreationGate::userCanCreateRequests() requires a BANKING_SECTOR
+        // org AND a bank_id — without a bank the `add` capability can never be
+        // true, regardless of stage_permissions resolution.
+        $bank = Bank::create([
+            'organization_id' => $org->id,
+            'code' => 'TEAMSCOPEDBANK',
+            'name' => 'Team Scoped Test Bank',
+        ]);
         $user = User::factory()->create([
             'organization_id' => $org->id,
+            'bank_id' => $bank->id,
         ]);
         $user->roles()->attach($role->id);
         $user->teams()->attach($team->id);
