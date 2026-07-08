@@ -13,7 +13,7 @@ class DuplicateInvoiceChecker
     ) {}
 
     /**
-     * @return array{code: string, severity: string, message: string, duplicates: array<int, array{id: int, reference: string}>}|null
+     * @return array{code: string, severity: string, message: string, duplicates: array<int, array{id: int, reference: string, bank_id: ?int}>}|null
      */
     public function check(string $invoiceNumber, ?int $excludeRequestId = null): ?array
     {

@@ -185,6 +185,10 @@ class NotificationAudienceScopeTest extends TestCase
             $this->bankBUser->id,
         ]);
 
+        // afterDuplicateInvoice splits by classification (WP-7 S-8 masking): a
+        // separate dispatchAfterCommit call for the NC audience (full detail)
+        // and another for the bank-scoped audience (masked cross-bank refs) —
+        // unlike afterSlaSignal/afterTransition, which send one unified call.
         $dispatcher->shouldReceive('dispatchAfterCommit')->once()->with(
             'compliance.duplicate_invoice',
             'warning',
@@ -194,9 +198,22 @@ class NotificationAudienceScopeTest extends TestCase
             $request->id,
             \Mockery::any(),
             \Mockery::on(function ($recipients) {
-                // NC User and Bank B User should receive it. Bank A User should NOT.
-                return count($recipients) === 2
-                    && in_array($this->ncUser->id, $recipients)
+                // NC branch: NC User only.
+                return count($recipients) === 1 && in_array($this->ncUser->id, $recipients);
+            })
+        );
+
+        $dispatcher->shouldReceive('dispatchAfterCommit')->once()->with(
+            'compliance.duplicate_invoice',
+            'warning',
+            \Mockery::any(),
+            \Mockery::any(),
+            'engine_request',
+            $request->id,
+            \Mockery::any(),
+            \Mockery::on(function ($recipients) {
+                // Bank branch: Bank B User only (own-bank scoped, masked cross-bank).
+                return count($recipients) === 1
                     && in_array($this->bankBUser->id, $recipients)
                     && ! in_array($this->bankAUser->id, $recipients);
             })
@@ -206,7 +223,7 @@ class NotificationAudienceScopeTest extends TestCase
             $request->id,
             $request->reference,
             'INV-123',
-            [['id' => 1, 'reference' => 'OLD-1']]
+            [['id' => 1, 'reference' => 'OLD-1', 'bank_id' => $this->bankB->id]]
         );
     }
 

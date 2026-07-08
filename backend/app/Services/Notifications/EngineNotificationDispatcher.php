@@ -41,7 +41,7 @@ class EngineNotificationDispatcher
      * Notify the oversight audience when a submitted request shares an invoice number
      * with an existing active request (compliance signal, FR-NOTIF2).
      *
-     * @param  array<int, array{id: int, reference: string}>  $duplicates
+     * @param  array<int, array{id: int, reference: string, bank_id: ?int}>  $duplicates
      */
     public function afterDuplicateInvoice(
         int $requestId,
