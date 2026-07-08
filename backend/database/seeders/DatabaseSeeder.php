@@ -32,14 +32,10 @@ class DatabaseSeeder extends Seeder
         $this->call([MerchantSeeder::class]);
         $this->command?->info('Seeded merchants.');
 
-        // TODO(Task 13): EngineRequestDemoSeeder is replaced by
-        // EngineRequestAnchorSeeder + EngineRequestBulkSeeder. It still runs
-        // here until EngineAuxiliaryDemoSeeder is rewritten off its legacy
-        // ENG-2026-000NNN references (Task 9) and the removal gate passes.
-        $this->call([EngineRequestDemoSeeder::class]);
-        $this->command?->info('Seeded engine request demo data.');
+        $demoSeedAllowed = config('demo.seed_demo_data')
+            && in_array(app()->environment(), config('demo.allowed_seed_environments', []), true);
 
-        if (config('demo.seed_demo_data') && in_array(app()->environment(), config('demo.allowed_seed_environments', []), true)) {
+        if ($demoSeedAllowed) {
             $this->call([EngineRequestAnchorSeeder::class]);
             $this->command?->info('Seeded engine request anchors.');
 
@@ -53,10 +49,17 @@ class DatabaseSeeder extends Seeder
         $this->call([SystemSettingsSeeder::class]);
         $this->command?->info('Seeded system settings.');
 
+        if ($demoSeedAllowed) {
+            $this->call([DemoSystemSettingsSeeder::class]);
+            $this->command?->info('Seeded demo system settings.');
+        }
+
         $this->call([NotificationTemplateSeeder::class]);
         $this->command?->info('Seeded notification templates.');
 
-        $this->call([EngineAuxiliaryDemoSeeder::class]);
-        $this->command?->info('Seeded engine auxiliary demo data.');
+        if ($demoSeedAllowed) {
+            $this->call([EngineAuxiliaryDemoSeeder::class]);
+            $this->command?->info('Seeded engine auxiliary demo data.');
+        }
     }
 }

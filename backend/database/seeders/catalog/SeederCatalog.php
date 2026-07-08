@@ -12,22 +12,30 @@ namespace Database\Seeders\Catalog;
 class SeederCatalog
 {
     public const DEMO_YEAR = 2026;
+
     public const ANCHOR_COUNT = 56;
+
     public const BULK_COUNT = 250;
+
     public const TOTAL_COUNT = 306;
+
     public const ANCHOR_SPEC_VERSION = 1;
 
     // ─── Anchor Hook Constants (reference anchors for tests, Playwright, QA) ───
 
     // Base Lovable A001 — submitted state for notification tests
     public const ANCHOR_SUBMITTED_NOTIFICATION = 'ENG-2026-YBRD-A001';
-    
+
     // A016 — completed state (base Lovable sample)
     public const ANCHOR_FX_CONFIRM_COMPLETED_PRIMARY = 'ENG-2026-YBRD-A016';
+
     public const ANCHOR_FX_CONFIRM_COMPLETED_SECONDARY = 'ENG-2026-TIIB-A016';
 
-    // A017 — FX_CONFIRM active (base Lovable sample for panel tests)
-    public const ANCHOR_FX_CONFIRM_PANEL = 'ENG-2026-YBRD-A017';
+    // A009 — FX_CONFIRM active (base Lovable sample for panel tests)
+    public const ANCHOR_FX_CONFIRM_PANEL = 'ENG-2026-YBRD-A009';
+
+    // A017 base rejected row — rejected notification/email tests
+    public const ANCHOR_REJECTED_NOTIFICATION = 'ENG-2026-YBRD-A017';
 
     // A018 — returned to entry (CREATE after INTERNAL reject)
     public const ANCHOR_RETURNED_TO_ENTRY = 'ENG-2026-YBRD-A018';
@@ -46,6 +54,7 @@ class SeederCatalog
 
     // A023 — duplicate invoice pair
     public const ANCHOR_DUPLICATE_YBRD = 'ENG-2026-YBRD-A023';
+
     public const ANCHOR_DUPLICATE_TIIB = 'ENG-2026-TIIB-A023';
 
     // A024 — document scan pending
@@ -66,8 +75,8 @@ class SeederCatalog
     /**
      * Reference builder helper for anchor specs.
      *
-     * @param string $bank 'YBRD' | 'TIIB'
-     * @param int $seq 1–28
+     * @param  string  $bank  'YBRD' | 'TIIB'
+     * @param  int  $seq  1–28
      * @return string e.g. 'ENG-2026-YBRD-A001'
      */
     public static function anchorRef(string $bank, int $seq): string
@@ -78,8 +87,8 @@ class SeederCatalog
     /**
      * Reference builder helper for bulk specs.
      *
-     * @param string $bank 'YBRD' | 'TIIB'
-     * @param int $seq 1–125 per bank
+     * @param  string  $bank  'YBRD' | 'TIIB'
+     * @param  int  $seq  1–125 per bank
      * @return string e.g. 'ENG-2026-YBRD-B001'
      */
     public static function bulkRef(string $bank, int $seq): string

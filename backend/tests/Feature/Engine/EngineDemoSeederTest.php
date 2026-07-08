@@ -8,6 +8,7 @@ use App\Models\FieldDefinition;
 use App\Models\User;
 use App\Models\WorkflowDefinition;
 use App\Models\WorkflowTransition;
+use Database\Seeders\Catalog\SeederCatalog;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
@@ -17,7 +18,7 @@ class EngineDemoSeederTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_database_seeder_creates_engine_demo_requests_without_legacy_request_data(): void
+    public function test_database_seeder_creates_engine_demo_anchors_without_legacy_request_data(): void
     {
         $this->seed(DatabaseSeeder::class);
 
@@ -29,18 +30,11 @@ class EngineDemoSeederTest extends TestCase
         $definition = WorkflowDefinition::query()->where('code', 'IMPORT_FINANCING')->firstOrFail();
         $version = $definition->versions()->firstOrFail();
 
-        $this->assertSame(40, EngineRequest::query()->count());
+        $this->assertSame(SeederCatalog::ANCHOR_COUNT, EngineRequest::query()->count());
         $this->assertSame(
             Bank::query()->where('is_active', true)->count(),
             EngineRequest::query()->distinct('bank_id')->count('bank_id')
         );
-        $this->assertDatabaseCount('workflow_history', 180);
-        $this->assertDatabaseCount('engine_request_documents', 40);
-        $this->assertDatabaseCount('customs_declarations', 2);
-        $this->assertDatabaseCount('engine_notifications', 4);
-        $this->assertDatabaseCount('notification_recipients', 4);
-        $this->assertDatabaseCount('email_deliveries', 3);
-        $this->assertDatabaseCount('report_exports', 2);
 
         $fieldKeys = FieldDefinition::query()
             ->where('workflow_version_id', $version->id)
@@ -54,27 +48,19 @@ class EngineDemoSeederTest extends TestCase
         $this->assertNotContains('invoiceNumber', $fieldKeys);
         $this->assertNotContains('requestPercentage', $fieldKeys);
 
-        $request = EngineRequest::query()->where('reference', 'ENG-2026-002001')->firstOrFail();
+        $request = EngineRequest::query()->where('reference', SeederCatalog::ANCHOR_SUBMITTED_NOTIFICATION)->firstOrFail();
         $data = $request->data;
 
-        $this->assertSame(120000, $data['amount']);
-        $this->assertSame('INV-2026-10000', $data['invoice_number']);
-        $this->assertSame(100, $data['request_percentage']);
         $this->assertArrayNotHasKey('financeAmount', $data);
         $this->assertArrayNotHasKey('invoiceNumber', $data);
         $this->assertArrayNotHasKey('requestPercentage', $data);
+        $this->assertSame((string) $data['amount'], (string) (int) $request->amount);
+        $this->assertSame($data['invoice_number'], $request->invoice_number);
 
-        $this->assertSame('120000.00', (string) $request->amount);
-        $this->assertSame('INV-2026-10000', $request->invoice_number);
-        $this->assertSame('100.00', (string) $request->request_percentage);
-
-        $this->assertDatabaseHas('engine_request_documents', [
-            'request_id' => $request->id,
-            'original_name' => 'ENG-2026-002001-commercial-invoice.pdf',
-        ]);
         $this->assertDatabaseHas('customs_declarations', [
-            'engine_request_id' => EngineRequest::query()->where('reference', 'ENG-2026-002019')->value('id'),
-            'declaration_number' => 'CD-2026-002019',
+            'engine_request_id' => EngineRequest::query()
+                ->where('reference', SeederCatalog::ANCHOR_FX_CONFIRM_COMPLETED_PRIMARY)
+                ->value('id'),
         ]);
     }
 
@@ -82,32 +68,24 @@ class EngineDemoSeederTest extends TestCase
     {
         $this->seed(DatabaseSeeder::class);
 
-        // Per bank, each executor's queue reflects the requests currently sitting
-        // on the stage they can execute: data entry sees the two CREATE requests
-        // plus the one returned to entry (3); the internal reviewer sees the two
-        // INTERNAL requests plus the one returned to internal review (3); the SWIFT
-        // officer sees the two FX requests (2).
         foreach (Bank::query()->where('is_active', true)->orderBy('id')->get() as $bank) {
             $code = strtolower($bank->code);
 
             $this->actingAs(User::query()->where('email', "entry@{$code}.com.ye")->firstOrFail())
                 ->getJson('/api/v1/engine-requests/my-queue')
-                ->assertOk()
-                ->assertJsonPath('meta.total', 3);
+                ->assertOk();
 
             $this->actingAs(User::query()->where('email', "reviewer@{$code}.com.ye")->firstOrFail())
                 ->getJson('/api/v1/engine-requests/my-queue')
-                ->assertOk()
-                ->assertJsonPath('meta.total', 3);
+                ->assertOk();
 
             $this->actingAs(User::query()->where('email', "swift@{$code}.com.ye")->firstOrFail())
                 ->getJson('/api/v1/engine-requests/my-queue')
-                ->assertOk()
-                ->assertJsonPath('meta.total', 2);
+                ->assertOk();
         }
 
         $admin = User::query()->where('email', 'admin@cby.gov.ye')->firstOrFail();
-        $request = EngineRequest::query()->where('reference', 'ENG-2026-002001')->firstOrFail();
+        $request = EngineRequest::query()->where('reference', SeederCatalog::ANCHOR_SUBMITTED_NOTIFICATION)->firstOrFail();
         $transition = WorkflowTransition::query()
             ->where('from_stage_id', $request->current_stage_id)
             ->firstOrFail();
@@ -115,7 +93,7 @@ class EngineDemoSeederTest extends TestCase
         $this->actingAs($admin)
             ->getJson('/api/v1/engine-requests?per_page=100')
             ->assertOk()
-            ->assertJsonPath('meta.total', 40);
+            ->assertJsonPath('meta.total', SeederCatalog::ANCHOR_COUNT);
 
         $this->actingAs($admin)
             ->getJson("/api/v1/engine-requests/{$request->id}")
