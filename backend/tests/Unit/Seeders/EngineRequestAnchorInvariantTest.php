@@ -203,7 +203,7 @@ class EngineRequestAnchorInvariantTest extends TestCase
         $this->validator->validate($request);
     }
 
-    public function test_data_with_camel_case_key_fails(): void
+    public function test_data_with_banned_prototype_key_fails(): void
     {
         $request = $this->makeRequest(
             'ENG-2026-TEST-FAIL-004',
@@ -214,7 +214,7 @@ class EngineRequestAnchorInvariantTest extends TestCase
         $this->addHistory($request, null, $this->createStage, 'APPROVE');
 
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessageMatches('/must be snake_case/');
+        $this->expectExceptionMessageMatches('/banned prototype keys/');
 
         $this->validator->validate($request);
     }

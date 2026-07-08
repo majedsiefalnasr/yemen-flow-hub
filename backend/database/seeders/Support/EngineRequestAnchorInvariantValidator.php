@@ -87,7 +87,10 @@ final class EngineRequestAnchorInvariantValidator
      * Runtime status must be compatible with stage and final_outcome.
      *
      * Active requests: status = ACTIVE, final_outcome null
-     * Terminal requests: status matches final_outcome mapping
+     * Terminal (is_final) requests: status matches final_outcome mapping
+     * ABANDONED is the one status the engine can reach without a terminal
+     * stage hop (EngineTransitionService::abandonDraft() only requires the
+     * *current* stage to be is_initial) — so it is valid on a non-final stage.
      */
     private function validateStatusOutcomeMapping(EngineRequest $request): void
     {
@@ -95,9 +98,9 @@ final class EngineRequestAnchorInvariantValidator
         $isTerminal = $stage->is_final;
 
         if (! $isTerminal) {
-            if ($request->status !== EngineRequestStatus::ACTIVE) {
+            if (! in_array($request->status, [EngineRequestStatus::ACTIVE, EngineRequestStatus::ABANDONED], true)) {
                 throw new InvalidArgumentException(
-                    sprintf('Anchor %s: non-terminal stage must have status=ACTIVE, got %s', $request->reference, $request->status)
+                    sprintf('Anchor %s: non-terminal stage must have status=ACTIVE or ABANDONED, got %s', $request->reference, $request->status)
                 );
             }
         } else {
@@ -184,8 +187,16 @@ final class EngineRequestAnchorInvariantValidator
     }
 
     /**
-     * Data keys must be subset of published field definitions.
-     * No camelCase prototype keys (reject financeAmount, invoiceNumber, requestPercentage).
+     * Lovable prototype keys for the three semantic-projection fields. Published
+     * v1 field keys are otherwise legitimately camelCase (taxNumber,
+     * importerName, docCommercialInvoice, ...) — only these three aliases are
+     * banned, per the YFH field-key mapping in the design spec.
+     */
+    private const BANNED_PROTOTYPE_KEYS = ['financeAmount', 'invoiceNumber', 'requestPercentage'];
+
+    /**
+     * Data keys must be a subset of published field definitions, and must not
+     * use the banned Lovable prototype aliases for the projection fields.
      */
     private function validateDataFields(EngineRequest $request): void
     {
@@ -200,12 +211,11 @@ final class EngineRequestAnchorInvariantValidator
         $publishedFieldKeys = $version->fields()->pluck('key')->toArray();
         $dataKeys = array_keys($data);
 
-        foreach ($dataKeys as $key) {
-            if (preg_match('/[A-Z]/', $key) === 1) {
-                throw new InvalidArgumentException(
-                    sprintf('Anchor %s: data key "%s" must be snake_case', $request->reference, $key)
-                );
-            }
+        $bannedKeys = array_intersect($dataKeys, self::BANNED_PROTOTYPE_KEYS);
+        if (! empty($bannedKeys)) {
+            throw new InvalidArgumentException(
+                sprintf('Anchor %s: data contains banned prototype keys: %s', $request->reference, implode(', ', $bannedKeys))
+            );
         }
 
         $unauthorizedKeys = array_diff($dataKeys, $publishedFieldKeys);
@@ -305,6 +315,13 @@ final class EngineRequestAnchorInvariantValidator
 
         $previousToStageId = null;
         foreach ($entries as $index => $entry) {
+            // ABANDON is a lifecycle exit written by EngineTransitionService::abandonDraft(),
+            // not a WorkflowTransition — it has to_stage_id=null and no registered action
+            // row, and current_stage_id intentionally stays on the pre-abandon stage.
+            if ($entry->action_code === 'ABANDON') {
+                continue;
+            }
+
             if ($previousToStageId !== null && $entry->from_stage_id !== $previousToStageId) {
                 throw new InvalidArgumentException(
                     sprintf(
@@ -325,6 +342,10 @@ final class EngineRequestAnchorInvariantValidator
         }
 
         $lastEntry = $entries->last();
+        if ($lastEntry->action_code === 'ABANDON') {
+            return;
+        }
+
         if ((int) $lastEntry->to_stage_id !== (int) $request->current_stage_id) {
             throw new InvalidArgumentException(
                 sprintf('Anchor %s: latest history to_stage must equal current_stage_id', $request->reference)
