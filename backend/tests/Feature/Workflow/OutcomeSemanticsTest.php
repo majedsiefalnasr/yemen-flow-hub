@@ -23,6 +23,7 @@ use App\Services\Workflow\Engine\EngineFinancingLedger;
 use App\Services\Workflow\EngineTransitionService;
 use App\Services\Workflow\WorkflowVersionValidator;
 use App\Support\EngineRequestStatus;
+use App\Support\InvoiceKey;
 use Database\Seeders\BankSeeder;
 use Database\Seeders\GovernanceSeeder;
 use Database\Seeders\ScreenPermissionSeeder;
@@ -148,6 +149,7 @@ class OutcomeSemanticsTest extends TestCase
             'bank_id' => $this->entry->bank_id,
             'merchant_id' => $merchant->id,
             'invoice_number' => 'INV-CAP-1',
+            'invoice_number_normalized' => InvoiceKey::normalize('INV-CAP-1'),
             'request_percentage' => 40,
             'version' => 1,
         ]);
@@ -223,7 +225,15 @@ class OutcomeSemanticsTest extends TestCase
             ]);
         }
 
-        $admin = $this->firstUserWithRole(UserRole::CBY_ADMIN);
+        // COMMITTEE_DIRECTOR sits in the national_committee organization
+        // (OrganizationClassification::NATIONAL_COMMITTEE), which is what
+        // DataScope::forUser() (used by ReportController::applyScope) checks
+        // for system-wide report visibility. CBY_ADMIN's org
+        // (system_administration) is classified OTHER and does NOT get
+        // systemWide scope from DataScope, even though it holds reports:VIEW
+        // via the system_admin screen_permissions grant — see
+        // EngineReportTest for the same finding.
+        $admin = $this->firstUserWithRole(UserRole::COMMITTEE_DIRECTOR);
 
         $this->actingAs($admin)->getJson('/api/v1/reports/summary')
             ->assertOk()

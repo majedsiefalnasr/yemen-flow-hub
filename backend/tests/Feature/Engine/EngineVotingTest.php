@@ -6,7 +6,6 @@ use App\Enums\StageAccessLevel;
 use App\Enums\UserRole;
 use App\Models\Bank;
 use App\Models\EngineRequest;
-use App\Models\RequestVote;
 use App\Models\StagePermission;
 use App\Models\User;
 use App\Models\WorkflowAction;
@@ -15,6 +14,7 @@ use App\Models\WorkflowStage;
 use App\Models\WorkflowTransition;
 use App\Models\WorkflowVersion;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\AssignsGovernanceIdentity;
 use Tests\TestCase;
 
 /**
@@ -24,6 +24,7 @@ use Tests\TestCase;
  */
 class EngineVotingTest extends TestCase
 {
+    use AssignsGovernanceIdentity;
     use RefreshDatabase;
 
     private User $executive;
@@ -43,6 +44,7 @@ class EngineVotingTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->seedGovernance();
 
         $bank = Bank::create(['name' => 'Vote Bank', 'code' => 'VBK', 'is_active' => true]);
 
@@ -53,6 +55,7 @@ class EngineVotingTest extends TestCase
             'bank_id' => null,
             'is_active' => true,
         ]);
+        $this->executive = $this->assignGovernanceIdentity($this->executive, UserRole::EXECUTIVE_MEMBER);
 
         $this->director = User::create([
             'name' => 'Director',
@@ -61,6 +64,7 @@ class EngineVotingTest extends TestCase
             'bank_id' => null,
             'is_active' => true,
         ]);
+        $this->director = $this->assignGovernanceIdentity($this->director, UserRole::COMMITTEE_DIRECTOR);
 
         $this->nonVoter = User::create([
             'name' => 'Non Voter',
@@ -69,6 +73,7 @@ class EngineVotingTest extends TestCase
             'bank_id' => $bank->id,
             'is_active' => true,
         ]);
+        $this->nonVoter = $this->assignGovernanceIdentity($this->nonVoter, UserRole::DATA_ENTRY);
 
         $def = WorkflowDefinition::create(['code' => 'VOTE_WF', 'name' => 'Vote WF', 'is_active' => true]);
         $this->version = WorkflowVersion::create([

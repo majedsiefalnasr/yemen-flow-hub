@@ -5,7 +5,6 @@ namespace Tests\Feature\Engine;
 use App\Enums\UserRole;
 use App\Models\Bank;
 use App\Models\EngineRequest;
-use App\Models\Role;
 use App\Models\User;
 use App\Models\WorkflowDefinition;
 use App\Models\WorkflowStage;
@@ -13,11 +12,12 @@ use App\Models\WorkflowVersion;
 use Database\Seeders\GovernanceSeeder;
 use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
+use Tests\Support\AssignsGovernanceIdentity;
 use Tests\TestCase;
 
 class EngineReportTest extends TestCase
 {
+    use AssignsGovernanceIdentity;
     use RefreshDatabase;
 
     private User $reportViewer;
@@ -37,17 +37,23 @@ class EngineReportTest extends TestCase
 
         $this->bank = Bank::create(['name' => 'Report Bank', 'code' => 'RPB', 'is_active' => true]);
 
-        // CBY Admin has reports:VIEW via the system_admin governance role's
-        // screen_permissions grant.
+        // COMMITTEE_DIRECTOR sits in the national_committee organization
+        // (OrganizationClassification::NATIONAL_COMMITTEE), which is what
+        // DataScope::forUser() checks for system-wide report visibility —
+        // CBY_ADMIN's org (system_administration) is classified OTHER and
+        // does NOT get systemWide scope from DataScope, even though it holds
+        // reports:VIEW via the system_admin screen_permissions grant. The
+        // committee_director governance role also carries reports:VIEW/EXPORT
+        // per ScreenPermissionSeeder, so this satisfies both the capability
+        // gate and the data-scope gate.
         $this->reportViewer = User::create([
-            'name' => 'CBY Admin',
+            'name' => 'Committee Director',
             'email' => 'admin@report.test',
             'password' => bcrypt('pass'),
             'bank_id' => null,
             'is_active' => true,
         ]);
-        $systemAdminRole = Role::query()->where('code', 'system_admin')->firstOrFail();
-        $this->reportViewer->roles()->attach($systemAdminRole->id);
+        $this->reportViewer = $this->assignGovernanceIdentity($this->reportViewer, UserRole::COMMITTEE_DIRECTOR);
 
         // BANK_ADMIN has no governance role attached here, so it does not
         // get reports:VIEW.
@@ -58,6 +64,7 @@ class EngineReportTest extends TestCase
             'bank_id' => $this->bank->id,
             'is_active' => true,
         ]);
+        $this->bankReportViewer = $this->assignGovernanceIdentity($this->bankReportViewer, UserRole::BANK_ADMIN);
 
         // DATA_ENTRY has no reports.view
         $this->noReportAccess = User::create([
@@ -67,6 +74,7 @@ class EngineReportTest extends TestCase
             'bank_id' => $this->bank->id,
             'is_active' => true,
         ]);
+        $this->noReportAccess = $this->assignGovernanceIdentity($this->noReportAccess, UserRole::DATA_ENTRY);
 
         $def = WorkflowDefinition::create(['code' => 'REPORT_WF', 'name' => 'Report WF', 'is_active' => true]);
         $version = WorkflowVersion::create([

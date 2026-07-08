@@ -4,10 +4,10 @@ namespace Tests\Feature\Engine;
 
 use App\Enums\StageAccessLevel;
 use App\Enums\UserRole;
-use App\Models\Role;
 use App\Models\StagePermission;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\AssignsGovernanceIdentity;
 use Tests\Support\EngineWorkflowFactory;
 use Tests\TestCase;
 
@@ -19,7 +19,14 @@ use Tests\TestCase;
  */
 class EngineRequestCanExecuteTest extends TestCase
 {
+    use AssignsGovernanceIdentity;
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seedGovernance();
+    }
 
     public function test_show_reports_can_execute_true_for_stage_executor(): void
     {
@@ -38,6 +45,7 @@ class EngineRequestCanExecuteTest extends TestCase
         // A user who may VIEW the stage but holds no EXECUTE row: a genuine
         // viewer, which the old UI wrongly treated as an actor.
         $viewer = User::factory()->create();
+        $viewer = $this->assignGovernanceIdentity($viewer, UserRole::DATA_ENTRY);
         StagePermission::create([
             'stage_id' => $request->current_stage_id,
             'user_id' => $viewer->id,
@@ -59,7 +67,7 @@ class EngineRequestCanExecuteTest extends TestCase
         // System admin sees every request (policy view === true) but is not
         // assigned to execute this stage, so must not be offered stage actions.
         $admin = User::factory()->create([]);
-        $admin->roles()->attach(Role::query()->where('code', 'system_admin')->firstOrFail()->id);
+        $admin = $this->assignGovernanceIdentity($admin, UserRole::CBY_ADMIN);
 
         $this->actingAs($admin)
             ->getJson("/api/v1/engine-requests/{$request->id}")

@@ -3,7 +3,6 @@
 namespace Tests\Feature\Compliance;
 
 use App\Enums\OrganizationClassification;
-use App\Enums\UserRole;
 use App\Models\Bank;
 use App\Models\EngineRequest;
 use App\Models\Merchant;
@@ -24,10 +23,15 @@ class ComplianceDataScopeTest extends TestCase
     use RefreshDatabase;
 
     private Bank $bank1;
+
     private Bank $bank2;
+
     private User $ncUser;
+
     private User $bank1User;
+
     private User $otherUser;
+
     private WorkflowStage $stage;
 
     protected function setUp(): void
@@ -68,7 +72,7 @@ class ComplianceDataScopeTest extends TestCase
             'organization_id' => $ncOrg->id,
             'is_active' => true,
         ]);
-        
+
         $auditScreen = DB::table('screens')->where('key', 'audit')->first();
         DB::table('screen_permissions')->insert([
             'role_id' => $auditRole->id,
@@ -227,7 +231,7 @@ class ComplianceDataScopeTest extends TestCase
 
         $response = $this->actingAs($this->bank1User)
             ->getJson('/api/v1/compliance/duplicate-invoices');
-            
+
         $response->assertOk();
         $this->assertCount(1, $response->json('data'));
         // Should only see the 2 requests from bank 1, not the one from bank 2
@@ -350,10 +354,14 @@ class ComplianceDataScopeTest extends TestCase
             'version' => 1,
         ]);
 
-        // Mock stage entry in the past for both
+        // Mock stage entry far enough in the past to be an SLA breach (60-minute
+        // SLA) regardless of the app timezone offset (APP_TIMEZONE=Asia/Aden,
+        // UTC+3) vs. the UTC-based epoch comparison in
+        // EngineRequest::slaDeadlineEpochSql()/nowEpochSql() — subHours(2) alone
+        // can still land in the future once the +3h offset is applied.
         DB::table('workflow_history')->insert([
-            ['request_id' => $r1->id, 'to_stage_id' => $this->stage->id, 'performed_by' => $this->ncUser->id, 'created_at' => now()->subHours(2)],
-            ['request_id' => $r2->id, 'to_stage_id' => $this->stage->id, 'performed_by' => $this->ncUser->id, 'created_at' => now()->subHours(2)],
+            ['request_id' => $r1->id, 'to_stage_id' => $this->stage->id, 'performed_by' => $this->ncUser->id, 'created_at' => now()->subHours(5)],
+            ['request_id' => $r2->id, 'to_stage_id' => $this->stage->id, 'performed_by' => $this->ncUser->id, 'created_at' => now()->subHours(5)],
         ]);
 
         $response = $this->actingAs($this->ncUser)
@@ -388,10 +396,12 @@ class ComplianceDataScopeTest extends TestCase
             'version' => 1,
         ]);
 
-        // Mock stage entry in the past for both
+        // See test_nc_user_sees_system_wide_sla_breaches for why subHours(5), not
+        // subHours(2), is required to guarantee a breach under the app's UTC+3
+        // timezone offset.
         DB::table('workflow_history')->insert([
-            ['request_id' => $r1->id, 'to_stage_id' => $this->stage->id, 'performed_by' => $this->ncUser->id, 'created_at' => now()->subHours(2)],
-            ['request_id' => $r2->id, 'to_stage_id' => $this->stage->id, 'performed_by' => $this->ncUser->id, 'created_at' => now()->subHours(2)],
+            ['request_id' => $r1->id, 'to_stage_id' => $this->stage->id, 'performed_by' => $this->ncUser->id, 'created_at' => now()->subHours(5)],
+            ['request_id' => $r2->id, 'to_stage_id' => $this->stage->id, 'performed_by' => $this->ncUser->id, 'created_at' => now()->subHours(5)],
         ]);
 
         $response = $this->actingAs($this->bank1User)

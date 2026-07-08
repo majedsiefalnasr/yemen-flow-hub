@@ -16,10 +16,12 @@ use App\Models\WorkflowVersion;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Tests\Support\AssignsGovernanceIdentity;
 use Tests\TestCase;
 
 class EngineSwiftUploadTest extends TestCase
 {
+    use AssignsGovernanceIdentity;
     use RefreshDatabase;
 
     private User $swiftOfficer;
@@ -36,6 +38,7 @@ class EngineSwiftUploadTest extends TestCase
     {
         parent::setUp();
         Storage::fake('private');
+        $this->seedGovernance();
 
         $this->bank = Bank::create(['name' => 'SWIFT Bank', 'code' => 'SWB', 'is_active' => true]);
 
@@ -46,6 +49,7 @@ class EngineSwiftUploadTest extends TestCase
             'bank_id' => $this->bank->id,
             'is_active' => true,
         ]);
+        $this->swiftOfficer = $this->assignGovernanceIdentity($this->swiftOfficer, UserRole::SWIFT_OFFICER);
 
         $this->wrongRoleUser = User::create([
             'name' => 'Wrong Role',
@@ -54,6 +58,7 @@ class EngineSwiftUploadTest extends TestCase
             'bank_id' => $this->bank->id,
             'is_active' => true,
         ]);
+        $this->wrongRoleUser = $this->assignGovernanceIdentity($this->wrongRoleUser, UserRole::DATA_ENTRY);
 
         $def = WorkflowDefinition::create(['code' => 'SWIFT_WF', 'name' => 'SWIFT WF', 'is_active' => true]);
         $this->version = WorkflowVersion::create([

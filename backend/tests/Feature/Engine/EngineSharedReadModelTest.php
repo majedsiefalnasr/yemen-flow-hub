@@ -13,11 +13,19 @@ use App\Models\WorkflowVersion;
 use App\Support\EngineRequestReadModel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Tests\Support\AssignsGovernanceIdentity;
 use Tests\TestCase;
 
 class EngineSharedReadModelTest extends TestCase
 {
+    use AssignsGovernanceIdentity;
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seedGovernance();
+    }
 
     public function test_query_for_scopes_bank_users_to_their_bank_and_cby_roles_to_all_banks(): void
     {
@@ -25,12 +33,15 @@ class EngineSharedReadModelTest extends TestCase
         $bankA = $this->bank('A');
         $bankB = $this->bank('B');
         $creator = User::factory()->create(['bank_id' => $bankA->id]);
+        $creator = $this->assignGovernanceIdentity($creator, UserRole::DATA_ENTRY);
         $bankUser = User::factory()->create([
             'bank_id' => $bankA->id,
         ]);
+        $bankUser = $this->assignGovernanceIdentity($bankUser, UserRole::DATA_ENTRY);
         $cbyUser = User::factory()->create([
             'bank_id' => null,
         ]);
+        $cbyUser = $this->assignGovernanceIdentity($cbyUser, UserRole::CBY_ADMIN);
 
         $bankARequest = $this->engineRequest($workflow, 'CREATE', $bankA, $creator);
         $bankBRequest = $this->engineRequest($workflow, 'CREATE', $bankB, $creator);
@@ -59,6 +70,7 @@ class EngineSharedReadModelTest extends TestCase
         ]);
         $bank = $this->bank('A');
         $creator = User::factory()->create(['bank_id' => $bank->id]);
+        $creator = $this->assignGovernanceIdentity($creator, UserRole::DATA_ENTRY);
 
         $requestsByStage = [];
         foreach (array_keys($workflow['stages']) as $stageCode) {
@@ -88,6 +100,7 @@ class EngineSharedReadModelTest extends TestCase
         $workflow = $this->workflowWithStages(['CREATE']);
         $bank = $this->bank('A');
         $creator = User::factory()->create(['bank_id' => $bank->id]);
+        $creator = $this->assignGovernanceIdentity($creator, UserRole::DATA_ENTRY);
         $request = $this->engineRequest($workflow, 'CREATE', $bank, $creator, [
             'reference' => 'ENG-2026-000001',
         ]);

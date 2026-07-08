@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Compliance;
 
-use App\Enums\UserRole;
 use App\Models\Bank;
 use App\Models\EngineRequest;
 use App\Models\Merchant;
@@ -149,13 +148,18 @@ class ComplianceTest extends TestCase
     {
         $request = $this->createRequest();
 
-        // Simulate time-in-stage > SLA by inserting a history entry far in the past
+        // Simulate time-in-stage > SLA by inserting a history entry far enough in
+        // the past to breach the 60-minute SLA regardless of the app timezone
+        // offset (APP_TIMEZONE=Asia/Aden, UTC+3) vs. the UTC-based epoch
+        // comparison in EngineRequest::slaDeadlineEpochSql()/nowEpochSql() —
+        // subHours(2) alone can still land in the future once the +3h offset is
+        // applied.
         WorkflowHistoryEntry::create([
             'request_id' => $request->id,
             'from_stage_id' => null,
             'to_stage_id' => $this->stage->id,
             'performed_by' => $this->bankUser->id,
-            'created_at' => now()->subHours(2),
+            'created_at' => now()->subHours(5),
         ]);
 
         $response = $this->actingAs($this->admin)
