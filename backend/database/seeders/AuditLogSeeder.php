@@ -24,7 +24,7 @@ class AuditLogSeeder extends Seeder
 
                 AuditLog::query()->create([
                     'user_id' => $user->id,
-                    'user_role' => $user->role?->value,
+                    'user_role' => $user->role()?->code,
                     'action' => AuditAction::LOGIN->value,
                     'subject_type' => User::class,
                     'subject_id' => $user->id,
@@ -52,7 +52,7 @@ class AuditLogSeeder extends Seeder
                 $failedAt = now()->subDays(rand(1, 7))->subHours(rand(0, 23));
                 AuditLog::query()->create([
                     'user_id' => $user->id,
-                    'user_role' => $user->role?->value,
+                    'user_role' => $user->role()?->code,
                     'action' => AuditAction::LOGIN_FAILED->value,
                     'subject_type' => User::class,
                     'subject_id' => $user->id,
