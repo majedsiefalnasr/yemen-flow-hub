@@ -42,6 +42,9 @@ class DatabaseSeeder extends Seeder
         if (config('demo.seed_demo_data') && in_array(app()->environment(), config('demo.allowed_seed_environments', []), true)) {
             $this->call([EngineRequestAnchorSeeder::class]);
             $this->command?->info('Seeded engine request anchors.');
+
+            $this->call([EngineRequestBulkSeeder::class]);
+            $this->command?->info('Seeded engine request bulk data (skipped when DEMO_SEED_SIZE=minimal).');
         }
 
         $this->call([AuditLogSeeder::class]);
