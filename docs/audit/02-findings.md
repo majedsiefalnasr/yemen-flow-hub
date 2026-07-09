@@ -316,17 +316,17 @@ _Total: 29 findings (1 Critical fixed). Block 5 added SEC-002/003, OBS-001/002 a
 | --- | --- |
 | Area / component | `app/Http/Controllers/Api/V1/ReportController.php` |
 | Endpoint / query | `GET /v1/reports/sla`, `.../stage-duration`, `.../team-performance` |
-| Current behavior | `sla` loads **all** matching `engine_requests` via `->get()` then groups and derives `sla_status` per row in PHP (`:244-262`). `stage-duration` joins `workflow_history` to itself with a correlated MIN subquery and `->get()` (`:197-220`). `team-performance` joins history→users→roles and `->get()` (`:271-289`). None have a LIMIT. |
+| Current behavior | **Fixed.** `sla` now buckets breached/nearing/ok in one grouped SQL query (`SUM(CASE WHEN ...)`), reusing the deadline formula already shipped in `EngineRequestListQuery::applySlaStatusFilterInternal()`, instead of loading all matching requests and deriving the bucket per-row in PHP. All three endpoints default to a 90-day `created_at` window when unfiltered; `?all=true` opts into an explicit full-history pull. `stage-duration`'s self-join was already SQL-side (only the scan was unbounded, not the result set — now bounded by the default window too). |
 | Problem | These scan `engine_requests`/`workflow_history` (the two largest tables) without bound; `sla` additionally materializes the full result set into PHP. At millions of rows these are memory- and time-unbounded. |
 | Severity | Medium |
-| Evidence status | Partially Verified (code); plans in Block 3 |
-| Finding status | Open |
+| Evidence status | Verified (code + tests + full-suite regression) |
+| Finding status | **Fixed** (`perf/api-006-bound-report-queries`) |
 | Roadmap tier | Threshold-gated (row count) — SLA report Pre-production-worth if it is a default dashboard widget (confirm in Block 4) |
-| First identified / last reviewed | Block 2 / Block 2 |
-| Related findings | ARCH-002, API-002, Block 3 index plan |
-| Evidence | `ReportController.php:186-299` |
-| Confidence | Medium-High |
-| Recommendation | Push SLA-status bucketing into SQL (the epoch expressions already exist in `EngineRequestListQuery`) and return grouped counts, not row sets; ensure `stage-duration`'s self-join subquery is index-supported (Block 3); add date-window defaults so unfiltered calls cannot scan all history. Trade-off: SLA report must move derivation from PHP to SQL — test parity needed. |
+| First identified / last reviewed | Block 2 / Post-audit fix |
+| Related findings | ARCH-002, API-002, DB-001/DB-002 index plan |
+| Evidence | `ReportController.php`; `SlaReportTest`, `V1ReportsTest`; `evidence/API-006-bound-report-queries.md` |
+| Confidence | High |
+| Recommendation | **Applied**, per the original recommendation, plus a user-confirmed adjustment: since this is a Central Bank regulatory platform, a *silent* default window would risk hiding data from a compliance/audit report view — the default (90 days) ships with an explicit `?all=true` escape hatch rather than being unconditional. `summary`/`by-*` dashboard-widget endpoints deliberately did NOT get the default window (out of this finding's named scope; likely expected to show all-time totals by design). |
 | Security gate | `applyScope` preserved; verified in Block 5. |
 
 ## API-007 — Index-defeating filter predicates on audit and report queries
