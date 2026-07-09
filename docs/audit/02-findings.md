@@ -4,16 +4,16 @@ All findings carry the lifecycle fields defined in `00-scope-and-method.md`. IDs
 
 Blocks are additive: Block 1 seeds architecture (`ARCH-`) and any security defect found during discovery (`SEC-`). API/DB/FE/CACHE/QUEUE/OBS findings arrive in later blocks. Database findings are `Partially Verified` until Block 3 captures plans.
 
-## Summary counts (through Block 2)
+## Summary counts (through Block 3)
 
 | Severity | Count | IDs |
 | --- | --- | --- |
 | Critical | 1 | SEC-001 — **fixed** in Block 1 (commit `375fe5f2`) |
-| High | 5 | ARCH-001, ARCH-002, API-001, API-002, API-003 |
+| High | 7 | ARCH-001, ARCH-002, API-001, API-002, API-003, DB-001, DB-002 |
 | Medium | 7 | ARCH-003, ARCH-004, ARCH-006, ARCH-007, API-004, API-005, API-006 |
-| Low | 2 | ARCH-005, API-007 |
+| Low | 3 | ARCH-005, API-007, DB-003 |
 
-_API-003 supersedes the Block 1 placeholder API-000; counts reflect the renumber. Total: 15 findings (1 fixed)._
+_API-003 supersedes the Block 1 placeholder API-000. DB-001..003 are index proposals with captured before/after evidence. Total: 18 findings (1 fixed). Block 3 verified ARCH-002/004, API-003/005, and reclassified ARCH-001 as an application-layer cost._
 
 ---
 
@@ -70,13 +70,13 @@ _API-003 supersedes the Block 1 placeholder API-000; counts reflect the renumber
 | Current behavior | The queue orders by an SLA deadline expression that re-runs `(select max(created_at) from workflow_history where request_id = engine_requests.id and to_stage_id = engine_requests.current_stage_id)` and epoch arithmetic **inside ORDER BY** (`:163-184`); `scopeWithStageEntry` also adds the same correlated subselect as a column (`:141-157`). Applied to every row matching the scope before LIMIT. |
 | Problem | Correlated subquery per candidate row + arithmetic in ORDER BY is unindexable as written; MySQL must evaluate it for the whole scoped set, then sort (filesort), before pagination. At millions of `engine_requests`/`workflow_history` rows this dominates queue latency. |
 | Severity | High |
-| Evidence status | Partially Verified (code); plan capture in Block 3 |
-| Finding status | Open |
-| Roadmap tier | Threshold-gated (queue result-set size; threshold set from Block 3 plans) |
-| First identified / last reviewed | Block 1 / Block 1 |
-| Related findings | ARCH-001, DB findings (Block 3), FE queue polling (Block 4) |
-| Evidence | `EngineRequest.php:141-184`, `EngineRequestListQuery.php:95-124` |
-| Confidence | Medium-High |
+| Evidence status | **Verified** (plan + before/after timing, Block 3) |
+| Finding status | Revised (evidence upgraded) |
+| Roadmap tier | Pre-production (DB-001 index) + Threshold-gated (projection-column sort fix) |
+| First identified / last reviewed | Block 1 / Block 3 |
+| Related findings | ARCH-001, DB-001, API-002, API-006, FE queue polling (Block 4) |
+| Evidence | `EngineRequest.php:141-184`; `evidence/explain/ARCH-002-my-queue-sla.txt` (96,186-row sort before LIMIT; ~2.6 s), `...-after-index.txt` (2.6 s → 0.7 s with DB-001) |
+| Confidence | High |
 | Recommendation | Candidate directions (evidence-select in Block 3): (a) maintain a `stage_entered_at` projection column on `engine_requests`, updated on transition (the projection-sync pattern already exists in `RequestProjectionSync`), so SLA ordering/filtering hits an indexed column instead of a correlated subquery; (b) covering index on `workflow_history (request_id, to_stage_id, created_at)` to make the subquery seek-bounded. Prefer (a) if Block 3 shows the subquery cost is the bottleneck. Trade-off: (a) adds a projection column + backfill migration and write-path maintenance. |
 | Security gate | Ordering change only; scoping unaffected. Verified in Block 5. |
 
@@ -136,13 +136,13 @@ _API-003 supersedes the Block 1 placeholder API-000; counts reflect the renumber
 | Current behavior | Search uses `LIKE '%term%'` on `reference` and `invoice_number` (`:47-52`); date filters use `whereDate('created_at', ...)` (`:44-46`), wrapping the column in a function. |
 | Problem | Leading `%` forces a full scan (no index seek); `whereDate()` applies `DATE()` to the column, defeating any index on `created_at`. Combined with offset pagination + COUNT over millions of rows, list latency degrades sharply. |
 | Severity | Medium |
-| Evidence status | Partially Verified (code); plans in Block 3 |
-| Finding status | Open |
-| Roadmap tier | Threshold-gated (row count; thresholds from Block 3) |
-| First identified / last reviewed | Block 1 / Block 1 |
-| Related findings | ARCH-002, Block 2 pagination findings, Block 3 index proposals |
-| Evidence | `EngineRequestListQuery.php:42-53` |
-| Confidence | Medium-High |
+| Evidence status | **Verified** (plan + before/after timing, Block 3) |
+| Finding status | Revised (evidence upgraded) |
+| Roadmap tier | Pre-production (DB-002 index + range-date code fix); prefix/FULLTEXT search Threshold-gated |
+| First identified / last reviewed | Block 1 / Block 3 |
+| Related findings | ARCH-002, DB-002, API-007, Block 2 pagination findings |
+| Evidence | `EngineRequestListQuery.php:42-53`; `evidence/explain/ARCH-004-list-search-offset.txt` (492,814-row filter+sort; ~0.3 s), `...-after-composite.txt` (→ covering scan, ~0.08 s) |
+| Confidence | High |
 | Recommendation | Replace `whereDate` with half-open range predicates (`created_at >= ? AND created_at < ?`) to use an index; for search, prefer prefix `LIKE 'term%'` on `reference` where UX allows, or a normalized/`FULLTEXT` approach for `invoice_number` (already has `invoice_number_normalized`). Decide index set in Block 3 against real plans. Trade-off: prefix search changes UX (no infix match) — confirm with product; FULLTEXT adds an index maintenance cost. |
 | Security gate | Filter behavior only; scoping preserved. Verified in Block 5. |
 
@@ -348,4 +348,67 @@ _API-003 supersedes the Block 1 placeholder API-000; counts reflect the renumber
 | Recommendation | Half-open range bounds instead of `whereDate`; exact `subject_type = ?` (fully-qualified class) or a normalized entity column instead of infix LIKE. Consolidated into Block 3 index plan. Trade-off: entity filter UX must switch from substring to exact/known-type. |
 | Security gate | Scope preserved; verified in Block 5. |
 
-_No DB/FE/CACHE/QUEUE/OBS findings yet — Block 3 opens the DB series with captured evidence._
+---
+
+# DB series (Block 3) — index proposals
+
+Full rationale, before/after plans, and migrations in `03-database-plan.md §4`. These are actionable proposals derived from captured evidence, tracked as findings for lifecycle.
+
+## DB-001 — Missing `workflow_history (request_id, to_stage_id, created_at)` covering index
+
+| Field | Value |
+| --- | --- |
+| Area / component | `workflow_history` table; SLA subquery in `EngineRequest` scopes |
+| Endpoint / query | my-queue, `stats` SLA metrics, `reports/sla` |
+| Current behavior | SLA correlated subquery hits `(request_id, created_at)` then filters `to_stage_id` post-lookup (per-row). |
+| Problem | Per-row subquery cost across the my-queue sort set. |
+| Severity | High |
+| Evidence status | Verified |
+| Finding status | Open |
+| Roadmap tier | Pre-production (paired with ARCH-002) |
+| First identified / last reviewed | Block 3 / Block 3 |
+| Related findings | ARCH-002, API-002, API-006 |
+| Evidence | `evidence/explain/ARCH-002-my-queue-sla.txt`, `...-after-index.txt` (2.6 s → 0.7 s; subquery cost 4.31 → 1.14) |
+| Confidence | High |
+| Recommendation | Add index `wh_req_tostage_created`; migration + rollback in `03-database-plan.md §4 DB-IDX-1`. Trade-off: one more index on a 5M-row append table (once-per-transition write). |
+| Security gate | Index only; no scoping/behavior change. |
+
+## DB-002 — Missing `engine_requests (bank_id, created_at, id)` composite index
+
+| Field | Value |
+| --- | --- |
+| Area / component | `engine_requests` table; default list sort + report date ranges |
+| Endpoint / query | `GET /v1/engine-requests`, report date filters |
+| Current behavior | No composite for bank-scoped `created_at DESC` ordering → full filter+sort of the bank's rows. |
+| Problem | 492k-row filter+sort per bank-scoped list page at target. |
+| Severity | High |
+| Evidence status | Verified |
+| Finding status | Open |
+| Roadmap tier | Pre-production (paired with ARCH-004 code fix) |
+| First identified / last reviewed | Block 3 / Block 3 |
+| Related findings | ARCH-004, API-007 |
+| Evidence | `evidence/explain/ARCH-004-list-search-offset.txt`, `...-after-composite.txt` (0.3 s → 0.08 s; becomes covering range scan) |
+| Confidence | High |
+| Recommendation | Add index `er_bank_created` (`03-database-plan.md §4 DB-IDX-2`). **Only effective with** the ARCH-004/API-007 code change to stop wrapping `created_at` in `DATE()`. Trade-off: one composite on the 1M-row hot table; low churn (`created_at` set-once). |
+| Security gate | Index only; scoping preserved by the query's existing `bank_id` predicate. |
+
+## DB-003 — Conditional `audit_logs (subject_type, created_at)` index (gated on code fix)
+
+| Field | Value |
+| --- | --- |
+| Area / component | `audit_logs` table |
+| Endpoint / query | `GET /v1/audit-logs` (+ export) entity/date filters |
+| Current behavior | `whereDate` + infix `subject_type LIKE '%…%'`; relies on reverse-PRIMARY early stop. |
+| Problem | Degrades toward full reverse scan on selective/old filters over a 5M-row table. |
+| Severity | Low |
+| Evidence status | Partially Verified |
+| Finding status | Open |
+| Roadmap tier | Threshold-gated (audit table size + confirmed audit-filter workload) |
+| First identified / last reviewed | Block 3 / Block 3 |
+| Related findings | API-007, ARCH-006 |
+| Evidence | `evidence/explain/API-007-audit-filter.txt` |
+| Confidence | Medium |
+| Recommendation | Only after switching to exact `subject_type = ?` + range dates (API-007); then add `al_subject_created` (`03-database-plan.md §4 DB-IDX-3`). Unused without the code fix. Trade-off: index on the largest append-only table. |
+| Security gate | Index only; note the separate `audit_logs` no-`bank_id` scoping limitation → SEC series (Block 5). |
+
+_FE/CACHE/QUEUE findings arrive in Block 4; SEC/OBS in Block 5._

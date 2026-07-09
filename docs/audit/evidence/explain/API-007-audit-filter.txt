@@ -1,0 +1,2 @@
+EXPLAIN
+-> Limit: 30 row(s)  (cost=3.02 rows=3.33)\n    -> Filter: ((cast(audit_logs.created_at as date) >= '2026-06-01') and (audit_logs.subject_type like '%EngineRequest%'))  (cost=3.02 rows=3.33)\n        -> Index scan on audit_logs using PRIMARY (reverse)  (cost=3.02 rows=30)\n

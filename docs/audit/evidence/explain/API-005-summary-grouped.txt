@@ -1,0 +1,2 @@
+EXPLAIN
+-> Table scan on <temporary>\n    -> Aggregate using temporary table\n        -> Index lookup on engine_requests using engine_requests_bank_id_index (bank_id=1)  (cost=85976 rows=492814)\n

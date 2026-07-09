@@ -1,0 +1,2 @@
+EXPLAIN
+-> Limit/Offset: 25/40000 row(s)  (cost=51415 rows=25)\n    -> Sort: engine_requests.created_at DESC, engine_requests.id, limit input to 40025 row(s) per chunk  (cost=51415 rows=492814)\n        -> Filter: (((engine_requests.`reference` like '%INV%') or (engine_requests.invoice_number like '%5551%')) and (cast(engine_requests.created_at as date) >= '2026-01-01'))  (cost=51415 rows=492814)\n            -> Index lookup on engine_requests using engine_requests_bank_id_index (bank_id=1)  (cost=51415 rows=492814)\n

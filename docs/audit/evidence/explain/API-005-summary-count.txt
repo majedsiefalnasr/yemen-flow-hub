@@ -1,0 +1,2 @@
+EXPLAIN
+-> Aggregate: count(0)  (cost=47375 rows=1)\n    -> Filter: ((engine_requests.bank_id = 1) and (engine_requests.`status` = 'ACTIVE'))  (cost=26356 rows=210197)\n        -> Intersect rows sorted by row ID  (cost=26356 rows=210198)\n            -> Index range scan on engine_requests using engine_requests_status_index over (status = 'ACTIVE')  (cost=0.0104..4357 rows=420396)\n            -> Index range scan on engine_requests using engine_requests_bank_id_index over (bank_id = 1)  (cost=0.00199..979 rows=492814)\n
