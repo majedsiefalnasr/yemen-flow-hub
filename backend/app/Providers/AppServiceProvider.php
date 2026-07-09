@@ -10,6 +10,9 @@ use App\Services\Workflow\Effects\CustomsFxPdfEffect;
 use App\Services\Workflow\Effects\FinancingLedgerEffect;
 use App\Services\Workflow\StageFieldOutputFilter;
 use App\Services\Workflow\StageHookRegistry;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use RuntimeException;
 
@@ -36,6 +39,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->registerEngineStageHooks();
+        $this->registerApiRateLimiter();
 
         if (! $this->app->environment('production')) {
             return;
@@ -52,6 +56,26 @@ class AppServiceProvider extends ServiceProvider
                 'Production mail must use the approved CBY/government SMTP server.'
             );
         }
+    }
+
+    /**
+     * ARCH-003: default request cap for the authenticated API groups. Keyed per
+     * authenticated user (falling back to client IP), so it bounds a single
+     * client's volume against the expensive list/report/dashboard endpoints
+     * without a shared global bucket. Per-route throttles (uploads, admin writes)
+     * stack on top and remain the tighter limit where present.
+     */
+    private function registerApiRateLimiter(): void
+    {
+        RateLimiter::for('api-default', function (Request $request) {
+            $perMinute = (int) config('auth_security.api_throttle_per_minute', 120);
+
+            return Limit::perMinute($perMinute)->by(
+                $request->user()?->getAuthIdentifier() !== null
+                    ? 'user:'.$request->user()->getAuthIdentifier()
+                    : 'ip:'.$request->ip(),
+            );
+        });
     }
 
     /**

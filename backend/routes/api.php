@@ -66,7 +66,7 @@ Route::prefix('auth')->group(function () use ($demoEnvironmentAllowed) {
     });
 });
 
-Route::prefix('v1')->middleware(['auth:sanctum', 'active'])->group(function () {
+Route::prefix('v1')->middleware(['auth:sanctum', 'active', 'throttle:api-default'])->group(function () {
     Route::get('governance/impact', [GovernanceImpactController::class, 'show']);
     Route::get('banks/{bank}/lifecycle-impact', [GovernanceImpactController::class, 'bank']);
     Route::get('organizations', [OrganizationController::class, 'index']);
@@ -242,7 +242,7 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'active'])->group(function () {
 
 Route::get('settings/public', [SettingsController::class, 'publicSettings']);
 
-Route::middleware(['auth:sanctum', 'active'])->group(function () {
+Route::middleware(['auth:sanctum', 'active', 'throttle:api-default'])->group(function () {
     Route::get('profile', [ProfileController::class, 'show']);
     Route::put('profile', [ProfileController::class, 'update']);
     Route::put('profile/avatar', [ProfileController::class, 'updateAvatar']);
@@ -266,7 +266,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::post('settings/save-section', [SettingsController::class, 'saveSection']);
 });
 
-Route::middleware(['auth:sanctum', 'active'])->group(function () {
+Route::middleware(['auth:sanctum', 'active', 'throttle:api-default'])->group(function () {
     Route::get('financing/utilization', [FinancingController::class, 'utilization']);
 
     Route::get('admin/health', [AdminHealthController::class, 'index']);
