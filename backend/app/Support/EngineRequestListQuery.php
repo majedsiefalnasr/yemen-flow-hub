@@ -39,11 +39,15 @@ class EngineRequestListQuery
         if ($request->filled('status') && in_array($request->string('status')->value(), self::ALLOWED_STATUSES, true)) {
             $query->where('engine_requests.status', $request->string('status'));
         }
+        // Half-open range bounds instead of whereDate(): wrapping created_at in
+        // DATE() prevents MySQL from using the (bank_id, created_at, id) index
+        // (DB-002). `created_to` is made inclusive of the whole day by using a
+        // strict upper bound at the start of the next day.
         if ($request->filled('created_from')) {
-            $query->whereDate('engine_requests.created_at', '>=', $request->date('created_from'));
+            $query->where('engine_requests.created_at', '>=', $request->date('created_from')->startOfDay());
         }
         if ($request->filled('created_to')) {
-            $query->whereDate('engine_requests.created_at', '<=', $request->date('created_to'));
+            $query->where('engine_requests.created_at', '<', $request->date('created_to')->addDay()->startOfDay());
         }
         if ($request->filled('search')) {
             $term = '%'.$request->string('search').'%';

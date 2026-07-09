@@ -20,15 +20,22 @@ class ReportController extends Controller
     {
         abort_unless($this->permissionService->userHasCapability($request->user(), 'reports', 'VIEW'), 403);
 
-        $query = $this->baseQuery($request);
+        // API-005 (perf audit): one grouped pass instead of seven full scans.
+        // Aggregates per-status counts + the amount sum in a single query, then
+        // derives the individual status buckets in PHP.
+        $rows = $this->baseQuery($request)
+            ->selectRaw('engine_requests.status, COUNT(*) as c, SUM(engine_requests.amount) as amt')
+            ->groupBy('engine_requests.status')
+            ->get();
 
-        $total = (clone $query)->count();
-        $active = (clone $query)->where('engine_requests.status', 'ACTIVE')->count();
-        $closed = (clone $query)->where('engine_requests.status', 'CLOSED')->count();
-        $rejected = (clone $query)->where('engine_requests.status', 'REJECTED')->count();
-        $cancelled = (clone $query)->where('engine_requests.status', 'CANCELLED')->count();
-        $abandoned = (clone $query)->where('engine_requests.status', 'ABANDONED')->count();
-        $totalAmount = (float) (clone $query)->sum('engine_requests.amount');
+        $counts = $rows->pluck('c', 'status');
+        $total = (int) $rows->sum('c');
+        $active = (int) ($counts['ACTIVE'] ?? 0);
+        $closed = (int) ($counts['CLOSED'] ?? 0);
+        $rejected = (int) ($counts['REJECTED'] ?? 0);
+        $cancelled = (int) ($counts['CANCELLED'] ?? 0);
+        $abandoned = (int) ($counts['ABANDONED'] ?? 0);
+        $totalAmount = (float) $rows->sum('amt');
 
         return response()->json(['data' => compact('total', 'active', 'closed', 'rejected', 'cancelled', 'abandoned', 'totalAmount')]);
     }

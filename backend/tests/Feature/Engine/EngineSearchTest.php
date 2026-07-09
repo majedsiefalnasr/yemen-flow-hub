@@ -3,7 +3,6 @@
 namespace Tests\Feature\Engine;
 
 use App\Enums\StageAccessLevel;
-use App\Enums\UserRole;
 use App\Models\Bank;
 use App\Models\EngineRequest;
 use App\Models\Organization;
@@ -175,5 +174,41 @@ class EngineSearchTest extends TestCase
 
         $response->assertOk()->assertJsonPath('meta.total', 1);
         $this->assertEquals('ENG-2026-999001', $response->json('data.0.reference'));
+    }
+
+    /**
+     * Guards the ARCH-004 half-open date-range conversion (whereDate replaced with
+     * created_at >= from.startOfDay() AND created_at < to.addDay().startOfDay()).
+     * created_to must stay inclusive of the whole day — a request created late on
+     * the created_to date must still match.
+     */
+    public function test_created_to_filter_is_inclusive_of_the_whole_day(): void
+    {
+        $onDate = $this->makeRequest($this->bankUserA, $this->bankA, 'ENG-2026-700001');
+        $onDate->forceFill(['created_at' => '2026-03-10 23:30:00'])->save();
+
+        $nextDay = $this->makeRequest($this->bankUserA, $this->bankA, 'ENG-2026-700002');
+        $nextDay->forceFill(['created_at' => '2026-03-11 00:15:00'])->save();
+
+        $response = $this->actingAs($this->bankUserA)
+            ->getJson('/api/v1/engine-requests?created_from=2026-03-10&created_to=2026-03-10');
+
+        $response->assertOk()->assertJsonPath('meta.total', 1);
+        $this->assertEquals('ENG-2026-700001', $response->json('data.0.reference'));
+    }
+
+    public function test_created_from_filter_excludes_earlier_days(): void
+    {
+        $before = $this->makeRequest($this->bankUserA, $this->bankA, 'ENG-2026-700010');
+        $before->forceFill(['created_at' => '2026-03-09 12:00:00'])->save();
+
+        $onOrAfter = $this->makeRequest($this->bankUserA, $this->bankA, 'ENG-2026-700011');
+        $onOrAfter->forceFill(['created_at' => '2026-03-10 12:00:00'])->save();
+
+        $response = $this->actingAs($this->bankUserA)
+            ->getJson('/api/v1/engine-requests?created_from=2026-03-10');
+
+        $response->assertOk()->assertJsonPath('meta.total', 1);
+        $this->assertEquals('ENG-2026-700011', $response->json('data.0.reference'));
     }
 }
