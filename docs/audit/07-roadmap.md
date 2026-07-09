@@ -91,9 +91,9 @@ ORDER BY ... (UNIX_TIMESTAMP((SELECT MAX(created_at) FROM workflow_history
 ## Verification checklist (per fix — how to confirm it worked)
 
 - [ ] **DB-001:** EXPLAIN shows covering index lookup on the SLA subquery; my-queue p95 ≤ 300 ms at 1M rows. *(Index + code done — DB-001 index applied and ARCH-002 `stage_entered_at` projection column swapped in; `SlaProjectionParityTest`, `evidence/explain/ARCH-002-stage-entered-at.txt`. p95-at-1M gate stays open for a load run.)*
-- [ ] **DB-002 + ARCH-004:** EXPLAIN shows covering range scan (no `cast(... as date)` in the plan); list p95 ≤ 300 ms.
-- [ ] **API-001:** query count per list page is constant regardless of page size (assert via OBS-001 counter).
-- [ ] **API-002 / API-005:** stats/summary issue one grouped query, not N passes (query-count assertion).
+- [ ] **DB-002 + ARCH-004:** EXPLAIN shows covering range scan (no `cast(... as date)` in the plan); list p95 ≤ 300 ms. *(Code + index done — `er_bank_created` index and half-open date range in `EngineRequestListQuery` (no `whereDate`); `EngineSearchTest` covers the range boundaries. p95-at-1M gate stays open for a load run.)*
+- [ ] **API-001:** query count per list page is constant regardless of page size (assert via OBS-001 counter). *(Code done — FX request scope resolved in memory, no per-row `forUser()` query; `FxConfirmationRequestScopeTest` pins parity. Query-count assertion stays open pending the OBS-001 counter.)*
+- [ ] **API-002 / API-005:** stats/summary issue one grouped query, not N passes (query-count assertion). *(Code done — stats collapsed to fewer grouped passes and `reports/summary` to one grouped query; `EngineRequestStatsTest`/report tests green. Query-count assertion stays open pending the OBS-001 counter.)*
 - [x] **ARCH-001:** permission-resolution issues a bounded SQL query, not a whole-table hydrate; **parity test** vs the old PHP evaluator passes for every identity shape. *(Done — `AccessibleStageIdsParityTest`; plan in `evidence/explain/ARCH-001-accessible-stage-ids.txt`.)*
 - [x] **ARCH-003:** authenticated endpoints return 429 past the limit *(Done — `throttle:api-default` on the v1/profile/admin groups; `ApiDefaultThrottleTest` proves the cap and per-user bucket)*. Unauthenticated auth endpoints keep their existing per-route throttles (login 5/1, OTP 10/1, etc.).
 - [ ] **API-003:** concurrent-create test yields unique references, zero `REFERENCE_ALLOCATION_FAILED`; behaves correctly past a simulated 7-digit sequence.
