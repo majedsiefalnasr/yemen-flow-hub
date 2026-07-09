@@ -14,11 +14,14 @@ export const useNotificationsStore = defineStore('notifications', {
   }),
 
   actions: {
+    // FE-002: reads the dedicated notifications/unread-count endpoint instead
+    // of fetching the full list page and counting in JS — callers that only
+    // need a badge count (sidebar, dashboard mount) must not pull the whole
+    // paginated list just to derive it.
     async refreshUnreadCount(): Promise<void> {
-      const { fetchNotifications, notifications } = useNotifications()
-      await fetchNotifications(1)
-      this.items = notifications.value
-      this.unreadCount = countUnread(this.items)
+      const { fetchUnreadCount, unreadCount } = useNotifications()
+      await fetchUnreadCount()
+      this.unreadCount = unreadCount.value
       this.lastFetched = new Date()
     },
     async fetchRecent(): Promise<void> {

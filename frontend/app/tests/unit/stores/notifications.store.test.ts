@@ -42,29 +42,41 @@ describe('useNotificationsStore — refreshUnreadCount', () => {
     mockNotifications.value = []
   })
 
-  it('updates unreadCount from loaded notification rows and sets lastFetched', async () => {
-    mockNotifications.value = [
-      { id: '1', read_at: null },
-      { id: '2', read_at: '2026-06-01T10:00:00.000Z' },
-      { id: '3', read_at: null },
-    ]
-    mockFetchNotifications.mockResolvedValueOnce(undefined)
+  // FE-002: refreshUnreadCount must read the dedicated notifications/unread-count
+  // endpoint (useNotifications().fetchUnreadCount), not fetch the full list page
+  // just to derive a count in JS — that duplicates the cheap count endpoint with
+  // a full paginated list fetch every time a badge needs to update.
+  it('calls the dedicated unread-count endpoint, not the full list fetch', async () => {
+    mockUnreadCount.value = 4
+    mockFetchUnreadCount.mockResolvedValueOnce(undefined)
 
     const store = useNotificationsStore()
     await store.refreshUnreadCount()
 
-    expect(store.unreadCount).toBe(2)
-    expect(store.items).toEqual(mockNotifications.value)
+    expect(mockFetchUnreadCount).toHaveBeenCalledTimes(1)
+    expect(mockFetchNotifications).not.toHaveBeenCalled()
+  })
+
+  it('adopts the count returned by the dedicated endpoint and sets lastFetched', async () => {
+    mockUnreadCount.value = 7
+    mockFetchUnreadCount.mockResolvedValueOnce(undefined)
+
+    const store = useNotificationsStore()
+    await store.refreshUnreadCount()
+
+    expect(store.unreadCount).toBe(7)
     expect(store.lastFetched).toBeInstanceOf(Date)
   })
 
-  it('fetches the first notifications page for badge parity', async () => {
-    mockFetchNotifications.mockResolvedValueOnce(undefined)
+  it('does not overwrite already-loaded list items', async () => {
+    mockUnreadCount.value = 2
+    mockFetchUnreadCount.mockResolvedValueOnce(undefined)
 
     const store = useNotificationsStore()
+    store.items = [{ id: '1', read_at: null }] as any
     await store.refreshUnreadCount()
 
-    expect(mockFetchNotifications).toHaveBeenCalledWith(1)
+    expect(store.items).toEqual([{ id: '1', read_at: null }])
   })
 })
 
