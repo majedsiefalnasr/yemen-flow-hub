@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Report;
 
-use App\Enums\UserRole;
 use App\Models\Bank;
 use App\Models\EngineRequest;
 use App\Models\Organization;
@@ -211,5 +210,52 @@ class V1ReportsTest extends TestCase
         $this->actingAs($this->bankUser)
             ->getJson('/api/v1/reports/summary')
             ->assertForbidden();
+    }
+
+    /**
+     * Guards API-007: stage-duration's from/to filter must use a half-open
+     * range instead of whereDate(), which wraps h1.created_at in DATE() and
+     * defeats any index on the column. created_to must stay inclusive of the
+     * whole day.
+     */
+    public function test_stage_duration_to_filter_is_inclusive_of_the_whole_day(): void
+    {
+        $inRangeReq = $this->createRequest();
+        WorkflowHistoryEntry::create([
+            'request_id' => $inRangeReq->id,
+            'from_stage_id' => null,
+            'to_stage_id' => $this->stage->id,
+            'performed_by' => $this->bankUser->id,
+            'created_at' => '2026-03-10 23:30:00',
+        ]);
+        WorkflowHistoryEntry::create([
+            'request_id' => $inRangeReq->id,
+            'from_stage_id' => $this->stage->id,
+            'to_stage_id' => $this->stage->id,
+            'performed_by' => $this->bankUser->id,
+            'created_at' => '2026-03-11 00:00:00',
+        ]);
+
+        $outOfRangeReq = $this->createRequest();
+        WorkflowHistoryEntry::create([
+            'request_id' => $outOfRangeReq->id,
+            'from_stage_id' => null,
+            'to_stage_id' => $this->stage->id,
+            'performed_by' => $this->bankUser->id,
+            'created_at' => '2026-03-11 08:00:00',
+        ]);
+        WorkflowHistoryEntry::create([
+            'request_id' => $outOfRangeReq->id,
+            'from_stage_id' => $this->stage->id,
+            'to_stage_id' => $this->stage->id,
+            'performed_by' => $this->bankUser->id,
+            'created_at' => '2026-03-11 09:00:00',
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->getJson('/api/v1/reports/stage-duration?from=2026-03-10&to=2026-03-10')
+            ->assertOk();
+
+        $this->assertEquals(1, $response->json('data.0.transitions'));
     }
 }

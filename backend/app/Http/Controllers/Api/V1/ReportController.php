@@ -215,8 +215,9 @@ class ReportController extends Controller
 
                 return $q->whereRaw('1 = 0');
             })
-            ->when($request->filled('from'), fn ($q) => $q->whereDate('h1.created_at', '>=', $request->string('from')))
-            ->when($request->filled('to'), fn ($q) => $q->whereDate('h1.created_at', '<=', $request->string('to')))
+            // API-007: half-open range bounds instead of whereDate().
+            ->when($request->filled('from'), fn ($q) => $q->where('h1.created_at', '>=', $request->date('from')->startOfDay()))
+            ->when($request->filled('to'), fn ($q) => $q->where('h1.created_at', '<', $request->date('to')->addDay()->startOfDay()))
             ->when($request->filled('bank'), fn ($q) => $q->where('er.bank_id', $request->integer('bank')))
             ->when($request->filled('version'), fn ($q) => $q->where('er.workflow_version_id', $request->integer('version')))
             ->when($request->filled('status'), fn ($q) => $q->where('er.status', $request->string('status')))
@@ -322,11 +323,13 @@ class ReportController extends Controller
 
     private function applyFilters(Request $request, $query): void
     {
+        // API-007: half-open range bounds instead of whereDate() — wrapping
+        // created_at in DATE() defeats any index on the column.
         if ($request->filled('from')) {
-            $query->whereDate('engine_requests.created_at', '>=', $request->string('from'));
+            $query->where('engine_requests.created_at', '>=', $request->date('from')->startOfDay());
         }
         if ($request->filled('to')) {
-            $query->whereDate('engine_requests.created_at', '<=', $request->string('to'));
+            $query->where('engine_requests.created_at', '<', $request->date('to')->addDay()->startOfDay());
         }
         if ($request->filled('workflow')) {
             $query->whereHas('workflowVersion', fn ($q) => $q->where('workflow_definition_id', $request->integer('workflow')));
