@@ -13,6 +13,7 @@ use App\Exceptions\UnauthorizedTransitionException;
 use App\Exceptions\VotingException;
 use App\Exceptions\WorkflowImmutableStateException;
 use App\Exceptions\WorkflowLockedStateException;
+use App\Http\Middleware\AttachQueryMetricsHeaders;
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Services\Audit\AuditService;
@@ -56,7 +57,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'active' => EnsureActiveUser::class,
         ]);
 
+        // OBS-001: prepend before EnsureFrontendRequestsAreStateful so the
+        // reset happens before Sanctum/auth resolution runs any queries —
+        // the header must reflect the full request, not just the controller.
         $middleware->api(prepend: [
+            AttachQueryMetricsHeaders::class,
             EnsureFrontendRequestsAreStateful::class,
         ]);
     })

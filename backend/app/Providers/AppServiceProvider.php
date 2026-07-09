@@ -10,8 +10,11 @@ use App\Services\Workflow\Effects\CustomsFxPdfEffect;
 use App\Services\Workflow\Effects\FinancingLedgerEffect;
 use App\Services\Workflow\StageFieldOutputFilter;
 use App\Services\Workflow\StageHookRegistry;
+use App\Support\QueryMetrics;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use RuntimeException;
@@ -34,12 +37,16 @@ class AppServiceProvider extends ServiceProvider
         // request, instead of resetting on every app() call.
         $this->app->singleton(StageFieldOutputFilter::class, StageFieldOutputFilter::class);
         $this->app->singleton(FxConfirmationAuthorizationService::class, FxConfirmationAuthorizationService::class);
+        // OBS-001: one counter instance per request, fed by the DB::listen hook
+        // registered in boot() below.
+        $this->app->singleton(QueryMetrics::class, QueryMetrics::class);
     }
 
     public function boot(): void
     {
         $this->registerEngineStageHooks();
         $this->registerApiRateLimiter();
+        $this->registerQueryMetricsListener();
 
         if (! $this->app->environment('production')) {
             return;
@@ -75,6 +82,18 @@ class AppServiceProvider extends ServiceProvider
                     ? 'user:'.$request->user()->getAuthIdentifier()
                     : 'ip:'.$request->ip(),
             );
+        });
+    }
+
+    /**
+     * OBS-001: accumulate every executed query into the request-scoped
+     * QueryMetrics singleton so query-count regressions (e.g. N+1) are
+     * assertable in tests and surfaced via response headers in non-production.
+     */
+    private function registerQueryMetricsListener(): void
+    {
+        DB::listen(function (QueryExecuted $event) {
+            $this->app->make(QueryMetrics::class)->record($event);
         });
     }
 
