@@ -3,7 +3,6 @@
 namespace Tests\Feature\Audit\V1;
 
 use App\Enums\AuditAction;
-use App\Enums\UserRole;
 use App\Http\Controllers\Api\V1\AuditLogController;
 use App\Models\AuditLog;
 use App\Models\Bank;
@@ -209,17 +208,34 @@ class AuditLogControllerTest extends TestCase
             ->assertJsonPath('data.ip_address', '10.0.0.1');
     }
 
-    public function test_export_returns_csv_and_audits_the_export(): void
+    /**
+     * API-004: export() is now async — it creates a ReportExport row (status
+     * PENDING at creation, per the response payload) and dispatches
+     * GenerateAuditLogExport instead of returning CSV bytes directly. The
+     * queue connection is `sync` in tests, so by the time this request
+     * returns the job has already run and the row is COMPLETED — the
+     * response payload is what proves the endpoint's own contract (creation
+     * response, not post-job state). The REPORT_EXPORT_CREATED audit entry
+     * fires at request time; the job's own completion behavior (streaming,
+     * filters, AUDIT_LOG_EXPORTED) is covered in GenerateAuditLogExportTest.
+     */
+    public function test_export_creates_a_pending_export_and_audits_the_creation(): void
     {
         AuditLog::create(['user_id' => $this->admin->id, 'action' => AuditAction::LOGIN->value, 'created_at' => now()]);
 
         $response = $this->actingAs($this->admin)
-            ->getJson('/api/v1/audit-logs/export')
-            ->assertOk()
-            ->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
+            ->postJson('/api/v1/audit-logs/export')
+            ->assertCreated()
+            ->assertJsonPath('data.report_type', 'audit-logs')
+            ->assertJsonPath('data.status', 'PENDING');
+
+        $this->assertDatabaseHas('report_exports', [
+            'id' => $response->json('data.id'),
+            'report_type' => 'audit-logs',
+        ]);
 
         $this->assertDatabaseHas('audit_logs', [
-            'action' => AuditAction::AUDIT_LOG_EXPORTED->value,
+            'action' => AuditAction::REPORT_EXPORT_CREATED->value,
             'user_id' => $this->admin->id,
         ]);
     }
@@ -227,7 +243,7 @@ class AuditLogControllerTest extends TestCase
     public function test_export_forbidden_without_permission(): void
     {
         $this->actingAs($this->bankUser)
-            ->getJson('/api/v1/audit-logs/export')
+            ->postJson('/api/v1/audit-logs/export')
             ->assertForbidden();
     }
 }

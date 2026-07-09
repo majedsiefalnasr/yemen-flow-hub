@@ -6,12 +6,14 @@ use App\DTOs\Authorization\DataScopeContext;
 use App\Enums\AuditAction;
 use App\Http\Controllers\Api\Controller;
 use App\Http\Resources\V1\AuditLogResource;
+use App\Jobs\GenerateAuditLogExport;
 use App\Models\AuditLog;
+use App\Models\ReportExport;
 use App\Services\Audit\AuditService;
 use App\Services\Authorization\DataScope;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Storage;
 
 class AuditLogController extends Controller
 {
@@ -79,75 +81,115 @@ class AuditLogController extends Controller
         ]);
     }
 
-    public function export(Request $request): Response
+    /**
+     * API-004: async export. Creates a ReportExport row (report_type
+     * 'audit-logs', reusing the same polling/download flow as
+     * ReportExportController) and dispatches GenerateAuditLogExport instead of
+     * building the CSV synchronously in the request — audit_logs is one of
+     * the largest, unbounded-growth tables (ARCH-006).
+     */
+    public function export(Request $request): JsonResponse
     {
         $this->authorize('viewAny', AuditLog::class);
 
-        $scope = DataScope::forUser($request->user());
-        if ($request->user()->isSystemAdmin()) {
-            $scope = new DataScopeContext(systemWide: true);
-        }
+        $filters = $request->only(['user', 'role', 'event', 'entity', 'request', 'from', 'to', 'ip', 'correlation_id']);
 
-        $query = AuditLog::query()
-            ->with(['user', 'actorRole']);
-
-        DataScope::applyTo($query, $scope);
-
-        $query->when($request->filled('user'), fn ($q) => $q->where('user_id', $request->integer('user')))
-            ->when($request->filled('role'), fn ($q) => $q->where('actor_role_id', $request->integer('role')))
-            ->when($request->filled('event'), fn ($q) => $q->where('action', $request->string('event')))
-            ->when($request->filled('entity'), fn ($q) => $q->where('subject_type', $request->string('entity')))
-            ->when($request->filled('request'), fn ($q) => $q->where('workflow_instance_id', $request->integer('request')))
-            ->when($request->filled('from'), fn ($q) => $q->where('created_at', '>=', $request->date('from')->startOfDay()))
-            ->when($request->filled('to'), fn ($q) => $q->where('created_at', '<', $request->date('to')->addDay()->startOfDay()))
-            ->when($request->filled('ip'), fn ($q) => $q->where('ip_address', $request->string('ip')))
-            ->when($request->filled('correlation_id'), fn ($q) => $q->where('correlation_id', $request->string('correlation_id')))
-            ->latest('id')
-            ->limit(10000);
-
-        $rows = $query->get();
-
-        $this->auditService->log(AuditAction::AUDIT_LOG_EXPORTED, $request->user(), null, [
-            'row_count' => $rows->count(),
-            'filters' => $request->only(['user', 'role', 'event', 'entity', 'request', 'from', 'to', 'ip', 'correlation_id']),
+        $export = ReportExport::create([
+            'requested_by' => $request->user()->id,
+            'report_type' => 'audit-logs',
+            'filters' => $filters,
+            'format' => 'csv',
+            'status' => 'PENDING',
         ]);
 
-        $csv = "\xEF\xBB\xBF".implode(',', ['ID', 'User', 'Role', 'Event', 'Entity', 'IP', 'Timestamp'])."\n";
-        foreach ($rows as $row) {
-            $csv .= implode(',', [
-                $row->id,
-                $this->csvCell($row->user?->name ?? ''),
-                $this->csvCell($row->user_role ?? ''),
-                $this->csvCell($row->action),
-                $this->csvCell(($row->subject_type ? class_basename($row->subject_type) : '').':'.($row->subject_id ?? '')),
-                $this->csvCell($row->ip_address ?? ''),
-                $this->csvCell($row->created_at?->toISOString() ?? ''),
-            ])."\n";
+        $this->auditService->log(AuditAction::REPORT_EXPORT_CREATED, $request->user(), null, [
+            'export_id' => $export->id,
+            'report_type' => 'audit-logs',
+            'filters' => $filters,
+        ]);
+
+        GenerateAuditLogExport::dispatch($export->id);
+
+        return response()->json([
+            'data' => [
+                'id' => $export->id,
+                'report_type' => $export->report_type,
+                'filters' => $export->filters,
+                'format' => $export->format,
+                'status' => $export->status,
+                'created_at' => $export->created_at?->toISOString(),
+            ],
+        ], 201);
+    }
+
+    /**
+     * Poll endpoint for the async export's status, scoped to the requesting
+     * user's own export and the audit-logs report type.
+     */
+    public function showExport(Request $request, ReportExport $reportExport): JsonResponse
+    {
+        $this->authorize('viewAny', AuditLog::class);
+        $this->guardAuditExportOwnership($request, $reportExport);
+
+        return response()->json(['data' => $this->exportResource($reportExport)]);
+    }
+
+    public function downloadExport(Request $request, ReportExport $reportExport): mixed
+    {
+        $this->authorize('viewAny', AuditLog::class);
+        $this->guardAuditExportOwnership($request, $reportExport);
+
+        if ($reportExport->status === 'FAILED') {
+            return response()->json([
+                'error' => ['code' => 'EXPORT_FAILED', 'message' => 'Export failed and is not available for download.'],
+            ], 422);
         }
 
-        return response($csv, 200, [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="audit-logs-export.csv"',
+        if ($reportExport->status !== 'COMPLETED' || $reportExport->file_path === null) {
+            return response()->json([
+                'error' => ['code' => 'EXPORT_NOT_READY', 'message' => 'Export is not yet completed.'],
+            ], 422);
+        }
+
+        if (! Storage::disk('private')->exists($reportExport->file_path)) {
+            abort(404);
+        }
+
+        $this->auditService->log(AuditAction::REPORT_EXPORT_DOWNLOADED, $request->user(), null, [
+            'export_id' => $reportExport->id,
+            'report_type' => 'audit-logs',
         ]);
+
+        return Storage::disk('private')->download(
+            $reportExport->file_path,
+            "audit-logs-export-{$reportExport->id}.csv",
+        );
+    }
+
+    private function guardAuditExportOwnership(Request $request, ReportExport $reportExport): void
+    {
+        abort_unless($reportExport->report_type === 'audit-logs', 404);
+        abort_unless((int) $reportExport->requested_by === (int) $request->user()->id, 403);
+    }
+
+    private function exportResource(ReportExport $export): array
+    {
+        return [
+            'id' => $export->id,
+            'report_type' => $export->report_type,
+            'filters' => $export->filters,
+            'format' => $export->format,
+            'status' => $export->status,
+            'total_matching' => $export->total_matching,
+            'exported_count' => $export->exported_count,
+            'truncated' => (bool) $export->truncated,
+            'truncation_note' => $export->truncation_note,
+            'created_at' => $export->created_at?->toISOString(),
+        ];
     }
 
     private function perPage(Request $request): int
     {
         return max(1, min(100, $request->integer('per_page', 30)));
-    }
-
-    private function csvCell(string $value): string
-    {
-        // Neutralize CSV formula injection: a cell that a spreadsheet would evaluate as a
-        // formula gets prefixed with a single quote so it is rendered as literal text.
-        if ($value !== '' && in_array($value[0], ['=', '+', '-', '@', "\t", "\r"], true)) {
-            $value = "'".$value;
-        }
-
-        if (str_contains($value, ',') || str_contains($value, '"') || str_contains($value, "\n")) {
-            return '"'.str_replace('"', '""', $value).'"';
-        }
-
-        return $value;
     }
 }

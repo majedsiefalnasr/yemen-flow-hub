@@ -1,9 +1,10 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 
 const mockGet = vi.fn()
+const mockPost = vi.fn()
 
 vi.mock('../../../composables/useApi', () => ({
-  useApi: () => ({ get: mockGet }),
+  useApi: () => ({ get: mockGet, post: mockPost }),
 }))
 
 const { useAudit } = await import('../../../composables/useAudit')
@@ -163,5 +164,104 @@ describe('useAudit — V1 engine audit (Story 18.6.1)', () => {
     const { fetchEngineAuditLogs } = useAudit()
     await fetchEngineAuditLogs({ correlation_id: 'abc-123' })
     expect(mockGet).toHaveBeenCalledWith(expect.stringContaining('correlation_id=abc-123'))
+  })
+})
+
+// API-004: audit-log export is now async (POST creates + dispatches a job,
+// GET polls status, GET .../download fetches the finished file) instead of
+// a single synchronous GET that returned CSV bytes directly.
+describe('useAudit — async export (API-004)', () => {
+  beforeEach(() => {
+    mockGet.mockReset()
+    mockPost.mockReset()
+  })
+
+  it('requestAuditLogExport POSTs to /api/v1/audit-logs/export with filters', async () => {
+    mockPost.mockResolvedValueOnce({
+      data: {
+        id: 7,
+        report_type: 'audit-logs',
+        filters: {},
+        format: 'csv',
+        status: 'PENDING',
+        created_at: 't',
+      },
+    })
+    const { requestAuditLogExport } = useAudit()
+    const entry = await requestAuditLogExport({
+      from: '2026-03-10',
+      entity: 'App\\Models\\EngineRequest',
+    })
+
+    expect(mockPost).toHaveBeenCalledWith(expect.stringMatching(/^\/api\/v1\/audit-logs\/export\?/))
+    const url = mockPost.mock.calls[0]?.[0] as string
+    expect(url).toContain('from=2026-03-10')
+    expect(entry.id).toBe(7)
+    expect(entry.status).toBe('PENDING')
+  })
+
+  it('requestAuditLogExport POSTs without a query string when no filters given', async () => {
+    mockPost.mockResolvedValueOnce({
+      data: {
+        id: 8,
+        report_type: 'audit-logs',
+        filters: {},
+        format: 'csv',
+        status: 'PENDING',
+        created_at: 't',
+      },
+    })
+    const { requestAuditLogExport } = useAudit()
+    await requestAuditLogExport()
+    expect(mockPost).toHaveBeenCalledWith('/api/v1/audit-logs/export')
+  })
+
+  it('fetchAuditLogExportStatus GETs the export by id', async () => {
+    mockGet.mockResolvedValueOnce({
+      data: {
+        id: 9,
+        report_type: 'audit-logs',
+        filters: {},
+        format: 'csv',
+        status: 'COMPLETED',
+        created_at: 't',
+      },
+    })
+    const { fetchAuditLogExportStatus } = useAudit()
+    const entry = await fetchAuditLogExportStatus(9)
+    expect(mockGet).toHaveBeenCalledWith('/api/v1/audit-logs/export/9')
+    expect(entry.status).toBe('COMPLETED')
+  })
+
+  it('pollAuditLogExportUntilComplete stops as soon as status is COMPLETED', async () => {
+    mockGet
+      .mockResolvedValueOnce({ data: { id: 1, status: 'PENDING' } })
+      .mockResolvedValueOnce({ data: { id: 1, status: 'PROCESSING' } })
+      .mockResolvedValueOnce({ data: { id: 1, status: 'COMPLETED' } })
+    const { pollAuditLogExportUntilComplete } = useAudit()
+
+    const result = await pollAuditLogExportUntilComplete(1, { intervalMs: 0 })
+
+    expect(mockGet).toHaveBeenCalledTimes(3)
+    expect(result.status).toBe('COMPLETED')
+  })
+
+  it('pollAuditLogExportUntilComplete stops on FAILED without throwing', async () => {
+    mockGet.mockResolvedValueOnce({ data: { id: 2, status: 'FAILED' } })
+    const { pollAuditLogExportUntilComplete } = useAudit()
+
+    const result = await pollAuditLogExportUntilComplete(2, { intervalMs: 0 })
+
+    expect(result.status).toBe('FAILED')
+  })
+
+  it('pollAuditLogExportUntilComplete throws EXPORT_POLL_TIMEOUT after maxAttempts', async () => {
+    mockGet.mockResolvedValue({ data: { id: 3, status: 'PROCESSING' } })
+    const { pollAuditLogExportUntilComplete } = useAudit()
+
+    await expect(
+      pollAuditLogExportUntilComplete(3, { intervalMs: 0, maxAttempts: 2 }),
+    ).rejects.toThrow('EXPORT_POLL_TIMEOUT')
+    expect(mockGet).toHaveBeenCalledTimes(2)
   })
 })

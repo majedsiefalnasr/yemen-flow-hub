@@ -76,8 +76,21 @@ function toEngineAuditFilters(filters: AuditFilters): EngineAuditFilters {
   }
 }
 
+interface AuditLogExportEntry {
+  id: number
+  report_type: string
+  filters: Record<string, unknown> | null
+  format: string
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED'
+  created_at: string
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 export function useAudit() {
-  const { get } = useApi()
+  const { get, post } = useApi()
 
   async function fetchEngineAuditLogs(
     filters: EngineAuditFilters = {},
@@ -110,7 +123,15 @@ export function useAudit() {
     return response.data
   }
 
-  async function exportEngineAuditLogs(filters: EngineAuditFilters = {}): Promise<void> {
+  /**
+   * API-004: the export endpoint is async — it creates a ReportExport row
+   * and processes it on a queue worker instead of building the CSV
+   * synchronously in the request. This polls until the export completes
+   * (or fails), then downloads the finished file.
+   */
+  async function requestAuditLogExport(
+    filters: EngineAuditFilters = {},
+  ): Promise<AuditLogExportEntry> {
     const params = new URLSearchParams()
     for (const [key, value] of Object.entries(filters)) {
       if (value !== undefined && value !== null && value !== '') {
@@ -119,11 +140,41 @@ export function useAudit() {
     }
     const query = params.toString()
     const path = query ? `/api/v1/audit-logs/export?${query}` : '/api/v1/audit-logs/export'
+    const response = await post<{ data: AuditLogExportEntry }>(path)
+    return response.data
+  }
+
+  async function fetchAuditLogExportStatus(exportId: number): Promise<AuditLogExportEntry> {
+    const response = await get<{ data: AuditLogExportEntry }>(
+      `/api/v1/audit-logs/export/${exportId}`,
+    )
+    return response.data
+  }
+
+  async function pollAuditLogExportUntilComplete(
+    exportId: number,
+    options: { intervalMs?: number; maxAttempts?: number } = {},
+  ): Promise<AuditLogExportEntry> {
+    const intervalMs = options.intervalMs ?? 500
+    const maxAttempts = options.maxAttempts ?? 120
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const entry = await fetchAuditLogExportStatus(exportId)
+      if (entry.status === 'COMPLETED' || entry.status === 'FAILED') {
+        return entry
+      }
+      await sleep(intervalMs)
+    }
+
+    throw new Error('EXPORT_POLL_TIMEOUT')
+  }
+
+  async function downloadAuditLogExport(exportId: number): Promise<void> {
     // Fetch as a blob so the raw CSV bytes (including the server's BOM) are preserved.
     // useApi's get() lets $fetch content-negotiate and parse the body, corrupting the file.
     const config = useRuntimeConfig()
     const baseURL = config.public.apiBase as string
-    const blob = await $fetch<Blob>(`${baseURL}${path}`, {
+    const blob = await $fetch<Blob>(`${baseURL}/api/v1/audit-logs/export/${exportId}/download`, {
       credentials: 'include',
       responseType: 'blob',
       headers: { Accept: 'text/csv' },
@@ -136,10 +187,23 @@ export function useAudit() {
     URL.revokeObjectURL(url)
   }
 
+  async function exportEngineAuditLogs(filters: EngineAuditFilters = {}): Promise<void> {
+    const entry = await requestAuditLogExport(filters)
+    const completed = await pollAuditLogExportUntilComplete(entry.id)
+    if (completed.status === 'FAILED') {
+      throw new Error('AUDIT_LOG_EXPORT_FAILED')
+    }
+    await downloadAuditLogExport(completed.id)
+  }
+
   return {
     fetchAuditLogs,
     fetchEngineAuditLogs,
     fetchEngineAuditLogDetail,
     exportEngineAuditLogs,
+    requestAuditLogExport,
+    fetchAuditLogExportStatus,
+    pollAuditLogExportUntilComplete,
+    downloadAuditLogExport,
   }
 }

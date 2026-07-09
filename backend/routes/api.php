@@ -200,7 +200,10 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'active', 'throttle:api-default
 
     // ─── Audit Logs (Epic 18.6) ─────────────────────────────────────────
     Route::get('audit-logs', [AuditLogController::class, 'index']);
-    Route::get('audit-logs/export', [AuditLogController::class, 'export']);
+    // API-004: async export — POST creates+dispatches, GET polls/downloads.
+    Route::post('audit-logs/export', [AuditLogController::class, 'export']);
+    Route::get('audit-logs/export/{reportExport}', [AuditLogController::class, 'showExport']);
+    Route::get('audit-logs/export/{reportExport}/download', [AuditLogController::class, 'downloadExport']);
     Route::get('audit-logs/{auditLog}', [AuditLogController::class, 'show']);
 
     // ─── Compliance (Epic 18.6) ─────────────────────────────────────────

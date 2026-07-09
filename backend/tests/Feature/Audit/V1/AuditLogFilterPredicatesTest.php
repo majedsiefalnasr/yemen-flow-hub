@@ -3,6 +3,7 @@
 namespace Tests\Feature\Audit\V1;
 
 use App\Enums\AuditAction;
+use App\Jobs\GenerateAuditLogExport;
 use App\Models\AuditLog;
 use App\Models\Organization;
 use App\Models\Role;
@@ -11,6 +12,7 @@ use Database\Seeders\GovernanceSeeder;
 use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 /**
@@ -99,18 +101,25 @@ class AuditLogFilterPredicatesTest extends TestCase
         $this->assertEquals($exact->id, $response->json('data.0.id'));
     }
 
-    public function test_export_applies_the_same_range_and_entity_filters(): void
+    /**
+     * API-004: export() now creates a ReportExport row and dispatches the
+     * async job instead of building the CSV synchronously; the range/entity
+     * filter behavior itself is covered against the job directly in
+     * GenerateAuditLogExportTest.
+     */
+    public function test_export_creates_a_pending_export_and_dispatches_the_job(): void
     {
-        $inRange = $this->logAt('2026-03-10 10:00:00', 'App\\Models\\EngineRequest');
-        $this->logAt('2026-03-09 10:00:00', 'App\\Models\\EngineRequest');
-        $this->logAt('2026-03-10 10:00:00', 'App\\Models\\EngineRequestDocument');
+        Queue::fake();
 
         $response = $this->actingAs($this->admin)
-            ->get('/api/v1/audit-logs/export?from=2026-03-10&to=2026-03-10&entity='.urlencode('App\\Models\\EngineRequest'));
+            ->postJson('/api/v1/audit-logs/export?from=2026-03-10&to=2026-03-10&entity='.urlencode('App\\Models\\EngineRequest'));
 
-        $response->assertOk();
-        $csv = $response->getContent();
-        $this->assertStringContainsString((string) $inRange->id, $csv);
-        $this->assertSame(2, substr_count($csv, "\n"), 'Expected header + exactly one matching data row.');
+        $response->assertCreated()
+            ->assertJsonPath('data.report_type', 'audit-logs')
+            ->assertJsonPath('data.status', 'PENDING')
+            ->assertJsonPath('data.filters.from', '2026-03-10')
+            ->assertJsonPath('data.filters.entity', 'App\\Models\\EngineRequest');
+
+        Queue::assertPushed(GenerateAuditLogExport::class);
     }
 }
