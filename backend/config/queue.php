@@ -36,6 +36,20 @@ return [
             'block_for' => null,
             'after_commit' => true,
         ],
+        // QUEUE-003: exports get their own connection so a longer retry_after
+        // doesn't have to apply to the shared `redis` connection's other jobs.
+        // GenerateReportExport/GenerateAuditLogExport carry $timeout=300
+        // (QUEUE-002); retry_after must exceed the longest job timeout on the
+        // connection or a still-running export can be picked up twice.
+        //   php artisan queue:work --queue=exports
+        'exports' => [
+            'driver' => 'redis',
+            'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue' => 'exports',
+            'retry_after' => (int) env('REDIS_EXPORTS_QUEUE_RETRY_AFTER', 360),
+            'block_for' => null,
+            'after_commit' => false,
+        ],
     ],
     'failed' => [
         'driver' => env('QUEUE_FAILED_DRIVER', 'database-uuids'),

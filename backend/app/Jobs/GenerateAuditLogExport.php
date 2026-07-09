@@ -39,7 +39,12 @@ class GenerateAuditLogExport implements ShouldQueue
 
     public function __construct(
         private readonly int $exportId,
-    ) {}
+    ) {
+        // QUEUE-003: dedicated connection/queue — see GenerateReportExport
+        // for why retry_after must exceed this job's $timeout.
+        $this->onConnection('exports');
+        $this->onQueue('exports');
+    }
 
     /**
      * @return array<int, int>

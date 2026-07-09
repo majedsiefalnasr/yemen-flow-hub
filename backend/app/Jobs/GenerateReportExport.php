@@ -29,7 +29,13 @@ class GenerateReportExport implements ShouldQueue
 
     public function __construct(
         private readonly int $exportId,
-    ) {}
+    ) {
+        // QUEUE-003: dedicated connection/queue — its retry_after (360s)
+        // exceeds this job's $timeout (300s), which the shared `redis`
+        // connection's retry_after (90s) could not (QUEUE-002 residual).
+        $this->onConnection('exports');
+        $this->onQueue('exports');
+    }
 
     /**
      * @return array<int, int>

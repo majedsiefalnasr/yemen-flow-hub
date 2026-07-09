@@ -32,7 +32,12 @@ class ScanEngineRequestDocument implements ShouldQueue
     /** Kill a hung scan worker rather than letting it occupy the queue indefinitely. */
     public int $timeout = 120;
 
-    public function __construct(public int $documentId) {}
+    public function __construct(public int $documentId)
+    {
+        // QUEUE-003: dedicated queue so scans don't compete with notification
+        // fan-out/exports on `default`.
+        $this->onQueue('scans');
+    }
 
     /**
      * Exponential-ish backoff between retries (seconds).

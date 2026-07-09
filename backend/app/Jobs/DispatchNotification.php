@@ -31,7 +31,11 @@ class DispatchNotification implements ShouldQueue
         private readonly ?int $entityId,
         private readonly ?string $actionUrl,
         private readonly array $recipientUserIds,
-    ) {}
+    ) {
+        // QUEUE-003: dedicated queue so notification fan-out doesn't compete
+        // with scans/exports on `default`.
+        $this->onQueue('notifications');
+    }
 
     public function handle(): void
     {
