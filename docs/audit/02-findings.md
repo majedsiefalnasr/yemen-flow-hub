@@ -533,13 +533,14 @@ Detail + the consolidated security gate in `06-security-observability.md`. Compa
 | Field | Value |
 | --- | --- |
 | Area / component | `bootstrap/app.php:64-122`, `AuditService` |
-| Current behavior | Every 403 authorization failure, including unauthenticated, writes an `audit_logs` row. |
-| Problem | An unauthenticated scanner can drive unbounded audit writes → write-amplification against the largest table. |
-| Severity | Low · Evidence Verified · Status Open · Confidence Medium |
-| Roadmap tier | Pre-production (resolved by ARCH-003 default throttle) |
-| First/last | Block 5 / Block 5 · Related: ARCH-003, ARCH-006 |
-| Recommendation | The ARCH-003 default authenticated throttle + an unauthenticated-endpoint throttle caps the write rate. Keep logging genuine failures. |
-| Security gate | Preserves audit completeness; only rate-limits abuse. |
+| Current behavior | **Revised on re-verification (post-audit):** the exception-handler chain only calls the audit-write closure for `AuthorizationException`-derived denials (`AccessDeniedHttpException`/`AuthorizationException` with a domain-authorization origin) — these require an authenticated `$request->user()` for a policy check to run at all. A genuinely unauthenticated caller throws `AuthenticationException` (401 via `ApiResponse::unauthorized()`), which has its own render callback that does **not** call the audit closure. `EnsureActiveUser` similarly returns a plain 401 response directly, without throwing, for inactive accounts. Guard test: `UnauthenticatedAuditWriteTest`. |
+| Problem | **No longer reproducible on current code.** At baseline SHA `be652fdd` the finding's "every 403, including unauthenticated" description may have matched a different exception-handler shape; current `main` gates the audit write on domain authorization specifically, which is unreachable pre-authentication. Zero audit rows are written across repeated unauthenticated requests (test: 5 consecutive 401s, `AuditLog::count()` unchanged). |
+| Severity | Low · Evidence Verified · Status **Accepted — no code change required** (re-verified `perf/../docs/sec-003-verify-throttle-closure`) · Confidence High |
+| Roadmap tier | Pre-production — closed by existing code, not by ARCH-003's throttle as originally assumed (throttle never executes for an unauthenticated caller: `auth:sanctum` in the route-group middleware order rejects with 401 before `throttle:api-default` runs). ARCH-003 still bounds volume for *authenticated* callers hitting the same routes, confirmed in the same test file. |
+| First/last | Block 5 / Post-audit re-verification · Related: ARCH-003, ARCH-006 |
+| Evidence | `bootstrap/app.php:82-127` (AuthenticationException handler has no audit call); `tests/Feature/Security/UnauthenticatedAuditWriteTest.php` (4 tests: no audit row on 401, no audit row across 5 repeats, audit row still written for a genuine authenticated denial, authenticated volume still throttled) |
+| Recommendation | **No fix needed.** Original recommendation (throttle unauthenticated endpoints) is superseded — there is no write to throttle. Preserved as a regression guard: `UnauthenticatedAuditWriteTest` fails if a future change wires the audit closure into the 401/`AuthenticationException` path. |
+| Security gate | Preserves audit completeness for genuine authorization denials (verified: still writes 1 row per real 403); confirms no unauthenticated write-amplification vector exists. |
 
 ## OBS-001 — No application performance observability
 
