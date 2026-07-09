@@ -79,7 +79,8 @@ During the audit:
 | --- | --- | --- | --- | --- |
 | 1 — Discovery & architecture | 2026-07-08 | `62e6a395` | SEC-001 approved for immediate fix (committed `375fe5f2`, `fix(backend): remove unauthenticated test-api endpoint`) — the only application-code change in the audit. Block 2 scope approved. | None |
 | 2 — API & Laravel | 2026-07-08 | `a26f789c` | 7 API findings; API-000 superseded by API-003. Block 3 scope approved. Highest-leverage fix identified: ARCH-001. | None |
-| 3 — Database & seeded EXPLAIN | 2026-07-08 | (this docs commit) | 1M-row design-target dataset (set-based fallback for the 1M tier, documented). ARCH-002/004 verified with before/after evidence; 3 index proposals (DB-001..003); ARCH-001 reclassified as application-layer. Block 4 scope approved. | Low-selectivity index removal (needs query-log evidence); steady-state published-workflow count |
+| 3 — Database & seeded EXPLAIN | 2026-07-08 | `410e50d3` | 1M-row design-target dataset (set-based fallback for the 1M tier, documented). ARCH-002/004 verified with before/after evidence; 3 index proposals (DB-001..003); ARCH-001 reclassified as application-layer. Block 4 scope approved. | Low-selectivity index removal (needs query-log evidence); steady-state published-workflow count |
+| 4 — Frontend, caching, queues | 2026-07-08 | (this docs commit) | 7 findings (3 FE, 1 CACHE, 3 QUEUE). Confirmed server-side pagination/filtering, non-leaking cache, idempotent fan-out. CACHE-001 scope-key + QUEUE-001 fail-closed flagged for Block 5 gate. Block 5 scope approved. API-006 stays Threshold-gated (no aggressive polling). | Bundle size not measured (out of scope); Horizon launch intent (affects QUEUE-003 tier) |
 
 (one row appended per approved block)
 

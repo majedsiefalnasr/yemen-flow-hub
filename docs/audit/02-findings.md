@@ -4,16 +4,16 @@ All findings carry the lifecycle fields defined in `00-scope-and-method.md`. IDs
 
 Blocks are additive: Block 1 seeds architecture (`ARCH-`) and any security defect found during discovery (`SEC-`). API/DB/FE/CACHE/QUEUE/OBS findings arrive in later blocks. Database findings are `Partially Verified` until Block 3 captures plans.
 
-## Summary counts (through Block 3)
+## Summary counts (through Block 4)
 
 | Severity | Count | IDs |
 | --- | --- | --- |
 | Critical | 1 | SEC-001 — **fixed** in Block 1 (commit `375fe5f2`) |
 | High | 7 | ARCH-001, ARCH-002, API-001, API-002, API-003, DB-001, DB-002 |
-| Medium | 7 | ARCH-003, ARCH-004, ARCH-006, ARCH-007, API-004, API-005, API-006 |
-| Low | 3 | ARCH-005, API-007, DB-003 |
+| Medium | 10 | ARCH-003, ARCH-004, ARCH-006, ARCH-007, API-004, API-005, API-006, FE-001, CACHE-001, QUEUE-001 |
+| Low | 7 | ARCH-005, API-007, DB-003, FE-002, FE-003, QUEUE-002, QUEUE-003 |
 
-_API-003 supersedes the Block 1 placeholder API-000. DB-001..003 are index proposals with captured before/after evidence. Total: 18 findings (1 fixed). Block 3 verified ARCH-002/004, API-003/005, and reclassified ARCH-001 as an application-layer cost._
+_Total: 25 findings (1 fixed). Block 4 added 3 FE, 1 CACHE, 3 QUEUE. Recorded strengths: server-side pagination/filtering, disciplined non-leaking cache usage, idempotent notification fan-out, no sync work in the HTTP path._
 
 ---
 
@@ -411,4 +411,102 @@ Full rationale, before/after plans, and migrations in `03-database-plan.md §4`.
 | Recommendation | Only after switching to exact `subject_type = ?` + range dates (API-007); then add `al_subject_created` (`03-database-plan.md §4 DB-IDX-3`). Unused without the code fix. Trade-off: index on the largest append-only table. |
 | Security gate | Index only; note the separate `audit_logs` no-`bank_id` scoping limitation → SEC series (Block 5). |
 
-_FE/CACHE/QUEUE findings arrive in Block 4; SEC/OBS in Block 5._
+---
+
+# Frontend / Caching / Queue series (Block 4)
+
+Detailed plans in `05-frontend-caching-queues.md`. Compact records here; all carry the standard lifecycle fields.
+
+## FE-001 — No request cancellation (no AbortController) in the API layer
+
+| Field | Value |
+| --- | --- |
+| Area / component | `frontend/app/composables/useApi.ts` |
+| Current behavior | `$fetch` wrapper exposes no `signal`; navigating away mid-request leaves it in flight. |
+| Problem | Wasted bandwidth/connections on rapid navigation; the token-guard prevents stale state but not the redundant network work. Matters most on slow links + heavy list/detail loads. |
+| Severity | Medium · Evidence Verified · Status Open · Confidence High |
+| Roadmap tier | Threshold-gated (user count / connection budget) |
+| First/last | Block 4 / Block 4 · Related: FE-003 |
+| Recommendation | Thread an `AbortController` `signal` through `useApi` and abort on unmount/navigation for GET list/detail calls. Trade-off: must not abort mutations mid-flight. |
+| Security gate | No scoping impact. |
+
+## FE-002 — Notification store derives unread count by fetching the full list
+
+| Field | Value |
+| --- | --- |
+| Area / component | `frontend/app/stores/notifications.store.ts` |
+| Current behavior | `refreshUnreadCount()`/`fetchRecent()` fetch notifications page 1 and count in JS, duplicating the cheap `notifications/unread-count` endpoint (`useNotifications.ts:90`). |
+| Problem | Over-fetch when a caller uses the store path instead of the dedicated endpoint. |
+| Severity | Low · Evidence Verified · Status Open · Confidence Medium |
+| Roadmap tier | Optional |
+| First/last | Block 4 / Block 4 |
+| Recommendation | Route all unread-count reads through `unread-count`; keep the list fetch only for rendering the list. |
+| Security gate | No scoping impact. |
+
+## FE-003 — Stable reference data refetched every use (no client cache)
+
+| Field | Value |
+| --- | --- |
+| Area / component | `frontend/app/composables/useReferenceData.ts` and peers |
+| Current behavior | Reference tables/values, workflow definitions, banks refetched on each call; no cross-call cache. |
+| Problem | Repeated network calls for slow-changing lookup data. |
+| Severity | Low · Evidence Verified · Status Open · Confidence Medium |
+| Roadmap tier | Optional |
+| First/last | Block 4 / Block 4 · Related: FE-001, CACHE-001 |
+| Recommendation | Cache stable reference data in a Pinia store / `useState` with a modest TTL or explicit invalidation on admin edit. |
+| Security gate | Reference data is non-sensitive/global; no isolation concern. |
+
+## CACHE-001 — Dashboard & report aggregates recomputed per request, uncached
+
+| Field | Value |
+| --- | --- |
+| Area / component | `app/Services/Dashboard/DashboardStatsService.php`, `app/Http/Controllers/Api/V1/ReportController.php` |
+| Endpoint / query | `GET /api/dashboard/stats`, `GET /v1/reports/*` |
+| Current behavior | Every call recomputes aggregates over the largest tables; no cache (Block 3: `reports/summary` ~0.96 s at 1M rows). |
+| Problem | Read-heavy, slow-changing aggregates recomputed on every dashboard/report view; multiplied by concurrent users. |
+| Severity | Medium · Evidence Verified (Block 3 timings) · Status Open · Confidence High |
+| Roadmap tier | Threshold-gated (user count × table size) |
+| First/last | Block 4 / Block 4 · Related: API-002, API-005, API-006 |
+| Recommendation | Cache per (scope-key = org-classification + bank_id, filter-set), short TTL, `Cache::lock`-guarded regeneration, Redis-down → compute live. Pairs with the API-002/005 query fixes; does not replace them. **Never** per-raw-user or cross-bank shared. |
+| Security gate | **Scope-key MUST encode org/bank** so cached aggregates never leak across banks — verified in Block 5. |
+
+## QUEUE-001 — Document virus-scan job has no resilience or failure handling
+
+| Field | Value |
+| --- | --- |
+| Area / component | `app/Jobs/ScanEngineRequestDocument.php` |
+| Current behavior | No `tries`/`timeout`/`backoff`/`failed()`; a failed/stuck scan has no dead-letter path. |
+| Problem | Security-relevant: an uploaded PDF whose scan fails silently could be treated as scanned/clean; no retry, no alert. |
+| Severity | Medium · Evidence Verified · Status Open · Confidence High |
+| Roadmap tier | Pre-production (security-relevant) |
+| First/last | Block 4 / Block 4 · Related: QUEUE-002 |
+| Recommendation | Add `$tries`, `$timeout`, `backoff`, and a `failed()` that marks the document scan **failed (fail-closed)** so it is not treated as clean; alert on failure. |
+| Security gate | Preserves the PDF-only + scanned-before-trusted invariant; verified in Block 5. |
+
+## QUEUE-002 — Notification & report-export jobs lack explicit tries/backoff/timeout
+
+| Field | Value |
+| --- | --- |
+| Area / component | `app/Jobs/DispatchNotification.php`, `app/Jobs/GenerateReportExport.php` |
+| Current behavior | Both have `failed()` but inherit worker defaults for tries/backoff/timeout. `GenerateReportExport` can be long-running. |
+| Problem | No explicit timeout on a potentially long export; default retry semantics on notification fan-out. |
+| Severity | Low · Evidence Verified · Status Open · Confidence High |
+| Roadmap tier | Threshold-gated |
+| First/last | Block 4 / Block 4 · Related: QUEUE-001, API-004 |
+| Recommendation | Set explicit `$tries`/`$backoff`/`$timeout`; generous `$timeout` for exports (which also absorbs API-004's async export move). |
+| Security gate | No scoping impact; export still policy-scoped. |
+
+## QUEUE-003 — No queue separation beyond emails; no Horizon (no queue observability)
+
+| Field | Value |
+| --- | --- |
+| Area / component | `config/queue.php`, `app/Jobs/*`, composer.json |
+| Current behavior | Only `SendEmailDelivery` is on a separate `emails` queue; everything else on `default`. No Horizon installed. |
+| Problem | Fan-out, exports, and scans compete on one queue; no depth/latency/failure-rate visibility. |
+| Severity | Low · Evidence Verified · Status Open · Confidence High |
+| Roadmap tier | Threshold-gated (Horizon Pre-production if queue volume expected at launch) |
+| First/last | Block 4 / Block 4 · Related: OBS (Block 5) |
+| Recommendation | Separate queues by workload (`notifications`, `exports`, `scans`, `emails`); add Horizon for monitoring (ties into Block 5 observability). |
+| Security gate | No scoping impact. |
+
+_SEC/OBS findings arrive in Block 5._
