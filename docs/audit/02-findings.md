@@ -175,18 +175,18 @@ _Total: 29 findings (1 Critical fixed). Block 5 added SEC-002/003, OBS-001/002 a
 | --- | --- |
 | Area / component | `bootstrap/app.php`, `app/Services/Audit/AuditService.php`, `audit_logs` / `workflow_history` tables |
 | Endpoint / query | Every 403 authorization failure; every transition |
-| Current behavior | Authorization failures write an `audit_logs` row, including from unauthenticated requests (`user_id: NULL`) (`bootstrap/app.php:64-122`). `audit_logs` and `workflow_history` are append-only with no retention/archival wired into the request path (an `AuditLogArchiveService` exists — scope verified in Block 3). |
+| Current behavior | **Fixed.** (1) ARCH-003's `throttle:api-default` caps the authz-failure write rate on authenticated endpoints. (2) Both tables now have working archival: `audit_logs` archival pre-existed this remediation pass (`AuditLogArchiveService`, scheduled daily); this fix closed two real gaps found on inspection — `audit_log_archives` was silently dropping SEC-002's `bank_id` on archive, and `workflow_history` had no archival at all. |
 | Problem | (1) A burst of forbidden/unauthenticated requests writes one audit row each — a write-amplification and table-growth vector under scanning/abuse. (2) Both tables grow forever; at design target they become the largest tables and slow every correlated read (ARCH-002) and audit query. |
 | Severity | Medium |
-| Evidence status | Partially Verified; growth/retention confirmed in Block 3 |
-| Finding status | Open |
+| Evidence status | Evidence Verified |
+| Finding status | **Fixed** (`perf/arch-006-audit-workflow-history-archival`) |
 | Roadmap tier | Threshold-gated (row count / retention window) |
-| First identified / last reviewed | Block 1 / Block 1 |
-| Related findings | ARCH-002, ARCH-003, Block 3 archival plan |
-| Evidence | `bootstrap/app.php:64-122`, `AuditService.php:31-46` |
-| Confidence | Medium |
-| Recommendation | Keep audit logging (required), but (a) ensure ARCH-003 throttling caps the authz-failure write rate, and (b) define a retention/archival policy for `audit_logs`/`workflow_history` (partition or move to `audit_log_archives` on a schedule) — Block 3 designs this with rollback. Do **not** drop audit rows for performance. Trade-off: archival adds a scheduled job + read-path awareness for historical queries. |
-| Security gate | Auditability must be fully preserved (archival ≠ deletion). Verified in Block 5. |
+| First identified / last reviewed | Block 1 / Post-audit fix |
+| Related findings | ARCH-002, ARCH-003, SEC-002, Block 3 archival plan |
+| Evidence | `ArchiveOldAuditLogsTest`, `ArchiveOldWorkflowHistoryTest`; `evidence/ARCH-006-audit-workflow-history-archival.md` |
+| Confidence | High |
+| Recommendation | **Applied.** ARCH-003 throttling already capped the authz-failure write rate. Added `workflow_history_archives` + `WorkflowHistoryArchiveService`/`workflow-history:archive-old` (daily, mirrors the existing `audit:archive-old` pattern) — only archives a row once its owning `engine_request.status != 'ACTIVE'`, since `EngineRequest::withStageEntry()` and `ReportController::stageDuration()` depend on an active request's own history rows staying in the hot table. Fixed `audit_log_archives.bank_id` to carry forward on archive (was silently dropped, a SEC-002 regression). Archival never deletes without first moving; no audit row was ever dropped for performance. |
+| Security gate | Auditability fully preserved (archival ≠ deletion) — proven by `assertDatabaseHas` against the archive tables before the hot-table delete assertion in both test suites. |
 
 ---
 
