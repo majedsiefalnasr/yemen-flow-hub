@@ -488,12 +488,13 @@ Detailed plans in `05-frontend-caching-queues.md`. Compact records here; all car
 | Field | Value |
 | --- | --- |
 | Area / component | `app/Jobs/DispatchNotification.php`, `app/Jobs/GenerateReportExport.php` |
-| Current behavior | Both have `failed()` but inherit worker defaults for tries/backoff/timeout. `GenerateReportExport` can be long-running. |
+| Current behavior | **Fixed.** Both jobs now carry explicit `$tries=3`, `backoff()`, and `$timeout` (30s notification fan-out; 300s export, generous per the original recommendation) — mirrors the `ScanEngineRequestDocument` (QUEUE-001) pattern. |
 | Problem | No explicit timeout on a potentially long export; default retry semantics on notification fan-out. |
-| Severity | Low · Evidence Verified · Status Open · Confidence High |
+| Severity | Low · Evidence Verified · Status **Fixed** (`perf/queue-002-job-resilience-config`) · Confidence High |
 | Roadmap tier | Threshold-gated |
-| First/last | Block 4 / Block 4 · Related: QUEUE-001, API-004 |
-| Recommendation | Set explicit `$tries`/`$backoff`/`$timeout`; generous `$timeout` for exports (which also absorbs API-004's async export move). |
+| First/last | Block 4 / Post-audit fix · Related: QUEUE-001, QUEUE-003, API-004 |
+| Evidence | `QueueJobResilienceConfigTest`; `evidence/QUEUE-002-job-resilience.md` |
+| Recommendation | **Applied.** Trade-off surfaced during the fix: `GenerateReportExport`'s new `$timeout` (300s) exceeds the shared `redis`/`database` connection `retry_after` (90s, `config/queue.php`) — Laravel expects `retry_after` to exceed the longest job timeout on that connection, or a still-running long job can be picked up twice. Not fixed here (out of QUEUE-002's scope, a connection-level change); tracked under QUEUE-003 (queue separation), where a dedicated `exports` queue could carry its own `retry_after` without touching the shared connections. |
 | Security gate | No scoping impact; export still policy-scoped. |
 
 ## QUEUE-003 — No queue separation beyond emails; no Horizon (no queue observability)
