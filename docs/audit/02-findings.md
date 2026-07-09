@@ -276,20 +276,20 @@ _Total: 29 findings (1 Critical fixed). Block 5 added SEC-002/003, OBS-001/002 a
 
 | Field | Value |
 | --- | --- |
-| Area / component | `app/Http/Controllers/Api/V1/AuditLogController.php` |
-| Endpoint / query | `GET /v1/audit-logs/export` |
-| Current behavior | Loads up to 10,000 audit rows with relations via `->get()` and builds the CSV string in PHP within the HTTP request (`:106-131`). |
+| Area / component | `app/Http/Controllers/Api/V1/AuditLogController.php`, `app/Jobs/GenerateAuditLogExport.php` |
+| Endpoint / query | `POST /v1/audit-logs/export` (was `GET`) |
+| Current behavior | **Fixed.** `export()` creates a `ReportExport` row and dispatches `GenerateAuditLogExport`, returning 201 immediately. The job streams matching rows via `->lazy()` (not `->get()`) while building the CSV, capped at the same 10,000-row limit. New `GET .../export/{id}` (poll) and `GET .../export/{id}/download` complete the flow. |
 | Problem | 10k rows × relations held in memory + string concat blocks a web worker; concurrent exports multiply memory pressure. Bounded (10k cap) so not catastrophic, but wrong lifecycle for a growing table. |
 | Severity | Medium |
-| Evidence status | Verified |
-| Finding status | Open |
+| Evidence status | Verified (code + tests, both backend and frontend) |
+| Finding status | **Fixed** (`perf/api-004-async-audit-export`) |
 | Roadmap tier | Threshold-gated (audit table size / export frequency) |
-| First identified / last reviewed | Block 2 / Block 2 |
+| First identified / last reviewed | Block 2 / Post-audit fix |
 | Related findings | API-006, ARCH-006, QUEUE (Block 4) |
-| Evidence | `AuditLogController.php:82-132` |
+| Evidence | `GenerateAuditLogExport.php`, `AuditLogController.php`; `GenerateAuditLogExportTest`, `AuditLogFilterPredicatesTest`, `AuditLogControllerTest`, frontend `useAudit.test.ts`; `evidence/API-004-async-audit-export.md` |
 | Confidence | High |
-| Recommendation | Route through the existing `GenerateReportExport` job pattern (async artifact + download endpoint), streaming rows with `lazy()`/cursor instead of `get()`. Trade-off: client contract changes to poll-for-artifact (Block 4 coordinates). |
-| Security gate | Scope + `viewAny` policy preserved in the job; export action still audit-logged. Verified in Block 5. |
+| Recommendation | **Applied**, following the original recommendation: async job pattern (mirrors `GenerateReportExport`'s shape) + `lazy()` streaming. **Deliberately did not** route through the shared `ReportExportController::show()`/`download()` — those gate on the `reports.VIEW`/`reports.EXPORT` capability, while audit-log access uses a separate `audit.VIEW` capability; branching shared code on `report_type` across two authorization domains was judged higher-risk than adding two small controller methods. Client contract changed as flagged (poll-for-artifact); the frontend composable (`useAudit.ts`) was updated to match — there was no live UI caller of the old sync endpoint, so no page/component needed coordination beyond the composable itself. |
+| Security gate | Scope re-derived from the stored requester inside the job (cannot be widened by the filters payload, mirrors `GenerateReportExport`); `viewAny`/ownership checks preserved on both the create and poll/download paths; export creation and download both still audit-logged (`REPORT_EXPORT_CREATED`, `AUDIT_LOG_EXPORTED`, `REPORT_EXPORT_DOWNLOADED`). |
 
 ## API-005 — `reports/summary` uses seven full-scan passes instead of one grouped query
 
