@@ -196,17 +196,17 @@ _Total: 29 findings (1 Critical fixed). Block 5 added SEC-002/003, OBS-001/002 a
 | --- | --- |
 | Area / component | `app/Providers/AppServiceProvider.php`, `app/Services/Workflow/EngineTransitionService.php`, `CustomsFxPdfEffect` |
 | Endpoint / query | `POST /v1/engine-requests/{id}/actions` landing on an `fx.confirmation_pdf` hook stage |
-| Current behavior | Stage hooks fire **inside** the `DB::transaction` + `lockForUpdate` block (`EngineTransitionService.php:143-163`); `fx.confirmation_pdf` runs `CustomsFxPdfEffect` (PDF render via dompdf/mpdf) synchronously while the `engine_requests` row lock is held. |
+| Current behavior | **Fixed.** `CustomsFxPdfEffect` now splits at the hook boundary: `snapshot()` (cheap, must-abort-capable field-mapping resolution) still runs inline inside `EngineTransitionService::execute()`'s `DB::transaction()` + `lockForUpdate()`; the DomPDF render, the generator's own `GET_LOCK('customs_declaration_number')`, the disk write, and the `CustomsDeclaration` row creation now run in a `DB::afterCommit()` closure, after the transition's transaction (and the `engine_requests` row lock) has already released. |
 | Problem | PDF rendering is CPU/time-heavy; holding the row lock (and a DB connection) across it lengthens the critical section, increasing lock-wait and connection-pool pressure under concurrent transitions on hot stages. AGENTS.md *requires* FX generation to be transactional/atomic, so this is a constrained trade-off, not a free async move. |
 | Severity | Medium |
-| Evidence status | Partially Verified; lock-hold duration measured in Block 3 |
-| Finding status | Open |
+| Evidence status | Evidence Verified |
+| Finding status | **Fixed** (`perf/arch-007-fx-pdf-outside-lock`) |
 | Roadmap tier | Threshold-gated (concurrent transition rate on FX stages) |
-| First identified / last reviewed | Block 1 / Block 1 |
+| First identified / last reviewed | Block 1 / Post-audit fix |
 | Related findings | Block 3 locking analysis, Block 8 queue interaction |
-| Evidence | `AppServiceProvider.php:65-84`, `EngineTransitionService.php:143-163` |
-| Confidence | Medium |
-| Recommendation | Preserve atomicity of the *state change + record creation*, but investigate rendering the PDF bytes **before** acquiring the lock (or storing a "pending" marker and generating via an after-commit job that cannot invalidate the transition), so the lock does not span PDF CPU time. Must keep the guarantee that a committed FX confirmation always has its document. Decide only after Block 3 quantifies the lock-hold cost. Trade-off: any async split must not create a committed-transition-without-document window. |
+| Evidence | `EngineDomainHooksTest` (2 new tests); `evidence/ARCH-007-fx-pdf-outside-lock.md` |
+| Confidence | High |
+| Recommendation | **Applied** — the `DB::afterCommit()` split, not a queued job: a queue failure could leave a committed transition with a permanently missing document (violates "a committed FX confirmation always has its document"), whereas `afterCommit` stays synchronous within the same request/response cycle while still running outside the lock/transaction span (confirmed empirically — proven safe under `RefreshDatabase`'s test-wrapping transaction too). Rendering-before-the-lock was rejected: `snapshot()` needs post-transition request state. A nullable-then-updated "pending" declaration row was rejected: `CustomsDeclaration::booted()`'s immutability guard only allows updating `signed_fx_doc_*`/`metadata` columns, so the row is still created once, fully formed. A post-commit render failure now alerts via `OperationalAlertLogger` (QUEUE-001's fail-visible pattern) instead of silently vanishing; the transition itself is correctly not rolled back for a rendering bug once already committed. |
 | Security gate | Atomicity + audit ordering must be preserved. Verified in Block 5. |
 
 ---
