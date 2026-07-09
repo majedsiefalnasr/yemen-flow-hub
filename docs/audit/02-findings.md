@@ -423,12 +423,13 @@ Detailed plans in `05-frontend-caching-queues.md`. Compact records here; all car
 | Field | Value |
 | --- | --- |
 | Area / component | `frontend/app/composables/useApi.ts` |
-| Current behavior | `$fetch` wrapper exposes no `signal`; navigating away mid-request leaves it in flight. |
+| Current behavior | **Fixed.** New `getAbortable()` creates an `AbortController` per call, passes its `signal` through, and auto-aborts on component unmount (`onUnmounted`, guarded by `getCurrentInstance()` — same pattern as `useEngineClaim.ts`). `get`/`post`/`put`/`patch`/`del` unchanged — additive, not a signature change. |
 | Problem | Wasted bandwidth/connections on rapid navigation; the token-guard prevents stale state but not the redundant network work. Matters most on slow links + heavy list/detail loads. |
-| Severity | Medium · Evidence Verified · Status Open · Confidence High |
+| Severity | Medium · Evidence Verified · Status **Fixed** (`perf/fe-001-abort-controller-useapi`) · Confidence High |
 | Roadmap tier | Threshold-gated (user count / connection budget) |
-| First/last | Block 4 / Block 4 · Related: FE-003 |
-| Recommendation | Thread an `AbortController` `signal` through `useApi` and abort on unmount/navigation for GET list/detail calls. Trade-off: must not abort mutations mid-flight. |
+| First/last | Block 4 / Post-audit fix · Related: FE-003 |
+| Evidence | `useApi.ts`; `useApi.test.ts` (3 new tests); `evidence/FE-001-abort-controller.md` |
+| Recommendation | **Applied**, exactly as recommended: opt-in `getAbortable()` for GET, `get`/mutations untouched — mutations were never at risk of auto-abort since they don't use the new function at all. Not migrated: the 38 existing `get()` call sites across the app still use the non-cancellable path; wiring individual pages is a natural follow-up left for when a specific page needs it (mirrors `useReports.ts`'s existing unwired async-export functions). |
 | Security gate | No scoping impact. |
 
 ## FE-002 — Notification store derives unread count by fetching the full list
