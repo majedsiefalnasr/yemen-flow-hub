@@ -451,12 +451,13 @@ Detailed plans in `05-frontend-caching-queues.md`. Compact records here; all car
 | Field | Value |
 | --- | --- |
 | Area / component | `frontend/app/composables/useReferenceData.ts` and peers |
-| Current behavior | Reference tables/values, workflow definitions, banks refetched on each call; no cross-call cache. |
+| Current behavior | **Fixed** for `useBanks().fetchBanks()` (the read-only dropdown/selector helper called independently by 3 pages). `useReferenceData.ts` and `useGovernanceBanks.ts` are active-editing admin CRUD surfaces, not stable lookups — confirmed via inspection and left uncached (see evidence doc). |
 | Problem | Repeated network calls for slow-changing lookup data. |
-| Severity | Low · Evidence Verified · Status Open · Confidence Medium |
+| Severity | Low · Evidence Verified · Status **Fixed** (`perf/fe-003-reference-data-cache`) · Confidence High |
 | Roadmap tier | Optional |
-| First/last | Block 4 / Block 4 · Related: FE-001, CACHE-001 |
-| Recommendation | Cache stable reference data in a Pinia store / `useState` with a modest TTL or explicit invalidation on admin edit. |
+| First/last | Block 4 / Post-audit fix · Related: FE-001, CACHE-001 |
+| Evidence | `referenceCache.store.test.ts` (6 new), `useBanks.test.ts` (2 new); `evidence/FE-003-reference-data-cache.md` |
+| Recommendation | **Applied** — new `referenceCache.store.ts` (Pinia store, `remember()`/`invalidate()`/`clear()`, 5-min default TTL) wraps `fetchBanks()`; `createBank()`/`updateBank()` call `invalidate()` on success, matching the finding's own "TTL or explicit invalidation on admin edit" wording. `useReferenceData.ts`/`useGovernanceBanks.ts` intentionally not cached — both are paginated/searchable or actively-mutated CRUD screens, not the stable-lookup case this finding targets. |
 | Security gate | Reference data is non-sensitive/global; no isolation concern. |
 
 ## CACHE-001 — Dashboard & report aggregates recomputed per request, uncached
