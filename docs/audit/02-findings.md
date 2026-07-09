@@ -4,16 +4,16 @@ All findings carry the lifecycle fields defined in `00-scope-and-method.md`. IDs
 
 Blocks are additive: Block 1 seeds architecture (`ARCH-`) and any security defect found during discovery (`SEC-`). API/DB/FE/CACHE/QUEUE/OBS findings arrive in later blocks. Database findings are `Partially Verified` until Block 3 captures plans.
 
-## Summary counts (through Block 4)
+## Summary counts (through Block 5 — final)
 
 | Severity | Count | IDs |
 | --- | --- | --- |
 | Critical | 1 | SEC-001 — **fixed** in Block 1 (commit `375fe5f2`) |
-| High | 7 | ARCH-001, ARCH-002, API-001, API-002, API-003, DB-001, DB-002 |
-| Medium | 10 | ARCH-003, ARCH-004, ARCH-006, ARCH-007, API-004, API-005, API-006, FE-001, CACHE-001, QUEUE-001 |
-| Low | 7 | ARCH-005, API-007, DB-003, FE-002, FE-003, QUEUE-002, QUEUE-003 |
+| High | 8 | ARCH-001, ARCH-002, API-001, API-002, API-003, DB-001, DB-002, OBS-001 |
+| Medium | 12 | ARCH-003, ARCH-004, ARCH-006, ARCH-007, API-004, API-005, API-006, FE-001, CACHE-001, QUEUE-001, SEC-002, OBS-002 |
+| Low | 8 | ARCH-005, API-007, DB-003, FE-002, FE-003, QUEUE-002, QUEUE-003, SEC-003 |
 
-_Total: 25 findings (1 fixed). Block 4 added 3 FE, 1 CACHE, 3 QUEUE. Recorded strengths: server-side pagination/filtering, disciplined non-leaking cache usage, idempotent notification fan-out, no sync work in the HTTP path._
+_Total: 29 findings (1 Critical fixed). Block 5 added SEC-002/003, OBS-001/002 and ran the consolidated security gate: every recommendation preserves scoping/authz/transactions/audit if its stated condition holds (CACHE-001 scope-key and QUEUE-001 fail-closed are the two conditions to watch)._
 
 ---
 
@@ -509,4 +509,62 @@ Detailed plans in `05-frontend-caching-queues.md`. Compact records here; all car
 | Recommendation | Separate queues by workload (`notifications`, `exports`, `scans`, `emails`); add Horizon for monitoring (ties into Block 5 observability). |
 | Security gate | No scoping impact. |
 
-_SEC/OBS findings arrive in Block 5._
+---
+
+# Security / Observability series (Block 5)
+
+Detail + the consolidated security gate in `06-security-observability.md`. Compact records here.
+
+## SEC-002 — `audit_logs` cannot be bank-scoped (no `bank_id`); bank admins get no scoped audit access
+
+| Field | Value |
+| --- | --- |
+| Area / component | `audit_logs` table; `app/Http/Controllers/Api/V1/AuditLogController.php` |
+| Current behavior | No `bank_id` column, so audit queries can't be bank-scoped at the query level; `show()` denies **all** non-system-wide users (`:69-73`) as a workaround. |
+| Problem | Scoping-model weakness + functional gap: bank admins get zero scoped audit visibility; audit reads can't be safely bank-filtered. |
+| Severity | Medium · Evidence Verified · Status Open · Confidence High |
+| Roadmap tier | Threshold-gated (when bank-scoped audit access is required) |
+| First/last | Block 5 / Block 5 · Related: DB-003, ARCH-006 |
+| Recommendation | Add `bank_id` to `audit_logs` (derived from `workflow_instance_id`/subject at write time), backfill, then enable scoped reads + a scoped index (DB-003). Migration + rollback + backfill in the roadmap. |
+| Security gate | Enables correct scoping; must backfill without exposing cross-bank rows. |
+
+## SEC-003 — Unauthenticated 403s write audit rows (audit-table write-amplification / cheap DoS)
+
+| Field | Value |
+| --- | --- |
+| Area / component | `bootstrap/app.php:64-122`, `AuditService` |
+| Current behavior | Every 403 authorization failure, including unauthenticated, writes an `audit_logs` row. |
+| Problem | An unauthenticated scanner can drive unbounded audit writes → write-amplification against the largest table. |
+| Severity | Low · Evidence Verified · Status Open · Confidence Medium |
+| Roadmap tier | Pre-production (resolved by ARCH-003 default throttle) |
+| First/last | Block 5 / Block 5 · Related: ARCH-003, ARCH-006 |
+| Recommendation | The ARCH-003 default authenticated throttle + an unauthenticated-endpoint throttle caps the write rate. Keep logging genuine failures. |
+| Security gate | Preserves audit completeness; only rate-limits abuse. |
+
+## OBS-001 — No application performance observability
+
+| Field | Value |
+| --- | --- |
+| Area / component | `composer.json`, `app/Providers`, `config/` |
+| Current behavior | No Telescope/Pulse/Horizon/Sentry; no slow-query log, no per-request query-count/duration, no cache-hit/error-rate/response-size tracking. |
+| Problem | The Block 3/4 hot paths and any regression would be invisible in production; no way to validate targets or catch N+1 reintroduction. |
+| Severity | High · Evidence Verified · Status Open · Confidence High |
+| Roadmap tier | Pre-production (measurement is Phase A of the roadmap) |
+| First/last | Block 5 / Block 5 · Related: OBS-002, all perf findings |
+| Recommendation | Enable MySQL slow-query log + `log_queries_not_using_indexes` (staging); add per-request query-count+duration logging; adopt **Laravel Pulse** (low-overhead, first-party). Telescope local/staging only. |
+| Security gate | Telescope must never run in production (stores payloads). |
+
+## OBS-002 — No queue monitoring (no Horizon)
+
+| Field | Value |
+| --- | --- |
+| Area / component | `config/queue.php`, composer.json |
+| Current behavior | No Horizon; queue depth/latency/failure-rate unobservable. |
+| Problem | Queue backlogs, slow jobs, and failure spikes are invisible. |
+| Severity | Medium · Evidence Verified · Status Open · Confidence High |
+| Roadmap tier | Threshold-gated (Pre-production if queue volume expected at launch) |
+| First/last | Block 5 / Block 5 · Related: QUEUE-003, OBS-001 |
+| Recommendation | Add Horizon for Redis queue monitoring; pairs with QUEUE-003 queue separation. |
+| Security gate | Horizon dashboard must be auth-gated. |
+
+_All findings recorded. Block 6 compiles the roadmap and executive summary._
