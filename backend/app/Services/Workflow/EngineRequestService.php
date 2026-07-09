@@ -68,9 +68,15 @@ class EngineRequestService
         }
 
         return DB::transaction(function () use ($version, $initialStage, $data, $actor, $resolvedBankId) {
+            // ARCH-002: the request enters its initial stage now; stamp the same
+            // timestamp into the projection column and the CREATE history row so
+            // SLA timing works from creation, not only after the first transition.
+            $enteredAt = now();
+
             $request = $this->createWithUniqueReference([
                 'workflow_version_id' => $version->id,
                 'current_stage_id' => $initialStage->id,
+                'stage_entered_at' => $enteredAt,
                 'status' => 'ACTIVE',
                 'created_by' => $actor->id,
                 'bank_id' => $resolvedBankId,
@@ -88,7 +94,7 @@ class EngineRequestService
                 'action_code' => 'CREATE',
                 'performed_by' => $actor->id,
                 'comments' => null,
-                'created_at' => now(),
+                'created_at' => $enteredAt,
             ]);
 
             $this->auditService->log(

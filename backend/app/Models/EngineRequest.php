@@ -20,6 +20,7 @@ class EngineRequest extends Model
     protected $fillable = [
         'workflow_version_id',
         'current_stage_id',
+        'stage_entered_at',
         'reference',
         'status',
         'created_by',
@@ -47,6 +48,7 @@ class EngineRequest extends Model
             'request_percentage' => 'decimal:2',
             'claimed_at' => 'datetime',
             'claim_expires_at' => 'datetime',
+            'stage_entered_at' => 'datetime',
         ];
     }
 
@@ -134,9 +136,14 @@ class EngineRequest extends Model
     }
 
     /**
-     * Selects the time the request entered its current stage (the latest matching
-     * workflow_history row) and the current stage's SLA window, so SLA status can be
-     * derived and ordered at the query level without scanning JSON or N+1 history reads.
+     * Exposes the current stage's SLA window (via the current_stage join) alongside
+     * the indexed `stage_entered_at` projection column, so SLA status can be derived,
+     * filtered, and ordered at the query level.
+     *
+     * ARCH-002: `stage_entered_at` is now a maintained column (set on create and on
+     * every transition to equal the latest matching workflow_history.created_at), so
+     * it arrives via `engine_requests.*` — no correlated max(created_at) subquery is
+     * evaluated per row in the projection, ORDER BY, or WHERE anymore.
      */
     public function scopeWithStageEntry(Builder $query): Builder
     {
@@ -145,15 +152,27 @@ class EngineRequest extends Model
         }
 
         return $query
-            ->selectSub(
-                WorkflowHistoryEntry::query()
-                    ->selectRaw('max(created_at)')
-                    ->whereColumn('request_id', 'engine_requests.id')
-                    ->whereColumn('to_stage_id', 'engine_requests.current_stage_id'),
-                'stage_entered_at',
-            )
             ->leftJoin('workflow_stages as current_stage', 'current_stage.id', '=', 'engine_requests.current_stage_id')
+            // Project the maintained column, falling back to the history subquery for
+            // any row whose column is not yet populated, so the sla_status accessor
+            // reads the same value the deadline SQL uses.
+            ->selectRaw(self::stageEnteredAtSql().' as stage_entered_at')
             ->addSelect('current_stage.sla_duration_minutes as current_stage_sla_minutes');
+    }
+
+    /**
+     * SQL for the request's current-stage entry time: the maintained
+     * `stage_entered_at` projection column, falling back to the correlated
+     * max(created_at) history subquery when the column is null (ARCH-002). Single
+     * source of truth for the projection alias, the SLA deadline, and the ordering
+     * tiebreaker so all three agree on which timestamp a row entered its stage.
+     */
+    public static function stageEnteredAtSql(): string
+    {
+        return 'COALESCE(engine_requests.stage_entered_at, '
+            .'(select max(created_at) from workflow_history '
+            .'where workflow_history.request_id = engine_requests.id '
+            .'and workflow_history.to_stage_id = engine_requests.current_stage_id))';
     }
 
     /**
@@ -167,19 +186,26 @@ class EngineRequest extends Model
         return $query
             ->orderByRaw('CASE WHEN current_stage.sla_duration_minutes IS NULL THEN 1 ELSE 0 END')
             ->orderByRaw("{$deadline} ASC")
-            ->orderByRaw(self::epochSql('stage_entered_at').' ASC');
+            ->orderByRaw(self::epochSql(self::stageEnteredAtSql()).' ASC');
     }
 
     /**
      * Portable SQL expression for the current stage's SLA deadline as epoch seconds:
      * stage-entry time + (sla_duration_minutes * 60). Works on both MySQL and SQLite
      * so query-level SLA ordering/filtering is consistent between prod and tests.
+     *
+     * ARCH-002: the fast path reads the indexed `engine_requests.stage_entered_at`
+     * projection column (maintained on create/transition) instead of a correlated
+     * max(created_at) subquery. To stay correct for any row whose column is not yet
+     * populated (pre-backfill edge rows, or history written outside the maintained
+     * paths), it falls back to the original subquery via COALESCE — so a null column
+     * can never silently drop a breached request from SLA ordering/filtering. In the
+     * common case the column is set and the subquery is never evaluated.
+     * Callers must have applied scopeWithStageEntry() for the current_stage join.
      */
     public static function slaDeadlineEpochSql(): string
     {
-        return self::epochSql('(select max(created_at) from workflow_history '
-            .'where workflow_history.request_id = engine_requests.id '
-            .'and workflow_history.to_stage_id = engine_requests.current_stage_id)')
+        return self::epochSql(self::stageEnteredAtSql())
             .' + (current_stage.sla_duration_minutes * 60)';
     }
 

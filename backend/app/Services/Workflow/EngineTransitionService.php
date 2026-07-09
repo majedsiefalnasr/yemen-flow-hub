@@ -91,9 +91,16 @@ class EngineTransitionService
 
             $newStatus = $this->resolveStatusAfterTransition($transition->toStage);
 
+            // ARCH-002: stamp the moment the request enters its new stage into an
+            // indexed projection column, using the same timestamp written to the
+            // workflow_history row below so the column equals the value the old
+            // correlated max(created_at) subquery computed.
+            $enteredAt = now();
+
             $request->forceFill([
                 'data' => $mergedData,
                 'current_stage_id' => $transition->to_stage_id,
+                'stage_entered_at' => $enteredAt,
                 'status' => $newStatus,
                 'version' => $request->version + 1,
             ])->save();
@@ -114,7 +121,7 @@ class EngineTransitionService
                 'performed_by' => $user->id,
                 'comments' => $comment,
                 'correlation_id' => $correlationId,
-                'created_at' => now(),
+                'created_at' => $enteredAt,
             ]);
 
             $fieldDiff = $this->fieldDiffBuilder->diff(
