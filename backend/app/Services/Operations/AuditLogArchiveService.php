@@ -39,6 +39,7 @@ class AuditLogArchiveService
                 'action' => $row->action,
                 'subject_type' => $row->subject_type,
                 'subject_id' => $row->subject_id,
+                'bank_id' => $row->bank_id,
                 'workflow_instance_id' => $row->workflow_instance_id,
                 'correlation_id' => $row->correlation_id,
                 'ip_address' => $row->ip_address,

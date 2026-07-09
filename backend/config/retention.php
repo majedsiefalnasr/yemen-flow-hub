@@ -8,6 +8,11 @@ return [
     'audit_hot_months' => (int) env('RETENTION_AUDIT_HOT_MONTHS', 12),
     'audit_archive_batch_size' => (int) env('RETENTION_AUDIT_BATCH_SIZE', 500),
 
+    // ARCH-006 — workflow_history hot DB horizon; only applies to rows whose
+    // owning engine_request is no longer ACTIVE (see WorkflowHistoryArchiveService).
+    'workflow_history_hot_months' => (int) env('RETENTION_WORKFLOW_HISTORY_HOT_MONTHS', 12),
+    'workflow_history_archive_batch_size' => (int) env('RETENTION_WORKFLOW_HISTORY_BATCH_SIZE', 500),
+
     // RT-5 — export file retention (row kept as EXPIRED history)
     'export_file_days' => (int) env('RETENTION_EXPORT_FILE_DAYS', 30),
 
@@ -28,5 +33,6 @@ return [
         'documents:purge-orphans' => 1500,
         'documents:archive-superseded' => 1500,
         'audit:archive-old' => 1500,
+        'workflow-history:archive-old' => 1500,
     ],
 ];

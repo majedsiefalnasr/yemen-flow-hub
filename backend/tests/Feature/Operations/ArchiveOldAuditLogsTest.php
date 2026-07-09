@@ -94,4 +94,29 @@ class ArchiveOldAuditLogsTest extends TestCase
             'action' => AuditAction::AUDIT_ARCHIVED->value,
         ]);
     }
+
+    /**
+     * ARCH-006: SEC-002 added bank_id to audit_logs for scoped reads, but the
+     * archive path must carry it forward too, or a bank-scoped row becomes
+     * unscopable (and therefore invisible to a bank admin, or worse, visible
+     * to the wrong bank if a future read ever defaults null to systemWide)
+     * the moment it archives.
+     */
+    public function test_archived_row_preserves_bank_id(): void
+    {
+        $oldId = DB::table('audit_logs')->insertGetId([
+            'user_id' => $this->admin->id,
+            'user_role' => UserRole::CBY_ADMIN->value,
+            'action' => AuditAction::LOGIN->value,
+            'bank_id' => 7,
+            'created_at' => now()->subMonths(13),
+        ]);
+
+        $this->artisan('audit:archive-old')->assertSuccessful();
+
+        $this->assertDatabaseHas('audit_log_archives', [
+            'source_id' => $oldId,
+            'bank_id' => 7,
+        ]);
+    }
 }

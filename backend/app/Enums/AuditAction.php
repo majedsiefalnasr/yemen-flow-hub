@@ -60,6 +60,7 @@ enum AuditAction: string
     case SCREEN_PERMISSION_UPDATED = 'SCREEN_PERMISSION_UPDATED';
     case RETENTION_JOB_RUN = 'RETENTION_JOB_RUN';
     case AUDIT_ARCHIVED = 'AUDIT_ARCHIVED';
+    case WORKFLOW_HISTORY_ARCHIVED = 'WORKFLOW_HISTORY_ARCHIVED';
     case DEMO_USER_SWITCH = 'DEMO_USER_SWITCH';
 
     public function label(): string
@@ -121,6 +122,7 @@ enum AuditAction: string
             self::SCREEN_PERMISSION_UPDATED => 'Screen Permission Updated / تحديث صلاحيات الشاشة',
             self::RETENTION_JOB_RUN => 'Retention Job Run / تشغيل مهمة الاحتفاظ',
             self::AUDIT_ARCHIVED => 'Audit Archived / أرشفة سجل التدقيق',
+            self::WORKFLOW_HISTORY_ARCHIVED => 'Workflow History Archived / أرشفة سجل سير العمل',
             self::DEMO_USER_SWITCH => 'Demo User Switch / تبديل مستخدم العرض التوضيحي',
         };
     }

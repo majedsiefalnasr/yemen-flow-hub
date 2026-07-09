@@ -1,6 +1,7 @@
 <?php
 
 use App\Console\Commands\ArchiveOldAuditLogsCommand;
+use App\Console\Commands\ArchiveOldWorkflowHistoryCommand;
 use App\Console\Commands\ArchiveSupersededDocumentsCommand;
 use App\Console\Commands\CheckSchedulerHealthCommand;
 use App\Console\Commands\ExpireEngineClaimsCommand;
@@ -23,4 +24,5 @@ Schedule::command(PurgeOldReportExportsCommand::class)->dailyAt('02:20');
 Schedule::command(ArchiveSupersededDocumentsCommand::class)->dailyAt('02:30');
 Schedule::command(PurgeOrphanDocumentsCommand::class)->dailyAt('02:40');
 Schedule::command(ArchiveOldAuditLogsCommand::class)->dailyAt('03:00');
+Schedule::command(ArchiveOldWorkflowHistoryCommand::class)->dailyAt('03:10');
 Schedule::command(CheckSchedulerHealthCommand::class)->dailyAt('06:00');
