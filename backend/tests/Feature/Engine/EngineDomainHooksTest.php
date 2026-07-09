@@ -21,9 +21,11 @@ use App\Models\WorkflowDefinition;
 use App\Models\WorkflowStage;
 use App\Models\WorkflowTransition;
 use App\Models\WorkflowVersion;
+use App\Services\Customs\CustomsDeclarationGenerator;
 use App\Services\Workflow\Engine\EngineFinancingLedger;
 use Database\Seeders\GovernanceSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
@@ -212,6 +214,73 @@ class EngineDomainHooksTest extends TestCase
         $this->assertNotNull($declaration, 'a declaration must be linked to the engine request');
         $this->assertStringStartsWith('CD-', $declaration->declaration_number);
         Storage::disk('local')->assertExists('private/'.$declaration->pdf_path);
+    }
+
+    /**
+     * ARCH-007: PDF rendering must not run while the engine_requests row lock
+     * (EngineTransitionService::execute()'s DB::transaction) is still held —
+     * that was the finding's whole complaint (CPU/IO work under a row lock +
+     * DB connection). Asserts the render call observes the same transaction
+     * level as before the HTTP request started (RefreshDatabase's own
+     * wrapping transaction only, no app-level transaction nested inside it),
+     * proving it runs in a DB::afterCommit() callback after
+     * EngineTransitionService::execute()'s transaction has already committed
+     * — not nested one level deeper, which is what a call from inside that
+     * transaction would observe.
+     */
+    public function test_customs_pdf_render_runs_outside_the_transition_lock(): void
+    {
+        $levelBeforeTransition = DB::transactionLevel();
+        $capturedLevel = null;
+        $realGenerator = new CustomsDeclarationGenerator;
+        $this->mock(CustomsDeclarationGenerator::class, function ($mock) use (&$capturedLevel, $realGenerator) {
+            $mock->shouldReceive('generate')
+                ->once()
+                ->andReturnUsing(function (...$args) use (&$capturedLevel, $realGenerator) {
+                    $capturedLevel = DB::transactionLevel();
+
+                    return $realGenerator->generate(...$args);
+                });
+        });
+
+        $request = $this->createRequest(30.0);
+        $this->submit($request)->assertOk();
+        $request->refresh();
+
+        $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
+            'transition_id' => $this->toFx->id, 'data' => [], 'version' => $request->version,
+        ])->assertOk();
+
+        $this->assertSame($levelBeforeTransition, $capturedLevel, 'PDF render must run after the transition transaction has committed, not inside it.');
+    }
+
+    /**
+     * ARCH-007: a genuinely invalid workflow config (unresolvable semantic
+     * field mapping) must still abort the transition atomically — this part
+     * of CustomsFxPdfEffect stays inside the lock/transaction because it is a
+     * cheap, must-abort-capable validation, not the slow render.
+     */
+    public function test_unresolvable_semantic_mapping_still_rolls_back_the_transition(): void
+    {
+        $request = $this->createRequest(30.0);
+        $this->submit($request)->assertOk();
+        $request->refresh();
+
+        // AMOUNT has no field-definition override in this fixture, so
+        // resolveFieldValue() falls back to the EngineRequest.amount column,
+        // which RequestProjectionSync re-derives from data.amount on every
+        // transition (see RequestProjectionSync::sync()). Nulling data.amount
+        // on this transition reproduces the "unresolvable" state
+        // CustomsFxPdfEffect::snapshot() guards against.
+        $response = $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
+            'transition_id' => $this->toFx->id, 'data' => ['amount' => null], 'version' => $request->version,
+        ]);
+
+        $response->assertStatus(422);
+
+        $request->refresh();
+        $this->assertEquals($this->execStage->id, $request->current_stage_id, 'transition must roll back, not land on FX_CONFIRM without a resolvable snapshot');
+        $this->assertNull(CustomsDeclaration::where('engine_request_id', $request->id)->first());
     }
 
     public function test_ledger_named_lock_serializes_concurrent_reserves(): void

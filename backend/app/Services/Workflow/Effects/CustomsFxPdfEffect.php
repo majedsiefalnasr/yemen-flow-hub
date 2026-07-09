@@ -13,8 +13,26 @@ use App\Models\WorkflowTransition;
 use App\Services\Audit\AuditService;
 use App\Services\Customs\CustomsDeclarationGenerator;
 use App\Services\Customs\FxOfficialIssuerResolver;
+use App\Services\Operations\OperationalAlertLogger;
 use App\Services\Workflow\SemanticResolver;
+use Illuminate\Support\Facades\DB;
 
+/**
+ * ARCH-007: the transition's row lock (EngineTransitionService::execute()'s
+ * lockForUpdate()) must not span the PDF render — that's CPU/IO work that
+ * has nothing to do with the state change being locked. snapshot() (cheap
+ * field-mapping resolution that can validly abort the transition via
+ * SemanticMappingUnresolvedException) runs inline, inside the lock, exactly
+ * as before. The actual render + disk write + CustomsDeclaration creation
+ * runs in a DB::afterCommit() callback, after the transition's transaction
+ * (and its row lock) has already released. A render failure at that point
+ * cannot roll back an already-committed transition -- it alerts instead
+ * (OperationalAlertLogger), the same fail-visible pattern QUEUE-001 uses for
+ * the document scan job. This preserves AGENTS.md's "a committed FX
+ * confirmation always has its document" guarantee for the success path,
+ * while making a post-commit render failure an operationally visible,
+ * retryable gap instead of silently missing.
+ */
 class CustomsFxPdfEffect
 {
     public function __construct(
@@ -31,7 +49,22 @@ class CustomsFxPdfEffect
         }
 
         $request->loadMissing('bank', 'workflowVersion');
-        $artifacts = $this->generator->generate($this->snapshot($request), $actor, $request->id);
+        $snapshot = $this->snapshot($request);
+
+        DB::afterCommit(function () use ($request, $snapshot, $actor): void {
+            try {
+                $this->render($request, $snapshot, $actor);
+            } catch (\Throwable $e) {
+                OperationalAlertLogger::failure('fx_confirmation_pdf_render', $e, [
+                    'engine_request_id' => $request->id,
+                ]);
+            }
+        });
+    }
+
+    private function render(EngineRequest $request, array $snapshot, User $actor): void
+    {
+        $artifacts = $this->generator->generate($snapshot, $actor, $request->id);
 
         $officialIssuer = $this->officialIssuerResolver->resolve();
 
