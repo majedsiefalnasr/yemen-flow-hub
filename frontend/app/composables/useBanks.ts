@@ -1,5 +1,8 @@
 import type { ApiError, ApiResponse, Bank, PaginatedResponse } from '../types/models'
 import { useApi } from './useApi'
+import { useReferenceCacheStore } from '../stores/referenceCache.store'
+
+const BANKS_CACHE_KEY = 'banks:dropdown'
 
 export interface FetchBanksParams {
   page?: number
@@ -35,11 +38,18 @@ export interface UpdateBankPayload {
 
 export function useBanks() {
   const { get, post, put, isApiError } = useApi()
+  const referenceCache = useReferenceCacheStore()
 
-  // Returns all banks (used for dropdowns / selectors that need the full set).
+  // FE-003: returns all banks (used for dropdowns / selectors that need the
+  // full set) — cached across calls in the same session, since multiple
+  // pages independently call this for the same unfiltered list. Invalidated
+  // below whenever createBank()/updateBank() succeeds, so a caller that just
+  // mutated a bank never sees a stale dropdown on next fetch.
   async function fetchBanks(): Promise<Bank[]> {
-    const response = await get<ApiResponse<PaginatedResponse<Bank>>>('/api/v1/banks?per_page=200')
-    return response.data.data ?? []
+    return referenceCache.remember(BANKS_CACHE_KEY, async () => {
+      const response = await get<ApiResponse<PaginatedResponse<Bank>>>('/api/v1/banks?per_page=200')
+      return response.data.data ?? []
+    })
   }
 
   // Server-side paginated fetch (same shape the requests page consumes).
@@ -58,11 +68,13 @@ export function useBanks() {
 
   async function createBank(payload: CreateBankPayload): Promise<Bank> {
     const response = await post<ApiResponse<Bank>>('/api/v1/banks', payload)
+    referenceCache.invalidate(BANKS_CACHE_KEY)
     return response.data
   }
 
   async function updateBank(id: number, payload: UpdateBankPayload): Promise<Bank> {
     const response = await put<ApiResponse<Bank>>(`/api/v1/banks/${id}`, payload)
+    referenceCache.invalidate(BANKS_CACHE_KEY)
     return response.data
   }
 
