@@ -2,17 +2,29 @@
 
 namespace App\Services\Customs;
 
+use App\DTOs\Authorization\DataScopeContext;
 use App\Enums\StageAccessLevel;
 use App\Enums\StageSemanticRole;
 use App\Models\CustomsDeclaration;
 use App\Models\EngineRequest;
 use App\Models\User;
 use App\Models\WorkflowStage;
+use App\Services\Authorization\DataScope;
 use App\Services\Workflow\StagePermissionResolver;
 use App\Support\RoleCodes;
 
 class FxConfirmationAuthorizationService
 {
+    /**
+     * Per-user resolved data scope, memoized so requestInScope() can evaluate
+     * bank visibility in memory against each row's bank_id instead of running
+     * a `whereKey()->forUser()->exists()` query per row during list
+     * serialization (API-001). Identical scoping semantics to DataScope::applyTo.
+     *
+     * @var array<int, DataScopeContext>
+     */
+    private array $userScopeCache = [];
+
     /**
      * Per-workflow_version_id FX-stage lookup cache. Bound as a container
      * singleton (see AppServiceProvider) so this survives across the per-row
@@ -64,10 +76,21 @@ class FxConfirmationAuthorizationService
             return true;
         }
 
-        return EngineRequest::query()
-            ->whereKey($engineRequest->id)
-            ->forUser($user)
-            ->exists();
+        // Evaluate the user's bank scope in memory against this row's bank_id.
+        // This mirrors EngineRequest::scopeForUser (DataScope::applyTo on
+        // engine_requests.bank_id) exactly, but without a per-row existence
+        // query — the whole point when serializing a list page (API-001).
+        $scope = $this->userScopeCache[$user->getKey()] ??= DataScope::forUser($user);
+
+        if ($scope->systemWide) {
+            return true;
+        }
+
+        if ($scope->ownBankId === null) {
+            return false;
+        }
+
+        return (int) $engineRequest->bank_id === (int) $scope->ownBankId;
     }
 
     public function isAtOrPastFxStage(EngineRequest $engineRequest): bool
