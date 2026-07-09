@@ -16,6 +16,12 @@ class DispatchNotification implements ShouldQueue
     use InteractsWithQueue;
     use Queueable;
 
+    /** QUEUE-002: explicit retry bound instead of inheriting worker defaults. */
+    public int $tries = 3;
+
+    /** Fan-out to a bounded recipient list; should never legitimately run long. */
+    public int $timeout = 30;
+
     public function __construct(
         private readonly string $type,
         private readonly string $severity,
@@ -71,6 +77,14 @@ class DispatchNotification implements ShouldQueue
         // insertOrIgnore so a retry after a partial write cannot fail on the
         // unique(notification_id, user_id) constraint.
         NotificationRecipient::insertOrIgnore($rows);
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    public function backoff(): array
+    {
+        return [5, 15, 30];
     }
 
     public function failed(\Throwable $exception): void

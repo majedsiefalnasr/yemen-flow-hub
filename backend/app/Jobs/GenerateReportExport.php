@@ -21,9 +21,23 @@ class GenerateReportExport implements ShouldQueue
 
     public const ROW_LIMIT = 10000;
 
+    /** QUEUE-002: explicit retry bound instead of inheriting worker defaults. */
+    public int $tries = 3;
+
+    /** Generous: up to ROW_LIMIT rows with relations, CSV build, and disk write. */
+    public int $timeout = 300;
+
     public function __construct(
         private readonly int $exportId,
     ) {}
+
+    /**
+     * @return array<int, int>
+     */
+    public function backoff(): array
+    {
+        return [15, 60, 180];
+    }
 
     public function handle(AuditService $auditService): void
     {
