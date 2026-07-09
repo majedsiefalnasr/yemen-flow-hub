@@ -116,9 +116,9 @@ _Total: 29 findings (1 Critical fixed). Block 5 added SEC-002/003, OBS-001/002 a
 | Problem | A single authenticated client can drive unbounded request volume against the most expensive endpoints (reports, dashboard aggregates, unindexed searches), amplifying every other performance finding into an availability risk. |
 | Severity | Medium |
 | Evidence status | Verified |
-| Finding status | Open |
+| Finding status | **Fixed** (`throttle:api-default` per-user limiter on the v1/profile/admin authenticated groups; `perf/arch-003-api-default-throttle`) |
 | Roadmap tier | Pre-production (add a sane default group throttle) |
-| First identified / last reviewed | Block 1 / Block 1 |
+| First identified / last reviewed | Block 1 / Post-audit fix |
 | Related findings | ARCH-001, ARCH-002, report/dashboard findings (Block 2) |
 | Evidence | route:list; `bootstrap/app.php:43-62` |
 | Confidence | High |

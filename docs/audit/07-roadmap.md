@@ -95,7 +95,7 @@ ORDER BY ... (UNIX_TIMESTAMP((SELECT MAX(created_at) FROM workflow_history
 - [ ] **API-001:** query count per list page is constant regardless of page size (assert via OBS-001 counter).
 - [ ] **API-002 / API-005:** stats/summary issue one grouped query, not N passes (query-count assertion).
 - [x] **ARCH-001:** permission-resolution issues a bounded SQL query, not a whole-table hydrate; **parity test** vs the old PHP evaluator passes for every identity shape. *(Done — `AccessibleStageIdsParityTest`; plan in `evidence/explain/ARCH-001-accessible-stage-ids.txt`.)*
-- [ ] **ARCH-003:** authenticated endpoints return 429 past the limit; unauthenticated 403 storm is rate-capped.
+- [x] **ARCH-003:** authenticated endpoints return 429 past the limit *(Done — `throttle:api-default` on the v1/profile/admin groups; `ApiDefaultThrottleTest` proves the cap and per-user bucket)*. Unauthenticated auth endpoints keep their existing per-route throttles (login 5/1, OTP 10/1, etc.).
 - [ ] **API-003:** concurrent-create test yields unique references, zero `REFERENCE_ALLOCATION_FAILED`; behaves correctly past a simulated 7-digit sequence.
 - [ ] **CACHE-001:** two banks' dashboards never share a cache entry (cross-bank leakage test); Redis-down → live compute, no 500.
 - [ ] **QUEUE-001:** forced scan failure marks the document fail-closed (not clean/available); alert emitted.
