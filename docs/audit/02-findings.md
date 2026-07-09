@@ -259,17 +259,17 @@ _Total: 29 findings (1 Critical fixed). Block 5 added SEC-002/003, OBS-001/002 a
 | --- | --- |
 | Area / component | `app/Services/Workflow/EngineRequestService.php` |
 | Endpoint / query | `POST /v1/engine-requests` → `createWithUniqueReference()` |
-| Current behavior | Sequence from lexicographic `MAX(reference)` over `ENG-YYYY-%06d` (`:117-144`), recomputed per create, races resolved by unique-constraint retry. |
-| Problem | (1) At `ENG-YYYY-1000000` string MAX mis-orders 7-digit vs 6-digit suffixes → permanent `REFERENCE_ALLOCATION_FAILED` for the year. (2) Per-create `MAX` recompute + retry = serialization contention under concurrency. |
+| Current behavior | **Fixed (overflow half).** Sequence now derived from `MAX(CAST(SUBSTRING(reference, N) AS UNSIGNED))` — a numeric max, correct at any digit width — instead of the lexicographic string `MAX(reference)`. Still recomputed per create; races still resolved by unique-constraint retry. |
+| Problem | (1) At `ENG-YYYY-1000000` string MAX mis-orders 7-digit vs 6-digit suffixes → permanent `REFERENCE_ALLOCATION_FAILED` for the year. **Fixed** — reproduced pre-fix (confirmed `REFERENCE_ALLOCATION_FAILED` after seeding past the boundary) and verified fixed post-change. (2) Per-create `MAX` recompute + retry = serialization contention under concurrency. **Not fixed** — see Recommendation. |
 | Severity | High |
-| Evidence status | Verified (logic) |
-| Finding status | Open (renamed from API-000) |
+| Evidence status | Verified (logic + reproduced test failure pre-fix, green post-fix) |
+| Finding status | **Partially Fixed** — overflow/correctness bug resolved (`perf/api-003-reference-allocator`); concurrency-contention half remains open (renamed from API-000) |
 | Roadmap tier | Threshold-gated (≈10^6 requests/year); contention review Pre-production |
-| First identified / last reviewed | Block 1 / Block 2 |
+| First identified / last reviewed | Block 1 / Post-audit fix |
 | Related findings | Block 3 locking |
-| Evidence | `EngineRequestService.php:117-144` |
+| Evidence | `EngineRequestService.php:123-153`; `EngineRequestReferenceAllocatorTest`; `evidence/API-003-reference-allocator.md` |
 | Confidence | High |
-| Recommendation | Monotonic allocator: per-year sequence row incremented in-transaction, or `MAX(CAST(SUBSTRING(reference,10) AS UNSIGNED))`. Fixes overflow + reduces contention. Trade-off in full record (Block 1). |
+| Recommendation | **Applied:** numeric-cast `MAX` (`MAX(CAST(SUBSTRING(reference,N) AS UNSIGNED))`) — the finding's own lower-risk option, no schema change. **Not applied:** the per-year sequence-row allocator (deterministic under contention, but a bigger migration) — no production contention evidence exists yet (pre-production, no real traffic) to justify it over the lower-risk fix. Left as an explicit open item, not silently dropped. |
 | Security gate | Reference uniqueness preserved; verified in Block 5. |
 
 ## API-004 — Synchronous audit-log CSV export in the request lifecycle
