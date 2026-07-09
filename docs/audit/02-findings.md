@@ -335,18 +335,18 @@ _Total: 29 findings (1 Critical fixed). Block 5 added SEC-002/003, OBS-001/002 a
 | --- | --- |
 | Area / component | `app/Http/Controllers/Api/V1/AuditLogController.php`, `ReportController.php` |
 | Endpoint / query | `GET /v1/audit-logs` (+ export), `reports/*` date filters |
-| Current behavior | `whereDate('created_at', ...)` wraps the column in `DATE()` (`AuditLogController.php:40-41`, `ReportController.php:211-212,319-322`); audit entity filter uses `subject_type LIKE '%X%'` (`AuditLogController.php:38,99`). |
+| Current behavior | **Fixed.** `whereDate()` replaced with half-open range bounds (`created_at >= from.startOfDay() AND created_at < to.addDay().startOfDay()`) in `AuditLogController::index()`/`::export()` and `ReportController::applyFilters()`/`::stageDuration()`. Audit entity filter switched from `subject_type LIKE '%X%'` to exact `subject_type = ?` (caller now passes the fully-qualified class name). |
 | Problem | Function-wrapped column and leading-wildcard LIKE cannot use an index → full scans on `audit_logs` (grows forever). Same root as ARCH-004 on `engine_requests`. |
 | Severity | Low |
-| Evidence status | Partially Verified; plans + index proposals in Block 3 |
-| Finding status | Open |
+| Evidence status | Verified (code + EXPLAIN + tests) |
+| Finding status | **Fixed** (`perf/api-007-db-003-filter-predicates`) |
 | Roadmap tier | Threshold-gated (audit table size) |
-| First identified / last reviewed | Block 2 / Block 2 |
-| Related findings | ARCH-004, ARCH-006, Block 3 index plan |
-| Evidence | `AuditLogController.php:38-41,99`, `ReportController.php:211-212,319-322` |
-| Confidence | Medium-High |
-| Recommendation | Half-open range bounds instead of `whereDate`; exact `subject_type = ?` (fully-qualified class) or a normalized entity column instead of infix LIKE. Consolidated into Block 3 index plan. Trade-off: entity filter UX must switch from substring to exact/known-type. |
-| Security gate | Scope preserved; verified in Block 5. |
+| First identified / last reviewed | Block 2 / Post-audit fix |
+| Related findings | ARCH-004, ARCH-006, DB-003 |
+| Evidence | `AuditLogController.php`, `ReportController.php`; `AuditLogFilterPredicatesTest`, `V1ReportsTest::test_stage_duration_to_filter_is_inclusive_of_the_whole_day`; `evidence/API-007-DB-003-filter-predicates.md` |
+| Confidence | High |
+| Recommendation | **Applied.** No frontend caller sends the `entity` filter today (verified: declared in `useAudit.ts`'s type but never populated) — no client-contract coordination needed for the substring→exact-match UX change the finding flagged as a trade-off. |
+| Security gate | Scope preserved; verified in Block 5. `DataScope::applyTo` untouched by this change. |
 
 ---
 
@@ -398,17 +398,18 @@ Full rationale, before/after plans, and migrations in `03-database-plan.md §4`.
 | --- | --- |
 | Area / component | `audit_logs` table |
 | Endpoint / query | `GET /v1/audit-logs` (+ export) entity/date filters |
-| Current behavior | `whereDate` + infix `subject_type LIKE '%…%'`; relies on reverse-PRIMARY early stop. |
+| Current behavior | **Fixed.** API-007's code fix landed first (exact `subject_type = ?` + half-open date range), unblocking this index. Migration `2026_07_09_100004_add_subject_created_index_to_audit_logs.php` adds `al_subject_created (subject_type, created_at)`. |
 | Problem | Degrades toward full reverse scan on selective/old filters over a 5M-row table. |
 | Severity | Low |
-| Evidence status | Partially Verified |
-| Finding status | Open |
+| Evidence status | Verified (migration applied + rolled back + re-applied; EXPLAIN captured) |
+| Finding status | **Fixed** (`perf/api-007-db-003-filter-predicates`) |
 | Roadmap tier | Threshold-gated (audit table size + confirmed audit-filter workload) |
-| First identified / last reviewed | Block 3 / Block 3 |
+| First identified / last reviewed | Block 3 / Post-audit fix |
 | Related findings | API-007, ARCH-006 |
-| Evidence | `evidence/explain/API-007-audit-filter.txt` |
-| Confidence | Medium |
-| Recommendation | Only after switching to exact `subject_type = ?` + range dates (API-007); then add `al_subject_created` (`03-database-plan.md §4 DB-IDX-3`). Unused without the code fix. Trade-off: index on the largest append-only table. |
+| Evidence | `2026_07_09_100004_add_subject_created_index_to_audit_logs.php`; `evidence/explain/DB-003-audit-entity-date-range.txt`; `evidence/API-007-DB-003-filter-predicates.md` |
+| Confidence | High |
+| Recommendation | **Applied.** At the current local dev row count (257 rows) the optimizer still prefers the pre-existing `(subject_type, subject_id)` index (expected — near-empty table, cost-based choice); `FORCE INDEX` confirms `al_subject_created` is structurally correct (`type: range`, `Using index condition`) and becomes the favored plan once selective date ranges over a large `audit_logs` matter at design-target scale. |
+| Security gate | Index only; no scoping/behavior change. |
 | Security gate | Index only; note the separate `audit_logs` no-`bank_id` scoping limitation → SEC series (Block 5). |
 
 ---

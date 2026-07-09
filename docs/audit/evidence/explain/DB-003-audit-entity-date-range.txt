@@ -1,0 +1,28 @@
+mysql: [Warning] Using a password on the command line interface can be insecure.
+*************************** 1. row ***************************
+           id: 1
+  select_type: SIMPLE
+        table: audit_logs
+   partitions: NULL
+         type: ref
+possible_keys: audit_logs_subject_type_subject_id_index,al_subject_created
+          key: audit_logs_subject_type_subject_id_index
+      key_len: 1023
+          ref: const
+         rows: 1
+     filtered: 11.11
+        Extra: Using where; Using filesort
+mysql: [Warning] Using a password on the command line interface can be insecure.
+*************************** 1. row ***************************
+           id: 1
+  select_type: SIMPLE
+        table: audit_logs
+   partitions: NULL
+         type: range
+possible_keys: al_subject_created
+          key: al_subject_created
+      key_len: 1027
+          ref: NULL
+         rows: 1
+     filtered: 100.00
+        Extra: Using index condition; Using filesort
