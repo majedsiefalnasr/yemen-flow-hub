@@ -21,6 +21,14 @@
         <ini name="memory_limit" value="512M"/>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_KEY" value="base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="/>
+        <!-- API-006: pinned so raw-SQL epoch expressions (slaDeadlineEpochSql/
+             nowEpochSql) are deterministic under SQLite, whose strftime('now')
+             is always UTC regardless of the developer's local .env
+             APP_TIMEZONE. Without this, SLA breach/nearing/ok classification
+             can be silently wrong by the local/UTC offset in tests only —
+             MySQL (production) uses UNIX_TIMESTAMP() under time_zone=SYSTEM,
+             which stays self-consistent with naive stored timestamps either way. -->
+        <env name="APP_TIMEZONE" value="UTC"/>
         <env name="DB_CONNECTION" value="sqlite"/>
         <env name="DB_DATABASE" value=":memory:"/>
         <env name="CACHE_STORE" value="array"/>

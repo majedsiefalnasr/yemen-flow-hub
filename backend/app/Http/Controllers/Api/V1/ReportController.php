@@ -215,6 +215,12 @@ class ReportController extends Controller
 
                 return $q->whereRaw('1 = 0');
             })
+            // API-006: default 90-day window when unfiltered, unless ?all=true
+            // is passed for an explicit full-history pull (compliance/audit).
+            ->when(
+                ! $request->filled('from') && ! $request->filled('to') && ! $request->boolean('all'),
+                fn ($q) => $q->where('h1.created_at', '>=', now()->subDays(90)->startOfDay()),
+            )
             // API-007: half-open range bounds instead of whereDate().
             ->when($request->filled('from'), fn ($q) => $q->where('h1.created_at', '>=', $request->date('from')->startOfDay()))
             ->when($request->filled('to'), fn ($q) => $q->where('h1.created_at', '<', $request->date('to')->addDay()->startOfDay()))
@@ -237,37 +243,53 @@ class ReportController extends Controller
         ]);
     }
 
+    /**
+     * API-006: bucket by SLA status in a single grouped SQL pass instead of
+     * loading every matching request via ->get() and deriving the bucket
+     * per-row in PHP. Bucketing formula matches
+     * EngineRequestListQuery::applySlaStatusFilterInternal() /
+     * EngineRequest::getSlaStatusAttribute() exactly: breached = past
+     * deadline; nearing = within the final 20% of the SLA window (min 1
+     * minute) before the deadline; ok = otherwise.
+     */
     public function sla(Request $request): JsonResponse
     {
         abort_unless($this->permissionService->userHasCapability($request->user(), 'reports', 'VIEW'), 403);
 
+        $deadline = EngineRequest::slaDeadlineEpochSql();
+        $now = EngineRequest::nowEpochSql();
+        $nearingWindow = 'MAX(1, CAST(current_stage.sla_duration_minutes * 0.2 AS INTEGER)) * 60';
+        $threshold = "({$deadline}) - ({$nearingWindow})";
+
         $query = EngineRequest::query()
             ->withStageEntry()
-            ->whereNotNull('current_stage.sla_duration_minutes')
-            ->with('currentStage:id,code,name,sla_duration_minutes');
+            ->whereNotNull('current_stage.sla_duration_minutes');
 
         $this->applyScope($request, $query);
-        $this->applyFilters($request, $query);
+        $this->applyFilters($request, $query, withDefaultWindow: true);
 
-        $requests = $query->get();
-        $grouped = $requests->groupBy(fn ($r) => $r->currentStage?->code ?? 'unknown');
+        $rows = $query
+            ->selectRaw('current_stage.code as stage_code, current_stage.name as stage_name, COUNT(*) as total')
+            ->selectRaw("SUM(CASE WHEN ({$deadline}) < ({$now}) THEN 1 ELSE 0 END) as breached")
+            ->selectRaw("SUM(CASE WHEN ({$deadline}) >= ({$now}) AND ({$now}) >= ({$threshold}) THEN 1 ELSE 0 END) as nearing")
+            ->groupBy('current_stage.code', 'current_stage.name')
+            ->get();
 
-        $data = $grouped->map(function ($items, $stageCode) {
-            $total = $items->count();
-            $breached = $items->filter(fn ($r) => $r->sla_status === 'breached')->count();
-            $nearing = $items->filter(fn ($r) => $r->sla_status === 'nearing')->count();
-            $stageName = $items->first()?->currentStage?->name ?? $stageCode;
+        $data = $rows->map(function ($r) {
+            $total = (int) $r->total;
+            $breached = (int) $r->breached;
+            $nearing = (int) $r->nearing;
 
             return [
-                'stage_code' => $stageCode,
-                'stage_name' => $stageName,
+                'stage_code' => $r->stage_code,
+                'stage_name' => $r->stage_name,
                 'total' => $total,
                 'breached' => $breached,
                 'nearing' => $nearing,
                 'ok' => $total - $breached - $nearing,
                 'breach_rate' => $total > 0 ? round(($breached / $total) * 100, 2) : 0,
             ];
-        })->values();
+        });
 
         return response()->json(['data' => $data]);
     }
@@ -292,7 +314,7 @@ class ReportController extends Controller
             ->orderByDesc('actions');
 
         $this->applyScope($request, $query);
-        $this->applyFilters($request, $query);
+        $this->applyFilters($request, $query, withDefaultWindow: true);
 
         $rows = $query->get();
 
@@ -321,8 +343,22 @@ class ReportController extends Controller
         DataScope::applyTo($query, $scope, 'engine_requests.bank_id');
     }
 
-    private function applyFilters(Request $request, $query): void
+    /**
+     * API-006: default date window (90 days) for endpoints that would
+     * otherwise scan all history unfiltered — pass `?all=true` for an
+     * explicit unbounded pull (e.g. a compliance/audit review). Only applied
+     * where $withDefaultWindow is true (sla, team-performance, stage-duration
+     * — the finding's named endpoints); summary/by-* dashboard widgets keep
+     * their existing all-time-by-default behavior since callers there are
+     * not scanning workflow_history/joins the same way.
+     */
+    private function applyFilters(Request $request, $query, bool $withDefaultWindow = false): void
     {
+        $hasExplicitRange = $request->filled('from') || $request->filled('to');
+        if ($withDefaultWindow && ! $hasExplicitRange && ! $request->boolean('all')) {
+            $query->where('engine_requests.created_at', '>=', now()->subDays(90)->startOfDay());
+        }
+
         // API-007: half-open range bounds instead of whereDate() — wrapping
         // created_at in DATE() defeats any index on the column.
         if ($request->filled('from')) {

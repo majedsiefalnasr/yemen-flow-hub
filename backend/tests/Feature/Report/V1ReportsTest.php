@@ -258,4 +258,51 @@ class V1ReportsTest extends TestCase
 
         $this->assertEquals(1, $response->json('data.0.transitions'));
     }
+
+    /**
+     * Guards API-006: unfiltered stage-duration/team-performance calls
+     * default to a 90-day created_at window instead of scanning all history;
+     * ?all=true bypasses it for an explicit full-history pull.
+     */
+    public function test_stage_duration_defaults_to_a_ninety_day_window(): void
+    {
+        $recentReq = $this->createRequest();
+        WorkflowHistoryEntry::create(['request_id' => $recentReq->id, 'from_stage_id' => null, 'to_stage_id' => $this->stage->id, 'performed_by' => $this->bankUser->id, 'created_at' => now()->subDays(5)]);
+        WorkflowHistoryEntry::create(['request_id' => $recentReq->id, 'from_stage_id' => $this->stage->id, 'to_stage_id' => $this->stage->id, 'performed_by' => $this->bankUser->id, 'created_at' => now()->subDays(5)->addHour()]);
+
+        $oldReq = $this->createRequest();
+        WorkflowHistoryEntry::create(['request_id' => $oldReq->id, 'from_stage_id' => null, 'to_stage_id' => $this->stage->id, 'performed_by' => $this->bankUser->id, 'created_at' => now()->subDays(120)]);
+        WorkflowHistoryEntry::create(['request_id' => $oldReq->id, 'from_stage_id' => $this->stage->id, 'to_stage_id' => $this->stage->id, 'performed_by' => $this->bankUser->id, 'created_at' => now()->subDays(120)->addHour()]);
+
+        $response = $this->actingAs($this->admin)
+            ->getJson('/api/v1/reports/stage-duration')
+            ->assertOk();
+        $this->assertEquals(1, $response->json('data.0.transitions'), 'Only the transition within the default 90-day window should count.');
+
+        $responseAll = $this->actingAs($this->admin)
+            ->getJson('/api/v1/reports/stage-duration?all=true')
+            ->assertOk();
+        $this->assertEquals(2, $responseAll->json('data.0.transitions'), '?all=true must include transitions outside the default window.');
+    }
+
+    public function test_team_performance_defaults_to_a_ninety_day_window(): void
+    {
+        $recentReq = $this->createRequest();
+        $recentReq->forceFill(['created_at' => now()->subDays(5)])->save();
+        WorkflowHistoryEntry::create(['request_id' => $recentReq->id, 'from_stage_id' => null, 'to_stage_id' => $this->stage->id, 'performed_by' => $this->bankUser->id, 'created_at' => now()->subDays(5)]);
+
+        $oldReq = $this->createRequest();
+        $oldReq->forceFill(['created_at' => now()->subDays(120)])->save();
+        WorkflowHistoryEntry::create(['request_id' => $oldReq->id, 'from_stage_id' => null, 'to_stage_id' => $this->stage->id, 'performed_by' => $this->bankUser->id, 'created_at' => now()->subDays(120)]);
+
+        $response = $this->actingAs($this->admin)
+            ->getJson('/api/v1/reports/team-performance')
+            ->assertOk();
+        $this->assertEquals(1, $response->json('data.0.actions'), 'Only the action within the default 90-day window should count.');
+
+        $responseAll = $this->actingAs($this->admin)
+            ->getJson('/api/v1/reports/team-performance?all=true')
+            ->assertOk();
+        $this->assertEquals(2, $responseAll->json('data.0.actions'), '?all=true must include actions outside the default window.');
+    }
 }
