@@ -32,25 +32,31 @@ class EngineRequestStatsService
         $query = $this->buildScopedQuery($user, $request, $scope);
         $metricsQuery = $this->buildScopedQuery($user, $this->withoutSlaStatus($request), $scope);
 
-        $total = (clone $query)->count();
-        $active = (clone $query)->where('engine_requests.status', 'ACTIVE')->count();
+        // API-002: one grouped pass yields by_status, total, active, and
+        // unclaimed_active together, replacing four separate COUNT scans. The two
+        // SLA metrics stay separate because applySlaStatusFilter changes the row
+        // set (a derived SLA window, not a status bucket) and can't be read off
+        // the status grouping.
+        $statusRows = (clone $query)
+            ->selectRaw('engine_requests.status')
+            ->selectRaw('COUNT(*) as c')
+            ->selectRaw('SUM(CASE WHEN engine_requests.claimed_by IS NULL THEN 1 ELSE 0 END) as unclaimed')
+            ->groupBy('engine_requests.status')
+            ->get();
+
+        $byStatus = $statusRows
+            ->mapWithKeys(fn ($row) => [$row->status => (int) $row->c])
+            ->all();
+        $total = (int) $statusRows->sum('c');
+        $active = (int) ($byStatus['ACTIVE'] ?? 0);
+        $unclaimedActive = (int) ($statusRows->firstWhere('status', 'ACTIVE')?->unclaimed ?? 0);
+
         $breachedSla = (clone $metricsQuery)->tap(
             fn (Builder $q) => $this->listQuery->applySlaStatusFilter($q, 'breached'),
         )->count();
         $nearingSla = (clone $metricsQuery)->tap(
             fn (Builder $q) => $this->listQuery->applySlaStatusFilter($q, 'nearing'),
         )->count();
-        $unclaimedActive = (clone $query)
-            ->where('engine_requests.status', 'ACTIVE')
-            ->whereNull('engine_requests.claimed_by')
-            ->count();
-
-        $byStatus = (clone $query)
-            ->selectRaw('engine_requests.status, COUNT(*) as c')
-            ->groupBy('engine_requests.status')
-            ->pluck('c', 'status')
-            ->map(fn ($count) => (int) $count)
-            ->all();
 
         return [
             'total' => $total,
