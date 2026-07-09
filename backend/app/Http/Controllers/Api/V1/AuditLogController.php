@@ -67,11 +67,13 @@ class AuditLogController extends Controller
             $scope = new DataScopeContext(systemWide: true);
         }
 
-        // Ensure the specific log is within scope
+        // SEC-002: a bank-scoped user may only view a log within their own
+        // bank; a log with no bank (CBY-only entity) or another bank's log
+        // is out of scope even though viewAny() already passed.
         if (! $scope->systemWide) {
-            // Audit logs don't have bank_id yet, so for now non-systemWide users see nothing.
-            // This matches the policy-level restriction.
-            abort(403);
+            if ($scope->ownBankId === null || $auditLog->bank_id !== $scope->ownBankId) {
+                abort(403);
+            }
         }
 
         $auditLog->load(['user', 'actorRole', 'engineRequest']);

@@ -31,6 +31,7 @@ class AuditLog extends Model
         'action',
         'subject_type',
         'subject_id',
+        'bank_id',
         'workflow_instance_id',
         'correlation_id',
         'ip_address',

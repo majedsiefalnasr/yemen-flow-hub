@@ -21,7 +21,12 @@ class AuditLogPolicy
             return true;
         }
 
-        return DataScope::forUser($user)->systemWide;
+        $scope = DataScope::forUser($user);
+
+        // SEC-002: a bank-scoped user with the audit.VIEW capability sees
+        // their own bank's rows (enforced at the query level in the
+        // controller); systemWide sees everything; neither means no access.
+        return $scope->systemWide || $scope->ownBankId !== null;
     }
 
     public function view(User $user, AuditLog $auditLog): bool

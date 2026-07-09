@@ -49,6 +49,8 @@ class ScreenPermissionSeeder extends Seeder
                 'merchants' => ['VIEW', 'MANAGE'],
                 'users' => ['VIEW', 'MANAGE'],
                 'reports' => ['VIEW'],
+                // SEC-002: bank-scoped audit visibility, gated by audit_logs.bank_id.
+                'audit' => ['VIEW'],
                 'notifications' => ['VIEW'],
                 'settings' => ['VIEW'],
             ],

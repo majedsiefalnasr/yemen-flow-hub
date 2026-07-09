@@ -209,6 +209,40 @@ class AuditLogControllerTest extends TestCase
     }
 
     /**
+     * SEC-002: a bank-scoped user can view a log tied to their own bank, but
+     * a log tied to a different bank must return 403 — never leak across
+     * banks, even for a single-row lookup by id.
+     */
+    public function test_show_returns_own_bank_log_but_denies_cross_bank_log(): void
+    {
+        $bankOrg = Organization::where('code', 'commercial_banks')->firstOrFail();
+        $bankAdminRole = Role::query()->where('code', 'bank_admin')->firstOrFail();
+        $otherBank = Bank::create(['name' => 'Other Bank', 'code' => 'OTB2', 'is_active' => true, 'organization_id' => $bankOrg->id]);
+
+        $bankAdmin = User::create([
+            'name' => 'Bank Admin',
+            'email' => 'bankadmin@sec002.test',
+            'password' => bcrypt('password'),
+            'bank_id' => $this->bankUser->bank_id,
+            'organization_id' => $bankOrg->id,
+            'is_active' => true,
+        ]);
+        $bankAdmin->roles()->attach($bankAdminRole->id);
+
+        $ownLog = AuditLog::create(['user_id' => $bankAdmin->id, 'action' => AuditAction::USER_UPDATED->value, 'bank_id' => $this->bankUser->bank_id, 'created_at' => now()]);
+        $crossBankLog = AuditLog::create(['user_id' => $bankAdmin->id, 'action' => AuditAction::USER_UPDATED->value, 'bank_id' => $otherBank->id, 'created_at' => now()]);
+
+        $this->actingAs($bankAdmin)
+            ->getJson('/api/v1/audit-logs/'.$ownLog->id)
+            ->assertOk()
+            ->assertJsonPath('data.id', $ownLog->id);
+
+        $this->actingAs($bankAdmin)
+            ->getJson('/api/v1/audit-logs/'.$crossBankLog->id)
+            ->assertStatus(403);
+    }
+
+    /**
      * API-004: export() is now async — it creates a ReportExport row (status
      * PENDING at creation, per the response payload) and dispatches
      * GenerateAuditLogExport instead of returning CSV bytes directly. The
