@@ -6,7 +6,7 @@ use App\Enums\StageAccessLevel;
 use App\Models\StagePermission;
 use App\Models\User;
 use App\Models\WorkflowStage;
-use Illuminate\Support\Collection;
+use Illuminate\Contracts\Database\Query\Builder as QueryBuilder;
 
 /**
  * The sole routing source for the dynamic engine (FR-WD5). Evaluates a user's
@@ -47,13 +47,78 @@ class StagePermissionResolver
     {
         $identity = $this->identityFor($user);
 
+        // A user with no organization can never match a row (mirrors the PHP
+        // evaluator's early guard in identityMatchesAny). Short-circuit before
+        // touching the DB.
+        if ($identity['organization_id'] === null) {
+            return [];
+        }
+
+        // ARCH-001: push the identity match into SQL. Instead of hydrating the
+        // whole stage_permissions table into PHP and grouping/filtering in
+        // memory (cost scaled with total permission rows across all workflows),
+        // return the distinct stage_ids of rows that match this user's identity.
+        // The WHERE clause reproduces the pure-PHP evaluator exactly:
+        //   - per set field: NULL (wildcard) OR equals/in the user's identity
+        //   - all set fields ANDed within a row
+        //   - a stage is accessible if ANY of its rows match (OR) — DISTINCT
+        //   - EXECUTE⊃VIEW: only constrain access_level when EXECUTE is required
         return StagePermission::query()
-            ->get()
-            ->groupBy('stage_id')
-            ->filter(fn (Collection $rows) => $this->identityMatchesAny($identity, $rows, $required))
-            ->keys()
+            ->where(fn (QueryBuilder $q) => $this->applyIdentityMatch($q, $identity, $required))
+            ->distinct()
+            ->pluck('stage_id')
             ->map(fn ($id) => (int) $id)
             ->all();
+    }
+
+    /**
+     * SQL translation of rowMatches(): a stage_permissions row matches when every
+     * SET field equals the user's identity and NULL fields are wildcards, with
+     * EXECUTE⊃VIEW. Kept in lockstep with rowMatches()/identityMatchesAny(); the
+     * AccessibleStageIdsParityTest pins the two paths to identical output.
+     *
+     * @param  array{organization_id: int|null, team_ids: array<int>, role_ids: array<int>, user_id: int}  $identity
+     */
+    private function applyIdentityMatch(QueryBuilder $query, array $identity, StageAccessLevel $required): void
+    {
+        // EXECUTE⊃VIEW: a VIEW request is satisfied by any level, so only filter
+        // when EXECUTE is explicitly required. Matches StageAccessLevel::satisfies.
+        if ($required === StageAccessLevel::EXECUTE) {
+            $query->where('access_level', StageAccessLevel::EXECUTE->value);
+        }
+
+        // organization_id IS NULL OR organization_id = :org
+        $query->where(fn (QueryBuilder $q) => $q
+            ->whereNull('organization_id')
+            ->orWhere('organization_id', $identity['organization_id']));
+
+        // team_id IS NULL OR team_id IN (:team_ids). An empty identity list means
+        // no non-null team row can match, so only the NULL (wildcard) branch
+        // remains — never emit `IN ()`.
+        $query->where(fn (QueryBuilder $q) => $this->applyNullableSetMatch($q, 'team_id', $identity['team_ids']));
+
+        // role_id IS NULL OR role_id IN (:role_ids)
+        $query->where(fn (QueryBuilder $q) => $this->applyNullableSetMatch($q, 'role_id', $identity['role_ids']));
+
+        // user_id IS NULL OR user_id = :user_id
+        $query->where(fn (QueryBuilder $q) => $q
+            ->whereNull('user_id')
+            ->orWhere('user_id', $identity['user_id']));
+    }
+
+    /**
+     * `$column IS NULL OR $column IN ($values)`, collapsing to just the NULL
+     * branch when $values is empty so no `IN ()` is emitted.
+     *
+     * @param  array<int>  $values
+     */
+    private function applyNullableSetMatch(QueryBuilder $query, string $column, array $values): void
+    {
+        $query->whereNull($column);
+
+        if ($values !== []) {
+            $query->orWhereIn($column, $values);
+        }
     }
 
     /**
