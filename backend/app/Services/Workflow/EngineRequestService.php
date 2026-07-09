@@ -118,6 +118,12 @@ class EngineRequestService
      * row count (count drifts on soft-delete), and concurrent creators that compute the
      * same sequence are resolved by the unique-constraint retry instead of a 500.
      *
+     * API-003: the sequence is derived from MAX(CAST(numeric suffix AS UNSIGNED)),
+     * not MAX(reference) — a lexicographic string MAX mis-orders a 7-digit suffix
+     * below any existing 6-digit one ('1000000' < '999999' as strings), which
+     * would permanently mis-derive the sequence once a yearly count crosses
+     * 999999. The numeric cast is correct at any digit width.
+     *
      * @param  array<string, mixed>  $attributes
      */
     private function createWithUniqueReference(array $attributes): EngineRequest
@@ -126,13 +132,11 @@ class EngineRequestService
         $prefix = "ENG-{$year}-";
 
         for ($attempt = 0; $attempt < 5; $attempt++) {
-            $maxReference = DB::table('engine_requests')
+            $maxSequence = DB::table('engine_requests')
                 ->where('reference', 'like', $prefix.'%')
-                ->max('reference');
+                ->max(DB::raw('CAST(SUBSTRING(reference, '.(strlen($prefix) + 1).') AS UNSIGNED)'));
 
-            $sequence = $maxReference !== null
-                ? ((int) substr($maxReference, strlen($prefix))) + 1
-                : 1;
+            $sequence = $maxSequence !== null ? ((int) $maxSequence) + 1 : 1;
 
             $reference = sprintf('ENG-%d-%06d', $year, $sequence + $attempt);
 
