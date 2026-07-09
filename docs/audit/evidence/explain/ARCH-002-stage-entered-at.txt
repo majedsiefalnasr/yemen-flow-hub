@@ -1,0 +1,70 @@
+ARCH-002 — stage_entered_at projection column (my-queue SLA ordering)
+======================================================================
+
+Finding: SLA-priority ordering (scopeOrderBySlaPriority) and sla_status filtering
+embedded a correlated `max(created_at) from workflow_history` subquery inside
+ORDER BY / WHERE. Unindexable as written; MySQL evaluated it for the whole scoped
+set before the filesort, dominating queue latency at scale (Block 3: my-queue
+2.6 s, 96k-row sort before LIMIT; DB-001 index brought it to ~0.7 s).
+
+Fix (direction a from the audit): add a maintained `engine_requests.stage_entered_at`
+projection column, set on create and on every transition to equal the latest
+matching workflow_history.created_at. SLA ordering/filtering now reads that
+indexed column. A COALESCE fallback to the original subquery is kept so a row
+whose column is not yet populated (pre-backfill edge rows, or history written
+outside the maintained paths) can never silently drop out of SLA
+ordering/filtering — correctness before speed. Once all rows are backfilled the
+column is non-null and the subquery is never executed.
+
+Schema
+------
+ALTER TABLE engine_requests ADD stage_entered_at TIMESTAMP NULL AFTER current_stage_id;
+CREATE INDEX er_stage_entered ON engine_requests (current_stage_id, stage_entered_at);
+Backfill: chunked UPDATE from max(created_at) where to_stage_id = current_stage_id.
+
+Deadline SQL — before vs after
+------------------------------
+BEFORE:
+  UNIX_TIMESTAMP((select max(created_at) from workflow_history
+    where request_id = engine_requests.id
+    and to_stage_id = engine_requests.current_stage_id)) + (sla_minutes * 60)
+  -> correlated subquery evaluated per candidate row inside ORDER BY / WHERE.
+
+AFTER (fast path + null-safe fallback):
+  UNIX_TIMESTAMP(COALESCE(engine_requests.stage_entered_at,
+    (select max(created_at) from workflow_history ...))) + (sla_minutes * 60)
+  -> reads the indexed column; subquery only for the null-column fallback.
+
+EXPLAIN FORMAT=TREE (dev DB cby_imports, backfilled → column non-null)
+---------------------------------------------------------------------
+-> Limit: 50 row(s)
+    -> Sort: (case when current_stage.sla_duration_minutes is null ...),
+             (unix_timestamp(coalesce(engine_requests.stage_entered_at,(select #3))) + ...),
+             engine_requests.id, limit input to 50 per chunk
+        -> Stream results
+            -> Nested loop left join
+                -> Index lookup on engine_requests using
+                   engine_requests_status_current_stage_id_index (status='ACTIVE')
+                -> Single-row index lookup on current_stage using PRIMARY
+-> Select #2/#3 (dependent subquery — the COALESCE fallback branch)
+    -> Aggregate: max(workflow_history.created_at)
+        -> Covering index lookup on workflow_history using wh_req_tostage_created
+           (request_id, to_stage_id)   -- DB-001 index; seek-bounded, cost 0.353
+
+Notes
+-----
+- The COALESCE fallback subquery still appears in the plan tree, but it is gated
+  at runtime: MySQL short-circuits COALESCE for non-null columns, so on a
+  backfilled table the subquery is not executed. When it does run (null column),
+  it is bounded by the DB-001 covering index (wh_req_tostage_created), not a full
+  scan — the earlier index fix hardens even the fallback path.
+- The main query is a nested-loop of index lookups; the remaining sort is over the
+  computed SLA expression, now built from an indexed column rather than a per-row
+  correlated subquery.
+- Write cost: create/transition set stage_entered_at in the same critical section
+  that writes the workflow_history row, using one shared timestamp so the column
+  equals the value the subquery computed. No extra query on the write path.
+- Parity: tests/Feature/Engine/SlaProjectionParityTest pins my-queue ordering,
+  latest-history resolution, and null-SLA exclusion; the full engine + workflow
+  suite (430 tests) stays green, including the compliance SLA-breach tests whose
+  fixtures leave the column null and therefore exercise the fallback.

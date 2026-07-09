@@ -90,7 +90,7 @@ ORDER BY ... (UNIX_TIMESTAMP((SELECT MAX(created_at) FROM workflow_history
 
 ## Verification checklist (per fix — how to confirm it worked)
 
-- [ ] **DB-001:** EXPLAIN shows covering index lookup on the SLA subquery; my-queue p95 ≤ 300 ms at 1M rows.
+- [ ] **DB-001:** EXPLAIN shows covering index lookup on the SLA subquery; my-queue p95 ≤ 300 ms at 1M rows. *(Index + code done — DB-001 index applied and ARCH-002 `stage_entered_at` projection column swapped in; `SlaProjectionParityTest`, `evidence/explain/ARCH-002-stage-entered-at.txt`. p95-at-1M gate stays open for a load run.)*
 - [ ] **DB-002 + ARCH-004:** EXPLAIN shows covering range scan (no `cast(... as date)` in the plan); list p95 ≤ 300 ms.
 - [ ] **API-001:** query count per list page is constant regardless of page size (assert via OBS-001 counter).
 - [ ] **API-002 / API-005:** stats/summary issue one grouped query, not N passes (query-count assertion).

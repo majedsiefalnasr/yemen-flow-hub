@@ -71,9 +71,9 @@ _Total: 29 findings (1 Critical fixed). Block 5 added SEC-002/003, OBS-001/002 a
 | Problem | Correlated subquery per candidate row + arithmetic in ORDER BY is unindexable as written; MySQL must evaluate it for the whole scoped set, then sort (filesort), before pagination. At millions of `engine_requests`/`workflow_history` rows this dominates queue latency. |
 | Severity | High |
 | Evidence status | **Verified** (plan + before/after timing, Block 3) |
-| Finding status | Revised (evidence upgraded) |
+| Finding status | **Fixed** (DB-001 index + `stage_entered_at` projection column maintained on create/transition, COALESCE-fallback for null rows; `perf/arch-002-stage-entered-at-projection`) |
 | Roadmap tier | Pre-production (DB-001 index) + Threshold-gated (projection-column sort fix) |
-| First identified / last reviewed | Block 1 / Block 3 |
+| First identified / last reviewed | Block 1 / Post-audit fix |
 | Related findings | ARCH-001, DB-001, API-002, API-006, FE queue polling (Block 4) |
 | Evidence | `EngineRequest.php:141-184`; `evidence/explain/ARCH-002-my-queue-sla.txt` (96,186-row sort before LIMIT; ~2.6 s), `...-after-index.txt` (2.6 s → 0.7 s with DB-001) |
 | Confidence | High |
