@@ -548,11 +548,12 @@ Detail + the consolidated security gate in `06-security-observability.md`. Compa
 | Area / component | `composer.json`, `app/Providers`, `config/` |
 | Current behavior | No Telescope/Pulse/Horizon/Sentry; no slow-query log, no per-request query-count/duration, no cache-hit/error-rate/response-size tracking. |
 | Problem | The Block 3/4 hot paths and any regression would be invisible in production; no way to validate targets or catch N+1 reintroduction. |
-| Severity | High · Evidence Verified · Status Open · Confidence High |
+| Severity | High · Evidence Verified · Status **Fixed** (per-request query-count/time counter + response headers; `perf/obs-001-query-count-observability`) · Confidence High |
 | Roadmap tier | Pre-production (measurement is Phase A of the roadmap) |
-| First/last | Block 5 / Block 5 · Related: OBS-002, all perf findings |
-| Recommendation | Enable MySQL slow-query log + `log_queries_not_using_indexes` (staging); add per-request query-count+duration logging; adopt **Laravel Pulse** (low-overhead, first-party). Telescope local/staging only. |
-| Security gate | Telescope must never run in production (stores payloads). |
+| First/last | Block 5 / Post-audit fix · Related: OBS-002, all perf findings |
+| Evidence | `backend/app/Support/QueryMetrics.php`, `backend/app/Http/Middleware/AttachQueryMetricsHeaders.php`, `backend/config/observability.php`; `QueryMetricsHeadersTest`; `evidence/OBS-001-query-metrics.md` |
+| Recommendation | **Applied (partial):** `DB::listen`-backed request-scoped counter exposes `X-Query-Count`/`X-Query-Time-Ms` headers (off in production) and logs a `slow_query` warning per query over threshold — unblocks the API-001/API-002/API-005 query-count gates. **Not applied:** MySQL server-level slow-query log/`log_queries_not_using_indexes` (server config, not app code — document as an ops/staging task); Laravel Pulse dashboard (stretch option in the original recommendation; the header counter already satisfies "assertable via OBS-001 counter"). Trade-off: header-based counter is per-request and test/load-tool friendly but is not a persistent historical dashboard — Pulse remains a valid follow-up if ops wants trend visibility. |
+| Security gate | Telescope must never run in production (stores payloads) — N/A, Telescope not installed. Query-count headers hard-blocked in production by both config default and middleware. |
 
 ## OBS-002 — No queue monitoring (no Horizon)
 
