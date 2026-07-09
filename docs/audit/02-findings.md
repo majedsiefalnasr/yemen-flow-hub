@@ -477,7 +477,7 @@ Detailed plans in `05-frontend-caching-queues.md`. Compact records here; all car
 | Area / component | `app/Jobs/ScanEngineRequestDocument.php` |
 | Current behavior | No `tries`/`timeout`/`backoff`/`failed()`; a failed/stuck scan has no dead-letter path. |
 | Problem | Security-relevant: an uploaded PDF whose scan fails silently could be treated as scanned/clean; no retry, no alert. |
-| Severity | Medium · Evidence Verified · Status Open · Confidence High |
+| Severity | Medium · Evidence Verified · Status **Fixed** (`ScanEngineRequestDocument` `$tries`/`$timeout`/`backoff`/`failed()` fail-closed; `perf/queue-001-scan-job-resilience`) · Confidence High |
 | Roadmap tier | Pre-production (security-relevant) |
 | First/last | Block 4 / Block 4 · Related: QUEUE-002 |
 | Recommendation | Add `$tries`, `$timeout`, `backoff`, and a `failed()` that marks the document scan **failed (fail-closed)** so it is not treated as clean; alert on failure. |

@@ -98,7 +98,7 @@ ORDER BY ... (UNIX_TIMESTAMP((SELECT MAX(created_at) FROM workflow_history
 - [x] **ARCH-003:** authenticated endpoints return 429 past the limit *(Done — `throttle:api-default` on the v1/profile/admin groups; `ApiDefaultThrottleTest` proves the cap and per-user bucket)*. Unauthenticated auth endpoints keep their existing per-route throttles (login 5/1, OTP 10/1, etc.).
 - [ ] **API-003:** concurrent-create test yields unique references, zero `REFERENCE_ALLOCATION_FAILED`; behaves correctly past a simulated 7-digit sequence.
 - [ ] **CACHE-001:** two banks' dashboards never share a cache entry (cross-bank leakage test); Redis-down → live compute, no 500.
-- [ ] **QUEUE-001:** forced scan failure marks the document fail-closed (not clean/available); alert emitted.
+- [x] **QUEUE-001:** forced scan failure marks the document fail-closed (not clean/available); alert emitted. *(Done — `ScanEngineRequestDocument` gets `$tries`/`$timeout`/`backoff`/`failed()`; `ScanEngineRequestDocumentTest` proves Failed-not-Clean, resolved-doc guard, and the operational alert.)*
 - [ ] **OBS-001:** Pulse shows per-endpoint p50/p95/p99 + query counts; slow-query log captures the pre-fix hot queries.
 - [ ] **SEC-002:** after `bank_id` backfill, a bank admin sees only their bank's audit rows; a cross-bank id returns 403.
 - [ ] **Every optimized query:** re-verify it still applies `forUser`/accessible-stage scoping (Block 5 gate conditions).
