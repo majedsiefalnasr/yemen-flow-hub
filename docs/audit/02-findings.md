@@ -523,14 +523,15 @@ Detail + the consolidated security gate in `06-security-observability.md`. Compa
 
 | Field | Value |
 | --- | --- |
-| Area / component | `audit_logs` table; `app/Http/Controllers/Api/V1/AuditLogController.php` |
-| Current behavior | No `bank_id` column, so audit queries can't be bank-scoped at the query level; `show()` denies **all** non-system-wide users (`:69-73`) as a workaround. |
+| Area / component | `audit_logs` table; `app/Http/Controllers/Api/V1/AuditLogController.php`, `app/Services/Audit/AuditService.php`, `app/Policies/AuditLogPolicy.php` |
+| Current behavior | **Fixed.** `bank_id` column + `al_bank_created` index added, backfilled from each row's subject (`User`/`Merchant`/`EngineRequest`.`bank_id`, or the row's own id if the subject is a `Bank`; `null` for CBY-only entities, never guessed from the actor). `AuditService::log()` resolves it for every future write. `viewAny()` now passes for a bank-scoped user with `audit.VIEW`; `show()` checks the specific log's `bank_id` instead of denying all non-systemWide users. `bank_admin` granted `audit.VIEW` (previously had none). |
 | Problem | Scoping-model weakness + functional gap: bank admins get zero scoped audit visibility; audit reads can't be safely bank-filtered. |
-| Severity | Medium · Evidence Verified · Status Open · Confidence High |
+| Severity | Medium · Evidence Verified · Status **Fixed** (`fix/sec-002-audit-logs-bank-id`) · Confidence High |
 | Roadmap tier | Threshold-gated (when bank-scoped audit access is required) |
-| First/last | Block 5 / Block 5 · Related: DB-003, ARCH-006 |
-| Recommendation | Add `bank_id` to `audit_logs` (derived from `workflow_instance_id`/subject at write time), backfill, then enable scoped reads + a scoped index (DB-003). Migration + rollback + backfill in the roadmap. |
-| Security gate | Enables correct scoping; must backfill without exposing cross-bank rows. |
+| First/last | Block 5 / Post-audit fix · Related: DB-003, ARCH-006 |
+| Evidence | `2026_07_09_100005_add_bank_id_to_audit_logs.php`; `AuditServiceBankResolutionTest`, `AuditScopeTest`, `AuditLogControllerTest`; `evidence/SEC-002-audit-logs-bank-id.md` |
+| Recommendation | **Applied**, exactly as recommended: backfill derived from subject at write time (not `workflow_instance_id`, which is often null — the subject itself is the more reliable source across the 118 `AuditService::log()` call sites). Confirmed with the user before starting, since granting `bank_admin` a new capability is a security-relevant policy change, not just a scoping bugfix. |
+| Security gate | Enables correct scoping; verified no cross-bank leakage via a dedicated test (`show()`: own-bank log → 200, other bank's log → 403). Backfill spot-checked against the real dev DB (258 rows) before/after values matched the source tables exactly. |
 
 ## SEC-003 — Unauthenticated 403s write audit rows (audit-table write-amplification / cheap DoS)
 
