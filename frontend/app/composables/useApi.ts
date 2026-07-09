@@ -1,3 +1,4 @@
+import { getCurrentInstance, onUnmounted } from 'vue'
 import type { ApiError } from '../types/models'
 import {
   extractApiErrorCode,
@@ -10,9 +11,31 @@ type ApiFetchOptions = NonNullable<Parameters<typeof $fetch>[1]>
 type ApiFetchBody = ApiFetchOptions['body']
 type ApiFetchMethod = NonNullable<ApiFetchOptions['method']>
 
+/** AbortError is thrown by ofetch when a request is cancelled via signal. */
+export function isAbortError(err: unknown): boolean {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    ('name' in err ? (err as { name?: string }).name === 'AbortError' : false)
+  )
+}
+
 export function useApi() {
   const config = useRuntimeConfig()
   const baseURL = config.public.apiBase as string
+  // FE-001: controllers registered via getAbortable() below, aborted together
+  // on component unmount so a GET in flight when the user navigates away
+  // doesn't keep consuming bandwidth/connection slots for a response nobody
+  // will read. Mutations (post/put/patch/del) never register here — never
+  // cancel a write mid-flight.
+  const pendingControllers = new Set<AbortController>()
+
+  if (getCurrentInstance()) {
+    onUnmounted(() => {
+      for (const controller of pendingControllers) controller.abort()
+      pendingControllers.clear()
+    })
+  }
 
   function getXsrfToken(): string | null {
     if (!import.meta.client) return null
@@ -124,6 +147,26 @@ export function useApi() {
     return apiFetch<T>(path, { ...options, method: 'GET' })
   }
 
+  /**
+   * FE-001: same as get(), but the request is auto-aborted if the component
+   * that called it unmounts before the response arrives (rapid navigation,
+   * fast tab switching) — the in-flight bytes stop being consumed instead of
+   * completing for a component that no longer exists. Only use for GET reads;
+   * never use for a call whose side effect must always run to completion.
+   */
+  async function getAbortable<T>(
+    path: string,
+    options: Omit<ApiFetchOptions, 'method' | 'signal'> = {},
+  ): Promise<T> {
+    const controller = new AbortController()
+    pendingControllers.add(controller)
+    try {
+      return await apiFetch<T>(path, { ...options, method: 'GET', signal: controller.signal })
+    } finally {
+      pendingControllers.delete(controller)
+    }
+  }
+
   async function post<T>(
     path: string,
     body?: ApiFetchBody,
@@ -161,5 +204,17 @@ export function useApi() {
     )
   }
 
-  return { get, post, put, patch, del, isApiError, extractApiErrorMessage, extractApiErrorCode, extractApiFieldErrors, extractRequestId }
+  return {
+    get,
+    getAbortable,
+    post,
+    put,
+    patch,
+    del,
+    isApiError,
+    extractApiErrorMessage,
+    extractApiErrorCode,
+    extractApiFieldErrors,
+    extractRequestId,
+  }
 }

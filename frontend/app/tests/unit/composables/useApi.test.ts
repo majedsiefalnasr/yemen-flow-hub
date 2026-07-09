@@ -102,3 +102,70 @@ describe('useApi', () => {
     )
   })
 })
+
+// FE-001: getAbortable() threads an AbortController signal through GET so a
+// caller (or the composable itself, on component unmount) can cancel an
+// in-flight read instead of letting it complete for nobody.
+describe('useApi — getAbortable (FE-001)', () => {
+  beforeEach(() => {
+    cookieJar = ''
+    mockFetch.mockReset()
+    setClientFlag(true)
+  })
+
+  afterEach(() => {
+    setClientFlag(undefined)
+  })
+
+  it('passes an AbortController signal to the underlying fetch call', async () => {
+    mockFetch.mockResolvedValueOnce({ data: [] })
+    const { useApi } = await import('../../../composables/useApi')
+    const { getAbortable } = useApi()
+
+    await getAbortable('/api/v1/engine-requests')
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/v1/engine-requests',
+      expect.objectContaining({
+        method: 'GET',
+        signal: expect.any(AbortSignal),
+      }),
+    )
+  })
+
+  it('rejects with an AbortError-shaped error when the signal is aborted before the response resolves', async () => {
+    let capturedSignal: AbortSignal | undefined
+    mockFetch.mockImplementation((_path: string, options: { signal?: AbortSignal }) => {
+      capturedSignal = options.signal
+      return new Promise((_resolve, reject) => {
+        options.signal?.addEventListener('abort', () => {
+          const err = new Error('The operation was aborted.')
+          err.name = 'AbortError'
+          reject(err)
+        })
+      })
+    })
+
+    const { useApi, isAbortError } = await import('../../../composables/useApi')
+    const { getAbortable } = useApi()
+
+    const promise = getAbortable('/api/v1/engine-requests')
+    capturedSignal?.dispatchEvent(new Event('abort'))
+
+    await expect(promise).rejects.toThrow('aborted')
+    let caught: unknown
+    try {
+      await promise
+    } catch (err) {
+      caught = err
+    }
+    expect(isAbortError(caught)).toBe(true)
+  })
+
+  it('isAbortError returns false for a regular error', async () => {
+    const { isAbortError } = await import('../../../composables/useApi')
+    expect(isAbortError(new Error('network down'))).toBe(false)
+    expect(isAbortError(null)).toBe(false)
+    expect(isAbortError('not an error object')).toBe(false)
+  })
+})
