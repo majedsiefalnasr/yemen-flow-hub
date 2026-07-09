@@ -464,13 +464,14 @@ Detailed plans in `05-frontend-caching-queues.md`. Compact records here; all car
 | --- | --- |
 | Area / component | `app/Services/Dashboard/DashboardStatsService.php`, `app/Http/Controllers/Api/V1/ReportController.php` |
 | Endpoint / query | `GET /api/dashboard/stats`, `GET /v1/reports/*` |
-| Current behavior | Every call recomputes aggregates over the largest tables; no cache (Block 3: `reports/summary` ~0.96 s at 1M rows). |
+| Current behavior | **Fixed** for `ReportController`'s 10 pure-aggregate endpoints. `DashboardStatsService` was not in this fix's scope (see Residual). |
 | Problem | Read-heavy, slow-changing aggregates recomputed on every dashboard/report view; multiplied by concurrent users. |
-| Severity | Medium · Evidence Verified (Block 3 timings) · Status Open · Confidence High |
+| Severity | Medium · Evidence Verified · Status **Fixed** (`ReportAggregateCache`; `perf/cache-001-report-aggregates`) · Confidence High |
 | Roadmap tier | Threshold-gated (user count × table size) |
-| First/last | Block 4 / Block 4 · Related: API-002, API-005, API-006 |
-| Recommendation | Cache per (scope-key = org-classification + bank_id, filter-set), short TTL, `Cache::lock`-guarded regeneration, Redis-down → compute live. Pairs with the API-002/005 query fixes; does not replace them. **Never** per-raw-user or cross-bank shared. |
-| Security gate | **Scope-key MUST encode org/bank** so cached aggregates never leak across banks — verified in Block 5. |
+| First/last | Block 4 / Post-audit fix · Related: API-002, API-005, API-006 |
+| Evidence | `ReportAggregateCacheTest` (6 tests); `evidence/CACHE-001-report-aggregate-cache.md` |
+| Recommendation | **Applied.** Cache keyed on (org-classification + bank_id, endpoint, filter-set), 60s TTL, `Cache::lock`-guarded regeneration, Redis-down → compute live. Pairs with the API-002/005 query fixes; does not replace them. Never per-raw-user or cross-bank shared. Residual: `DashboardStatsService` (`GET /api/dashboard/stats`) still uncached — not touched by this fix; a pre-existing `system_admin` report-scoping bug (`applyScope()` doesn't special-case `isSystemAdmin()`) was found but is out of this fix's scope and left unfixed. |
+| Security gate | **Scope-key MUST encode org/bank** so cached aggregates never leak across banks — proven by `test_two_banks_never_share_a_cache_entry` and `test_cache_key_never_incorporates_a_raw_user_id`. |
 
 ## QUEUE-001 — Document virus-scan job has no resilience or failure handling
 
