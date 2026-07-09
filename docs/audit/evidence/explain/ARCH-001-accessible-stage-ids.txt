@@ -1,0 +1,52 @@
+ARCH-001 — SQL-ify accessibleStageIds (StagePermissionResolver)
+=================================================================
+
+Finding: accessibleStageIds() loaded the ENTIRE stage_permissions table into
+PHP (Eloquent models) and grouped/filtered in memory on every engine
+list/queue/stats/graph request. Cost scaled with total permission rows across
+all workflows, not with the querying user's scope.
+
+Fix: push the identity match into SQL. Return DISTINCT stage_id of rows whose
+NULL-wildcard / equals-or-in predicate matches the user's identity, with
+EXECUTE⊃VIEW. The pure-PHP evaluator (identityMatchesAny/rowMatches) is left
+intact — it still backs userCanAccessStage()/PermissionService and serves as the
+parity oracle in tests/Feature/Workflow/AccessibleStageIdsParityTest.php.
+
+OLD query shape (pre-ARCH-001)
+------------------------------
+select * from stage_permissions
+  → whole table hydrated into PHP models
+  → ->groupBy('stage_id')->filter(identityMatchesAny(...)) evaluated in PHP
+
+NEW query shape
+---------------
+select distinct `stage_id` from `stage_permissions`
+where ((`organization_id` is null or `organization_id` = ?)
+   and (`team_id`         is null or `team_id`         in (?, ...))   -- IN branch dropped when the user has no teams
+   and (`role_id`         is null or `role_id`         in (?, ...))   -- IN branch dropped when the user has no roles
+   and (`user_id`         is null or `user_id`         = ?))
+[+ `and access_level = 'EXECUTE'` only when EXECUTE is required]
+
+A user with organization_id = NULL short-circuits to [] before touching the DB,
+mirroring identityMatchesAny()'s early guard.
+
+EXPLAIN FORMAT=TREE (dev DB cby_imports; identity org=1, teams=[10,11], roles=[20], user=5)
+-------------------------------------------------------------------------------------------
+-> Table scan on <temporary>  (cost=4.41..4.74 rows=1.16)
+    -> Temporary table with deduplication  (cost=2.23..2.23 rows=1.16)
+        -> Filter: (((organization_id is null) or (organization_id = 1)) and ((team_id is null) or (team_id in (10,11))) and ((user_id is null) or (user_id = 5)))  (cost=2.12 rows=1.16)
+            -> Index lookup on stage_permissions using stage_permissions_role_id_foreign (role_id=20 or NULL), with index condition: ((role_id is null) or (role_id = 20))  (cost=2.12 rows=7)
+
+Notes
+-----
+- This was an APPLICATION-LAYER cost, not a SQL-plan one (03-database-plan.md
+  §ARCH-001). The value of the fix is eliminating the per-request whole-table
+  hydrate + PHP grouping, not shaving a slow plan. The DB side is trivial either
+  way; what changes is that MySQL now returns only matching stage_ids instead of
+  PHP scanning every row of every workflow's permissions.
+- The plan opportunistically uses the existing role_id FK index to bound the
+  scan; no new index is proposed for this finding.
+- Parity guaranteed by AccessibleStageIdsParityTest: the SQL path is asserted
+  identical to the PHP oracle across wildcard, org/team/role/user, AND-in-row,
+  OR-across-rows, VIEW vs EXECUTE, empty team/role lists, and inactive
+  team/role membership.

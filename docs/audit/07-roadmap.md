@@ -94,7 +94,7 @@ ORDER BY ... (UNIX_TIMESTAMP((SELECT MAX(created_at) FROM workflow_history
 - [ ] **DB-002 + ARCH-004:** EXPLAIN shows covering range scan (no `cast(... as date)` in the plan); list p95 ≤ 300 ms.
 - [ ] **API-001:** query count per list page is constant regardless of page size (assert via OBS-001 counter).
 - [ ] **API-002 / API-005:** stats/summary issue one grouped query, not N passes (query-count assertion).
-- [ ] **ARCH-001:** permission-resolution issues a bounded SQL query, not a whole-table hydrate; **parity test** vs the old PHP evaluator passes for every identity shape.
+- [x] **ARCH-001:** permission-resolution issues a bounded SQL query, not a whole-table hydrate; **parity test** vs the old PHP evaluator passes for every identity shape. *(Done — `AccessibleStageIdsParityTest`; plan in `evidence/explain/ARCH-001-accessible-stage-ids.txt`.)*
 - [ ] **ARCH-003:** authenticated endpoints return 429 past the limit; unauthenticated 403 storm is rate-capped.
 - [ ] **API-003:** concurrent-create test yields unique references, zero `REFERENCE_ALLOCATION_FAILED`; behaves correctly past a simulated 7-digit sequence.
 - [ ] **CACHE-001:** two banks' dashboards never share a cache entry (cross-bank leakage test); Redis-down → live compute, no 500.

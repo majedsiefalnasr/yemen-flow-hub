@@ -50,11 +50,11 @@ _Total: 29 findings (1 Critical fixed). Block 5 added SEC-002/003, OBS-001/002 a
 | Problem | Cost scales with total permission rows across all workflows, not with the user's scope. As published workflows and stage permissions accumulate, every hot list request pulls the whole table and filters in PHP — memory and CPU grow with global config size, unbounded by pagination. |
 | Severity | High |
 | Evidence status | Verified (code); DB cost profile confirmed in Block 3 |
-| Finding status | Open |
+| Finding status | **Fixed** (SQL-ified on `perf/arch-001-sql-permission-resolution`; parity tests green) |
 | Roadmap tier | Threshold-gated (when `stage_permissions` row count × request rate makes the full-table load material; quantify in Block 3) |
-| First identified / last reviewed | Block 1 / Block 1 |
+| First identified / last reviewed | Block 1 / Post-audit fix |
 | Related findings | ARCH-002, and Block 2 API list findings |
-| Evidence | `StagePermissionResolver.php:46-57,111-119` |
+| Evidence | `StagePermissionResolver.php:46-57,111-119`; fix + plan: `evidence/explain/ARCH-001-accessible-stage-ids.txt`; parity: `tests/Feature/Workflow/AccessibleStageIdsParityTest.php` |
 | Confidence | High |
 | Recommendation | Push matching into SQL (a scoped `stage_id` query filtered by the user's org/team/role/user identity via `whereIn`/wildcard-aware `where`), returning only accessible `stage_id`s; cache the resolved set per user identity for the request (or short TTL) since it is reused across index+resource serialization. Preserve exact match semantics (null=wildcard, AND-in-row, OR-across-rows) and EXECUTE⊃VIEW. Trade-off: SQL translation of wildcard semantics needs careful test parity with the current pure-PHP evaluator. |
 | Security gate | Must preserve identity-set semantics exactly; verified in Block 5. |
