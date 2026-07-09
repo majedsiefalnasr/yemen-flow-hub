@@ -496,20 +496,21 @@ Detailed plans in `05-frontend-caching-queues.md`. Compact records here; all car
 | Roadmap tier | Threshold-gated |
 | First/last | Block 4 / Post-audit fix · Related: QUEUE-001, QUEUE-003, API-004 |
 | Evidence | `QueueJobResilienceConfigTest`; `evidence/QUEUE-002-job-resilience.md` |
-| Recommendation | **Applied.** Trade-off surfaced during the fix: `GenerateReportExport`'s new `$timeout` (300s) exceeds the shared `redis`/`database` connection `retry_after` (90s, `config/queue.php`) — Laravel expects `retry_after` to exceed the longest job timeout on that connection, or a still-running long job can be picked up twice. Not fixed here (out of QUEUE-002's scope, a connection-level change); tracked under QUEUE-003 (queue separation), where a dedicated `exports` queue could carry its own `retry_after` without touching the shared connections. |
+| Recommendation | **Applied.** Trade-off surfaced during the fix: `GenerateReportExport`'s new `$timeout` (300s) exceeded the shared `redis`/`database` connection `retry_after` (90s) at the time. **Resolved by QUEUE-003**: exports now run on a dedicated `exports` connection with `retry_after=360`. |
 | Security gate | No scoping impact; export still policy-scoped. |
 
 ## QUEUE-003 — No queue separation beyond emails; no Horizon (no queue observability)
 
 | Field | Value |
 | --- | --- |
-| Area / component | `config/queue.php`, `app/Jobs/*`, composer.json |
-| Current behavior | Only `SendEmailDelivery` is on a separate `emails` queue; everything else on `default`. No Horizon installed. |
+| Area / component | `config/queue.php`, `app/Jobs/*`, `composer.json`, `app/Providers/HorizonServiceProvider.php`, `config/horizon.php` |
+| Current behavior | **Fixed.** `DispatchNotification`→`notifications`, `ScanEngineRequestDocument`→`scans` (shared `redis` connection); `GenerateReportExport`/`GenerateAuditLogExport`→`exports` (dedicated connection, `retry_after=360` — also closes the QUEUE-002 residual where the 300s job timeout exceeded the shared connection's 90s retry_after). `SendEmailDelivery`→`emails` (unchanged). Horizon installed, `viewHorizon` gate wired to `isSystemAdmin()` (default scaffold denies everyone — an easy step to leave unfilled). |
 | Problem | Fan-out, exports, and scans compete on one queue; no depth/latency/failure-rate visibility. |
-| Severity | Low · Evidence Verified · Status Open · Confidence High |
+| Severity | Low · Evidence Verified · Status **Fixed** (`perf/queue-003-queue-separation-horizon`) · Confidence High |
 | Roadmap tier | Threshold-gated (Horizon Pre-production if queue volume expected at launch) |
-| First/last | Block 4 / Block 4 · Related: OBS (Block 5) |
-| Recommendation | Separate queues by workload (`notifications`, `exports`, `scans`, `emails`); add Horizon for monitoring (ties into Block 5 observability). |
+| First/last | Block 4 / Post-audit fix · Related: OBS (Block 5) |
+| Evidence | `config/queue.php`, `config/horizon.php`, job constructors; `QueueSeparationTest`, `HorizonAccessTest`; `evidence/QUEUE-003-queue-separation-horizon.md` |
+| Recommendation | **Applied.** New composer dependency confirmed before installing (`laravel/horizon` + its own `laravel/sentinel` dependency only — `git diff composer.lock` verified, `composer audit`'s advisories are pre-existing and unrelated). Horizon's own default gate scaffold silently denies everyone until filled in; wired to the same `isSystemAdmin()` check already used elsewhere rather than left as a stub. Deploying dedicated workers per queue (`queue:work --queue=...` or `horizon`) is an infra/ops change outside this repo's application code — config is correct and tested, but not itself a runtime deployment. |
 | Security gate | No scoping impact. |
 
 ---
