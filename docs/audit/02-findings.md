@@ -437,12 +437,13 @@ Detailed plans in `05-frontend-caching-queues.md`. Compact records here; all car
 | Field | Value |
 | --- | --- |
 | Area / component | `frontend/app/stores/notifications.store.ts` |
-| Current behavior | `refreshUnreadCount()`/`fetchRecent()` fetch notifications page 1 and count in JS, duplicating the cheap `notifications/unread-count` endpoint (`useNotifications.ts:90`). |
+| Current behavior | **Fixed.** `refreshUnreadCount()` now calls `useNotifications().fetchUnreadCount()` (the dedicated `notifications/unread-count` endpoint) directly; `fetchRecent()` (list rendering — confirmed unused by any current caller, kept for its documented purpose) is untouched. |
 | Problem | Over-fetch when a caller uses the store path instead of the dedicated endpoint. |
-| Severity | Low · Evidence Verified · Status Open · Confidence Medium |
+| Severity | Low · Evidence Verified · Status **Fixed** (`perf/fe-002-unread-count-endpoint`) · Confidence High |
 | Roadmap tier | Optional |
-| First/last | Block 4 / Block 4 |
-| Recommendation | Route all unread-count reads through `unread-count`; keep the list fetch only for rendering the list. |
+| First/last | Block 4 / Post-audit fix |
+| Evidence | `notifications.store.test.ts` (3 new tests); `evidence/FE-002-unread-count-endpoint.md` |
+| Recommendation | **Applied.** Both call sites (`AppSidebar.vue`, `DataEntryDashboard.vue`) only ever read `unreadCount` after calling `refreshUnreadCount()` — neither depended on `store.items` being populated as a side effect, confirmed by inspection before changing the store. |
 | Security gate | No scoping impact. |
 
 ## FE-003 — Stable reference data refetched every use (no client cache)
