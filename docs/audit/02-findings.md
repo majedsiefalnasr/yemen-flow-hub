@@ -154,17 +154,17 @@ _Total: 29 findings (1 Critical fixed). Block 5 added SEC-002/003, OBS-001/002 a
 | --- | --- |
 | Area / component | `composer.json`; `routes/api.php`; `app/Http/Controllers/Api/*` |
 | Endpoint / query | N/A (structural) |
-| Current behavior | `barryvdh/laravel-dompdf` **and** `mpdf/mpdf` are both required. API routes split between `Api\V1\*` (`/api/v1`) and unversioned `Api\*` (`/api/profile`, `/api/dashboard`, `/api/search`, `/api/admin`, `/api/auth`). |
+| Current behavior | `barryvdh/laravel-dompdf` **and** `mpdf/mpdf` are both required. API routes split between `Api\V1\*` (`/api/v1`) and unversioned `Api\*` (`/api/profile`, `/api/dashboard`, `/api/search`, `/api/admin`, `/api/auth`). **PDF usage confirmed (post-audit investigation):** DomPDF is the only engine actually called anywhere (`CustomsDeclarationGenerator`); mPDF's `PdfGeneratorService` is registered in `AppServiceProvider` but has zero callers across app code and tests — dead code, not a genuine two-document split. Its dedicated `IBMPlexSansArabic-*`/`Amiri-*` fonts are likewise unused by the active DomPDF path (`DejaVu Sans`). |
 | Problem | Maintainability, not runtime performance: two PDF libraries double the dependency/security surface for one capability; two routing conventions complicate versioning, throttling defaults, and client expectations. |
 | Severity | Low |
-| Evidence status | Verified (dependency + route inventory); PDF usage split confirmed in Block 2 |
-| Finding status | Open |
+| Evidence status | Evidence Verified — PDF usage split confirmed via full-repo call-site search |
+| Finding status | Open (investigated; fix deferred — user chose to leave PDF engines as-is this pass) |
 | Roadmap tier | Optional |
-| First identified / last reviewed | Block 1 / Block 1 |
+| First identified / last reviewed | Block 1 / Post-audit investigation |
 | Related findings | ARCH-003 (throttle grouping benefits from namespace consistency) |
-| Evidence | `composer.json` require; `routes/api.php:1-41,243-285` |
-| Confidence | Medium (PDF usage split pending Block 2) |
-| Recommendation | Confirm which PDF engine each generator uses (Block 2); consolidate to one if feasible. Namespace consolidation is a larger, optional refactor — record, don't force. Trade-off: consolidation touches many call sites for modest gain; justified only if one engine is unused. |
+| Evidence | `composer.json` require; `routes/api.php:1-41,243-285`; `evidence/ARCH-005-investigation-notes.md` |
+| Confidence | High (PDF usage split confirmed) |
+| Recommendation | mPDF (`PdfGeneratorService`) is safe to remove entirely (dependency, DI registration, dedicated fonts) since it has no callers — deferred to a future pass, not because it's risky, but because dependency removal wasn't prioritized in this remediation pass. Namespace consolidation is a larger, optional refactor — record, don't force. Do not touch DomPDF/`CustomsDeclarationGenerator` — it is the actively-used path. |
 | Security gate | N/A. |
 
 ---
