@@ -238,23 +238,41 @@ class EngineRequestController extends Controller
         // EngineRequestResource for every row during list serialization, so
         // loading it once here avoids a hasRoleCode() query per row.
         $user->loadMissing('roles');
-        $accessibleStageIds = $this->permissionResolver->accessibleStageIds($user, StageAccessLevel::VIEW);
 
-        $query = EngineRequest::query()
-            ->withStageEntry()
-            ->with(['currentStage.stageFieldRules', 'bank', 'merchant', 'creator', 'workflowVersion.definition', 'customsDeclaration']);
+        if ($user->hasRoleCode(RoleCodes::SYSTEM_ADMIN)) {
+            $query = EngineRequest::query()
+                ->withStageEntry()
+                ->with(['currentStage.stageFieldRules', 'bank', 'merchant', 'creator', 'workflowVersion.definition', 'customsDeclaration']);
+            $this->listQuery->applyFilters($query, $request);
 
-        if (! $user->hasRoleCode(RoleCodes::SYSTEM_ADMIN)) {
-            $query
-                ->forUser($user)
-                ->whereIn('engine_requests.current_stage_id', $accessibleStageIds);
+            $page = $query->orderByDesc('engine_requests.created_at')
+                ->orderBy('engine_requests.id')
+                ->paginate($this->listQuery->perPage($request));
+
+            return $this->listQuery->paginatedResponse($page);
         }
 
-        $this->listQuery->applyFilters($query, $request);
+        $accessibleStageIds = $this->permissionResolver->accessibleStageIds($user, StageAccessLevel::VIEW);
 
-        $page = $query->orderByDesc('engine_requests.created_at')
-            ->orderBy('engine_requests.id')
-            ->paginate($this->listQuery->perPage($request));
+        $branchFactory = function (int $stageId) use ($request, $user): Builder {
+            $query = EngineRequest::query()
+                ->withStageEntry()
+                ->forUser($user)
+                ->where('engine_requests.current_stage_id', $stageId);
+            $this->listQuery->applyFilters($query, $request);
+
+            return $query;
+        };
+
+        $page = UnionStagePaginator::paginate(
+            $branchFactory,
+            $accessibleStageIds,
+            [['engine_requests.created_at', 'desc'], ['engine_requests.id', 'asc']],
+            page: $request->integer('page', 1),
+            perPage: $this->listQuery->perPage($request),
+        );
+
+        $page->load(['currentStage.stageFieldRules', 'bank', 'merchant', 'creator', 'workflowVersion.definition', 'customsDeclaration']);
 
         return $this->listQuery->paginatedResponse($page);
     }
