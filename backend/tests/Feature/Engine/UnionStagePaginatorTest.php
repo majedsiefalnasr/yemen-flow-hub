@@ -176,6 +176,77 @@ class UnionStagePaginatorTest extends TestCase
         );
     }
 
+    /**
+     * DB-001/DB-002 follow-up (Task 6): paginateUnion() unconditionally
+     * selects engine_requests.id, then re-added it via addSelect(... as id)
+     * for any sort-spec entry that was itself engine_requests.id (the
+     * standard tiebreaker both myQueue() and index() use). SQLite silently
+     * tolerates a duplicate column alias in a SELECT list; MySQL rejects it
+     * outright ("Duplicate column name 'id'") -- a live perf:load-scenario
+     * run against real MySQL caught this as a 500 that no SQLite-backed
+     * test (including the two tests immediately above/below, which both
+     * already use an id tiebreaker) could ever surface, since they only
+     * assert on query *results*, never on the generated SQL shape itself.
+     * This test calls the real UnionStagePaginator::paginate() entrypoint
+     * (not a reimplementation of its private branch-building logic) and
+     * captures the actual SQL Laravel generates via DB::listen(), so it
+     * tracks the genuine code path and fails on any database driver if the
+     * duplicate-column regression is reintroduced, not just MySQL.
+     */
+    public function test_union_branch_select_never_duplicates_the_id_column(): void
+    {
+        $this->makeRequest($this->stageOne, 'ENG-DEDUPE-1', now()->subDay());
+        $this->makeRequest($this->stageTwo, 'ENG-DEDUPE-2', now());
+
+        $capturedQueries = [];
+        DB::listen(function ($query) use (&$capturedQueries) {
+            $capturedQueries[] = $query->sql;
+        });
+
+        UnionStagePaginator::paginate(
+            $this->branchFactory(),
+            [$this->stageOne->id, $this->stageTwo->id],
+            [['engine_requests.created_at', 'desc'], ['engine_requests.id', 'asc']],
+            page: 1,
+            perPage: 25,
+        );
+
+        $this->assertNotEmpty($capturedQueries, 'expected at least one query to be issued for a 2-stage union call');
+
+        // The union query nests each branch's SELECT inside subqueries
+        // (select "id" from (select * from (select ...) union all select *
+        // from (select ...)) as "u" ...), so the duplicate-column risk lives
+        // in an INNER select clause, not the outermost one -- match every
+        // "select ... from" occurrence in the SQL, not just the first.
+        foreach ($capturedQueries as $sql) {
+            preg_match_all('/select\s+(.*?)\s+from\s/is', $sql, $allMatches);
+
+            foreach ($allMatches[1] as $selectClause) {
+                $aliases = array_map(function ($piece) {
+                    $piece = trim($piece);
+                    if (preg_match('/\bas\s+"?(\w+)"?$/i', $piece, $m)) {
+                        return strtolower($m[1]);
+                    }
+                    if (preg_match('/"?(\w+)"?\."?(\w+)"?$/i', $piece, $m)) {
+                        return strtolower($m[2]);
+                    }
+
+                    return strtolower(trim($piece, '"` '));
+                }, explode(',', $selectClause));
+
+                $duplicates = array_diff_assoc($aliases, array_unique($aliases));
+
+                $this->assertSame(
+                    [],
+                    array_values($duplicates),
+                    'generated SELECT list must never alias two columns to the same name -- MySQL rejects this '
+                    ."as \"Duplicate column name\", even though SQLite silently tolerates it.\nSELECT clause: "
+                    ."{$selectClause}\nFull SQL: {$sql}\nColumns: ".implode(', ', $aliases),
+                );
+            }
+        }
+    }
+
     public function test_page_two_returns_the_correct_slice_across_merged_branches(): void
     {
         $refs = [];
