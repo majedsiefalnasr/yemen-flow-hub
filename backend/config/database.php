@@ -58,6 +58,14 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
+            // TZ-001: without this, MySQL's session time_zone defaults to
+            // SYSTEM (UTC on this host) while the app writes wall-clock
+            // timestamps in config('app.timezone'). Raw SQL that does
+            // UNIX_TIMESTAMP(column) then misinterprets the stored
+            // wall-clock as UTC, skewing the computed epoch by the
+            // app-timezone offset (confirmed: exactly 3h for Asia/Aden).
+            // See docs/audit/evidence/TZ-001-mysql-timestamp-session-timezone-bug.md.
+            'timezone' => config('app.timezone'),
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 (defined('\Pdo\Mysql::ATTR_SSL_CA') ? Mysql::ATTR_SSL_CA : PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
