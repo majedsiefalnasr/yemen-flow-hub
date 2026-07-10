@@ -355,4 +355,59 @@ class UnionStagePaginatorTest extends TestCase
             'first value-matching binding (which would be workflow_version_id here).',
         );
     }
+
+    public function test_raw_orderby_expression_is_supported_for_sla_case_when_tiebreak(): void
+    {
+        $bankOrg = Organization::where('code', 'commercial_banks')->firstOrFail();
+        $roleForSla = Role::where('code', 'intake')->firstOrFail();
+
+        $slaStage = WorkflowStage::create([
+            'workflow_version_id' => $this->version->id, 'code' => 'SLA_ONE', 'name' => 'SLA One',
+            'sort_order' => 3, 'is_initial' => false, 'is_final' => false, 'version' => 1,
+            'sla_duration_minutes' => 60,
+        ]);
+        StagePermission::create([
+            'stage_id' => $slaStage->id, 'organization_id' => $bankOrg->id, 'role_id' => $roleForSla->id,
+            'access_level' => 'EXECUTE', 'display_label' => 'Exec', 'version' => 1,
+        ]);
+
+        $noSla = $this->makeRequest($this->stageOne, 'ENG-NOSLA', now()->subDays(5));
+        $withSla = EngineRequest::create([
+            'workflow_version_id' => $this->version->id,
+            'current_stage_id' => $slaStage->id,
+            'reference' => 'ENG-WITHSLA',
+            'status' => 'ACTIVE',
+            'created_by' => $this->user->id,
+            'bank_id' => $this->bank->id,
+            'invoice_number' => 'INV-WITHSLA',
+            'data' => [],
+            'version' => 1,
+            'sla_deadline_epoch' => now()->addDay()->getTimestamp(),
+        ]);
+
+        $branchFactory = function (int $stageId): Builder {
+            return EngineRequest::query()
+                ->withStageEntry()
+                ->where('engine_requests.bank_id', $this->bank->id)
+                ->where('engine_requests.current_stage_id', $stageId);
+        };
+
+        $paginator = UnionStagePaginator::paginate(
+            $branchFactory,
+            [$this->stageOne->id, $slaStage->id],
+            [
+                ['raw', 'CASE WHEN current_stage.sla_duration_minutes IS NULL THEN 1 ELSE 0 END', 'asc'],
+                ['engine_requests.sla_deadline_epoch', 'asc'],
+                ['engine_requests.id', 'asc'],
+            ],
+            page: 1,
+            perPage: 25,
+        );
+
+        $this->assertSame(
+            [$withSla->reference, $noSla->reference],
+            collect($paginator->items())->pluck('reference')->all(),
+            'the SLA-configured row must sort before the no-SLA row even though it was created earlier',
+        );
+    }
 }

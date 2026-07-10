@@ -163,7 +163,7 @@ class UnionStagePaginator
     /**
      * @param  \Closure(int): Builder  $branchFactory
      * @param  list<int>  $stageIds
-     * @param  list<array{0: string, 1: 'asc'|'desc'}|array{0: 'raw', 1: string, 2: 'asc'|'desc'}>  $sortSpec  Column names must be fully table-qualified (e.g. 'engine_requests.created_at'), not bare (e.g. 'created_at'), to avoid ambiguity against EngineRequest::scopeWithStageEntry()'s `current_stage` join (workflow_stages aliased as current_stage, which has its own id/created_at columns). Each column is aliased below to its bare name for the outer merge-and-resort query, so an unqualified caller column could silently collide with a current_stage column of the same name.
+     * @param  list<array{0: string, 1: 'asc'|'desc'}|array{0: 'raw', 1: string, 2: 'asc'|'desc'}>  $sortSpec  Column names must be fully table-qualified (e.g. 'engine_requests.created_at'), not bare (e.g. 'created_at'), to avoid ambiguity against EngineRequest::scopeWithStageEntry()'s `current_stage` join (workflow_stages aliased as current_stage, which has its own id/created_at columns). Each column is aliased below to its bare name for the outer merge-and-resort query, so an unqualified caller column could silently collide with a current_stage column of the same name. A `['raw', ...]` entry is instead projected under a stable `sort_raw_{index}` alias, since a raw SQL expression has no natural bare column name to reuse.
      */
     private static function paginateUnion(
         \Closure $branchFactory,
@@ -185,9 +185,16 @@ class UnionStagePaginator
             // together, so each sort column must be projected here, not just
             // id, or the outer ORDER BY has nothing to sort on.
             $branch->select('engine_requests.id');
-            foreach ($sortSpec as [$column, $direction]) {
-                $branch->addSelect($column.' as '.last(explode('.', $column)));
-                $branch->orderBy($column, $direction);
+            foreach ($sortSpec as $i => $entry) {
+                if ($entry[0] === 'raw') {
+                    [, $expression, $direction] = $entry;
+                    $branch->addSelect(DB::raw($expression.' as sort_raw_'.$i));
+                    $branch->orderByRaw('sort_raw_'.$i.' '.strtoupper($direction));
+                } else {
+                    [$column, $direction] = $entry;
+                    $branch->addSelect($column.' as '.last(explode('.', $column)));
+                    $branch->orderBy($column, $direction);
+                }
             }
             $branch->limit($branchLimit);
             $idQueries[] = $branch;
@@ -203,8 +210,13 @@ class UnionStagePaginator
         }
 
         $mergedIdSelect = DB::query()->fromSub($unionIdQuery, 'u');
-        foreach ($sortSpec as [$column, $direction]) {
-            $mergedIdSelect->orderBy(last(explode('.', $column)), $direction);
+        foreach ($sortSpec as $i => $entry) {
+            if ($entry[0] === 'raw') {
+                $mergedIdSelect->orderBy('sort_raw_'.$i, $entry[2]);
+            } else {
+                [$column, $direction] = $entry;
+                $mergedIdSelect->orderBy(last(explode('.', $column)), $direction);
+            }
         }
         $ids = $mergedIdSelect->offset($offset)->limit($perPage)->pluck('id')->all();
 

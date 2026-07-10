@@ -219,6 +219,24 @@ class EngineRequest extends Model
     }
 
     /**
+     * Sort spec form of scopeOrderBySlaPriority()'s three clauses, for use
+     * with UnionStagePaginator (which cannot chain Eloquent scopes across a
+     * UNION's per-branch and merge-level queries the way a normal
+     * ->orderBySlaPriority() call can). Keep in sync with
+     * scopeOrderBySlaPriority() by hand -- the two must always agree.
+     *
+     * @return list<array{0: string, 1: string}|array{0: 'raw', 1: string, 2: 'asc'|'desc'}>
+     */
+    public static function slaOrderSpec(): array
+    {
+        return [
+            ['raw', 'CASE WHEN current_stage.sla_duration_minutes IS NULL THEN 1 ELSE 0 END', 'asc'],
+            ['engine_requests.sla_deadline_epoch', 'asc'],
+            ['engine_requests.stage_entered_at', 'asc'],
+        ];
+    }
+
+    /**
      * Portable SQL expression for the current stage's SLA deadline as epoch
      * seconds, for WHERE-clause use (breach/nearing/ok filtering in
      * EngineRequestListQuery::applySlaStatusFilterInternal()) — NOT for
