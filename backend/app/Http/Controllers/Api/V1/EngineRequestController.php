@@ -270,6 +270,7 @@ class EngineRequestController extends Controller
             [['engine_requests.created_at', 'desc'], ['engine_requests.id', 'asc']],
             page: $request->integer('page', 1),
             perPage: $this->listQuery->perPage($request),
+            forceIndex: 'er_stage_created',
         );
 
         $page->load(['currentStage.stageFieldRules', 'bank', 'merchant', 'creator', 'workflowVersion.definition', 'customsDeclaration']);
@@ -303,6 +304,7 @@ class EngineRequestController extends Controller
             [...EngineRequest::slaOrderSpec(), ['engine_requests.id', 'asc']],
             page: $request->integer('page', 1),
             perPage: $this->listQuery->perPage($request),
+            forceIndex: 'er_stage_sla_deadline',
         );
 
         $page->load(['currentStage.stageFieldRules', 'bank', 'merchant', 'creator', 'claimedBy', 'workflowVersion.definition', 'customsDeclaration']);

@@ -225,12 +225,23 @@ class EngineRequest extends Model
      * ->orderBySlaPriority() call can). Keep in sync with
      * scopeOrderBySlaPriority() by hand -- the two must always agree.
      *
-     * @return list<array{0: string, 1: string}|array{0: 'raw', 1: string, 2: 'asc'|'desc'}>
+     * The leading CASE clause is marked $stageInvariant (true, the 4th
+     * tuple element) -- see UnionStagePaginator::paginateUnion()'s
+     * docblock for the full correctness argument. Short version:
+     * current_stage.sla_duration_minutes is a joined stage-level column,
+     * so it's identical for every row sharing one current_stage_id, which
+     * every row in a single UnionStagePaginator branch does by
+     * construction -- the CASE can never discriminate within a branch, but
+     * MySQL doesn't know that and pays a real, measured cost (~150x
+     * slower per branch on the 200K-row load harness) trying to use it for
+     * an index-defeating per-branch sort anyway.
+     *
+     * @return list<array{0: string, 1: string}|array{0: 'raw', 1: string, 2: 'asc'|'desc', 3: bool}>
      */
     public static function slaOrderSpec(): array
     {
         return [
-            ['raw', 'CASE WHEN current_stage.sla_duration_minutes IS NULL THEN 1 ELSE 0 END', 'asc'],
+            ['raw', 'CASE WHEN current_stage.sla_duration_minutes IS NULL THEN 1 ELSE 0 END', 'asc', true],
             ['engine_requests.sla_deadline_epoch', 'asc'],
             ['engine_requests.stage_entered_at', 'asc'],
         ];

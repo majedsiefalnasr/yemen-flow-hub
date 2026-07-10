@@ -25,7 +25,8 @@ class UnionStagePaginator
     /**
      * @param  \Closure(int): Builder  $branchFactory  Returns a fully-filtered query scoped to exactly one stage ID via a single Basic where on engine_requests.current_stage_id, with no orderBy/limit/select applied.
      * @param  list<int>  $stageIds
-     * @param  list<array{0: string, 1: 'asc'|'desc'}|array{0: 'raw', 1: string, 2: 'asc'|'desc'}>  $sortSpec  Column names must be fully table-qualified (e.g. 'engine_requests.created_at'), not bare (e.g. 'created_at'). paginateUnion() aliases each sort column to its bare (unqualified) name for the outer merge-and-resort query; an unqualified input column risks colliding with a same-named column pulled in via EngineRequest::scopeWithStageEntry()'s `current_stage` join (e.g. workflow_stages.id, workflow_stages.created_at).
+     * @param  list<array{0: string, 1: 'asc'|'desc'}|array{0: 'raw', 1: string, 2: 'asc'|'desc'}|array{0: 'raw', 1: string, 2: 'asc'|'desc', 3: bool}>  $sortSpec  Column names must be fully table-qualified (e.g. 'engine_requests.created_at'), not bare (e.g. 'created_at'). paginateUnion() aliases each sort column to its bare (unqualified) name for the outer merge-and-resort query; an unqualified input column risks colliding with a same-named column pulled in via EngineRequest::scopeWithStageEntry()'s `current_stage` join (e.g. workflow_stages.id, workflow_stages.created_at). A `raw` entry's optional 4th element ($stageInvariant, default false) marks the expression as provably constant for every row within one accessible stage (e.g. it reads only stage-level joined columns like current_stage.sla_duration_minutes, never a per-row engine_requests column) -- see paginateUnion()'s docblock for why this unlocks a real optimization and why it must stay opt-in, not inferred.
+     * @param  string|null  $forceIndex  MySQL index name to force on each per-branch query's engine_requests table (see paginateUnion()'s per-branch loop). Needed because MySQL's optimizer makes a DIFFERENT (and here, worse) index choice for the identical query executed as a UNION ALL branch/derived table than it makes for the same query run standalone -- confirmed via EXPLAIN ANALYZE: a per-branch query alone used the sort-covering composite index (er_stage_sla_deadline / er_stage_created) in ~3ms, but the same query nested inside paginateUnion()'s UNION ALL picked an unrelated bank_id index and scanned the full stage's row set (~150-180ms per branch) instead. This is a documented MySQL cost-estimation quirk specific to derived-table contexts, not a missing index -- forcing the index closes it. Ignored on non-MySQL drivers (see paginateUnion()).
      */
     public static function paginate(
         \Closure $branchFactory,
@@ -34,6 +35,7 @@ class UnionStagePaginator
         int $page,
         int $perPage,
         ?int $threshold = null,
+        ?string $forceIndex = null,
     ): LengthAwarePaginatorContract {
         if ($stageIds === []) {
             // An empty Eloquent Collection, not a bare array or a base
@@ -55,7 +57,7 @@ class UnionStagePaginator
             return self::paginateWhereIn($branchFactory, $stageIds, $sortSpec, $page, $perPage);
         }
 
-        return self::paginateUnion($branchFactory, $stageIds, $sortSpec, $page, $perPage);
+        return self::paginateUnion($branchFactory, $stageIds, $sortSpec, $page, $perPage, $forceIndex);
     }
 
     /**
@@ -172,7 +174,38 @@ class UnionStagePaginator
     /**
      * @param  \Closure(int): Builder  $branchFactory
      * @param  list<int>  $stageIds
-     * @param  list<array{0: string, 1: 'asc'|'desc'}|array{0: 'raw', 1: string, 2: 'asc'|'desc'}>  $sortSpec  Column names must be fully table-qualified (e.g. 'engine_requests.created_at'), not bare (e.g. 'created_at'), to avoid ambiguity against EngineRequest::scopeWithStageEntry()'s `current_stage` join (workflow_stages aliased as current_stage, which has its own id/created_at columns). Each column is aliased below to its bare name for the outer merge-and-resort query, so an unqualified caller column could silently collide with a current_stage column of the same name. A `['raw', ...]` entry is instead projected under a stable `sort_raw_{index}` alias, since a raw SQL expression has no natural bare column name to reuse.
+     * @param  list<array{0: string, 1: 'asc'|'desc'}|array{0: 'raw', 1: string, 2: 'asc'|'desc'}|array{0: 'raw', 1: string, 2: 'asc'|'desc', 3: bool}>  $sortSpec  Column names must be fully table-qualified (e.g. 'engine_requests.created_at'), not bare (e.g. 'created_at'), to avoid ambiguity against EngineRequest::scopeWithStageEntry()'s `current_stage` join (workflow_stages aliased as current_stage, which has its own id/created_at columns). Each column is aliased below to its bare name for the outer merge-and-resort query, so an unqualified caller column could silently collide with a current_stage column of the same name. A `['raw', ...]` entry is instead projected under a stable `sort_raw_{index}` alias, since a raw SQL expression has no natural bare column name to reuse.
+     *
+     * A raw entry's optional 4th element ($stageInvariant, default false)
+     * is excluded from the PER-BRANCH ORDER BY (but still SELECTed under
+     * its sort_raw_{i} alias, and still included in the outer merge's
+     * ORDER BY below) -- a real, measured optimization for exactly one
+     * documented case: EngineRequest::slaOrderSpec()'s leading
+     * `CASE WHEN current_stage.sla_duration_minutes IS NULL THEN 1 ELSE 0
+     * END` clause. Confirmed via EXPLAIN ANALYZE on the real 200K-row load
+     * harness: with the CASE in the per-branch ORDER BY, MySQL cannot use
+     * the covering sla_deadline_epoch index for the sort (only for the
+     * current_stage_id filter), forcing a full per-branch scan+sort
+     * (~150ms); with it excluded, the same query drops to under 1ms
+     * (index-ordered scan, LIMIT pushed all the way down).
+     *
+     * This is only safe to skip per-branch because sla_duration_minutes is
+     * a STAGE-level column (joined via current_stage), not a row-level
+     * engine_requests column -- every row within a single stageId's branch
+     * necessarily shares the exact same value, so the CASE evaluates to
+     * the same constant for the whole branch and can never discriminate
+     * which rows are that branch's "top N" by any other clause. It still
+     * matters at the OUTER merge step, where rows from stages that DO vs
+     * DON'T have an SLA get interleaved and must be correctly ordered
+     * relative to each other -- hence it stays in the merge ORDER BY
+     * unconditionally, only the per-branch ORDER BY skips it.
+     * $stageInvariant defaults to false and must be explicitly opted into
+     * per raw entry -- this optimization is NOT safely inferable in
+     * general (a hypothetical future raw expression reading a per-row
+     * engine_requests column, e.g. a JSON field, would NOT share this
+     * property and skipping it per-branch would silently return the wrong
+     * top-N rows).
+     * @param  string|null  $forceIndex  See paginate()'s docblock -- MySQL picks a worse index for a per-branch query executed inside a UNION ALL than it does for the same query standalone, so this forces the caller-supplied covering index on both the id-resolution and count branches. Applied via Laravel's forceIndex() on each branch's engine_requests table; ignored entirely on non-MySQL drivers, since forceIndex()'s FORCE INDEX syntax is MySQL-specific and this repo's test suite runs on SQLite.
      */
     private static function paginateUnion(
         \Closure $branchFactory,
@@ -180,15 +213,20 @@ class UnionStagePaginator
         array $sortSpec,
         int $page,
         int $perPage,
+        ?string $forceIndex = null,
     ): LengthAwarePaginatorContract {
         $offset = ($page - 1) * $perPage;
         $branchLimit = $offset + $perPage;
+        $isMysql = DB::connection()->getDriverName() === 'mysql';
 
         $idQueries = [];
         $countQueries = [];
 
         foreach ($stageIds as $stageId) {
             $branch = $branchFactory($stageId);
+            if ($forceIndex !== null && $isMysql) {
+                $branch->getQuery()->forceIndex($forceIndex);
+            }
             // The outer merge query re-sorts by these same columns (by their
             // unqualified alias) once the per-branch results are UNION ALL'd
             // together, so each sort column must be projected here, not just
@@ -197,8 +235,11 @@ class UnionStagePaginator
             foreach ($sortSpec as $i => $entry) {
                 if ($entry[0] === 'raw') {
                     [, $expression, $direction] = $entry;
+                    $stageInvariant = $entry[3] ?? false;
                     $branch->addSelect(DB::raw($expression.' as sort_raw_'.$i));
-                    $branch->orderByRaw('sort_raw_'.$i.' '.strtoupper($direction));
+                    if (! $stageInvariant) {
+                        $branch->orderByRaw('sort_raw_'.$i.' '.strtoupper($direction));
+                    }
                 } else {
                     [$column, $direction] = $entry;
                     // A sort-spec column of engine_requests.id (e.g. the usual
@@ -220,6 +261,9 @@ class UnionStagePaginator
             $idQueries[] = $branch;
 
             $countBranch = $branchFactory($stageId);
+            if ($forceIndex !== null && $isMysql) {
+                $countBranch->getQuery()->forceIndex($forceIndex);
+            }
             $countBranch->select('engine_requests.id');
             $countQueries[] = $countBranch;
         }
