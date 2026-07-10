@@ -19,6 +19,7 @@ use Database\Seeders\GovernanceSeeder;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class UnionStagePaginatorTest extends TestCase
@@ -492,5 +493,29 @@ class UnionStagePaginatorTest extends TestCase
             $hydrated->sla_status,
             'sla_status must be derivable via the COALESCE fallback on the union hydration path, matching the direct-query and paginateWhereIn() behaviour',
         );
+    }
+
+    public function test_config_default_threshold_is_used_when_not_explicitly_passed(): void
+    {
+        config(['workflow.list_union_stage_threshold' => 1]);
+
+        $this->makeRequest($this->stageOne, 'ENG-CFG-1', now()->subDay());
+        $this->makeRequest($this->stageTwo, 'ENG-CFG-2', now());
+
+        DB::enableQueryLog();
+
+        UnionStagePaginator::paginate(
+            $this->branchFactory(),
+            [$this->stageOne->id, $this->stageTwo->id],
+            [['engine_requests.created_at', 'desc'], ['engine_requests.id', 'asc']],
+            page: 1,
+            perPage: 25,
+        );
+
+        $queries = DB::getQueryLog();
+        DB::disableQueryLog();
+
+        $hasUnionQuery = collect($queries)->contains(fn ($q) => str_contains(strtolower($q['query']), 'union all'));
+        $this->assertFalse($hasUnionQuery, 'with threshold=1 and 2 stages, the config default must trigger the whereIn fallback, not the union path');
     }
 }
