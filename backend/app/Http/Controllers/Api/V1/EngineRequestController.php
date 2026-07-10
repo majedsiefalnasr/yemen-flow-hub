@@ -24,6 +24,8 @@ use App\Support\ApiResponse;
 use App\Support\EngineRequestListQuery;
 use App\Support\RequestCreationGate;
 use App\Support\RoleCodes;
+use App\Support\UnionStagePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -265,20 +267,27 @@ class EngineRequestController extends Controller
         $user->loadMissing('roles');
         $executeStageIds = $this->permissionResolver->accessibleStageIds($user, StageAccessLevel::EXECUTE);
 
-        $query = EngineRequest::query()
-            ->withStageEntry()
-            ->active()
-            ->forUser($user)
-            ->whereIn('engine_requests.current_stage_id', $executeStageIds)
-            ->with(['currentStage.stageFieldRules', 'bank', 'merchant', 'creator', 'claimedBy', 'workflowVersion.definition', 'customsDeclaration']);
+        $branchFactory = function (int $stageId) use ($request, $user): Builder {
+            $query = EngineRequest::query()
+                ->withStageEntry()
+                ->active()
+                ->forUser($user)
+                ->where('engine_requests.current_stage_id', $stageId);
+            $this->listQuery->applyFilters($query, $request);
 
-        $this->listQuery->applyFilters($query, $request);
+            return $query;
+        };
 
         // Default دوري priority: SLA-breached → nearest-to-breach → oldest-in-stage.
-        $page = $query
-            ->orderBySlaPriority()
-            ->orderBy('engine_requests.id')
-            ->paginate($this->listQuery->perPage($request));
+        $page = UnionStagePaginator::paginate(
+            $branchFactory,
+            $executeStageIds,
+            [...EngineRequest::slaOrderSpec(), ['engine_requests.id', 'asc']],
+            page: $request->integer('page', 1),
+            perPage: $this->listQuery->perPage($request),
+        );
+
+        $page->load(['currentStage.stageFieldRules', 'bank', 'merchant', 'creator', 'claimedBy', 'workflowVersion.definition', 'customsDeclaration']);
 
         return $this->listQuery->paginatedResponse($page);
     }
