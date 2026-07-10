@@ -370,7 +370,7 @@ Full rationale, before/after plans, and migrations in `03-database-plan.md §4`.
 | Related findings | ARCH-002, API-002, API-006 |
 | Evidence | `evidence/explain/ARCH-002-my-queue-sla.txt`, `...-after-index.txt` (2.6 s → 0.7 s; subquery cost 4.31 → 1.14) |
 | Confidence | High |
-| Recommendation | Add index `wh_req_tostage_created`; migration + rollback in `03-database-plan.md §4 DB-IDX-1`. Trade-off: one more index on a 5M-row append table (once-per-transition write). |
+| Recommendation | Add index `wh_req_tostage_created`; migration + rollback in `03-database-plan.md §4 DB-IDX-1`. Trade-off: one more index on a 5M-row append table (once-per-transition write). **Follow-up attempted (this pass):** added a maintained `sla_deadline_epoch` column + index to make `orderBySlaPriority()`'s ORDER BY sargable — genuinely fixes the single-accessible-stage case (confirmed via EXPLAIN), but the realistic multi-accessible-stage `my-queue` case still filesorts: MySQL cannot use an index for both a multi-value `current_stage_id IN (...)` filter and an ORDER BY simultaneously — a documented MySQL optimizer limitation, not a missing-index problem. `evidence/DB-001-002-sla-deadline-column-followup.md` recommends a UNION-per-stage query restructure as the real next step. |
 | Security gate | Index only; no scoping/behavior change. |
 
 ## DB-002 — Missing `engine_requests (bank_id, created_at, id)` composite index
@@ -389,8 +389,27 @@ Full rationale, before/after plans, and migrations in `03-database-plan.md §4`.
 | Related findings | ARCH-004, API-007 |
 | Evidence | `evidence/explain/ARCH-004-list-search-offset.txt`, `...-after-composite.txt` (0.3 s → 0.08 s; becomes covering range scan) |
 | Confidence | High |
-| Recommendation | Add index `er_bank_created` (`03-database-plan.md §4 DB-IDX-2`). **Only effective with** the ARCH-004/API-007 code change to stop wrapping `created_at` in `DATE()`. Trade-off: one composite on the 1M-row hot table; low churn (`created_at` set-once). |
+| Recommendation | Add index `er_bank_created` (`03-database-plan.md §4 DB-IDX-2`). **Only effective with** the ARCH-004/API-007 code change to stop wrapping `created_at` in `DATE()`. Trade-off: one composite on the 1M-row hot table; low churn (`created_at` set-once). See DB-001's entry for this pass's `sla_deadline_epoch` follow-up attempt and its outcome (same MySQL IN+ORDER BY limitation applies to the list endpoint's my-queue-adjacent priority ordering). |
 | Security gate | Index only; scoping preserved by the query's existing `bank_id` predicate. |
+
+## TZ-001 — MySQL TIMESTAMP columns store wall-clock 3 hours off from the true UTC instant
+
+| Field | Value |
+| --- | --- |
+| Area / component | `config/database.php` (mysql connection, no `timezone` key); every `TIMESTAMP` column written via `now()`/Carbon app-wide |
+| Endpoint / query | Any SLA/breach calculation; any raw SQL `UNIX_TIMESTAMP(stored_column)`; any downstream report reading historical timestamps |
+| Current behavior | `.env` sets `APP_TIMEZONE=Asia/Aden` (UTC+3); the `mysql` DB connection has no `timezone` config, so its PDO session defaults to MySQL's `SYSTEM` variable (UTC on the dev host). MySQL `TIMESTAMP` columns convert between session timezone and stored UTC on every read/write — writing Aden-local wall-clock under a UTC session persists the wrong UTC instant (3 hours later than intended), baked into the stored data itself, not just a read-time SQL artifact. |
+| Problem | SLA deadline/breach math (and any other timestamp-derived logic) silently under-fires breaches by up to 3 hours on production MySQL. Discovered while verifying the DB-001/DB-002 `sla_deadline_epoch` backfill this pass; confirmed via direct `SET time_zone` comparison against a real dev-DB row showing the same stored instant reading 3 hours apart depending on session timezone. |
+| Severity | High |
+| Evidence status | Verified (root cause isolated and reproduced on the real dev DB); no fix attempted beyond investigation |
+| Finding status | Open — investigated, a candidate fix (session-timezone config) was applied, verified to also require a historical-data backfill, and **reverted** rather than shipped without that backfill |
+| Roadmap tier | Pre-production (audit-sensitivity: this platform's own AGENTS.md treats audit-log accuracy as a core requirement) |
+| First identified / last reviewed | Post-audit fix (this pass) / Post-audit fix (this pass) |
+| Related findings | ARCH-002, DB-001, DB-002, API-006 (a related but distinct timezone bug — API-006's was test-suite-only, SQLite vs `Asia/Aden`, already fixed by pinning `phpunit.xml`'s `APP_TIMEZONE=UTC`; this one is production-only, MySQL `TIMESTAMP` session-timezone conversion, not caught by that fix since the test suite runs on SQLite) |
+| Evidence | `evidence/TZ-001-mysql-timestamp-session-timezone-bug.md` |
+| Confidence | High |
+| Recommendation | Needs its own dedicated session: full inventory of affected `TIMESTAMP` columns across the schema, a decision between (a) setting the MySQL connection's session timezone to match `config('app.timezone')` plus a verified historical-data backfill, or (b) converting affected columns from `TIMESTAMP` to `DATETIME` (naive, no session-timezone conversion) — two different remediation strategies with different migration shapes and risk profiles. Do not fix inline as a side effect of an unrelated change; this touches audit-log tables and needs its own plan/migration/rollback per this project's standing practice. |
+| Security gate | Audit-trail accuracy is a compliance-relevant invariant — any fix must preserve or correct historical audit timestamps without silently altering what they represent; verify before shipping. |
 
 ## DB-003 — Conditional `audit_logs (subject_type, created_at)` index (gated on code fix)
 
