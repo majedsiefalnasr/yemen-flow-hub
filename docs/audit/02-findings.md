@@ -392,24 +392,24 @@ Full rationale, before/after plans, and migrations in `03-database-plan.md §4`.
 | Recommendation | Add index `er_bank_created` (`03-database-plan.md §4 DB-IDX-2`). **Only effective with** the ARCH-004/API-007 code change to stop wrapping `created_at` in `DATE()`. Trade-off: one composite on the 1M-row hot table; low churn (`created_at` set-once). See DB-001's entry for this pass's `sla_deadline_epoch` follow-up attempt and its outcome (same MySQL IN+ORDER BY limitation applies to the list endpoint's my-queue-adjacent priority ordering). |
 | Security gate | Index only; scoping preserved by the query's existing `bank_id` predicate. |
 
-## TZ-001 — MySQL TIMESTAMP columns store wall-clock 3 hours off from the true UTC instant
+## TZ-001 — MySQL TIMESTAMP columns stored wall-clock as if it were UTC (3-hour skew)
 
 | Field | Value |
 | --- | --- |
-| Area / component | `config/database.php` (mysql connection, no `timezone` key); every `TIMESTAMP` column written via `now()`/Carbon app-wide |
-| Endpoint / query | Any SLA/breach calculation; any raw SQL `UNIX_TIMESTAMP(stored_column)`; any downstream report reading historical timestamps |
-| Current behavior | `.env` sets `APP_TIMEZONE=Asia/Aden` (UTC+3); the `mysql` DB connection has no `timezone` config, so its PDO session defaults to MySQL's `SYSTEM` variable (UTC on the dev host). MySQL `TIMESTAMP` columns convert between session timezone and stored UTC on every read/write — writing Aden-local wall-clock under a UTC session persists the wrong UTC instant (3 hours later than intended), baked into the stored data itself, not just a read-time SQL artifact. |
-| Problem | SLA deadline/breach math (and any other timestamp-derived logic) silently under-fires breaches by up to 3 hours on production MySQL. Discovered while verifying the DB-001/DB-002 `sla_deadline_epoch` backfill this pass; confirmed via direct `SET time_zone` comparison against a real dev-DB row showing the same stored instant reading 3 hours apart depending on session timezone. |
+| Area / component | `config/database.php` (mysql connection, no `timezone` key); every `TIMESTAMP` column written via `now()`/Carbon app-wide (109 columns, 40 tables) |
+| Endpoint / query | Every write path using Eloquent `save()`/`create()`; display/export of any historical timestamp |
+| Current behavior | **Fixed.** `.env` sets `APP_TIMEZONE=Asia/Aden` (UTC+3); the `mysql` connection now sets `'timezone' => config('app.timezone')`, so PDO's session `time_zone` matches the app timezone instead of defaulting to MySQL's `SYSTEM` variable (UTC). Paired with a one-time historical backfill correcting every existing `TIMESTAMP` column's stored instant by the same offset. |
+| Problem | Every `TIMESTAMP` column written before this fix had its true stored UTC instant 3 hours later than the real-world moment it should represent — the app wrote naive Aden-local wall-clock strings that MySQL, under a UTC session, stored as if they were UTC. **Corrected understanding (this pass's key finding):** relative epoch math done entirely within one SQL session (SLA breach/nearing/ok classification) was never actually wrong, since the skew canceled out in same-session comparisons — verified directly. The real, concrete risk was a **one-time display discontinuity on deploy**: fixing the session-timezone config alone (without a backfill) would have made every historical timestamp suddenly display 3 hours later than users have always seen it. |
 | Severity | High |
-| Evidence status | Verified (root cause isolated and reproduced on the real dev DB); no fix attempted beyond investigation |
-| Finding status | Open — investigated, a candidate fix (session-timezone config) was applied, verified to also require a historical-data backfill, and **reverted** rather than shipped without that backfill |
+| Evidence status | Evidence Verified — root cause isolated, config fix + backfill both verified end-to-end on the real dev DB (no visible display change for historical data; new writes independently confirmed correct via `tz:verify`) |
+| Finding status | **Fixed** (`fix/tz-001-mysql-timestamp-timezone`) |
 | Roadmap tier | Pre-production (audit-sensitivity: this platform's own AGENTS.md treats audit-log accuracy as a core requirement) |
 | First identified / last reviewed | Post-audit fix (this pass) / Post-audit fix (this pass) |
+| Evidence | `tz:verify` command (before/after: 10800s → 0s drift); `evidence/TZ-001-mysql-timestamp-session-timezone-bug.md` |
+| Recommendation | **Applied.** `config/database.php`'s `mysql` connection sets `'timezone' => config('app.timezone')` (Laravel's `MySqlConnector` issues `SET time_zone` on connect). Paired historical backfill migration shifts every affected column by `Carbon::now(config('app.timezone'))->getOffset()` (not hardcoded), chunked per table, verified session-independent and round-trip-safe. `DashboardStatsService`'s pre-existing "avoid DB/session timezone drift" workaround investigated — it was not actually achieving its stated goal pre-fix (double-shift bug); now correct as a side effect, left unchanged. |
 | Related findings | ARCH-002, DB-001, DB-002, API-006 (a related but distinct timezone bug — API-006's was test-suite-only, SQLite vs `Asia/Aden`, already fixed by pinning `phpunit.xml`'s `APP_TIMEZONE=UTC`; this one is production-only, MySQL `TIMESTAMP` session-timezone conversion, not caught by that fix since the test suite runs on SQLite) |
-| Evidence | `evidence/TZ-001-mysql-timestamp-session-timezone-bug.md` |
 | Confidence | High |
-| Recommendation | Needs its own dedicated session: full inventory of affected `TIMESTAMP` columns across the schema, a decision between (a) setting the MySQL connection's session timezone to match `config('app.timezone')` plus a verified historical-data backfill, or (b) converting affected columns from `TIMESTAMP` to `DATETIME` (naive, no session-timezone conversion) — two different remediation strategies with different migration shapes and risk profiles. Do not fix inline as a side effect of an unrelated change; this touches audit-log tables and needs its own plan/migration/rollback per this project's standing practice. |
-| Security gate | Audit-trail accuracy is a compliance-relevant invariant — any fix must preserve or correct historical audit timestamps without silently altering what they represent; verify before shipping. |
+| Security gate | Audit-trail accuracy is a compliance-relevant invariant — verified the backfill preserves display continuity for historical rows (no silent alteration of what a timestamp appears to represent to a user) while correcting the true stored instant; full backend suite (1282 tests) green after. |
 
 ## DB-003 — Conditional `audit_logs (subject_type, created_at)` index (gated on code fix)
 
