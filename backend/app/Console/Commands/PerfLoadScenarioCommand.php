@@ -85,11 +85,11 @@ class PerfLoadScenarioCommand extends Command
             $this->info("Seeded {$actualCount} rows.");
 
             $this->newLine();
-            $this->info('=== my-queue (DB-001 gate: p95 <= 300ms) — 20 runs ===');
+            $this->info('=== my-queue (DB-001 gate: p95 <= 300ms, 2 accessible stages) — 20 runs ===');
             $this->measureEndpointRepeated($queryMetrics, $fixture['user'], 'GET', '/api/v1/engine-requests/my-queue', [], 20);
 
             $this->newLine();
-            $this->info('=== engine-requests list (DB-002/ARCH-004 gate: p95 <= 300ms) — 20 runs ===');
+            $this->info('=== engine-requests list (DB-002/ARCH-004 gate: p95 <= 300ms, 2 accessible stages) — 20 runs ===');
             $this->measureEndpointRepeated($queryMetrics, $fixture['user'], 'GET', '/api/v1/engine-requests', ['from' => now()->subDays(30)->toDateString()], 20);
 
             $this->newLine();
@@ -120,7 +120,7 @@ class PerfLoadScenarioCommand extends Command
     }
 
     /**
-     * @return array{bank: Bank, stage: WorkflowStage, version: WorkflowVersion, user: User}
+     * @return array{bank: Bank, stages: array{WorkflowStage, WorkflowStage}, version: WorkflowVersion, user: User, merchant: Merchant}
      */
     private function buildFixture(): array
     {
@@ -169,28 +169,40 @@ class PerfLoadScenarioCommand extends Command
             'workflow_version_id' => $version->id, 'code' => 'START', 'name' => 'Start',
             'sort_order' => 1, 'is_initial' => true, 'is_final' => false, 'version' => 1,
         ]);
-        $execStage = WorkflowStage::create([
-            'workflow_version_id' => $version->id, 'code' => 'EXEC', 'name' => 'Exec',
+        // DB-001/DB-002: two EXECUTE/VIEW-accessible stages, not one -- a
+        // single accessible stage makes the my-queue/list whereIn(...)
+        // degenerate to a single-value IN, which already uses the index
+        // cleanly and never exercises the multi-stage filesort regression
+        // these gates are about (docs/audit/evidence/DB-001-002-sla-deadline-column-followup.md).
+        $execStageA = WorkflowStage::create([
+            'workflow_version_id' => $version->id, 'code' => 'EXEC_A', 'name' => 'Exec A',
             'sort_order' => 2, 'is_initial' => false, 'is_final' => false,
             'sla_duration_minutes' => 1440, 'version' => 1,
         ]);
-
-        StagePermission::create([
-            'stage_id' => $execStage->id, 'organization_id' => $bankOrg->id, 'role_id' => $role->id,
-            'access_level' => 'EXECUTE', 'display_label' => 'Exec', 'version' => 1,
+        $execStageB = WorkflowStage::create([
+            'workflow_version_id' => $version->id, 'code' => 'EXEC_B', 'name' => 'Exec B',
+            'sort_order' => 3, 'is_initial' => false, 'is_final' => false,
+            'sla_duration_minutes' => 720, 'version' => 1,
         ]);
+
+        foreach ([$execStageA, $execStageB] as $stage) {
+            StagePermission::create([
+                'stage_id' => $stage->id, 'organization_id' => $bankOrg->id, 'role_id' => $role->id,
+                'access_level' => 'EXECUTE', 'display_label' => 'Exec', 'version' => 1,
+            ]);
+        }
 
         $submit = WorkflowAction::create(['code' => 'SUBMIT_PERF', 'name' => 'Submit', 'kind' => 'APPROVE', 'is_active' => true, 'version' => 1]);
         WorkflowTransition::create([
             'workflow_version_id' => $version->id, 'from_stage_id' => $startStage->id,
-            'to_stage_id' => $execStage->id, 'action_id' => $submit->id, 'requires_comment' => false, 'version' => 1,
+            'to_stage_id' => $execStageA->id, 'action_id' => $submit->id, 'requires_comment' => false, 'version' => 1,
         ]);
 
-        return ['bank' => $bank, 'stage' => $execStage, 'version' => $version, 'user' => $user, 'merchant' => $merchant];
+        return ['bank' => $bank, 'stages' => [$execStageA, $execStageB], 'version' => $version, 'user' => $user, 'merchant' => $merchant];
     }
 
     /**
-     * @param  array{bank: Bank, stage: WorkflowStage, version: WorkflowVersion, user: User, merchant: Merchant}  $fixture
+     * @param  array{bank: Bank, stages: array{WorkflowStage, WorkflowStage}, version: WorkflowVersion, user: User, merchant: Merchant}  $fixture
      */
     private function bulkInsert(array $fixture, int $totalRows): void
     {
@@ -199,15 +211,17 @@ class PerfLoadScenarioCommand extends Command
         $bar->start();
 
         $inserted = 0;
+        [$stageA, $stageB] = $fixture['stages'];
+
         while ($inserted < $totalRows) {
             $thisChunk = min($chunkSize, $totalRows - $inserted);
             $rows = [];
             $now = now();
 
-            $slaMinutes = $fixture['stage']->sla_duration_minutes;
-
             for ($i = 0; $i < $thisChunk; $i++) {
                 $seq = $inserted + $i;
+                $stage = $seq % 2 === 0 ? $stageA : $stageB;
+                $slaMinutes = $stage->sla_duration_minutes;
                 $daysAgo = $seq % 400;
                 $enteredAt = $now->copy()->subDays($daysAgo)->subMinutes($seq % 1440);
                 $slaDeadlineEpoch = $slaMinutes !== null
@@ -216,7 +230,7 @@ class PerfLoadScenarioCommand extends Command
 
                 $rows[] = [
                     'workflow_version_id' => $fixture['version']->id,
-                    'current_stage_id' => $fixture['stage']->id,
+                    'current_stage_id' => $stage->id,
                     'stage_entered_at' => $enteredAt,
                     'sla_deadline_epoch' => $slaDeadlineEpoch,
                     'reference' => self::REF_PREFIX.$seq,
