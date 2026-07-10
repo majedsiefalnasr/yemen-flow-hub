@@ -201,7 +201,18 @@ class UnionStagePaginator
                     $branch->orderByRaw('sort_raw_'.$i.' '.strtoupper($direction));
                 } else {
                     [$column, $direction] = $entry;
-                    $branch->addSelect($column.' as '.last(explode('.', $column)));
+                    // A sort-spec column of engine_requests.id (e.g. the usual
+                    // final tiebreaker) is already selected above as `id` --
+                    // re-adding it via addSelect(... as id) produces a
+                    // duplicate `id` column in the SELECT list. MySQL rejects
+                    // this outright ("Duplicate column name 'id'"); SQLite
+                    // silently tolerates it, which is why this only surfaced
+                    // via a real MySQL run (perf:load-scenario), not the
+                    // SQLite-backed test suite. orderBy() below still applies
+                    // regardless of whether the select was skipped.
+                    if ($column !== 'engine_requests.id') {
+                        $branch->addSelect($column.' as '.last(explode('.', $column)));
+                    }
                     $branch->orderBy($column, $direction);
                 }
             }
