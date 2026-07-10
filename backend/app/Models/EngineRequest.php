@@ -21,6 +21,7 @@ class EngineRequest extends Model
         'workflow_version_id',
         'current_stage_id',
         'stage_entered_at',
+        'sla_deadline_epoch',
         'reference',
         'status',
         'created_by',
@@ -49,6 +50,7 @@ class EngineRequest extends Model
             'claimed_at' => 'datetime',
             'claim_expires_at' => 'datetime',
             'stage_entered_at' => 'datetime',
+            'sla_deadline_epoch' => 'integer',
         ];
     }
 
@@ -178,35 +180,65 @@ class EngineRequest extends Model
     /**
      * Default دوري priority order: SLA-breached first, then nearest-to-breach, then
      * oldest-in-stage. Requires scopeWithStageEntry to have been applied.
+     *
+     * DB-001/DB-002 follow-up: orders directly on the raw, indexed
+     * `engine_requests.sla_deadline_epoch` column (er_stage_sla_deadline) — NOT
+     * through slaDeadlineEpochSql()'s COALESCE-wrapped expression. The load-run
+     * harness (perf:load-scenario) proved that wrapping an otherwise-indexed
+     * column in COALESCE(...) makes the ORDER BY non-sargable again: EXPLAIN
+     * showed MySQL falling back to a full filesort even with the column and its
+     * index in place, because the optimizer can't prove COALESCE(indexed_col,
+     * fallback_expr) preserves the index's sort order. A raw
+     * `ORDER BY sla_deadline_epoch` does use the index (confirmed via EXPLAIN:
+     * `Using index condition`, no `Using filesort`).
+     *
+     * This trades the COALESCE safety net for a genuine ORDER BY: any row with
+     * a null column (should only be true pre-backfill/edge-case rows — both
+     * write paths, EngineRequestService::create() and
+     * EngineTransitionService::execute(), always populate it when the stage has
+     * an SLA) sorts NULL-first in MySQL ASC, i.e. as if maximally breached —
+     * the safe-by-default direction for an operational queue: a row whose
+     * deadline genuinely could not be computed surfaces at the top rather than
+     * silently sinking to the bottom.
+     *
+     * The oldest-in-stage tiebreaker orders by the raw `stage_entered_at`
+     * column (also indexed, er_stage_entered) instead of
+     * UNIX_TIMESTAMP(COALESCE(...)) — same non-sargable-COALESCE problem as
+     * the deadline clause: epoch conversion is monotonic, so sorting the raw
+     * timestamp column produces the same relative order without defeating
+     * the index. (First cut of this fix only touched the deadline clause and
+     * left this tiebreaker wrapped — the load harness still showed a
+     * filesort/no p95 improvement until this clause was fixed too.)
      */
     public function scopeOrderBySlaPriority(Builder $query): Builder
     {
-        $deadline = self::slaDeadlineEpochSql();
-
         return $query
             ->orderByRaw('CASE WHEN current_stage.sla_duration_minutes IS NULL THEN 1 ELSE 0 END')
-            ->orderByRaw("{$deadline} ASC")
-            ->orderByRaw(self::epochSql(self::stageEnteredAtSql()).' ASC');
+            ->orderBy('engine_requests.sla_deadline_epoch', 'asc')
+            ->orderBy('engine_requests.stage_entered_at', 'asc');
     }
 
     /**
-     * Portable SQL expression for the current stage's SLA deadline as epoch seconds:
-     * stage-entry time + (sla_duration_minutes * 60). Works on both MySQL and SQLite
-     * so query-level SLA ordering/filtering is consistent between prod and tests.
+     * Portable SQL expression for the current stage's SLA deadline as epoch
+     * seconds, for WHERE-clause use (breach/nearing/ok filtering in
+     * EngineRequestListQuery::applySlaStatusFilterInternal()) — NOT for
+     * ORDER BY (see scopeOrderBySlaPriority()'s docblock for why).
      *
-     * ARCH-002: the fast path reads the indexed `engine_requests.stage_entered_at`
-     * projection column (maintained on create/transition) instead of a correlated
-     * max(created_at) subquery. To stay correct for any row whose column is not yet
-     * populated (pre-backfill edge rows, or history written outside the maintained
-     * paths), it falls back to the original subquery via COALESCE — so a null column
-     * can never silently drop a breached request from SLA ordering/filtering. In the
-     * common case the column is set and the subquery is never evaluated.
+     * ARCH-002: the fast path reads the maintained `engine_requests.stage_entered_at`
+     * column instead of a correlated max(created_at) subquery; DB-001/DB-002 follow-up
+     * adds the maintained `sla_deadline_epoch` column as an even-faster first choice.
+     * COALESCE falls back through both in turn for any row whose columns are not yet
+     * populated, so a null column can never silently drop a breached request from
+     * filtering. In the common case the maintained column is set and neither
+     * fallback expression is evaluated.
      * Callers must have applied scopeWithStageEntry() for the current_stage join.
      */
     public static function slaDeadlineEpochSql(): string
     {
-        return self::epochSql(self::stageEnteredAtSql())
+        $fallback = self::epochSql(self::stageEnteredAtSql())
             .' + (current_stage.sla_duration_minutes * 60)';
+
+        return "COALESCE(engine_requests.sla_deadline_epoch, {$fallback})";
     }
 
     public static function nowEpochSql(): string

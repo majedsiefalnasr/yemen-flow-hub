@@ -97,10 +97,19 @@ class EngineTransitionService
             // correlated max(created_at) subquery computed.
             $enteredAt = now();
 
+            // DB-001/DB-002 follow-up: maintain the SLA deadline as a plain indexed
+            // epoch-int column alongside stage_entered_at, so ORDER BY/WHERE on the
+            // deadline can use er_stage_sla_deadline instead of sorting on a computed
+            // join+expression. toStage is already eager-loaded above, so no extra query.
+            $slaDeadlineEpoch = $transition->toStage->sla_duration_minutes !== null
+                ? $enteredAt->getTimestamp() + ((int) $transition->toStage->sla_duration_minutes * 60)
+                : null;
+
             $request->forceFill([
                 'data' => $mergedData,
                 'current_stage_id' => $transition->to_stage_id,
                 'stage_entered_at' => $enteredAt,
+                'sla_deadline_epoch' => $slaDeadlineEpoch,
                 'status' => $newStatus,
                 'version' => $request->version + 1,
             ])->save();

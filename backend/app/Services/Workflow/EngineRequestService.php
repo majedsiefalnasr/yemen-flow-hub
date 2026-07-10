@@ -73,10 +73,17 @@ class EngineRequestService
             // SLA timing works from creation, not only after the first transition.
             $enteredAt = now();
 
+            // DB-001/DB-002 follow-up: see EngineTransitionService::execute() for
+            // why this is maintained alongside stage_entered_at.
+            $slaDeadlineEpoch = $initialStage->sla_duration_minutes !== null
+                ? $enteredAt->getTimestamp() + ((int) $initialStage->sla_duration_minutes * 60)
+                : null;
+
             $request = $this->createWithUniqueReference([
                 'workflow_version_id' => $version->id,
                 'current_stage_id' => $initialStage->id,
                 'stage_entered_at' => $enteredAt,
+                'sla_deadline_epoch' => $slaDeadlineEpoch,
                 'status' => 'ACTIVE',
                 'created_by' => $actor->id,
                 'bank_id' => $resolvedBankId,

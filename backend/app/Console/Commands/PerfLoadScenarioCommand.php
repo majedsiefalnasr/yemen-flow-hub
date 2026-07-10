@@ -204,15 +204,21 @@ class PerfLoadScenarioCommand extends Command
             $rows = [];
             $now = now();
 
+            $slaMinutes = $fixture['stage']->sla_duration_minutes;
+
             for ($i = 0; $i < $thisChunk; $i++) {
                 $seq = $inserted + $i;
                 $daysAgo = $seq % 400;
                 $enteredAt = $now->copy()->subDays($daysAgo)->subMinutes($seq % 1440);
+                $slaDeadlineEpoch = $slaMinutes !== null
+                    ? $enteredAt->getTimestamp() + ($slaMinutes * 60)
+                    : null;
 
                 $rows[] = [
                     'workflow_version_id' => $fixture['version']->id,
                     'current_stage_id' => $fixture['stage']->id,
                     'stage_entered_at' => $enteredAt,
+                    'sla_deadline_epoch' => $slaDeadlineEpoch,
                     'reference' => self::REF_PREFIX.$seq,
                     'status' => 'ACTIVE',
                     'created_by' => $fixture['user']->id,
