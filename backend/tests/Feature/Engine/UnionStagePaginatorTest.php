@@ -229,4 +229,130 @@ class UnionStagePaginatorTest extends TestCase
         $this->assertSame(2, $paginator->total());
         $this->assertSame([$r2->reference, $r1->reference], collect($paginator->items())->pluck('reference')->all());
     }
+
+    public function test_where_in_fallback_is_correct_when_a_non_stage_where_value_collides_with_a_stage_id(): void
+    {
+        // Regression test for the Critical binding-desync bug: the old fix
+        // located the current_stage_id binding to remove via
+        // array_search($value, $bindings, true), which finds the *first*
+        // binding with a matching value rather than the positionally
+        // correct one.
+        //
+        // paginateWhereIn() builds its single fallback query from ONLY
+        // stageIds[0]'s branch (see the $branchFactory($stageIds[0]) call),
+        // then widens that one branch's current_stage_id filter into a
+        // whereIn covering every stage ID. So the collision that matters is
+        // between a *different* where clause on stage one's branch (e.g.
+        // workflow_version_id, mirroring EngineRequestListQuery::
+        // applyFilters()'s pattern) and *stage two's* ID -- if
+        // array_search(stageId_to_remove, $bindings) matches the
+        // workflow_version_id binding first (because its value happens to
+        // equal stage two's id) instead of the current_stage_id binding,
+        // the wrong binding is stripped and the workflow_version_id filter
+        // silently vanishes, corrupting the query.
+        //
+        // Build a second WorkflowVersion whose id is deliberately made to
+        // equal $this->stageTwo->id to force that exact collision.
+        $collidingVersion = null;
+        for ($i = 0; $i < 50; $i++) {
+            $candidate = WorkflowVersion::create([
+                'workflow_definition_id' => $this->version->workflow_definition_id,
+                'version_number' => 100 + $i,
+                'state' => 'PUBLISHED',
+                'published_at' => now(),
+                'version' => 1,
+            ]);
+
+            if ($candidate->id === $this->stageTwo->id) {
+                $collidingVersion = $candidate;
+                break;
+            }
+
+            $candidate->delete();
+        }
+
+        $this->assertNotNull(
+            $collidingVersion,
+            'Could not force a WorkflowVersion id collision with stageTwo->id within 50 attempts; '.
+            'bump the attempt count or align the id ranges.',
+        );
+
+        // r1: stage one, scoped to the colliding workflow_version_id (the value that
+        // numerically equals stageTwo->id -- the collision the old fix mishandled).
+        $r1 = EngineRequest::create([
+            'workflow_version_id' => $collidingVersion->id,
+            'current_stage_id' => $this->stageOne->id,
+            'reference' => 'ENG-COLLIDE-1',
+            'status' => 'ACTIVE',
+            'created_by' => $this->user->id,
+            'bank_id' => $this->bank->id,
+            'invoice_number' => 'INV-ENG-COLLIDE-1',
+            'data' => [],
+            'version' => 1,
+        ]);
+        $r1->forceFill(['created_at' => now()->subDay(), 'updated_at' => now()->subDay()])->save();
+
+        // r2: stage two, same colliding workflow_version_id, so it also passes the
+        // workflow_version_id filter -- must be returned once the current_stage_id
+        // filter is correctly widened to whereIn(stageOne, stageTwo).
+        $r2 = EngineRequest::create([
+            'workflow_version_id' => $collidingVersion->id,
+            'current_stage_id' => $this->stageTwo->id,
+            'reference' => 'ENG-COLLIDE-2',
+            'status' => 'ACTIVE',
+            'created_by' => $this->user->id,
+            'bank_id' => $this->bank->id,
+            'invoice_number' => 'INV-ENG-COLLIDE-2',
+            'data' => [],
+            'version' => 1,
+        ]);
+        $r2->forceFill(['created_at' => now(), 'updated_at' => now()])->save();
+
+        // A decoy row on a *different* workflow_version_id must never appear: if the
+        // old bug strips the workflow_version_id binding instead of current_stage_id,
+        // this row would incorrectly leak into the results.
+        $decoy = EngineRequest::create([
+            'workflow_version_id' => $this->version->id,
+            'current_stage_id' => $this->stageOne->id,
+            'reference' => 'ENG-COLLIDE-DECOY',
+            'status' => 'ACTIVE',
+            'created_by' => $this->user->id,
+            'bank_id' => $this->bank->id,
+            'invoice_number' => 'INV-ENG-COLLIDE-DECOY',
+            'data' => [],
+            'version' => 1,
+        ]);
+        $decoy->forceFill(['created_at' => now()->subHours(12), 'updated_at' => now()->subHours(12)])->save();
+
+        $branchFactory = function (int $stageId) use ($collidingVersion): Builder {
+            // Three where clauses on the branch query, mirroring
+            // EngineRequestListQuery::applyFilters()'s bank_id +
+            // workflow_version_id + current_stage_id pattern -- the shape that
+            // hides the Critical bug when only two clauses are present.
+            return EngineRequest::query()
+                ->withStageEntry()
+                ->where('engine_requests.bank_id', $this->bank->id)
+                ->where('engine_requests.workflow_version_id', $collidingVersion->id)
+                ->where('engine_requests.current_stage_id', $stageId);
+        };
+
+        $paginator = UnionStagePaginator::paginate(
+            $branchFactory,
+            [$this->stageOne->id, $this->stageTwo->id],
+            [['engine_requests.created_at', 'desc'], ['engine_requests.id', 'asc']],
+            page: 1,
+            perPage: 25,
+            threshold: 1,
+        );
+
+        $this->assertSame(2, $paginator->total());
+        $this->assertSame(
+            [$r2->reference, $r1->reference],
+            collect($paginator->items())->pluck('reference')->all(),
+            'Only the two colliding-version rows must come back, correctly ordered, and '.
+            'the decoy on a different workflow_version_id must be excluded -- proves the '.
+            'fix strips the positionally correct current_stage_id binding rather than the '.
+            'first value-matching binding (which would be workflow_version_id here).',
+        );
+    }
 }

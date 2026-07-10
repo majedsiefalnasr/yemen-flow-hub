@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use Illuminate\Contracts\Database\Query\Expression;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator as LengthAwarePaginatorContract;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -23,7 +24,7 @@ class UnionStagePaginator
     /**
      * @param  \Closure(int): Builder  $branchFactory  Returns a fully-filtered query scoped to exactly one stage ID via a single Basic where on engine_requests.current_stage_id, with no orderBy/limit/select applied.
      * @param  list<int>  $stageIds
-     * @param  list<array{0: string, 1: 'asc'|'desc'}|array{0: 'raw', 1: string, 2: 'asc'|'desc'}>  $sortSpec
+     * @param  list<array{0: string, 1: 'asc'|'desc'}|array{0: 'raw', 1: string, 2: 'asc'|'desc'}>  $sortSpec  Column names must be fully table-qualified (e.g. 'engine_requests.created_at'), not bare (e.g. 'created_at'). paginateUnion() aliases each sort column to its bare (unqualified) name for the outer merge-and-resort query; an unqualified input column risks colliding with a same-named column pulled in via EngineRequest::scopeWithStageEntry()'s `current_stage` join (e.g. workflow_stages.id, workflow_stages.created_at).
      */
     public static function paginate(
         \Closure $branchFactory,
@@ -63,35 +64,48 @@ class UnionStagePaginator
         $query = $branchFactory($stageIds[0]);
         $baseQuery = $query->getQuery();
 
-        // Filtering `wheres` alone leaves a stale entry in the parallel
+        // Filtering `wheres` alone leaves stale entries in the parallel
         // `bindings['where']` array (Laravel keeps them as two independent,
         // positionally-appended arrays), which desyncs placeholders from
-        // values for every remaining bound where clause. Track and drop the
-        // current_stage_id binding's value alongside its where entry so the
-        // two arrays stay in sync.
-        $removedBindingValues = [];
+        // values for every remaining bound where clause. We cannot correlate
+        // the entry to remove by searching bindings *by value*: another
+        // where clause in the same branch (bank_id, workflow_version_id,
+        // merchant_id, etc. — see EngineRequestListQuery::applyFilters())
+        // can bind a value that is numerically equal to the stage ID being
+        // removed, so array_search(..., $bindings, true) would find that
+        // other binding first and strip it instead, silently corrupting the
+        // query. Instead we track the *positional* binding slot the
+        // current_stage_id where entry occupies by walking `wheres` in
+        // order and counting how many binding slots each where type
+        // consumes before it (per Laravel's own Builder::where()/whereIn()/
+        // whereNull() slot-consumption rules), then splice that exact slot
+        // out of bindings['where'].
+        $bindingSlotsToRemove = [];
+        $bindingIndex = 0;
         $baseQuery->wheres = array_values(array_filter(
             $baseQuery->wheres,
-            function ($where) use (&$removedBindingValues) {
+            function ($where) use (&$bindingIndex, &$bindingSlotsToRemove) {
+                $slots = self::bindingSlotCount($where);
+
                 if (($where['column'] ?? null) === 'engine_requests.current_stage_id') {
-                    if (array_key_exists('value', $where)) {
-                        $removedBindingValues[] = $where['value'];
+                    for ($i = 0; $i < $slots; $i++) {
+                        $bindingSlotsToRemove[] = $bindingIndex + $i;
                     }
+                    $bindingIndex += $slots;
 
                     return false;
                 }
+
+                $bindingIndex += $slots;
 
                 return true;
             },
         ));
 
-        if ($removedBindingValues !== []) {
+        if ($bindingSlotsToRemove !== []) {
             $bindings = $baseQuery->bindings['where'] ?? [];
-            foreach ($removedBindingValues as $removedValue) {
-                $index = array_search($removedValue, $bindings, true);
-                if ($index !== false) {
-                    unset($bindings[$index]);
-                }
+            foreach ($bindingSlotsToRemove as $slot) {
+                unset($bindings[$slot]);
             }
             $baseQuery->bindings['where'] = array_values($bindings);
         }
@@ -110,9 +124,46 @@ class UnionStagePaginator
     }
 
     /**
+     * Number of `bindings['where']` slots a single Laravel query-builder
+     * `wheres` entry consumes, mirroring Illuminate\Database\Query\Builder's
+     * own binding-producing methods exactly (verified against the installed
+     * framework version's where()/whereIn()/whereNull()/whereBetween()/
+     * whereRaw()/whereNested()/whereSub()/addWhereExistsQuery()):
+     *
+     * - `Basic` / `Bitwise` / `JsonBoolean` (plain where()): 1 slot, unless
+     *   the value is a raw Expression, which binds nothing.
+     * - `In` / `NotIn`: one slot per value.
+     * - `Null` / `NotNull` / `betweenColumns`: 0 slots — no value is bound.
+     * - `between`: binds up to 2 slots.
+     * - `raw` (whereRaw()): however many bindings were explicitly passed.
+     * - `Nested` (where(Closure)), `Sub`, `Exists` / `NotExists`
+     *   (whereHas()/whereExists()): these embed a full nested `query`
+     *   builder in the where entry itself and Laravel binds that embedded
+     *   query's *own* where bindings verbatim — so the slot count is simply
+     *   that embedded query's binding count, not a hardcoded guess.
+     * - anything else (column comparisons, row values, expressions, etc.):
+     *   0, since none of those are produced by this class's branch-factory
+     *   contract (EngineRequestListQuery::applyFilters()'s where/whereIn/
+     *   whereNull/whereRaw/nested-where/whereHas filters).
+     */
+    private static function bindingSlotCount(array $where): int
+    {
+        return match ($where['type'] ?? null) {
+            'Basic', 'Bitwise', 'JsonBoolean' => ($where['value'] ?? null) instanceof Expression ? 0 : 1,
+            'In', 'NotIn' => is_countable($where['values'] ?? null) ? count($where['values']) : 0,
+            'Null', 'NotNull', 'betweenColumns' => 0,
+            'between' => 2,
+            'raw' => is_array($where['bindings'] ?? null) ? count($where['bindings']) : 0,
+            'Nested' => isset($where['query']) ? count($where['query']->getRawBindings()['where'] ?? []) : 0,
+            'Sub', 'Exists', 'NotExists' => isset($where['query']) ? count($where['query']->getBindings()) : 0,
+            default => 0,
+        };
+    }
+
+    /**
      * @param  \Closure(int): Builder  $branchFactory
      * @param  list<int>  $stageIds
-     * @param  list<array{0: string, 1: 'asc'|'desc'}|array{0: 'raw', 1: string, 2: 'asc'|'desc'}>  $sortSpec
+     * @param  list<array{0: string, 1: 'asc'|'desc'}|array{0: 'raw', 1: string, 2: 'asc'|'desc'}>  $sortSpec  Column names must be fully table-qualified (e.g. 'engine_requests.created_at'), not bare (e.g. 'created_at'), to avoid ambiguity against EngineRequest::scopeWithStageEntry()'s `current_stage` join (workflow_stages aliased as current_stage, which has its own id/created_at columns). Each column is aliased below to its bare name for the outer merge-and-resort query, so an unqualified caller column could silently collide with a current_stage column of the same name.
      */
     private static function paginateUnion(
         \Closure $branchFactory,
