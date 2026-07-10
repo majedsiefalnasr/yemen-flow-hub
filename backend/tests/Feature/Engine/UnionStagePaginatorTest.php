@@ -10,6 +10,7 @@ use App\Models\StagePermission;
 use App\Models\Team;
 use App\Models\User;
 use App\Models\WorkflowDefinition;
+use App\Models\WorkflowHistoryEntry;
 use App\Models\WorkflowStage;
 use App\Models\WorkflowVersion;
 use App\Support\EngineRequestListQuery;
@@ -408,6 +409,88 @@ class UnionStagePaginatorTest extends TestCase
             [$withSla->reference, $noSla->reference],
             collect($paginator->items())->pluck('reference')->all(),
             'the SLA-configured row must sort before the no-SLA row even though it was created earlier',
+        );
+    }
+
+    public function test_union_path_hydration_preserves_stage_entered_at_coalesce_fallback(): void
+    {
+        // Regression test for the Important hydration bug: paginateUnion()'s final
+        // hydration step used a plain `$modelClass::query()->whereIn('id', $ids)->get()`
+        // with no withStageEntry() scope, so any row relying on the
+        // stage_entered_at COALESCE fallback (pre-backfill / legacy rows whose
+        // maintained column is still null) came back with stage_entered_at = null
+        // and therefore sla_status = null, instead of the real ok/nearing/breached
+        // value the old whereIn-only code path (and this class's own
+        // paginateWhereIn() fallback) would have derived.
+        //
+        // stageOne carries no sla_duration_minutes (see setUp()), so use a second
+        // stage configured with one, mirroring
+        // test_raw_orderby_expression_is_supported_for_sla_case_when_tiebreak()'s
+        // pattern of adding a dedicated SLA stage + StagePermission grant.
+        $bankOrg = Organization::where('code', 'commercial_banks')->firstOrFail();
+        $roleForSla = Role::where('code', 'intake')->firstOrFail();
+
+        $slaStage = WorkflowStage::create([
+            'workflow_version_id' => $this->version->id, 'code' => 'SLA_FALLBACK', 'name' => 'SLA Fallback',
+            'sort_order' => 4, 'is_initial' => false, 'is_final' => false, 'version' => 1,
+            'sla_duration_minutes' => 60,
+        ]);
+        StagePermission::create([
+            'stage_id' => $slaStage->id, 'organization_id' => $bankOrg->id, 'role_id' => $roleForSla->id,
+            'access_level' => 'EXECUTE', 'display_label' => 'Exec', 'version' => 1,
+        ]);
+
+        // Legacy row: stage_entered_at left null on the maintained column (simulating
+        // a pre-backfill row), so scopeWithStageEntry()'s COALESCE fallback must read
+        // workflow_history's max(created_at) for this request/stage instead.
+        $legacyRequest = EngineRequest::create([
+            'workflow_version_id' => $this->version->id,
+            'current_stage_id' => $slaStage->id,
+            'reference' => 'ENG-LEGACY-FALLBACK',
+            'status' => 'ACTIVE',
+            'created_by' => $this->user->id,
+            'bank_id' => $this->bank->id,
+            'invoice_number' => 'INV-ENG-LEGACY-FALLBACK',
+            'data' => [],
+            'version' => 1,
+        ]);
+        $enteredAt = now()->subMinutes(10);
+        $legacyRequest->forceFill(['created_at' => $enteredAt, 'updated_at' => $enteredAt, 'stage_entered_at' => null])->save();
+
+        // Mirrors SlaProjectionParityTest::requestOnStage()'s fixture pattern: the
+        // COALESCE fallback reads max(created_at) from workflow_history where
+        // to_stage_id matches the request's current stage.
+        WorkflowHistoryEntry::create([
+            'request_id' => $legacyRequest->id,
+            'to_stage_id' => $slaStage->id,
+            'from_stage_id' => $this->stageOne->id,
+            'performed_by' => $this->user->id,
+            'action_code' => 'ENTER',
+            'created_at' => $enteredAt,
+        ]);
+
+        // A second, unrelated row on a different accessible stage forces the union
+        // path (2+ stages), not the paginateWhereIn() fallback.
+        $this->makeRequest($this->stageOne, 'ENG-OTHER', now());
+
+        $paginator = UnionStagePaginator::paginate(
+            $this->branchFactory(),
+            [$this->stageOne->id, $slaStage->id],
+            [['engine_requests.created_at', 'desc'], ['engine_requests.id', 'asc']],
+            page: 1,
+            perPage: 25,
+        );
+
+        $hydrated = collect($paginator->items())->firstWhere('reference', 'ENG-LEGACY-FALLBACK');
+
+        $this->assertNotNull($hydrated, 'the legacy fallback row must be present in the union-path results');
+        $this->assertNotNull(
+            $hydrated->stage_entered_at,
+            'union-path hydration must apply withStageEntry() so the COALESCE fallback resolves stage_entered_at from workflow_history, not leave it null',
+        );
+        $this->assertNotNull(
+            $hydrated->sla_status,
+            'sla_status must be derivable via the COALESCE fallback on the union hydration path, matching the direct-query and paginateWhereIn() behaviour',
         );
     }
 }

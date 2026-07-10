@@ -5,6 +5,7 @@ namespace App\Support;
 use Illuminate\Contracts\Database\Query\Expression;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator as LengthAwarePaginatorContract;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
@@ -35,7 +36,15 @@ class UnionStagePaginator
         ?int $threshold = null,
     ): LengthAwarePaginatorContract {
         if ($stageIds === []) {
-            return new LengthAwarePaginator([], 0, $perPage, $page, [
+            // An empty Eloquent Collection, not a bare array or a base
+            // Illuminate\Support\Collection: callers such as
+            // EngineRequestController::myQueue() call $page->load([...]) on
+            // the returned paginator. LengthAwarePaginator wraps a bare array
+            // in Support\Collection, and only Eloquent\Collection defines
+            // load() -- both other shapes throw "Method ... ::load does not
+            // exist." Eloquent\Collection::load() itself is a safe no-op when
+            // empty.
+            return new LengthAwarePaginator(new EloquentCollection, 0, $perPage, $page, [
                 'path' => LengthAwarePaginator::resolveCurrentPath(),
             ]);
         }
@@ -227,7 +236,9 @@ class UnionStagePaginator
         $total = DB::query()->fromSub($unionCountQuery, 'u')->count();
 
         if ($ids === []) {
-            return new LengthAwarePaginator([], $total, $perPage, $page, [
+            // See the $stageIds === [] branch above for why this must be an
+            // empty Eloquent Collection, not a bare array.
+            return new LengthAwarePaginator(new EloquentCollection, $total, $perPage, $page, [
                 'path' => LengthAwarePaginator::resolveCurrentPath(),
             ]);
         }
@@ -243,7 +254,10 @@ class UnionStagePaginator
         // page-sized Eloquent collection in PHP via an array_flip lookup.
         // This is cheap (at most $perPage rows) and portable across both
         // database drivers.
-        $items = $modelClass::query()->whereIn('id', $ids)->get();
+        // withStageEntry() left-joins workflow_stages (aliased current_stage), which
+        // also has an `id` column, so the whereIn column must be table-qualified to
+        // avoid an ambiguous-column error on MySQL.
+        $items = $modelClass::query()->withStageEntry()->whereIn('engine_requests.id', $ids)->get();
         $idOrder = array_flip($ids);
         $items = $items->sortBy(fn ($item) => $idOrder[$item->id])->values();
 
