@@ -37,6 +37,19 @@ class UnionStagePaginator
         ?int $threshold = null,
         ?string $forceIndex = null,
     ): LengthAwarePaginatorContract {
+        // paginateUnion() computes offset = (page - 1) * perPage directly for
+        // its per-branch LIMIT and merge OFFSET, with no clamp of its own --
+        // unlike Laravel's own Paginator::resolveCurrentPage(), which clamps
+        // to >= 1. A caller-supplied page <= 0 (e.g. ?page=0 from a client)
+        // would otherwise produce a negative OFFSET, which MySQL rejects as a
+        // syntax error (a live 500) while SQLite silently tolerates it as a
+        // no-op -- the exact same MySQL-vs-SQLite blind spot this class has
+        // already hit twice. Clamping here covers both paginateUnion() and
+        // paginateWhereIn() (whose own ->paginate() call already clamps
+        // internally, so this is a no-op for that path, not a behavior
+        // change).
+        $page = max(1, $page);
+
         if ($stageIds === []) {
             // An empty Eloquent Collection, not a bare array or a base
             // Illuminate\Support\Collection: callers such as
@@ -91,14 +104,31 @@ class UnionStagePaginator
         // consumes before it (per Laravel's own Builder::where()/whereIn()/
         // whereNull() slot-consumption rules), then splice that exact slot
         // out of bindings['where'].
+        //
+        // Only the FIRST current_stage_id where is removed, not every match:
+        // the branch-factory contract (see paginate()'s docblock) applies
+        // exactly one such where as its own stage-scoping clause, always
+        // before any caller-supplied filters run (see
+        // EngineRequestController::myQueue()/index(), where
+        // EngineRequestListQuery::applyFilters() runs after the branch
+        // factory's own where). A caller-supplied `?stage_id=` filter (also
+        // a `current_stage_id` where, added by applyFilters()) would
+        // therefore always be the SECOND such where, and previously got
+        // silently stripped alongside the branch-scoping one -- broadening
+        // the fallback path's result set beyond what the user asked for,
+        // invisible on the < 10-stage-count union path and on the
+        // SQLite-backed test suite (which never exercises the
+        // above-threshold fallback with a stage_id filter).
         $bindingSlotsToRemove = [];
         $bindingIndex = 0;
+        $stageWhereRemoved = false;
         $baseQuery->wheres = array_values(array_filter(
             $baseQuery->wheres,
-            function ($where) use (&$bindingIndex, &$bindingSlotsToRemove) {
+            function ($where) use (&$bindingIndex, &$bindingSlotsToRemove, &$stageWhereRemoved) {
                 $slots = self::bindingSlotCount($where);
 
-                if (($where['column'] ?? null) === 'engine_requests.current_stage_id') {
+                if (! $stageWhereRemoved && ($where['column'] ?? null) === 'engine_requests.current_stage_id') {
+                    $stageWhereRemoved = true;
                     for ($i = 0; $i < $slots; $i++) {
                         $bindingSlotsToRemove[] = $bindingIndex + $i;
                     }

@@ -154,6 +154,45 @@ class UnionStagePaginatorTest extends TestCase
         );
     }
 
+    /**
+     * Final whole-branch review finding: paginateUnion() computed
+     * `offset = (page - 1) * perPage` with no floor, unlike Laravel's own
+     * Paginator::resolveCurrentPage() (which clamps to >= 1). A
+     * caller-supplied page <= 0 (e.g. ?page=0 from a client, which
+     * EngineRequestController passes straight through via
+     * $request->integer('page', 1)) produced a negative OFFSET -- MySQL
+     * rejects this as a syntax error (a live 500); SQLite silently
+     * tolerates it, so this was invisible to the whole SQLite-backed
+     * suite. paginate() now clamps $page to >= 1 before dispatching to
+     * either paginateUnion() or paginateWhereIn().
+     */
+    public function test_page_zero_or_negative_is_clamped_to_page_one(): void
+    {
+        $r1 = $this->makeRequest($this->stageOne, 'ENG-CLAMP-001', now()->subDays(2));
+        $r2 = $this->makeRequest($this->stageOne, 'ENG-CLAMP-002', now()->subDays(1));
+
+        $zeroPage = UnionStagePaginator::paginate(
+            $this->branchFactory(),
+            [$this->stageOne->id],
+            [['engine_requests.created_at', 'desc'], ['engine_requests.id', 'asc']],
+            page: 0,
+            perPage: 25,
+        );
+        $negativePage = UnionStagePaginator::paginate(
+            $this->branchFactory(),
+            [$this->stageOne->id],
+            [['engine_requests.created_at', 'desc'], ['engine_requests.id', 'asc']],
+            page: -3,
+            perPage: 25,
+        );
+
+        $expected = [$r2->reference, $r1->reference];
+        $this->assertSame($expected, collect($zeroPage->items())->pluck('reference')->all());
+        $this->assertSame(1, $zeroPage->currentPage());
+        $this->assertSame($expected, collect($negativePage->items())->pluck('reference')->all());
+        $this->assertSame(1, $negativePage->currentPage());
+    }
+
     public function test_two_stages_merge_and_sort_correctly_across_branches(): void
     {
         $a = $this->makeRequest($this->stageOne, 'ENG-MRG-A', now()->subDays(1));
@@ -301,6 +340,59 @@ class UnionStagePaginatorTest extends TestCase
 
         $this->assertSame(2, $paginator->total());
         $this->assertSame([$r2->reference, $r1->reference], collect($paginator->items())->pluck('reference')->all());
+    }
+
+    /**
+     * Final whole-branch review finding: the branch-factory contract
+     * applies exactly one current_stage_id where as its own stage-scoping
+     * clause -- but a caller (e.g. EngineRequestController::myQueue()/
+     * index() via EngineRequestListQuery::applyFilters()'s `?stage_id=`
+     * filter) can add a SECOND current_stage_id where on top of that. The
+     * old fix removed EVERY current_stage_id where before adding
+     * whereIn(stageIds), silently dropping the caller's own stage_id
+     * filter and broadening the result set beyond what was requested --
+     * invisible to every existing fallback test, none of which combine
+     * the above-threshold fallback with a stage_id filter. Fixed by
+     * removing only the FIRST current_stage_id where (the branch
+     * factory's own), matching the documented ordering (branch factory's
+     * where always runs before applyFilters()'s).
+     */
+    public function test_where_in_fallback_preserves_a_caller_supplied_stage_id_filter(): void
+    {
+        $matching = $this->makeRequest($this->stageOne, 'ENG-FILTER-MATCH', now()->subDay());
+        $this->makeRequest($this->stageTwo, 'ENG-FILTER-OTHER', now());
+
+        $branchFactory = function (int $stageId) {
+            $query = EngineRequest::query()
+                ->withStageEntry()
+                ->where('engine_requests.bank_id', $this->bank->id)
+                ->where('engine_requests.current_stage_id', $stageId);
+            // Mirrors EngineRequestListQuery::applyFilters()'s ?stage_id=
+            // handling: a second where on the same column, applied after
+            // the branch factory's own -- narrows the result to stage one
+            // only, even though both stageOne and stageTwo are passed as
+            // accessible stage IDs below.
+            $query->where('engine_requests.current_stage_id', $this->stageOne->id);
+
+            return $query;
+        };
+
+        $paginator = UnionStagePaginator::paginate(
+            $branchFactory,
+            [$this->stageOne->id, $this->stageTwo->id],
+            [['engine_requests.created_at', 'desc'], ['engine_requests.id', 'asc']],
+            page: 1,
+            perPage: 25,
+            threshold: 1,
+        );
+
+        $this->assertSame(
+            1,
+            $paginator->total(),
+            'the caller-supplied stage_id=stageOne filter must still narrow results to stage one only, '.
+            'not be silently dropped alongside the branch factory\'s own current_stage_id where',
+        );
+        $this->assertSame([$matching->reference], collect($paginator->items())->pluck('reference')->all());
     }
 
     public function test_where_in_fallback_is_correct_when_a_non_stage_where_value_collides_with_a_stage_id(): void
