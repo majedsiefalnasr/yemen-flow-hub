@@ -35,6 +35,11 @@
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="MAIL_MAILER" value="array"/>
+        <!-- Pulse is telemetry: its query recorders + ingest writes add
+             non-deterministic queries per request, which breaks exact
+             query-count assertions (OBS-001). Off in tests; recording is
+             verified against real MySQL, not here. -->
+        <env name="PULSE_ENABLED" value="false"/>
         <env name="APP_DEMO_ROLE_SWITCH" value="false"/>
         <env name="DEMO_SEED_DATA" value="true"/>
         <env name="DEMO_SEED_SIZE" value="minimal"/>

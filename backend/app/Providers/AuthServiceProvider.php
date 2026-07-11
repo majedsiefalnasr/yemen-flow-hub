@@ -69,5 +69,15 @@ class AuthServiceProvider extends ServiceProvider
         Gate::policy(FieldDefinition::class, FieldDefinitionPolicy::class);
         Gate::policy(StageFieldRule::class, StageFieldRulePolicy::class);
         Gate::policy(EngineRequest::class, EngineRequestPolicy::class);
+
+        // OBS-001: the Pulse dashboard (per-endpoint p50/p95/p99 latency,
+        // slow queries, exceptions) is operational infrastructure detail, not
+        // appropriate for any authenticated user — restricted to system admins
+        // (CBY_ADMIN), mirroring the viewHorizon gate in HorizonServiceProvider.
+        // Without this, Pulse's default gate only allows the 'local' env, which
+        // would lock the dashboard out entirely in staging/production.
+        Gate::define('viewPulse', function ($user = null) {
+            return $user !== null && method_exists($user, 'isSystemAdmin') && $user->isSystemAdmin();
+        });
     }
 }
