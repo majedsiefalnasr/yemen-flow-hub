@@ -11,6 +11,8 @@ import type {
 import type { ListOptions } from '@/composables/useEngineRequests'
 import { useEngineRequests } from '@/composables/useEngineRequests'
 import { useEngineRequestStats } from '@/composables/useEngineRequestStats'
+import { isAbortError } from '@/composables/useApi'
+import { extractApiErrorMessage, extractHttpStatus } from '@/utils/apiErrors'
 import { useEngineRequestActions } from '@/composables/useEngineRequestActions'
 import { useEngineRequestHistory } from '@/composables/useEngineRequestHistory'
 import { useEngineRequestDocuments } from '@/composables/useEngineRequestDocuments'
@@ -22,6 +24,30 @@ interface PaginationMeta {
   total: number
 }
 
+type StatsScope = 'all' | 'queue'
+
+/**
+ * API-UI-001: the stats endpoint could 500 (MySQL parity bugs, now fixed
+ * server-side) while the workflows page re-fired loadStats on every filter,
+ * pagination, and view change with no guard — a request storm that eventually
+ * tripped the 5/min rate limiter into 429s. These per-scope maps live at module
+ * scope (the store is a Pinia singleton) so they stay out of reactive state:
+ *
+ * - inFlight: single-flight. A concurrent call for the same scope reuses the
+ *   pending promise instead of opening a second request.
+ * - blockedSignature: the params signature that last failed for this scope.
+ *   While the inputs are unchanged, an auto-triggered reload short-circuits
+ *   instead of re-hitting a known-failing endpoint. A new signature (the user
+ *   changed a filter) or an explicit retry clears it.
+ */
+const statsInFlight = new Map<StatsScope, Promise<void>>()
+const statsBlockedSignature = new Map<StatsScope, string>()
+
+function statsSignature(options: ListOptions & { scope: StatsScope }): string {
+  const { scope, ...rest } = options
+  return `${scope}:${JSON.stringify(rest)}`
+}
+
 export const useEngineRequestsStore = defineStore('engineRequests', {
   state: () => ({
     instances: [] as EngineRequest[],
@@ -30,6 +56,9 @@ export const useEngineRequestsStore = defineStore('engineRequests', {
     queueMeta: null as PaginationMeta | null,
     queueStats: null as EngineRequestStats | null,
     allStats: null as EngineRequestStats | null,
+    statsError: null as string | null,
+    statsRateLimited: false,
+    statsLoading: false,
     availableWorkflows: [] as AvailableWorkflow[],
     current: null as EngineRequest | null,
     duplicateWarnings: [] as EngineDuplicateWarning[],
@@ -60,14 +89,66 @@ export const useEngineRequestsStore = defineStore('engineRequests', {
       this.error = error.value
     },
 
-    async loadStats(options: ListOptions & { scope: 'all' | 'queue' }) {
-      const { fetchStats, stats } = useEngineRequestStats()
-      await fetchStats(options)
-      if (options.scope === 'queue') {
-        this.queueStats = stats.value
-      } else {
-        this.allStats = stats.value
-      }
+    /**
+     * API-UI-001: single-flight + terminal-error-aware stats load. Auto-triggered
+     * reloads (filter/pagination/view watchers) short-circuit when the same params
+     * already failed for this scope, so a failing endpoint is not hammered; the
+     * signature changes when the user changes a filter, and retryStats() clears the
+     * block for an explicit retry. Errors surface on statsError (rendered by the
+     * page Alert) instead of rejecting silently, and 429s set statsRateLimited.
+     */
+    async loadStats(options: ListOptions & { scope: StatsScope }) {
+      const scope = options.scope
+      const signature = statsSignature(options)
+
+      // Terminal-error circuit: don't auto-refire the same known-failing request.
+      if (statsBlockedSignature.get(scope) === signature) return
+
+      // Single-flight: a concurrent identical scope call reuses the in-flight one.
+      const existing = statsInFlight.get(scope)
+      if (existing) return existing
+
+      const run = (async () => {
+        const { fetchStats, stats } = useEngineRequestStats()
+        this.statsLoading = true
+        try {
+          await fetchStats(options)
+          if (scope === 'queue') {
+            this.queueStats = stats.value
+          } else {
+            this.allStats = stats.value
+          }
+          statsBlockedSignature.delete(scope)
+          this.statsError = null
+          this.statsRateLimited = false
+        } catch (cause: unknown) {
+          if (isAbortError(cause)) return
+          // Block this signature so the reactive watchers stop re-firing it until
+          // the params change or the user retries explicitly.
+          statsBlockedSignature.set(scope, signature)
+          this.statsRateLimited = extractHttpStatus(cause) === 429
+          this.statsError = this.statsRateLimited
+            ? 'تم إيقاف التحديث مؤقتاً بسبب كثرة الطلبات. حاول مرة أخرى بعد قليل.'
+            : extractApiErrorMessage(cause, 'تعذر تحميل الإحصائيات.')
+        } finally {
+          this.statsLoading = false
+          statsInFlight.delete(scope)
+        }
+      })()
+
+      statsInFlight.set(scope, run)
+      return run
+    },
+
+    /**
+     * Explicit user-initiated stats retry: clear the terminal-error circuit for
+     * both scopes so the next loadStats re-hits the endpoint even if the params
+     * are unchanged.
+     */
+    resetStatsErrorState() {
+      statsBlockedSignature.clear()
+      this.statsError = null
+      this.statsRateLimited = false
     },
 
     async loadAvailableWorkflows() {

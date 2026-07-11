@@ -55,6 +55,21 @@ export function extractRequestId(err: unknown): string | null {
   return data?.error?.request_id ?? data?.request_id ?? null
 }
 
+/**
+ * Read the HTTP status off an ofetch error, which exposes it as `status`,
+ * `statusCode`, or `response.status` depending on the failure path. Returns null
+ * for non-HTTP errors (network, abort).
+ */
+export function extractHttpStatus(err: unknown): number | null {
+  if (typeof err !== 'object' || err === null) return null
+  const candidate = err as {
+    status?: number
+    statusCode?: number
+    response?: { status?: number }
+  }
+  return candidate.status ?? candidate.statusCode ?? candidate.response?.status ?? null
+}
+
 export function extractApiFieldErrors(err: unknown): Record<string, string | undefined> {
   const data = readErrorPayload(err) as ApiError | ApiErrorPayload | undefined
   if (!data) return {}

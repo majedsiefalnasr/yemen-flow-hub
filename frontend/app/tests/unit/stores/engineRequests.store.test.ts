@@ -10,6 +10,8 @@ const mockExecuteAction = vi.fn()
 const mockFetchHistory = vi.fn()
 const mockFetchGraph = vi.fn()
 const mockFetchDocuments = vi.fn()
+const mockFetchStats = vi.fn()
+const statsRef = { value: null as unknown }
 
 vi.mock('@/composables/useEngineRequests', () => ({
   useEngineRequests: () => ({
@@ -19,6 +21,7 @@ vi.mock('@/composables/useEngineRequests', () => ({
     queueMeta: { value: null },
     availableWorkflows: { value: [] },
     current: { value: null },
+    currentWarnings: { value: [] },
     loading: { value: false },
     error: { value: null },
     fetchList: mockFetchList,
@@ -27,6 +30,14 @@ vi.mock('@/composables/useEngineRequests', () => ({
     create: mockCreate,
     show: mockShow,
     saveDraft: mockSaveDraft,
+    abandonDraft: vi.fn(),
+  }),
+}))
+
+vi.mock('@/composables/useEngineRequestStats', () => ({
+  useEngineRequestStats: () => ({
+    stats: statsRef,
+    fetchStats: mockFetchStats,
   }),
 }))
 
@@ -73,6 +84,8 @@ describe('useEngineRequestsStore', () => {
     mockFetchHistory.mockReset()
     mockFetchGraph.mockReset()
     mockFetchDocuments.mockReset()
+    mockFetchStats.mockReset()
+    statsRef.value = null
   })
 
   it('loadList delegates to the composable', async () => {
@@ -111,5 +124,74 @@ describe('useEngineRequestsStore', () => {
     await store.executeTransition(9, 3, 'ok', {}, 1)
 
     expect(mockExecuteAction).toHaveBeenCalledWith(9, 3, 'ok', {}, 1)
+  })
+
+  describe('loadStats (API-UI-001)', () => {
+    it('stores stats by scope and clears any error on success', async () => {
+      statsRef.value = { total: 5, active: 3 }
+      mockFetchStats.mockResolvedValue(undefined)
+      const store = useEngineRequestsStore()
+
+      await store.loadStats({ scope: 'all', page: 1 })
+
+      expect(store.allStats).toEqual({ total: 5, active: 3 })
+      expect(store.statsError).toBeNull()
+      expect(store.statsRateLimited).toBe(false)
+    })
+
+    it('dedupes concurrent identical-scope calls (single-flight)', async () => {
+      mockFetchStats.mockResolvedValue(undefined)
+      const store = useEngineRequestsStore()
+
+      await Promise.all([
+        store.loadStats({ scope: 'queue', page: 10 }),
+        store.loadStats({ scope: 'queue', page: 10 }),
+      ])
+
+      expect(mockFetchStats).toHaveBeenCalledTimes(1)
+    })
+
+    it('surfaces the error and blocks re-firing the same failing params', async () => {
+      mockFetchStats.mockRejectedValue({ data: { message: 'boom' } })
+      const store = useEngineRequestsStore()
+      store.resetStatsErrorState()
+
+      await store.loadStats({ scope: 'all', page: 2 })
+      expect(store.statsError).toBe('boom')
+      expect(mockFetchStats).toHaveBeenCalledTimes(1)
+
+      // Same params again: short-circuited by the terminal-error circuit.
+      await store.loadStats({ scope: 'all', page: 2 })
+      expect(mockFetchStats).toHaveBeenCalledTimes(1)
+    })
+
+    it('resetStatsErrorState clears the circuit so an explicit retry re-hits', async () => {
+      mockFetchStats.mockRejectedValue({ data: { message: 'boom' } })
+      const store = useEngineRequestsStore()
+      store.resetStatsErrorState()
+
+      await store.loadStats({ scope: 'all', page: 3 })
+      expect(mockFetchStats).toHaveBeenCalledTimes(1)
+
+      store.resetStatsErrorState()
+      expect(store.statsError).toBeNull()
+
+      mockFetchStats.mockResolvedValue(undefined)
+      statsRef.value = { total: 1 }
+      await store.loadStats({ scope: 'all', page: 3 })
+      expect(mockFetchStats).toHaveBeenCalledTimes(2)
+      expect(store.allStats).toEqual({ total: 1 })
+    })
+
+    it('flags rate limiting on a 429 response', async () => {
+      mockFetchStats.mockRejectedValue({ status: 429 })
+      const store = useEngineRequestsStore()
+      store.resetStatsErrorState()
+
+      await store.loadStats({ scope: 'queue', page: 4 })
+
+      expect(store.statsRateLimited).toBe(true)
+      expect(store.statsError).toContain('كثرة الطلبات')
+    })
   })
 })

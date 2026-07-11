@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import type { ColumnDef, ColumnFiltersState, PaginationState, VisibilityState } from '@tanstack/vue-table'
+import type {
+  ColumnDef,
+  ColumnFiltersState,
+  PaginationState,
+  VisibilityState,
+} from '@tanstack/vue-table'
 import { refDebounced } from '@vueuse/core'
 import { h } from 'vue'
 import {
@@ -120,22 +125,24 @@ function buildListParams(): ListOptions {
 
 async function load() {
   const params = buildListParams()
-  const loaders: Promise<void>[] = []
 
-  if (view.value === 'queue') {
-    loaders.push(store.loadQueue(params))
-  } else {
-    loaders.push(store.loadList(params))
-  }
+  // The primary list/queue load owns store.error and gates the table. Stats
+  // loads own their own statsError circuit (API-UI-001) and must never reject
+  // the list load or hide the table, so they run detached via allSettled.
+  const listLoad = view.value === 'queue' ? store.loadQueue(params) : store.loadList(params)
 
-  if (!isSupervisor.value) {
-    loaders.push(store.loadStats({ ...params, scope: 'queue' }))
-    loaders.push(store.loadStats({ ...params, scope: 'all' }))
-  } else {
-    loaders.push(store.loadStats({ ...params, scope: 'all' }))
-  }
+  const statsLoads = isSupervisor.value
+    ? [store.loadStats({ ...params, scope: 'all' })]
+    : [store.loadStats({ ...params, scope: 'queue' }), store.loadStats({ ...params, scope: 'all' })]
 
-  await Promise.all(loaders)
+  await Promise.allSettled([listLoad, ...statsLoads])
+}
+
+// Explicit retry: clear the stats terminal-error circuit so an unchanged-param
+// reload re-hits the endpoint, then reload everything.
+function retryLoad() {
+  store.resetStatsErrorState()
+  load()
 }
 
 onMounted(() => {
@@ -151,9 +158,13 @@ watch(view, () => {
   pagination.value = { pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE }
 })
 
-watch([debouncedQuery, columnFilters, pagination], () => {
-  load()
-}, { deep: true })
+watch(
+  [debouncedQuery, columnFilters, pagination],
+  () => {
+    load()
+  },
+  { deep: true },
+)
 
 const rows = computed<EngineRequest[]>(() =>
   view.value === 'queue' ? store.queue : store.instances,
@@ -630,208 +641,223 @@ function handleReset() {
       <AlertTitle>خطأ في التحميل</AlertTitle>
       <AlertDescription>{{ store.error }}</AlertDescription>
       <AlertAction>
-        <Button variant="outline" size="sm" @click="load">إعادة المحاولة</Button>
+        <Button variant="outline" size="sm" @click="retryLoad">إعادة المحاولة</Button>
       </AlertAction>
     </Alert>
 
-    <div v-else class="relative flex flex-col gap-4">
-      <DataTable
-        v-model:pagination="pagination"
-        :data="rows"
-        :columns="columns"
-        :loading="store.loading"
-        :page-count="pageMeta?.last_page ?? -1"
-        :column-filters="columnFilters"
-        :column-visibility="columnVisibility"
-        row-class="cursor-pointer"
-        @update:column-filters="(v) => (columnFilters = v)"
-        @update:column-visibility="(v) => (columnVisibility = v)"
-        @row-click="(row: EngineRequest) => openInstance(row.id)"
-      >
-        <template #toolbar="{ table }">
-          <DataTableToolbar
-            :table="table"
-            search-placeholder="بحث بالمرجع أو رقم الفاتورة"
-            :has-filters="hasActiveFilters"
-            @update:search="(v) => (query = v)"
-            @reset="handleReset"
-          >
-            <template #filters>
-              <!-- Scope: single-select data-source filter that replaces the old
+    <template v-else>
+      <!-- Stats failed but the table itself loaded: surface the stats error
+           without hiding the queue, and offer a retry that clears the circuit. -->
+      <Alert v-if="store.statsError" variant="destructive" role="alert">
+        <AlertCircle class="h-4 w-4" />
+        <AlertTitle>{{
+          store.statsRateLimited ? 'تم إيقاف التحديث مؤقتاً' : 'تعذّر تحميل الإحصائيات'
+        }}</AlertTitle>
+        <AlertDescription>{{ store.statsError }}</AlertDescription>
+        <AlertAction>
+          <Button variant="outline" size="sm" @click="retryLoad">إعادة المحاولة</Button>
+        </AlertAction>
+      </Alert>
+
+      <div class="relative flex flex-col gap-4">
+        <DataTable
+          v-model:pagination="pagination"
+          :data="rows"
+          :columns="columns"
+          :loading="store.loading"
+          :page-count="pageMeta?.last_page ?? -1"
+          :column-filters="columnFilters"
+          :column-visibility="columnVisibility"
+          row-class="cursor-pointer"
+          @update:column-filters="(v) => (columnFilters = v)"
+          @update:column-visibility="(v) => (columnVisibility = v)"
+          @row-click="(row: EngineRequest) => openInstance(row.id)"
+        >
+          <template #toolbar="{ table }">
+            <DataTableToolbar
+              :table="table"
+              search-placeholder="بحث بالمرجع أو رقم الفاتورة"
+              :has-filters="hasActiveFilters"
+              @update:search="(v) => (query = v)"
+              @reset="handleReset"
+            >
+              <template #filters>
+                <!-- Scope: single-select data-source filter that replaces the old
                    queue/all tabs. Hidden for supervisors, who have no personal
                    queue and always view the whole platform. -->
-              <Popover v-if="!isSupervisor">
-                <PopoverTrigger as-child>
-                  <Button variant="outline" size="sm" class="h-8 border-dashed">
-                    <ListFilter class="me-2 h-4 w-4" />
-                    النطاق
-                    <Separator orientation="vertical" class="mx-2 h-4" />
-                    <Badge variant="secondary" class="rounded-sm px-1 font-normal">
-                      {{ scopeLabel }}
-                    </Badge>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent class="w-[200px] p-0" align="start">
-                  <Command>
-                    <CommandList>
-                      <CommandGroup>
-                        <CommandItem
-                          v-for="option in scopeOptions"
-                          :key="option.value"
-                          :value="option.value"
-                          class="flex items-center gap-2"
-                          @select="view = option.value"
-                        >
-                          <div
-                            class="border-primary flex h-4 w-4 items-center justify-center rounded-full border"
-                            :class="
-                              view === option.value
-                                ? 'bg-primary text-primary-foreground'
-                                : 'opacity-50'
-                            "
+                <Popover v-if="!isSupervisor">
+                  <PopoverTrigger as-child>
+                    <Button variant="outline" size="sm" class="h-8 border-dashed">
+                      <ListFilter class="me-2 h-4 w-4" />
+                      النطاق
+                      <Separator orientation="vertical" class="mx-2 h-4" />
+                      <Badge variant="secondary" class="rounded-sm px-1 font-normal">
+                        {{ scopeLabel }}
+                      </Badge>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent class="w-[200px] p-0" align="start">
+                    <Command>
+                      <CommandList>
+                        <CommandGroup>
+                          <CommandItem
+                            v-for="option in scopeOptions"
+                            :key="option.value"
+                            :value="option.value"
+                            class="flex items-center gap-2"
+                            @select="view = option.value"
                           >
-                            <Check v-if="view === option.value" class="h-3 w-3" />
-                          </div>
-                          <span>{{ option.label }}</span>
-                        </CommandItem>
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-              <DataTableFacetedFilter
-                v-if="table.getColumn('workflow') && workflowFilterOptions.length > 1"
-                :column="table.getColumn('workflow')!"
-                title="مسار العمل"
-                :options="workflowFilterOptions"
-              />
-              <DataTableFacetedFilter
-                v-if="table.getColumn('status')"
-                :column="table.getColumn('status')!"
-                title="الحالة"
-                :options="statusFilterOptions"
-              />
-              <DataTableFacetedFilter
-                v-if="table.getColumn('stage') && stageFilterOptions.length > 1"
-                :column="table.getColumn('stage')!"
-                title="المرحلة"
-                :options="stageFilterOptions"
-              />
-              <DataTableFacetedFilter
-                v-if="table.getColumn('bank') && bankFilterOptions.length > 1"
-                :column="table.getColumn('bank')!"
-                title="البنك"
-                :options="bankFilterOptions"
-              />
-              <!-- Oversight filters, supervisor only. -->
-              <DataTableFacetedFilter
-                v-if="isSupervisor && table.getColumn('sla')"
-                :column="table.getColumn('sla')!"
-                title="مؤشر SLA"
-                :options="slaFilterOptions"
-              />
-              <DataTableFacetedFilter
-                v-if="isSupervisor && table.getColumn('claimed')"
-                :column="table.getColumn('claimed')!"
-                title="المسؤول"
-                :options="claimFilterOptions"
-              />
-            </template>
-            <template #actions>
-              <DataTableViewOptions :table="table" :column-labels="COLUMN_LABELS" />
-              <DataTableExport
-                :table="table as any"
-                :export-columns="exportCols as any"
-                :filename="buildExportFilename()"
-                :formats="['csv', 'tsv', 'json', 'excel', 'pdf']"
-                :respect-column-visibility="true"
-              />
-            </template>
-          </DataTableToolbar>
-        </template>
-        <template #empty>
-          <Empty class="bg-muted/20 min-h-[280px] rounded-xl border border-dashed">
-            <EmptyHeader>
-              <div
-                class="bg-muted text-muted-foreground flex size-12 items-center justify-center rounded-xl"
-              >
-                <component
-                  :is="
-                    hasActiveFilters
-                      ? SearchX
-                      : isSupervisor
-                        ? Layers
-                        : view === 'queue'
-                          ? CheckCircle2
-                          : AlertTriangle
-                  "
-                  class="size-5"
+                            <div
+                              class="border-primary flex h-4 w-4 items-center justify-center rounded-full border"
+                              :class="
+                                view === option.value
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'opacity-50'
+                              "
+                            >
+                              <Check v-if="view === option.value" class="h-3 w-3" />
+                            </div>
+                            <span>{{ option.label }}</span>
+                          </CommandItem>
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                <DataTableFacetedFilter
+                  v-if="table.getColumn('workflow') && workflowFilterOptions.length > 1"
+                  :column="table.getColumn('workflow')!"
+                  title="مسار العمل"
+                  :options="workflowFilterOptions"
                 />
-              </div>
-              <EmptyTitle>
-                {{
-                  hasActiveFilters
-                    ? 'لا توجد طلبات مطابقة'
-                    : isSupervisor
-                      ? 'لا توجد طلبات في النظام'
-                      : view === 'queue'
-                        ? 'الطابور فارغ'
-                        : 'لا توجد طلبات معروضة لك'
-                }}
-              </EmptyTitle>
-            </EmptyHeader>
-            <EmptyContent>
-              <EmptyDescription>
-                <template v-if="hasActiveFilters">
-                  جرّب تخفيف معايير البحث أو إعادة ضبط الفلاتر.
-                </template>
-                <template v-else-if="isSupervisor">
-                  لم يتم إنشاء أي طلبات تمويل عبر المنصة حتى الآن. ستظهر هنا للرقابة والمتابعة فور
-                  تقديم أول طلب.
-                </template>
-                <template v-else-if="view === 'queue'">
-                  لا توجد طلبات في انتظار إجرائك حالياً. اعرض جميع الطلبات لمتابعة ما هو متاح لك في
-                  النظام.
-                </template>
-                <template v-else>
-                  القائمة مقصورة على الطلبات والمراحل المصرّح لك بالاطلاع عليها حسب دورك. إن كنت
-                  تتوقع رؤية طلبات ولا تظهر، فقد تكون في مراحل خارج نطاق صلاحياتك؛ راجع مسؤول
-                  النظام.
-                </template>
-              </EmptyDescription>
-              <Button
-                v-if="hasActiveFilters"
-                variant="outline"
-                size="sm"
-                class="mt-3"
-                @click="handleReset"
-              >
-                إعادة ضبط الفلاتر
-              </Button>
-              <Button
-                v-else-if="!isSupervisor && view === 'queue'"
-                variant="outline"
-                size="sm"
-                class="mt-3"
-                @click="view = 'all'"
-              >
-                عرض جميع الطلبات
-              </Button>
-              <Button
-                v-else-if="!isSupervisor && view === 'all' && canCreateRequest"
-                size="sm"
-                class="mt-3"
-                @click="router.push('/workflows/new')"
-              >
-                إنشاء طلب جديد
-              </Button>
-            </EmptyContent>
-          </Empty>
-        </template>
-        <template #pagination="{ table }">
-          <DataTablePagination :table="table" :total-rows="pageMeta?.total" />
-        </template>
-      </DataTable>
-    </div>
+                <DataTableFacetedFilter
+                  v-if="table.getColumn('status')"
+                  :column="table.getColumn('status')!"
+                  title="الحالة"
+                  :options="statusFilterOptions"
+                />
+                <DataTableFacetedFilter
+                  v-if="table.getColumn('stage') && stageFilterOptions.length > 1"
+                  :column="table.getColumn('stage')!"
+                  title="المرحلة"
+                  :options="stageFilterOptions"
+                />
+                <DataTableFacetedFilter
+                  v-if="table.getColumn('bank') && bankFilterOptions.length > 1"
+                  :column="table.getColumn('bank')!"
+                  title="البنك"
+                  :options="bankFilterOptions"
+                />
+                <!-- Oversight filters, supervisor only. -->
+                <DataTableFacetedFilter
+                  v-if="isSupervisor && table.getColumn('sla')"
+                  :column="table.getColumn('sla')!"
+                  title="مؤشر SLA"
+                  :options="slaFilterOptions"
+                />
+                <DataTableFacetedFilter
+                  v-if="isSupervisor && table.getColumn('claimed')"
+                  :column="table.getColumn('claimed')!"
+                  title="المسؤول"
+                  :options="claimFilterOptions"
+                />
+              </template>
+              <template #actions>
+                <DataTableViewOptions :table="table" :column-labels="COLUMN_LABELS" />
+                <DataTableExport
+                  :table="table as any"
+                  :export-columns="exportCols as any"
+                  :filename="buildExportFilename()"
+                  :formats="['csv', 'tsv', 'json', 'excel', 'pdf']"
+                  :respect-column-visibility="true"
+                />
+              </template>
+            </DataTableToolbar>
+          </template>
+          <template #empty>
+            <Empty class="bg-muted/20 min-h-[280px] rounded-xl border border-dashed">
+              <EmptyHeader>
+                <div
+                  class="bg-muted text-muted-foreground flex size-12 items-center justify-center rounded-xl"
+                >
+                  <component
+                    :is="
+                      hasActiveFilters
+                        ? SearchX
+                        : isSupervisor
+                          ? Layers
+                          : view === 'queue'
+                            ? CheckCircle2
+                            : AlertTriangle
+                    "
+                    class="size-5"
+                  />
+                </div>
+                <EmptyTitle>
+                  {{
+                    hasActiveFilters
+                      ? 'لا توجد طلبات مطابقة'
+                      : isSupervisor
+                        ? 'لا توجد طلبات في النظام'
+                        : view === 'queue'
+                          ? 'الطابور فارغ'
+                          : 'لا توجد طلبات معروضة لك'
+                  }}
+                </EmptyTitle>
+              </EmptyHeader>
+              <EmptyContent>
+                <EmptyDescription>
+                  <template v-if="hasActiveFilters">
+                    جرّب تخفيف معايير البحث أو إعادة ضبط الفلاتر.
+                  </template>
+                  <template v-else-if="isSupervisor">
+                    لم يتم إنشاء أي طلبات تمويل عبر المنصة حتى الآن. ستظهر هنا للرقابة والمتابعة فور
+                    تقديم أول طلب.
+                  </template>
+                  <template v-else-if="view === 'queue'">
+                    لا توجد طلبات في انتظار إجرائك حالياً. اعرض جميع الطلبات لمتابعة ما هو متاح لك
+                    في النظام.
+                  </template>
+                  <template v-else>
+                    القائمة مقصورة على الطلبات والمراحل المصرّح لك بالاطلاع عليها حسب دورك. إن كنت
+                    تتوقع رؤية طلبات ولا تظهر، فقد تكون في مراحل خارج نطاق صلاحياتك؛ راجع مسؤول
+                    النظام.
+                  </template>
+                </EmptyDescription>
+                <Button
+                  v-if="hasActiveFilters"
+                  variant="outline"
+                  size="sm"
+                  class="mt-3"
+                  @click="handleReset"
+                >
+                  إعادة ضبط الفلاتر
+                </Button>
+                <Button
+                  v-else-if="!isSupervisor && view === 'queue'"
+                  variant="outline"
+                  size="sm"
+                  class="mt-3"
+                  @click="view = 'all'"
+                >
+                  عرض جميع الطلبات
+                </Button>
+                <Button
+                  v-else-if="!isSupervisor && view === 'all' && canCreateRequest"
+                  size="sm"
+                  class="mt-3"
+                  @click="router.push('/workflows/new')"
+                >
+                  إنشاء طلب جديد
+                </Button>
+              </EmptyContent>
+            </Empty>
+          </template>
+          <template #pagination="{ table }">
+            <DataTablePagination :table="table" :total-rows="pageMeta?.total" />
+          </template>
+        </DataTable>
+      </div>
+    </template>
   </div>
 </template>
