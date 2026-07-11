@@ -43,9 +43,12 @@ class EngineRequestCanExecuteTest extends TestCase
         ['request' => $request] = EngineWorkflowFactory::seedClaimStageWithTransition();
 
         // A user who may VIEW the stage but holds no EXECUTE row: a genuine
-        // viewer, which the old UI wrongly treated as an actor.
+        // viewer, which the old UI wrongly treated as an actor. Use a
+        // NATIONAL_COMMITTEE identity so DataScope grants system-wide read access
+        // to this bankless factory request; the assertion under test is the
+        // can_execute flag, not organization scope (RBAC-004 covers scope).
         $viewer = User::factory()->create();
-        $viewer = $this->assignGovernanceIdentity($viewer, UserRole::DATA_ENTRY);
+        $viewer = $this->assignGovernanceIdentity($viewer, UserRole::SUPPORT_COMMITTEE);
         StagePermission::create([
             'stage_id' => $request->current_stage_id,
             'user_id' => $viewer->id,
