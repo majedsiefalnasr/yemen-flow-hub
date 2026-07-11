@@ -110,8 +110,10 @@ class EngineRequestListQuery
     {
         $deadline = EngineRequest::slaDeadlineEpochSql();
         $now = EngineRequest::nowEpochSql();
-        // Nearing window = the final 20% of the SLA (at least 1 minute) before the deadline.
-        $nearingWindow = 'MAX(1, CAST(current_stage.sla_duration_minutes * 0.2 AS INTEGER)) * 60';
+        // Nearing window = the final 20% of the SLA (at least 1 minute) before the
+        // deadline. The scalar-max/integer-cast idiom differs by engine, so the
+        // expression is resolved through EngineRequest::nearingWindowSql().
+        $nearingWindow = EngineRequest::nearingWindowSql();
         $threshold = "({$deadline}) - ({$nearingWindow})";
 
         match ($slaStatus) {

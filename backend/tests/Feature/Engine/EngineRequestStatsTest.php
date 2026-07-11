@@ -3,7 +3,6 @@
 namespace Tests\Feature\Engine;
 
 use App\Enums\StageAccessLevel;
-use App\Enums\UserRole;
 use App\Models\Bank;
 use App\Models\EngineRequest;
 use App\Models\Organization;
@@ -15,9 +14,11 @@ use App\Models\WorkflowDefinition;
 use App\Models\WorkflowHistoryEntry;
 use App\Models\WorkflowStage;
 use App\Models\WorkflowVersion;
+use App\Services\Workflow\EngineRequestStatsService;
 use Database\Seeders\GovernanceSeeder;
 use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -192,5 +193,59 @@ class EngineRequestStatsTest extends TestCase
             ->assertOk();
 
         $this->assertSame($queue->json('meta.total'), $stats->json('data.total'));
+    }
+
+    /**
+     * API-UI-001 regression: the by_status grouped pass must project only the
+     * grouped column and aggregates. The suite runs on SQLite, which ignores
+     * ONLY_FULL_GROUP_BY, so a nonaggregated `engine_requests.*` projection
+     * beside `GROUP BY status` passes here yet raises MySQL 1055 (a 500 that
+     * drove the client into a retry storm). Asserting on `aggregate()`'s own
+     * compiled SQL keeps the guard engine-independent.
+     */
+    public function test_by_status_grouped_query_does_not_project_nonaggregated_columns(): void
+    {
+        $service = app(EngineRequestStatsService::class);
+        $request = Request::create('/api/v1/engine-requests/stats', 'GET', ['scope' => 'all']);
+
+        // Normalize away engine-specific identifier quoting (` for MySQL, " for
+        // SQLite) so the assertions hold on any driver the suite runs under.
+        $normalize = fn (string $sql): string => strtolower(str_replace(['`', '"'], '', $sql));
+
+        $captured = [];
+        DB::listen(function ($query) use (&$captured, $normalize): void {
+            $sql = $normalize($query->sql);
+            if (str_contains($sql, 'group by')) {
+                $captured[] = $sql;
+            }
+        });
+
+        $service->aggregate($this->executor, $request, 'all');
+
+        $grouped = collect($captured)->first(fn (string $sql) => str_contains($sql, 'group by engine_requests.status'));
+        $this->assertNotNull($grouped, 'aggregate() did not run the GROUP BY status pass.');
+        $this->assertStringNotContainsString('engine_requests.*', $grouped, 'Grouped stats query still projects engine_requests.* alongside GROUP BY status (MySQL 1055).');
+        $this->assertStringNotContainsString('stage_entered_at', $grouped, 'Grouped stats query still projects the stage-entry column alongside GROUP BY status.');
+    }
+
+    /**
+     * API-UI-001 regression: the SLA "nearing" window built a `MAX(1, CAST(x AS
+     * INTEGER))` expression that only parses on SQLite; on MySQL it raised 1064
+     * (scalar MAX / CAST-INTEGER are SQLite-only), so the nearing_sla metric — and
+     * thus the whole stats endpoint — 500'd. The window is now resolved through the
+     * driver-branched EngineRequest::nearingWindowSql(). Every SLA filter must run
+     * on whichever engine the suite uses, and the endpoint must stay 200.
+     */
+    public function test_stats_endpoint_survives_sla_status_filters(): void
+    {
+        $this->seedRequest('ENG-SLA-BREACHED', 'INV-SLA-1', breached: true);
+        $this->seedRequest('ENG-SLA-OK', 'INV-SLA-2');
+
+        foreach (['breached', 'nearing', 'ok'] as $slaStatus) {
+            $this->actingAs($this->executor)
+                ->getJson("/api/v1/engine-requests/stats?scope=all&sla_status={$slaStatus}")
+                ->assertOk()
+                ->assertJsonStructure(['data' => ['total', 'breached_sla', 'nearing_sla']]);
+        }
     }
 }

@@ -37,8 +37,16 @@ class EngineRequestStatsService
         // SLA metrics stay separate because applySlaStatusFilter changes the row
         // set (a derived SLA window, not a status bucket) and can't be read off
         // the status grouping.
+        //
+        // API-UI-001: `select()` (not `selectRaw`/`addSelect`) resets the column
+        // list that withStageEntry/buildScopedQuery accumulated (engine_requests.*,
+        // stage_entered_at, current_stage_sla_minutes). Grouping by status while
+        // those nonaggregated columns are still projected raises MySQL 1055 under
+        // ONLY_FULL_GROUP_BY (a 500 that drives the client into a retry storm). The
+        // withStageEntry join is retained so an sla_status filter can still resolve
+        // current_stage.* in its WHERE clause — only the projection is trimmed.
         $statusRows = (clone $query)
-            ->selectRaw('engine_requests.status')
+            ->select('engine_requests.status')
             ->selectRaw('COUNT(*) as c')
             ->selectRaw('SUM(CASE WHEN engine_requests.claimed_by IS NULL THEN 1 ELSE 0 END) as unclaimed')
             ->groupBy('engine_requests.status')

@@ -277,6 +277,20 @@ class EngineRequest extends Model
             : 'UNIX_TIMESTAMP()';
     }
 
+    /**
+     * SLA "nearing" window in seconds: the final 20% of the stage SLA (at least
+     * one minute). Scalar-max and integer-cast differ by engine — SQLite takes
+     * `MAX(a, b)` / `CAST(x AS INTEGER)`, MySQL takes `GREATEST(a, b)` /
+     * `CAST(x AS SIGNED)` — so this is branched like the other epoch helpers.
+     * Callers must have applied scopeWithStageEntry() for the current_stage join.
+     */
+    public static function nearingWindowSql(): string
+    {
+        return DB::connection()->getDriverName() === 'sqlite'
+            ? 'MAX(1, CAST(current_stage.sla_duration_minutes * 0.2 AS INTEGER)) * 60'
+            : 'GREATEST(1, CAST(current_stage.sla_duration_minutes * 0.2 AS SIGNED)) * 60';
+    }
+
     private static function epochSql(string $column): string
     {
         return DB::connection()->getDriverName() === 'sqlite'
