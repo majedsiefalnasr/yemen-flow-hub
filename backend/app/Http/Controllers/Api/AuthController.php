@@ -17,6 +17,7 @@ use App\Services\Auth\StepUpService;
 use App\Services\Auth\TrustedDeviceService;
 use App\Services\Authorization\PermissionService;
 use App\Support\ApiResponse;
+use App\Support\DemoEnvironment;
 use App\Support\PasswordPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -322,7 +323,7 @@ class AuthController extends Controller
     )]
     public function demoUsers(Request $request)
     {
-        if (! config('demo.allow_role_switch', false)) {
+        if (! DemoEnvironment::switchingAllowed()) {
             return ApiResponse::forbidden('Demo role switching is disabled.');
         }
 
@@ -357,7 +358,7 @@ class AuthController extends Controller
     )]
     public function switchDemoRole(Request $request)
     {
-        if (! config('demo.allow_role_switch', false)) {
+        if (! DemoEnvironment::switchingAllowed()) {
             return ApiResponse::forbidden('Demo role switching is disabled.');
         }
 
@@ -416,7 +417,7 @@ class AuthController extends Controller
     )]
     public function switchDemoUser(Request $request)
     {
-        if (! config('demo.allow_role_switch', false)) {
+        if (! DemoEnvironment::switchingAllowed()) {
             return ApiResponse::forbidden('Demo role switching is disabled.');
         }
 

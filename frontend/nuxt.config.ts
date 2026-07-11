@@ -2,6 +2,13 @@ import { fileURLToPath } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
 import type { NuxtConfig } from 'nuxt/schema'
 
+// H6 / M2: the visual bypass fabricates an authenticated admin identity and must
+// be impossible to ship in a production build. Fail the build/startup if the flag
+// is enabled while building for production.
+if (process.env.NODE_ENV === 'production' && process.env.NUXT_PUBLIC_VISUAL_BYPASS === 'true') {
+  throw new Error('NUXT_PUBLIC_VISUAL_BYPASS must not be enabled in a production build (H6 / M2).')
+}
+
 export default defineNuxtConfig({
   compatibilityDate: '2025-05-15',
   devtools: { enabled: true },

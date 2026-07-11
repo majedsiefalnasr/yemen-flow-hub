@@ -18,6 +18,11 @@ export default defineNuxtRouteMiddleware(() => {
   const config = useRuntimeConfig()
   if (!config.public.visualBypass) return
 
+  // Defense in depth (H6 / M2): never fabricate an identity in a production
+  // runtime, even if the build-time flag leaked through. The backend remains
+  // authoritative and rejects unauthenticated API requests regardless.
+  if (import.meta.env.PROD && !import.meta.dev) return
+
   const auth = useAuthStore()
   if (auth.user && auth.isAuthenticated) return
 
