@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\V1\AuditLogController;
 use App\Http\Controllers\Api\V1\BankController as V1BankController;
 use App\Http\Controllers\Api\V1\ComplianceController;
+use App\Http\Controllers\Api\V1\DashboardWorkController;
 use App\Http\Controllers\Api\V1\EngineFxConfirmationController;
 use App\Http\Controllers\Api\V1\EngineRequestClaimController;
 use App\Http\Controllers\Api\V1\EngineRequestController;
@@ -285,4 +286,5 @@ Route::middleware(['auth:sanctum', 'active', 'throttle:api-default'])->group(fun
     Route::get('search', [SearchController::class, 'search']);
 
     Route::get('dashboard/stats', [DashboardController::class, 'stats']);
+    Route::get('dashboard/work', [DashboardWorkController::class, 'work']);
 });
