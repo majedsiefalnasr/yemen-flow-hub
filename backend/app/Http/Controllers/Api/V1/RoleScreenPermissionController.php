@@ -161,7 +161,22 @@ class RoleScreenPermissionController extends Controller
         }
 
         $validCapabilities = array_column(ScreenCapability::cases(), 'value');
-        $validScreenKeys = Screen::query()->where('key', '!=', 'requests')->pluck('key')->toArray();
+
+        // Writable screens exclude `requests` (access derived from the workflow
+        // designer's stage assignments, not manually granted), UNIVERSAL_SCREENS
+        // (always-on, not customizable), and ADMIN_ONLY_SCREENS (system-admin-only,
+        // not delegable). Rejecting the admin-only keys server-side closes the
+        // RBAC-002 delegation / self-escalation path — hiding them from the matrix
+        // UI is not sufficient.
+        $nonWritable = array_merge(
+            ['requests'],
+            self::UNIVERSAL_SCREENS,
+            self::ADMIN_ONLY_SCREENS,
+        );
+        $validScreenKeys = Screen::query()
+            ->whereNotIn('key', $nonWritable)
+            ->pluck('key')
+            ->toArray();
 
         $validated = $request->validate([
             'grants' => ['required', 'array'],
