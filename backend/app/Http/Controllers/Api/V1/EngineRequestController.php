@@ -19,6 +19,7 @@ use App\Services\Workflow\EngineRequestStatsService;
 use App\Services\Workflow\EngineTransitionService;
 use App\Services\Workflow\StageFieldOutputFilter;
 use App\Services\Workflow\StagePermissionResolver;
+use App\Services\Workflow\UserActionableRequestQuery;
 use App\Services\Workflow\WorkflowGraphService;
 use App\Support\ApiResponse;
 use App\Support\EngineRequestListQuery;
@@ -40,6 +41,7 @@ class EngineRequestController extends Controller
         private EngineNotificationDispatcher $notificationDispatcher,
         private EngineRequestListQuery $listQuery,
         private StageFieldOutputFilter $outputFilter,
+        private UserActionableRequestQuery $actionableQuery,
     ) {}
 
     // ── 18.5.1: Create ──────────────────────────────────────────────────
@@ -282,30 +284,11 @@ class EngineRequestController extends Controller
 
     public function myQueue(Request $request): JsonResponse
     {
-        $user = $request->user();
-        $user->loadMissing('roles');
-        $executeStageIds = $this->permissionResolver->accessibleStageIds($user, StageAccessLevel::EXECUTE);
-
-        $branchFactory = function (int $stageId) use ($request, $user): Builder {
-            $query = EngineRequest::query()
-                ->withStageEntry()
-                ->active()
-                ->forUser($user)
-                ->where('engine_requests.current_stage_id', $stageId);
-            $this->listQuery->applyFilters($query, $request);
-
-            return $query;
-        };
-
-        // Default دوري priority: SLA-breached → nearest-to-breach → oldest-in-stage.
-        $page = UnionStagePaginator::paginate(
-            $branchFactory,
-            $executeStageIds,
-            [...EngineRequest::slaOrderSpec(), ['engine_requests.id', 'asc']],
-            page: $request->integer('page', 1),
-            perPage: $this->listQuery->perPage($request),
-            forceIndex: 'er_stage_sla_deadline',
-        );
+        // The دوري priority (SLA-breached → nearest-to-breach → oldest-in-stage),
+        // the EXECUTE-stage scoping, DataScope, and filters all live in
+        // UserActionableRequestQuery — the single actionable-work contract shared
+        // with the work dashboard and the nav badge (Phase D0).
+        $page = $this->actionableQuery->paginate($request->user(), $request);
 
         $page->load(['currentStage.stageFieldRules', 'bank', 'merchant', 'creator', 'claimedBy', 'workflowVersion.definition', 'customsDeclaration']);
 
