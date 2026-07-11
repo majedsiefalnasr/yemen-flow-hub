@@ -178,7 +178,10 @@ class StagePermissionResolver
         return [
             'organization_id' => $user->organization_id !== null ? (int) $user->organization_id : null,
             'team_ids' => $user->teams()->where('teams.is_active', true)->pluck('teams.id')->map(fn ($id) => (int) $id)->all(),
-            'role_ids' => $user->roles()->where('roles.is_active', true)->pluck('roles.id')->map(fn ($id) => (int) $id)->all(),
+            // Active pivot AND active role record only — a deactivated role
+            // assignment must not authorize even if the role record stays active
+            // (M3 / RBAC-001).
+            'role_ids' => $user->roles()->wherePivot('is_active', true)->where('roles.is_active', true)->pluck('roles.id')->map(fn ($id) => (int) $id)->all(),
             'user_id' => (int) $user->getKey(),
         ];
     }

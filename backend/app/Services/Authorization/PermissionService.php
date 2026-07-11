@@ -289,10 +289,14 @@ class PermissionService
             return $result;
         }
 
+        // Active identity only: inactive team memberships and inactive-pivot /
+        // inactive-record roles must not contribute request capabilities, matching
+        // StagePermissionResolver's runtime identity so /auth/me nav does not
+        // fail open (RBAC-003 / M3).
         $identity = [
             'organization_id' => $user->organization_id !== null ? (int) $user->organization_id : null,
-            'team_ids' => $user->teams()->pluck('teams.id')->map(fn ($id) => (int) $id)->all(),
-            'role_ids' => $user->roles()->pluck('roles.id')->map(fn ($id) => (int) $id)->all(),
+            'team_ids' => $user->teams()->where('teams.is_active', true)->pluck('teams.id')->map(fn ($id) => (int) $id)->all(),
+            'role_ids' => $user->roles()->wherePivot('is_active', true)->where('roles.is_active', true)->pluck('roles.id')->map(fn ($id) => (int) $id)->all(),
             'user_id' => (int) $user->getKey(),
         ];
 

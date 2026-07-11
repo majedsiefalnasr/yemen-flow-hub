@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Collection;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
@@ -102,14 +103,20 @@ class User extends Authenticatable
         return $this->relationLoaded('teams') ? $this->teams->first() : $this->teams()->first();
     }
 
+    /**
+     * The user's single active role: an active pivot on an active role record.
+     * Null when there is no such role — inactive/historical pivots are never
+     * returned, so no fallback to the first (possibly inactive) role (M3).
+     */
     public function role(): ?Role
     {
         if ($this->relationLoaded('roles')) {
-            return $this->roles->first(fn (Role $role) => (bool) $role->pivot?->is_active)
-                ?? $this->roles->first();
+            return $this->roles->first(
+                fn (Role $role): bool => (bool) $role->pivot?->is_active && (bool) $role->is_active,
+            );
         }
 
-        return $this->activeRoles()->first();
+        return $this->activeRoles()->where('roles.is_active', true)->first();
     }
 
     public function asUserRole(): ?UserRole
@@ -221,41 +228,39 @@ class User extends Authenticatable
 
     public function isSystemAdmin(): bool
     {
-        if ($this->relationLoaded('roles')) {
-            return $this->roles->contains('code', RoleCodes::SYSTEM_ADMIN);
-        }
-
-        return $this->roles()->where('code', RoleCodes::SYSTEM_ADMIN)->exists();
+        return $this->hasRoleCode(RoleCodes::SYSTEM_ADMIN);
     }
 
     public function hasRoleCode(string $code): bool
     {
-        $active = $this->role();
-
-        if ($active !== null) {
-            return $active->code === $code;
-        }
-
-        if ($this->relationLoaded('roles')) {
-            return $this->roles->contains('code', $code);
-        }
-
-        return $this->roles()->where('code', $code)->exists();
+        return $this->activeRoleCodes()->contains($code);
     }
 
     public function hasAnyRoleCode(array $codes): bool
     {
-        $activeCode = $this->role()?->code;
+        return $this->activeRoleCodes()->intersect($codes)->isNotEmpty();
+    }
 
-        if ($activeCode !== null) {
-            return in_array($activeCode, $codes, true);
-        }
-
+    /**
+     * Codes of the user's active role(s): only pivot rows with
+     * `user_roles.is_active = true` whose `roles.is_active = true` count.
+     * Historical/inactive pivots never contribute to authorization, and a
+     * user with no active role has no role-derived permissions (M3 / RBAC-001).
+     *
+     * The loaded-relationship and DB-query branches return identical results.
+     */
+    private function activeRoleCodes(): Collection
+    {
         if ($this->relationLoaded('roles')) {
-            return $this->roles->whereIn('code', $codes)->isNotEmpty();
+            return $this->roles
+                ->filter(fn (Role $role): bool => (bool) $role->pivot?->is_active && (bool) $role->is_active)
+                ->pluck('code');
         }
 
-        return $this->roles()->whereIn('code', $codes)->exists();
+        return $this->roles()
+            ->wherePivot('is_active', true)
+            ->where('roles.is_active', true)
+            ->pluck('code');
     }
 
     public function inOrganization(string $code): bool
