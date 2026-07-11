@@ -544,26 +544,99 @@ Order: Support → Bank Reviewer → Data Entry → Bank Admin (analytics as opt
 **Per-role deletion criteria (each bespoke dashboard):** its role renders `MyWorkDashboard`; five-surface ID parity green; browser-verified on V2; no other consumer of its stats method/keys remains.
 **Rollback (per slice):** restore the role's selector branch + bespoke component from git; the stats method deletion is reverted with it.
 
-### Task D0.6: Remove role-based selection, legacy stats/badge keys, voting remnants
+### APPROVED REFINEMENT (2026-07-11): dashboard-family model
 
-**Preconditions (all must hold before each removal):**
-- Role-based dashboard selection removed only after every workflow role is on `MyWorkDashboard` and the selector is capability-only (admin vs work).
-- Obsolete role stats methods removed only after no route/test references them.
-- Backward-compat Director keys + `useNavBadges` role switch removed only after every consumer reads `actionable`.
-- Voting remnants (`useNavBadges` Director voting sum, `ExecutiveDashboard` voting UI/`VotingQueueItem` usage) removed only after: no active workflow uses voting, no runtime route/table depends, equivalent current-work UI in `MyWorkDashboard`, replacement tests exist, historical requests readable. **No backend voting-model deletion here** (Phase F).
+Not one dashboard per role, and not literally two Vue components — **two dashboard
+families**, routed by **capability**, not role name:
 
-- [ ] Steps: delete `dashboard.vue` role switch → capability selector; delete obsolete `*Stats()` methods; delete legacy keys; remove voting dashboard presentation; grep-confirm zero references; full dashboard suites green. Commits `refactor(ui): remove role-based dashboard selection` / `chore(workflow): drop obsolete dashboard stats + voting dashboard remnants`.
+- **Operational family — `MyWorkDashboard`** (the six workflow-executor roles + any
+  new dynamic executor role automatically, via stage permissions). Sections:
+  actionable / claimed / tracking / SLA / recent activity / **small** capability-gated
+  operational KPI summaries (my-actionable, claimed-by-me, near-SLA, overdue,
+  recently-completed-by-me). Contract: actionable count = preview IDs = nav badge =
+  my-queue count = my-queue record set.
+- **Analytics & governance family** — dedicated dashboards only where the user
+  category has a fundamentally different purpose:
+  - **`SystemAdminDashboard`** (evolve from `CbyAdminDashboard`): platform governance
+    + platform-wide analytics; **capability-gated** (`system_dashboard.view`).
+  - **`BankAdminDashboard`** (retained): bank-scoped analytics (4 KPIs, monthly
+    volume chart, financing totals, completion/rejection summaries), all restricted
+    by bank DataScope. Bank Admin has **no actionable queue**, so it must NOT route
+    through `MyWorkDashboard` (that would show a permanent empty-work section and
+    force the shared dashboard into a general analytics framework).
 
-**Rollback:** revert the specific removal commit (each removal is its own commit for granular rollback).
-**Acceptance:** only `SystemAdminDashboard` + `MyWorkDashboard` remain; zero `role === UserRole` in dashboard selection; nav badge reads `actionable`; no voting dashboard UI; historical requests still open.
+**Capability-family routing (selection order):** `system_dashboard.view` →
+`SystemAdminDashboard`; else `bank_analytics.view` → `BankAdminDashboard`; else →
+`MyWorkDashboard`. Backend endpoints enforce the same capabilities independently.
+If a user ever holds >1 dashboard capability, do not silently pick by role
+precedence — provide an explicit switcher or a documented capability priority.
+**Do NOT** move the Bank Admin charting dashboard into the shared work-dashboard
+widget contract in D0; the metadata-driven widget catalog remains a future
+enhancement. A new **analytics** role should reuse an existing analytics dashboard
+via capability + scope, not get a new component.
+
+### Task D0.6: Capability-family routing + retire migrated executor dashboards + voting remnants
+
+**Dispositions (approved family model):**
+- Replace role-based dashboard selection with **capability-family routing** (order
+  above) in `dashboard.vue` **and** `index.vue`.
+- `MyWorkDashboard`: retained for the six executor roles.
+- `CommitteeDirectorDashboard.vue`: remove (dynamic FINAL parity green + Director
+  live-verified on MyWorkDashboard in D0.5); keep its FINAL-parity assertions,
+  re-homed to the dynamic tests.
+- Other executor-role dashboards (`DataEntry`, `BankReviewer`, `SupportCommittee`,
+  `SwiftOfficer`): remove after migration + equivalent test coverage.
+- `ExecutiveDashboard.vue`: remove voting remnants and retire once its non-legacy
+  users have migrated (Executive Member is migrated → retire; strip voting UI /
+  `VotingQueueItem` usage).
+- `BankAdminDashboard.vue`: **retain** as the bank-scoped analytics dashboard.
+- `CbyAdminDashboard.vue`: rename/evolve into `SystemAdminDashboard` (capability-gated).
+- `useNavBadges`: the workflow actionable badge comes **only** from the shared
+  actionable query; analytics dashboards must not fabricate a workflow badge. Drop
+  the Director voting-sum remnant + the per-role badge switch for migrated roles.
+- Obsolete role `*Stats()` methods + backward-compat Director keys removed only after
+  no route/test/consumer references them (grep-confirm).
+- **No backend voting-model deletion** here (Phase F).
+
+**Required tests (family model):**
+1. Executor roles route to `MyWorkDashboard`.
+2. A newly created dynamic executor role routes to `MyWorkDashboard` with **no
+   frontend change** (stage-permission grant only).
+3. Bank Admin routes to `BankAdminDashboard`.
+4. Bank Admin analytics restricted to its own bank.
+5. Bank Admin does **not** receive a misleading actionable-work count.
+6. System Admin routes to `SystemAdminDashboard`.
+7. Unauthorized users cannot access bank/system analytics APIs.
+8. Removing the analytics capability removes dashboard access.
+9. Executor dashboards independent of hard-coded role names.
+10. Approved charts remain available only to the analytics families.
+
+**Rollback:** each removal/rename is its own commit for granular revert.
+**Acceptance:** only the three components remain (`MyWorkDashboard`,
+`BankAdminDashboard`, `SystemAdminDashboard`); capability-family selection (no
+`role === UserRole` dashboard branch); nav badge reads `actionable`; no voting
+dashboard UI; historical requests still open.
 
 ### Task D0.7: `AGENTS.md` + architecture docs
 
-- [ ] Document the two-dashboard model, the `UserActionableRequestQuery` invariant (count=preview=my-queue=badge, by IDs), the `/dashboard/work` contract, the `system_dashboard.view` boundary, and the "no per-role dashboard component" rule. Commit `docs(workflow): record two-dashboard architecture in AGENTS.md`.
+- [ ] Record the **dashboard-family model** (Operational: `MyWorkDashboard`;
+  Analytics & governance: `BankAdminDashboard`, `SystemAdminDashboard`), the
+  `UserActionableRequestQuery` invariant (count = preview = my-queue = badge, by
+  IDs), the `/dashboard/work` contract, capability-family routing + the independent
+  backend capability enforcement, and the "new executor role → MyWorkDashboard
+  automatically; no new component per role" rule. Commit `docs(workflow): record dashboard-family architecture in AGENTS.md`.
 
 ### Phase D0 checkpoint
 
-- [ ] Two dashboards only; five-surface ID parity proven for every role incl. Director; `SystemAdminDashboard` capability-protected (positive + negative tests); a newly created dynamic test role receives actionable work after a stage-permission grant with **no frontend change** (E2E); voting dashboard remnants gone with historical readability intact; full backend + frontend dashboard suites green; docs updated. Report + pause before Phase D.
+- [ ] Three dashboard components only (`MyWorkDashboard`, `BankAdminDashboard`,
+  `SystemAdminDashboard`); five-surface ID parity proven for every executor role
+  incl. Director; capability-family routing (no role-name dashboard branch);
+  `SystemAdminDashboard` + bank/system analytics APIs capability-protected (positive
+  **and** negative tests); a newly created dynamic executor role receives actionable
+  work with **no frontend change** (E2E); Bank Admin shows no misleading actionable
+  count; voting dashboard remnants gone with historical readability intact; nav badge
+  = shared actionable query; full backend + frontend dashboard suites green; docs
+  updated. Report + pause before Phase D.
 
 ---
 
