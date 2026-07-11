@@ -12,7 +12,7 @@ function resolveDashboardComponent(
   | 'BankReviewerDashboard'
   | 'BankAdminDashboard'
   | 'SupportCommitteeDashboard'
-  | 'SwiftOfficerDashboard'
+  | 'MyWorkDashboard'
   | 'ExecutiveDashboard'
   | 'CommitteeDirectorDashboard'
   | 'CbyAdminDashboard'
@@ -21,7 +21,8 @@ function resolveDashboardComponent(
   if (role === UserRole.BANK_REVIEWER) return 'BankReviewerDashboard'
   if (role === UserRole.BANK_ADMIN) return 'BankAdminDashboard'
   if (role === UserRole.SUPPORT_COMMITTEE) return 'SupportCommitteeDashboard'
-  if (role === UserRole.SWIFT_OFFICER) return 'SwiftOfficerDashboard'
+  // D0.4 pilot: SWIFT is served by the shared MyWorkDashboard.
+  if (role === UserRole.SWIFT_OFFICER) return 'MyWorkDashboard'
   if (role === UserRole.EXECUTIVE_MEMBER) return 'ExecutiveDashboard'
   if (role === UserRole.COMMITTEE_DIRECTOR) return 'CommitteeDirectorDashboard'
   if (role === UserRole.CBY_ADMIN) return 'CbyAdminDashboard'
@@ -59,8 +60,8 @@ describe('Dashboard page — role-component routing', () => {
     expect(resolveDashboardComponent(UserRole.CBY_ADMIN)).toBe('CbyAdminDashboard')
   })
 
-  it('renders SwiftOfficerDashboard for SWIFT_OFFICER role', () => {
-    expect(resolveDashboardComponent(UserRole.SWIFT_OFFICER)).toBe('SwiftOfficerDashboard')
+  it('renders MyWorkDashboard for SWIFT_OFFICER role (D0.4 pilot)', () => {
+    expect(resolveDashboardComponent(UserRole.SWIFT_OFFICER)).toBe('MyWorkDashboard')
   })
 
   it('renders Placeholder when role is undefined (unauthenticated edge case)', () => {

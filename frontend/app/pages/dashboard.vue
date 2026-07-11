@@ -11,7 +11,7 @@ import DataEntryDashboard from '../components/dashboard/DataEntryDashboard.vue'
 import BankReviewerDashboard from '../components/dashboard/BankReviewerDashboard.vue'
 import BankAdminDashboard from '../components/dashboard/BankAdminDashboard.vue'
 import SupportCommitteeDashboard from '../components/dashboard/SupportCommitteeDashboard.vue'
-import SwiftOfficerDashboard from '../components/dashboard/SwiftOfficerDashboard.vue'
+import MyWorkDashboard from '../components/dashboard/MyWorkDashboard.vue'
 import ExecutiveDashboard from '../components/dashboard/ExecutiveDashboard.vue'
 import CommitteeDirectorDashboard from '../components/dashboard/CommitteeDirectorDashboard.vue'
 import CbyAdminDashboard from '../components/dashboard/CbyAdminDashboard.vue'
@@ -64,7 +64,9 @@ const showNewRequestAction = computed(
     <BankReviewerDashboard v-else-if="role === UserRole.BANK_REVIEWER" />
     <BankAdminDashboard v-else-if="role === UserRole.BANK_ADMIN" />
     <SupportCommitteeDashboard v-else-if="role === UserRole.SUPPORT_COMMITTEE" />
-    <SwiftOfficerDashboard v-else-if="role === UserRole.SWIFT_OFFICER" />
+    <!-- Phase D0.4 pilot: SWIFT Officer is the first role served by the shared,
+         permission-driven MyWorkDashboard. Remaining roles migrate in D0.5. -->
+    <MyWorkDashboard v-else-if="role === UserRole.SWIFT_OFFICER" />
     <ExecutiveDashboard v-else-if="role === UserRole.EXECUTIVE_MEMBER" />
     <CommitteeDirectorDashboard v-else-if="role === UserRole.COMMITTEE_DIRECTOR" />
     <CbyAdminDashboard v-else-if="role === UserRole.CBY_ADMIN" />

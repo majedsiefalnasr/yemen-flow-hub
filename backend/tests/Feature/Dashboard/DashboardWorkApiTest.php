@@ -38,6 +38,9 @@ class DashboardWorkApiTest extends TestCase
         $this->seedV2Request('SUPPORT', 'YBRD');
         $this->seedV2Request('INTERNAL', 'YBRD');
         $this->seedV2Request('INTERNAL', 'TIIB');
+        // FX (SWIFT) work for the D0.4 pilot role.
+        $this->seedV2Request('FX', 'YBRD');
+        $this->seedV2Request('FX', 'YBRD');
     }
 
     private function userByEmail(string $email): User
@@ -157,6 +160,26 @@ class DashboardWorkApiTest extends TestCase
         $this->assertSame(0, $data['actionable']['count']);
         $this->assertSame([], $data['actionable']['items']);
         $this->assertSame(0, $data['tracking']['count']);
+    }
+
+    /**
+     * D0.4 pilot: the SWIFT Officer is the first role served by MyWorkDashboard.
+     * Prove the actionable section it renders is exactly the SWIFT (FX) my-queue
+     * record set — by IDs, not just counts.
+     */
+    public function test_swift_pilot_actionable_ids_equal_my_queue_ids(): void
+    {
+        $swift = $this->userByEmail('swift@ybrd.com.ye');
+        $myQueueIds = $this->myQueueIds($swift);
+
+        $data = $this->actingAs($swift)->getJson('/api/dashboard/work')->assertOk()->json('data');
+
+        $itemIds = collect($data['actionable']['items'])
+            ->pluck('id')->map(fn ($id) => (int) $id)->sort()->values()->all();
+
+        $this->assertNotEmpty($myQueueIds, 'The SWIFT pilot expects seeded FX work.');
+        $this->assertSame(count($myQueueIds), $data['actionable']['count']);
+        $this->assertSame($myQueueIds, $itemIds, 'SWIFT actionable IDs must equal /my-queue IDs.');
     }
 
     public function test_cross_bank_records_are_excluded_from_a_bank_users_work(): void
