@@ -20,13 +20,17 @@ final class EngineRequestAnchorInvariantValidator
     /**
      * Validate an EngineRequest anchor after insertion.
      *
+     * @param  int  $expectedVersionNumber  The workflow version the anchor must be pinned to.
+     *                                      Defaults to 1 (the published-v1 seeder path). The
+     *                                      V2 recreation tooling passes the rebound version.
+     *
      * @throws InvalidArgumentException on invariant violation
      */
-    public function validate(EngineRequest $request): void
+    public function validate(EngineRequest $request, int $expectedVersionNumber = 1): void
     {
         $request->loadMissing(['workflowVersion.definition', 'currentStage', 'history']);
 
-        $this->validateWorkflowVersion($request);
+        $this->validateWorkflowVersion($request, $expectedVersionNumber);
         $this->validateStage($request);
         $this->validateStatusOutcomeMapping($request);
         $this->validateClaimState($request);
@@ -36,9 +40,11 @@ final class EngineRequestAnchorInvariantValidator
     }
 
     /**
-     * Workflow version must exist and be IMPORT_FINANCING v1.
+     * Workflow version must exist, be IMPORT_FINANCING, and match the expected
+     * version number (1 for the default seeder; the rebound version for the V2
+     * recreation tooling).
      */
-    private function validateWorkflowVersion(EngineRequest $request): void
+    private function validateWorkflowVersion(EngineRequest $request, int $expectedVersionNumber): void
     {
         $version = $request->workflowVersion;
 
@@ -56,9 +62,9 @@ final class EngineRequestAnchorInvariantValidator
             );
         }
 
-        if ($version->version_number !== 1) {
+        if ($version->version_number !== $expectedVersionNumber) {
             throw new InvalidArgumentException(
-                sprintf('Anchor %s: workflow version must be 1, got %d', $request->reference, $version->version_number)
+                sprintf('Anchor %s: workflow version must be %d, got %d', $request->reference, $expectedVersionNumber, $version->version_number)
             );
         }
     }

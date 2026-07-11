@@ -99,7 +99,7 @@ final class EngineRequestScenarioBuilder
             $this->applyDocumentScanState($request, $spec, $currentStage, $creator);
 
             $request->refresh();
-            $this->validator->validate($request);
+            $this->validator->validate($request, $this->workflowVersion->version_number);
 
             return $request;
         });
@@ -177,7 +177,7 @@ final class EngineRequestScenarioBuilder
             }
 
             $request->refresh();
-            $this->validator->validate($request);
+            $this->validator->validate($request, $this->workflowVersion->version_number);
 
             return $request;
         });
