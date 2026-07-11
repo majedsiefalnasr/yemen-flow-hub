@@ -2,14 +2,14 @@
 
 namespace App\Services\Dashboard;
 
+use App\DTOs\Authorization\DataScopeContext;
 use App\Models\Bank;
 use App\Models\EngineRequest;
 use App\Models\User;
+use App\Services\Authorization\DataScope;
 use App\Support\ApiResponse;
 use App\Support\EngineRequestReadModel;
 use App\Support\RoleCodes;
-use App\Services\Authorization\DataScope;
-use App\DTOs\Authorization\DataScopeContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
@@ -377,31 +377,44 @@ class DashboardStatsService
     // COMMITTEE_DIRECTOR: global CBY view — no org scope
     private function committeeDirectorStats(User $user, DataScopeContext $scope): JsonResponse
     {
-        $fxQueueQuery = EngineRequestReadModel::queryFor($user);
-        DataScope::applyTo($fxQueueQuery, $scope);
+        // UI-FX-001: the Director's dashboard queue is the FINAL stage they
+        // execute — the same requests /customs and my-queue surface — not the
+        // FX_CONFIRM bucket (owned by the national FX team). Counting FINAL here
+        // makes the dashboard headline, the dedicated /customs "ready" list, and
+        // the Director's executable my-queue agree on the same records.
+        $finalQueueQuery = EngineRequestReadModel::queryFor($user);
+        DataScope::applyTo($finalQueueQuery, $scope);
 
-        $fxQueue = $fxQueueQuery
-            ->where(EngineRequestReadModel::bucket('fx_confirmation_pending'))
+        $finalQueue = $finalQueueQuery
+            ->where(EngineRequestReadModel::bucket('director_final_queue'))
             ->orderBy('updated_at')
             ->orderBy('id')
             ->limit(50)
             ->get();
 
-        $executiveStats = $this->executiveVotingStats($user);
+        $completedQuery = EngineRequestReadModel::queryFor($user);
+        DataScope::applyTo($completedQuery, $scope);
+        $finalizedApproved = (clone $completedQuery)->where(EngineRequestReadModel::bucket('completed'))->count();
 
-        return ApiResponse::success(array_merge($executiveStats, [
-            // Director-specific lifecycle counters (voting removed by DI-3 — zeroed)
-            'sessions_ready_to_close' => 0,
-            'sessions_with_tie' => 0,
-            'fx_confirmation_pending' => $fxQueue->count(),
-            'finalized_approved' => $executiveStats['decisions_approved'] ?? 0,
-            'finalized_rejected' => $executiveStats['decisions_rejected'] ?? 0,
-            // Director-specific lifecycle queues
-            'voting_lifecycle_queue' => [],
-            'fx_confirmation_queue' => EngineRequestReadModel::resourceCollection($fxQueue),
-            // Backward compatibility with existing frontend contract
-            'customs_declaration_pending' => EngineRequestReadModel::resourceCollection($fxQueue),
-        ]), 'Dashboard stats retrieved.');
+        $rejectedQuery = EngineRequestReadModel::queryFor($user);
+        DataScope::applyTo($rejectedQuery, $scope);
+        $finalizedRejected = (clone $rejectedQuery)->where(EngineRequestReadModel::bucket('rejected'))->count();
+
+        $finalQueueResource = EngineRequestReadModel::resourceCollection($finalQueue);
+
+        return ApiResponse::success([
+            // The Director's actionable queue (FINAL stage).
+            'final_pending' => $finalQueue->count(),
+            'final_pending_queue' => $finalQueueResource,
+            'finalized_approved' => $finalizedApproved,
+            'finalized_rejected' => $finalizedRejected,
+            // Backward-compatible keys the existing shared dashboard still reads,
+            // now pointed at the FINAL queue so no surface disagrees during the
+            // migration to the dedicated Director dashboard.
+            'fx_confirmation_pending' => $finalQueue->count(),
+            'fx_confirmation_queue' => $finalQueueResource,
+            'customs_declaration_pending' => $finalQueueResource,
+        ], 'Dashboard stats retrieved.');
     }
 
     /**

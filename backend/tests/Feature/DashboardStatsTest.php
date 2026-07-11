@@ -984,62 +984,69 @@ class DashboardStatsTest extends TestCase
             ->getJson('/api/dashboard/stats')
             ->assertOk()
             ->assertJsonStructure(['data' => [
-                'waiting_for_voting_open',
-                'active_voting_sessions',
-                'decisions_approved',
-                'decisions_rejected',
-                'finalized_decisions',
-                'voting_queue',
+                'final_pending',
+                'final_pending_queue',
+                'finalized_approved',
+                'finalized_rejected',
+                // Backward-compatible keys retained during the dashboard migration.
+                'fx_confirmation_pending',
                 'customs_declaration_pending',
             ]]);
     }
 
-    public function test_committee_director_sees_all_banks_fx_confirmation_pending(): void
+    // UI-FX-001: the Director dashboard headline counts the FINAL stage (the
+    // Director's own executable queue), not the FX_CONFIRM stage (owned by the
+    // national FX team). This is what makes the dashboard agree with /customs
+    // and my-queue.
+    public function test_committee_director_final_pending_counts_final_stage_not_fx_confirm(): void
     {
         $de1 = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $de2 = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
         $director = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
 
+        // Two at FINAL (the Director's queue) + one at FX_CONFIRM (the FX team's).
+        $this->makeRequest($this->bank, $de1, 'FINAL');
+        $this->makeRequest($this->otherBank, $de2, 'FINAL');
         $this->makeRequest($this->bank, $de1, 'FX_CONFIRM');
-        $this->makeRequest($this->otherBank, $de2, 'FX_CONFIRM');
 
         $this->actingAs($director)
             ->getJson('/api/dashboard/stats')
             ->assertOk()
+            ->assertJsonPath('data.final_pending', 2)
+            // Backward-compat key now mirrors the FINAL count, not FX_CONFIRM.
             ->assertJsonPath('data.fx_confirmation_pending', 2);
     }
 
-    public function test_committee_director_voting_queue_is_empty(): void
-    {
-        $director = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
-
-        $response = $this->actingAs($director)->getJson('/api/dashboard/stats')->assertOk();
-        $this->assertSame([], $response->json('data.voting_queue'));
-    }
-
-    public function test_committee_director_finalized_decisions_is_zeroed(): void
-    {
-        $director = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
-
-        $this->actingAs($director)
-            ->getJson('/api/dashboard/stats')
-            ->assertOk()
-            ->assertJsonPath('data.finalized_decisions', 0);
-    }
-
-    public function test_committee_director_customs_declaration_pending_lists_fx_confirmation_stage(): void
+    public function test_committee_director_final_queue_lists_final_stage_requests(): void
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $director = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
 
+        $this->makeRequest($this->bank, $de, 'FINAL');
         $this->makeRequest($this->bank, $de, 'FX_CONFIRM');
         $this->makeRequest($this->bank, $de, 'CLOSED', 'CLOSED');
         $this->makeRequest($this->bank, $de, 'EXEC', 'REJECTED');
 
         $response = $this->actingAs($director)->getJson('/api/dashboard/stats')->assertOk();
-        $pending = $response->json('data.customs_declaration_pending');
+        $queue = $response->json('data.final_pending_queue');
 
-        $this->assertCount(1, $pending);
-        $this->assertSame('FX_CONFIRM', $pending[0]['stage_code']);
+        $this->assertCount(1, $queue);
+        $this->assertSame('FINAL', $queue[0]['stage_code']);
+    }
+
+    public function test_committee_director_finalized_counters_reflect_terminal_outcomes(): void
+    {
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $director = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
+
+        $this->makeRequest($this->bank, $de, 'CLOSED', 'CLOSED');
+        $this->makeRequest($this->bank, $de, 'CLOSED', 'CLOSED');
+        $this->makeRequest($this->bank, $de, 'EXEC', 'REJECTED');
+
+        $this->actingAs($director)
+            ->getJson('/api/dashboard/stats')
+            ->assertOk()
+            ->assertJsonPath('data.finalized_approved', 2)
+            ->assertJsonPath('data.finalized_rejected', 1);
     }
 }

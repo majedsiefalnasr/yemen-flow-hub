@@ -14,6 +14,7 @@ function resolveDashboardComponent(
   | 'SupportCommitteeDashboard'
   | 'SwiftOfficerDashboard'
   | 'ExecutiveDashboard'
+  | 'CommitteeDirectorDashboard'
   | 'CbyAdminDashboard'
   | 'Placeholder' {
   if (role === UserRole.DATA_ENTRY) return 'DataEntryDashboard'
@@ -21,8 +22,8 @@ function resolveDashboardComponent(
   if (role === UserRole.BANK_ADMIN) return 'BankAdminDashboard'
   if (role === UserRole.SUPPORT_COMMITTEE) return 'SupportCommitteeDashboard'
   if (role === UserRole.SWIFT_OFFICER) return 'SwiftOfficerDashboard'
-  if (role === UserRole.EXECUTIVE_MEMBER || role === UserRole.COMMITTEE_DIRECTOR)
-    return 'ExecutiveDashboard'
+  if (role === UserRole.EXECUTIVE_MEMBER) return 'ExecutiveDashboard'
+  if (role === UserRole.COMMITTEE_DIRECTOR) return 'CommitteeDirectorDashboard'
   if (role === UserRole.CBY_ADMIN) return 'CbyAdminDashboard'
   return 'Placeholder'
 }
@@ -48,8 +49,10 @@ describe('Dashboard page — role-component routing', () => {
     expect(resolveDashboardComponent(UserRole.EXECUTIVE_MEMBER)).toBe('ExecutiveDashboard')
   })
 
-  it('renders ExecutiveDashboard for COMMITTEE_DIRECTOR role', () => {
-    expect(resolveDashboardComponent(UserRole.COMMITTEE_DIRECTOR)).toBe('ExecutiveDashboard')
+  it('renders CommitteeDirectorDashboard for COMMITTEE_DIRECTOR role', () => {
+    expect(resolveDashboardComponent(UserRole.COMMITTEE_DIRECTOR)).toBe(
+      'CommitteeDirectorDashboard',
+    )
   })
 
   it('renders CbyAdminDashboard for CBY_ADMIN role', () => {

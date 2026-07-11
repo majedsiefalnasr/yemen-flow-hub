@@ -37,7 +37,7 @@ class DashboardStatsSnapshotTest extends TestCase
             UserRole::SUPPORT_COMMITTEE->value => ['waiting_for_claim', 'active_by_me', 'claimed_by_others', 'recently_approved', 'support_queue'],
             UserRole::SWIFT_OFFICER->value => ['pending_swift_upload', 'uploaded', 'final_approved', 'final_rejected', 'swift_queue'],
             UserRole::EXECUTIVE_MEMBER->value => ['waiting_for_voting_open', 'active_voting_sessions', 'decisions_approved', 'decisions_rejected', 'finalized_decisions', 'voting_queue'],
-            UserRole::COMMITTEE_DIRECTOR->value => ['waiting_for_voting_open', 'active_voting_sessions', 'decisions_approved', 'decisions_rejected', 'finalized_decisions', 'voting_queue'],
+            UserRole::COMMITTEE_DIRECTOR->value => ['final_pending', 'final_pending_queue', 'finalized_approved', 'finalized_rejected', 'fx_confirmation_pending', 'customs_declaration_pending'],
             UserRole::CBY_ADMIN->value => ['total', 'approved', 'in_process', 'rejected', 'compliance_alerts', 'most_active_banks', 'monthly_requests', 'category_distribution', 'recent_requests'],
         ];
 

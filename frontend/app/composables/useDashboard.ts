@@ -76,6 +76,41 @@ export interface ExecutiveDashboardStats {
   fx_confirmation_queue?: ImportRequest[]
 }
 
+/**
+ * A read-model queue row as emitted by EngineRequestReadModel::resourceCollection.
+ * The Director queue uses these fields directly (the read model is not the full
+ * ImportRequest shape).
+ */
+export interface DirectorQueueItem {
+  id: number
+  reference: string
+  reference_number: string
+  status: string
+  stage_code: string | null
+  stage_name: string | null
+  bank_name: string | null
+  merchant_name: string | null
+  amount: number | null
+  currency: string | null
+  created_at: string | null
+}
+
+/**
+ * COMMITTEE_DIRECTOR dashboard (UI-FX-001). The Director's actionable queue is
+ * the FINAL stage — the same records /customs and my-queue surface. Executive
+ * voting is out of V1 scope and intentionally absent from this contract.
+ */
+export interface CommitteeDirectorDashboardStats {
+  final_pending: number
+  final_pending_queue: DirectorQueueItem[]
+  finalized_approved: number
+  finalized_rejected: number
+  // Backward-compatible keys retained during the dashboard migration; both now
+  // mirror the FINAL queue.
+  fx_confirmation_pending?: number
+  customs_declaration_pending?: DirectorQueueItem[]
+}
+
 export interface CbyAdminComplianceAlerts {
   duplicate_suppliers: Array<{ supplier_name: string; count: number }>
   high_amount_requests: Array<{
@@ -207,6 +242,7 @@ export type DashboardStats =
   | SupportCommitteeDashboardStats
   | SwiftOfficerDashboardStats
   | ExecutiveDashboardStats
+  | CommitteeDirectorDashboardStats
   | CbyAdminDashboardStats
 
 export function useDashboard() {

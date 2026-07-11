@@ -13,6 +13,7 @@ import BankAdminDashboard from '../components/dashboard/BankAdminDashboard.vue'
 import SupportCommitteeDashboard from '../components/dashboard/SupportCommitteeDashboard.vue'
 import SwiftOfficerDashboard from '../components/dashboard/SwiftOfficerDashboard.vue'
 import ExecutiveDashboard from '../components/dashboard/ExecutiveDashboard.vue'
+import CommitteeDirectorDashboard from '../components/dashboard/CommitteeDirectorDashboard.vue'
 import CbyAdminDashboard from '../components/dashboard/CbyAdminDashboard.vue'
 
 definePageMeta({
@@ -64,9 +65,8 @@ const showNewRequestAction = computed(
     <BankAdminDashboard v-else-if="role === UserRole.BANK_ADMIN" />
     <SupportCommitteeDashboard v-else-if="role === UserRole.SUPPORT_COMMITTEE" />
     <SwiftOfficerDashboard v-else-if="role === UserRole.SWIFT_OFFICER" />
-    <ExecutiveDashboard
-      v-else-if="role === UserRole.EXECUTIVE_MEMBER || role === UserRole.COMMITTEE_DIRECTOR"
-    />
+    <ExecutiveDashboard v-else-if="role === UserRole.EXECUTIVE_MEMBER" />
+    <CommitteeDirectorDashboard v-else-if="role === UserRole.COMMITTEE_DIRECTOR" />
     <CbyAdminDashboard v-else-if="role === UserRole.CBY_ADMIN" />
 
     <!-- Unknown role -->

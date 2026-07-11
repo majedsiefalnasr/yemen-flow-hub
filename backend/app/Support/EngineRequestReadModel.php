@@ -37,6 +37,10 @@ final class EngineRequestReadModel
         'executive_queue' => ['roles' => [StageSemanticRole::EXECUTIVE_VOTE], 'codes' => ['EXEC']],
         'fx_confirmation_queue' => ['roles' => [StageSemanticRole::FX_CONFIRMATION], 'codes' => ['FX_CONFIRM']],
         'fx_confirmation_pending' => ['roles' => [StageSemanticRole::FX_CONFIRMATION], 'codes' => ['FX_CONFIRM']],
+        // The Committee Director's own actionable queue: the final-confirmation
+        // stage they execute (UI-FX-001). Distinct from fx_confirmation_pending,
+        // which is the national FX team's FX_CONFIRM stage.
+        'director_final_queue' => ['roles' => [StageSemanticRole::FINAL], 'codes' => ['FINAL']],
     ];
 
     private const STATUS_BUCKETS = [
