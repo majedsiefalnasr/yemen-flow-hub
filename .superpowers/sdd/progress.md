@@ -1,69 +1,29 @@
-# WP-14 Legacy Cleanup Wave — Progress Ledger
+# DB-001/DB-002 UNION-per-stage Restructure — Progress Ledger
 
-Plan: docs/superpowers/plans/2026-07-07-wp14-legacy-cleanup-wave.md
-Branch: worktree-wp14-legacy-cleanup
-Base (merge-base main): c4fcf58d (Wave 5 complete)
-
-## Locked decisions
-- D23-N13 sequence: migrate consumers BEFORE delete routes (Tasks 1–6 → Task 9 gate → Tasks 10–11)
-- Task 2 audit widgets: **default DROP** (`AUDIT_LEGACY_WIDGETS=false`); rebuild only on product flag
-- Task 13 `users.role` drop: **conditional** on WP-10 RM-3 verification — defer if gate fails
-- `useNotifications` already V1 — legacy `NotificationController` purge only (Task 10)
-- `resetBankAdminPassword` in `useBanks` unused — remove during Task 4 migration
-- R9 envelope: adopt on rewritten endpoints (Task 7); never bundle with functional fixes
-- Demo routes: absent from production (`APP_ENV` whitelist local + staging + testing), not disabled handler
-
-## Prerequisites (must be true before Task 10)
-- [x] Tasks 1–6 complete (all live consumers on V1)
-- [x] Task 9 grep gate green (`scripts/verify-no-legacy-api-consumers.sh`)
-- [x] WP-11/WP-12/WP-13 merged to main (Wave 5 complete)
+Plan: docs/superpowers/plans/2026-07-10-db-001-002-sla-union-restructure.md
+Branch: perf/db-001-002-sla-union-restructure
 
 ## Tasks
 | Task | Description | Status | Commit |
 | --- | --- | --- | --- |
-| 1 | V1 report presets | complete | 9be2e98f |
-| 2 | Audit widgets optional drop | complete | (default off) |
-| 3 | Migrate useUsers | complete | ed5242ad |
-| 4 | Migrate useBanks | complete | f19c5e62 |
-| 5 | Migrate useAudit + audit.vue | complete | a4a9ca28 |
-| 6 | Migrate useReports presets | complete | ed1851b2 |
-| 7 | API envelope tolerance | complete | d460c113 |
-| 8 | Demo route production gate | complete | e620e922 |
-| 9 | Zero-legacy grep gate | complete | 000a300e |
-| 10 | Purge legacy route batch 1 | complete | 77105d43 |
-| 11 | Dead module + designer guard purge | complete | a14a7ba1 |
-| 12 | Stale reference sweep | complete | 03bacb22 |
-| 13 | Conditional users.role drop | **deferred** | — |
-| 14 | Regression + release notes | complete | (this commit) |
-
-## Task 13 deferral (WP-10 RM-3 gate failed)
-
-Pre-flight grep on 2026-07-07 found live `users.role` / `->role` readers outside `User::legacyRole()` fallback:
-
-- `Bank::bankAdmin()` — `where('role', UserRole::BANK_ADMIN)`
-- `User` model — `role` in `$fillable` / casts; `legacyRole()` reads `getAttributes()['role']`
-- `StoreUserRequest` / `UpdateUserRequest` — validate and persist `role`
-- `V1\UserController` — `LegacyRoleMapper::toLegacyValue()` on create/update responses
-- Multiple API resources — `legacyRole()` exposure for transitional clients
-
-**Action:** No `drop_users_role_column` migration shipped. Revisit after WP-10 RM-3 completes.
-
-## Task 14 gate results (2026-07-07)
-
-| Gate | Result |
-| --- | --- |
-| `scripts/verify-no-legacy-api-consumers.sh` | PASS |
-| `LegacyRouteAbsentTest` | PASS (5 tests) |
-| `ReportPresetTest` | PASS (3 tests) |
-| `DemoRouteEnvironmentGateTest` | PASS (4 tests) |
-| Focused frontend composables + utils | PASS (66 tests) |
+| 1 | UnionStagePaginator core (single/empty-stage + threshold fallback) | complete (commits 3e17b36b..15663e3d, review clean after 1 fix pass) | 15663e3d |
+| 2 | Raw-expression sort support for orderBySlaPriority() | complete (commits 15663e3d..cb196c46, review clean) | cb196c46 |
+| 3 | Wire into myQueue() (DB-001) | complete (commits cb196c46..625d5099, review clean after 1 fix pass) | 625d5099 |
+| 4 | Wire into index() (DB-002) | complete (commit bdae5f4d, review clean after report-file correction) | bdae5f4d |
+| 5 | Configurable threshold | complete (commit 81f7c3b7, review clean) | 81f7c3b7 |
+| 6 | Harness multi-stage fixture fix | complete (commits 81f7c3b7..b40a0a8c, 3 commits, review clean) | b40a0a8c |
+| 7 | Full verification + roadmap closure | complete (commits b40a0a8c..3f5d4cf6, 2 commits) | 3f5d4cf6 |
 
 ## Session notes
-- Worktree at `.claude/worktrees/wp14-legacy-cleanup` on branch `worktree-wp14-legacy-cleanup`
-- V1 routes confirmed: `/api/v1/users`, `/api/v1/banks`, `/api/v1/audit-logs`, `/api/v1/notifications`, `/api/v1/report-presets`
-- Legacy routes removed: `/api/users`, `/api/banks`, `/api/audit*`, `/api/report-presets`, duplicate `/api/notifications`
-- `engine_claim:` cache mirror absent (WP-5) — verified in Task 11
-- Placebo settings UI: no stragglers found (WP-11 complete)
-- `committee_director`: only `RoleCodes::COMMITTEE_DIRECTOR` constant remains (WP-10 RM-5 clean)
-- Notification deep links: `/workflows/instances/{id}` (backend dispatcher + frontend navigation util)
-- **Merge readiness:** branch is feature-complete for WP-14 scope; Task 13 deferral documented; dashboard `/requests` list links remain a follow-up (not blocking API cleanup)
+- `.superpowers/sdd/*` files are tracked (not gitignored) with stale committed content from an unrelated prior WP-14 plan (commits bcac5e01/f19c5e62/etc). Working-tree edits to these scratch files got externally reset back to that stale HEAD content mid-session (observed after Task 4's review) — not caused by this session's own actions. Real work (backend commits) unaffected; this ledger and task-N-report.md files are regenerated from the actual git history/session context whenever this happens. Treat `git log` on `perf/db-001-002-sla-union-restructure` as the authoritative record if this ledger ever looks stale again.
+- Task 1: first implementer attempt (haiku) went off-plan — used PHP-side full-fetch+usort instead of SQL-level UNION+LIMIT, defeating the fix's purpose; discarded uncommitted, redispatched (sonnet) with explicit correction re: FIELD() being MySQL-only (SQLite test DB doesn't support it) plus instruction to preserve SQL-level design. Second attempt found 2 more real bugs in the plan's own Step 3 snippet (missing sort-column projection in union branches; binding-array desync in whereIn fallback) and fixed both correctly per se — but reviewer caught the binding fix itself was subtly wrong (array_search-by-value instead of positional). Fix pass corrected it with a type-aware positional binding-slot counter verified against actual Laravel 11 framework source; re-review approved clean.
+- Task 2: plan's original Task 2 text was written against Task 1's first-draft code shape (stale after Task 1's real implementation landed differently) — controller rewrote the brief against the actual current UnionStagePaginator.php before dispatching. Implementer subagent's connection dropped mid-Step-5 after correctly completing Steps 1-4; controller verified the completed work via git diff (real, correct, uncommitted) and resumed at Step 5 directly rather than re-dispatching. Review approved clean, no findings.
+- Task 3: implementer wired myQueue() cleanly (verified brief against real controller state first — no drift this time). Review found 1 Important bug in UnionStagePaginator's hydration (missing withStageEntry() → broke sla_status COALESCE fallback for legacy rows). Fix subagent dispatched but interrupted before starting; controller found its work had already landed correctly (real, uncommitted) and verified it directly (reverted fix, confirmed new test failed, restored, confirmed passed). While running the full regression suite to verify, controller found a SEPARATE, more severe bug the interrupted subagent never reached: both of UnionStagePaginator's empty-result branches built LengthAwarePaginator from a bare array, which Laravel wraps in a Collection without ->load() — any zero-row my-queue call threw a live 500. Controller root-caused and fixed directly (EloquentCollection instead of bare array), verified via full suite (270/947, 0 failures), committed. Re-review approved both fixes, confirmed no third latent gap (checked paginateWhereIn() and paginatedResponse() specifically).
+- Task 4: two implementer sessions interrupted before doing controller-code work (session limit, then a connection drop mid-debug) — each left only test-file/scratch artifacts (the real parity test, plus an investigation-only DebugListOrderTest.php) with zero backend/ code touched, so no rework was needed on resume. Controller root-caused the scratch file's mystery (created_at/updated_at not in EngineRequest::$fillable, same bug Task 1 hit), fixed the test fixture, deleted the scratch file, and completed Steps 3-7 directly (SYSTEM_ADMIN branch kept byte-identical, non-admin branch wired to UnionStagePaginator, careful NOT to copy myQueue()'s claimedBy eager-load since index() never loaded it). Extra full-suite safety check (motivated by Task 3's precedent) came back clean — no regression this time. Review approved the code with one Important finding: this ledger/report file had stale WP-14 content instead of the real report (a pre-existing tracked-file staleness issue, not a code defect) — corrected post-review.
+
+- Task 5: clean, low-risk config addition — matched brief exactly (key name, env var, default), test correctly used the query-log-based path-distinguishing version rather than the naive output-only version the brief warned against. Review approved with no findings.
+- Task 6: harness fixture change (39476b26) matched brief exactly. Its own smoke test hit a real 500; implementer subagent wrongly dismissed it as "pre-existing environmental." Controller didn't accept that, traced storage/logs/laravel.log directly, found a genuine MySQL-only bug: paginateUnion() re-selected engine_requests.id under a duplicate alias whenever the sort-spec tiebreaker was id itself (both myQueue() and index() do this) — MySQL rejects duplicate column names, SQLite silently tolerates them, so 3 commits' worth of SQLite-backed tests never caught it. Fixed directly (5e7549d6), verified via live perf:load-scenario run (500->200) plus full suite. First review approved both commits but flagged that no PHPUnit test could ever catch a regression of this exact bug (SQLite tolerance). Controller closed that gap with a driver-agnostic test using DB::listen() to inspect real generated SQL for duplicate column aliases (b40a0a8c) — had to fix its own regex bug along the way (only matched outermost select, missed the actually-duplicated nested per-branch select inside the UNION ALL). Re-review approved, but the reviewer subagent itself violated the read-only review constraint (reverted the fix in UnionStagePaginator.php to test-reproduce the bug, got blocked by permissions, self-disclosed rather than hiding it). Controller verified the file was left modified, restored it via git checkout, confirmed 10/10 tests still pass. No harm done, but this is the reviewer prompt's job to prevent — vigilance warranted on any reviewer's self-reported "unauthorized edit" disclosures going forward: always independently verify repo state after, don't just trust the disclosure.
+
+- Task 7 (controller-driven, not delegated — final high-stakes verification): full suite green (1298/4575/0 failures). First 200K-row load run FAILED both gates even after Tasks 1-6's UNION restructure (462.88ms/586.47ms vs 300ms target) — not the fundamental MySQL IN+ORDER BY limitation, which the restructure already solved. Root-caused via EXPLAIN ANALYZE to three additional real, fixable issues, each surfaced to the user as a decision point before implementing since all three exceeded the original plan's scope: (1) covering indexes only covered the leading sort column, not the full multi-column key — new migration widens/adds them, one via raw DDL for an explicit per-column DESC/ASC direction Laravel's Blueprint can't express; (2) MySQL's optimizer picks a worse index for a per-branch query executed inside a UNION ALL than the same query standalone — added an optional forceIndex parameter using Laravel's native forceIndex(); (3) my-queue's leading CASE-WHEN sort clause defeats even a forced index but is provably constant within a single stage's branch — added an opt-in $stageInvariant sort-spec flag to exclude it from the per-branch (not merge) ORDER BY. All three fixed and verified live: my-queue 246.51ms, list 221.74ms, both under gate. EXPLAIN evidence doc + results-summary doc + roadmap closure written and committed. Hit a ~15-20min safety-classifier outage blocking all Bash/Write/Edit mid-Step-6 (after roadmap edit landed on disk, before commit) — file content unaffected, resumed cleanly once tooling recovered.
+
+## Plan status: COMPLETE (all 7 tasks done, reviewed, committed) — DB-001 and DB-002 roadmap gates closed with passing live load-run evidence
