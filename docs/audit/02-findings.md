@@ -15,6 +15,8 @@ Blocks are additive: Block 1 seeds architecture (`ARCH-`) and any security defec
 
 _Total: 29 findings (1 Critical fixed). Block 5 added SEC-002/003, OBS-001/002 and ran the consolidated security gate: every recommendation preserves scoping/authz/transactions/audit if its stated condition holds (CACHE-001 scope-key and QUEUE-001 fail-closed are the two conditions to watch)._
 
+**Remediation status (post-audit):** all 15 roadmap verification gates closed (`07-roadmap.md`). Every performance/security finding is **Fixed** except two open by design: **ARCH-005** (remove the unused mPDF engine — deferred by choice this pass) and **OBS-002** (Horizon queue dashboard — threshold-gated, not pre-production). API-003's concurrency half was closed post-audit by **API-003b** (per-year sequence-table allocator, deadlock class eliminated). Phase F load testing on production hardware remains the only release-gating step and needs real infrastructure.
+
 ---
 
 ## SEC-001 — Unauthenticated route exposes all users' names, emails, roles, and banks
@@ -95,7 +97,7 @@ _Total: 29 findings (1 Critical fixed). Block 5 added SEC-002/003, OBS-001/002 a
 | Problem | Two defects at scale: (1) once the yearly sequence exceeds 6 digits (`ENG-2026-1000000`), string MAX compares `"1000000"` < `"999999"`, so `MAX` returns the wrong (lower) row and the +attempt retry cannot escape → permanent `REFERENCE_ALLOCATION_FAILED` (500) for every new request that year. (2) Every create recomputes `MAX` and races other creators, resolved only by unique-constraint retry — serialization contention under concurrent load. |
 | Severity | High |
 | Evidence status | Verified (logic); scale threshold arithmetic-confirmed, contention profile in Block 3 |
-| Finding status | Open |
+| Finding status | Superseded by API-003 (live record) — both halves now Fixed |
 | Roadmap tier | Threshold-gated (annual request volume approaching 10^6) — but the contention aspect is Pre-production-worth reviewing |
 | First identified / last reviewed | Block 1 / Block 1 (renumbered to `API-xxx` in Block 2) |
 | Related findings | Block 2 create-path findings, Block 3 locking |
@@ -225,7 +227,7 @@ _Total: 29 findings (1 Critical fixed). Block 5 added SEC-002/003, OBS-001/002 a
 | Problem | A page of 100 rows issues ~200 extra queries for the FX panel alone — a classic serialization N+1. Cost scales with page size on the hottest list endpoints. |
 | Severity | High |
 | Evidence status | Verified (code); query count confirmed in Block 3 capture |
-| Finding status | Open |
+| Finding status | **Fixed** — batched per-page authorization (`FxConfirmationAuthorizationService`); scope re-verified per-user (Block 5 catch-all). Roadmap gate closed. |
 | Roadmap tier | Pre-production (list endpoints are core; fix before go-live) |
 | First identified / last reviewed | Block 2 / Block 2 |
 | Related findings | ARCH-001, API-002 |
@@ -244,7 +246,7 @@ _Total: 29 findings (1 Critical fixed). Block 5 added SEC-002/003, OBS-001/002 a
 | Problem | One stats call = 6 full scans of the scoped `engine_requests` set plus repeated whole-table permission loads and correlated subqueries. At design target this is the most expensive dashboard call, multiplied by every polling client (Block 4). |
 | Severity | High |
 | Evidence status | Partially Verified (code); plans in Block 3 |
-| Finding status | Open |
+| Finding status | **Fixed** — six passes collapsed to grouped aggregates; `forUser`+accessible-stage scoping preserved (Block 5). Roadmap gate closed; harness confirms constant query count at scale. |
 | Roadmap tier | Threshold-gated (row count × dashboard poll rate) |
 | First identified / last reviewed | Block 2 / Block 2 |
 | Related findings | ARCH-001, ARCH-002, API-005 |
@@ -259,18 +261,18 @@ _Total: 29 findings (1 Critical fixed). Block 5 added SEC-002/003, OBS-001/002 a
 | --- | --- |
 | Area / component | `app/Services/Workflow/EngineRequestService.php` |
 | Endpoint / query | `POST /v1/engine-requests` → `createWithUniqueReference()` |
-| Current behavior | **Fixed (overflow half).** Sequence now derived from `MAX(CAST(SUBSTRING(reference, N) AS UNSIGNED))` — a numeric max, correct at any digit width — instead of the lexicographic string `MAX(reference)`. Still recomputed per create; races still resolved by unique-constraint retry. |
-| Problem | (1) At `ENG-YYYY-1000000` string MAX mis-orders 7-digit vs 6-digit suffixes → permanent `REFERENCE_ALLOCATION_FAILED` for the year. **Fixed** — reproduced pre-fix (confirmed `REFERENCE_ALLOCATION_FAILED` after seeding past the boundary) and verified fixed post-change. (2) Per-create `MAX` recompute + retry = serialization contention under concurrency. **Not fixed** — see Recommendation. |
+| Current behavior | **Fixed (both halves).** Reference now allocated by `EngineRequestReferenceAllocator` from an atomic per-year sequence row (`engine_request_reference_sequences`): `INSERT..ON DUPLICATE KEY UPDATE last_value=LAST_INSERT_ID(last_value+1)` on MySQL, `ON CONFLICT..RETURNING` on SQLite. The old `MAX(CAST(...))+1` recompute-and-retry loop was deleted. |
+| Problem | (1) At `ENG-YYYY-1000000` string MAX mis-ordered 7-digit vs 6-digit suffixes → permanent `REFERENCE_ALLOCATION_FAILED` for the year. **Fixed** first via numeric-cast MAX (API-003), then made moot by the sequence allocator (API-003b). (2) Per-create `MAX` recompute + retry = serialization contention; under true parallelism the index-gap race deadlocked (1213). **Fixed** — the deadlock-aware transaction retry (API-003) closed realistic contention, and the sequence-table allocator (API-003b) eliminated the deadlock class entirely by serializing allocation on one hot row. |
 | Severity | High |
-| Evidence status | Verified (logic + reproduced test failure pre-fix, green post-fix) |
-| Finding status | **Partially Fixed** — overflow/correctness bug resolved (`perf/api-003-reference-allocator`); concurrency-contention half remains open (renamed from API-000) |
-| Roadmap tier | Threshold-gated (≈10^6 requests/year); contention review Pre-production |
-| First identified / last reviewed | Block 1 / Post-audit fix |
+| Evidence status | Verified (logic + reproduced test failure pre-fix, green post-fix; concurrency proven on real MySQL) |
+| Finding status | **Fixed** — overflow (API-003 numeric-cast) and concurrency/deadlock (API-003b sequence-table allocator) both closed. Renamed from API-000. |
+| Roadmap tier | Pre-production (both halves fixed pre-launch) |
+| First identified / last reviewed | Block 1 / Post-audit fix (API-003b) |
 | Related findings | Block 3 locking |
-| Evidence | `EngineRequestService.php:123-153`; `EngineRequestReferenceAllocatorTest`; `evidence/API-003-reference-allocator.md` |
+| Evidence | `EngineRequestReferenceAllocator.php`; `EngineRequestService.php` (create); `EngineRequestReferenceAllocatorTest`; `evidence/API-003-reference-allocator.md` (harness proof: 120/120 at 8×15, 240/240 at 12×20, zero deadlocks) |
 | Confidence | High |
-| Recommendation | **Applied:** numeric-cast `MAX` (`MAX(CAST(SUBSTRING(reference,N) AS UNSIGNED))`) — the finding's own lower-risk option, no schema change. **Not applied:** the per-year sequence-row allocator (deterministic under contention, but a bigger migration) — no production contention evidence exists yet (pre-production, no real traffic) to justify it over the lower-risk fix. Left as an explicit open item, not silently dropped. |
-| Security gate | Reference uniqueness preserved; verified in Block 5. |
+| Recommendation | **Applied (API-003):** numeric-cast `MAX` + deadlock-aware transaction retry. **Applied (API-003b):** the per-year sequence-row allocator (atomic single-row increment) — the deterministic fix, now justified by measured deadlock evidence from the `perf:load-scenario --concurrency` harness (the MAX+1 pattern lost writes at 6+ parallel creators; the sequence allocator does not). |
+| Security gate | Reference uniqueness preserved (distinctness held at every contention level tested); verified in Block 5. |
 
 ## API-004 — Synchronous audit-log CSV export in the request lifecycle
 
@@ -301,7 +303,7 @@ _Total: 29 findings (1 Critical fixed). Block 5 added SEC-002/003, OBS-001/002 a
 | Problem | Seven full scans where one `GROUP BY status` + conditional aggregation suffices; cost multiplies over the largest table at design target. |
 | Severity | Medium |
 | Evidence status | Partially Verified (code); plan in Block 3 |
-| Finding status | Open |
+| Finding status | **Fixed** — seven scans collapsed to one grouped query; `applyScope` preserved (Block 5). Roadmap gate closed. |
 | Roadmap tier | Threshold-gated (row count) |
 | First identified / last reviewed | Block 2 / Block 2 |
 | Related findings | API-002 |
@@ -364,7 +366,7 @@ Full rationale, before/after plans, and migrations in `03-database-plan.md §4`.
 | Problem | Per-row subquery cost across the my-queue sort set. |
 | Severity | High |
 | Evidence status | Verified |
-| Finding status | Open |
+| Finding status | **Fixed** — covering index `wh_req_tostage_created` + `sla_deadline_epoch` projection column + UNION-per-stage restructure (`UnionStagePaginator`). Load-run p95 246.51ms at 200K rows (gate ≤300ms). Roadmap gate closed. |
 | Roadmap tier | Pre-production (paired with ARCH-002) |
 | First identified / last reviewed | Block 3 / Block 3 |
 | Related findings | ARCH-002, API-002, API-006 |
@@ -383,7 +385,7 @@ Full rationale, before/after plans, and migrations in `03-database-plan.md §4`.
 | Problem | 492k-row filter+sort per bank-scoped list page at target. |
 | Severity | High |
 | Evidence status | Verified |
-| Finding status | Open |
+| Finding status | **Fixed** — covering index `er_stage_created` + range-date predicates (ARCH-004) + UNION-per-stage restructure. Load-run p95 221.74ms at 200K rows (gate ≤300ms). Roadmap gate closed. |
 | Roadmap tier | Pre-production (paired with ARCH-004 code fix) |
 | First identified / last reviewed | Block 3 / Block 3 |
 | Related findings | ARCH-004, API-007 |
