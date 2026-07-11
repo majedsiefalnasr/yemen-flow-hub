@@ -18,16 +18,22 @@ use App\Models\WorkflowVersion;
 use Database\Seeders\GovernanceSeeder;
 use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 /**
- * Guards API-003: createWithUniqueReference() must allocate a monotonically
- * increasing sequence regardless of digit width. The pre-fix implementation
- * used a lexicographic string MAX('reference'), which mis-orders a 7-digit
- * suffix below any existing 6-digit one ('1000000' < '999999' as strings) —
- * once the yearly sequence crosses 999999, every subsequent create recomputes
- * the same stale max and permanently fails REFERENCE_ALLOCATION_FAILED.
+ * Guards API-003 / API-003b: request creation must allocate a monotonically
+ * increasing, unique reference regardless of digit width. The reference is
+ * produced by EngineRequestReferenceAllocator from an atomic per-year sequence
+ * row (API-003b), which replaced the old MAX(CAST(suffix))+1 derivation over
+ * engine_requests — that derivation raced every concurrent creator on the same
+ * unique-index gap (deadlocks under load) and, before the numeric cast, also
+ * mis-ordered a 7-digit suffix below a 6-digit one. These tests pin the current
+ * contract: correct 6→7 digit width transition, and derivation from the
+ * sequence row rather than a scan of existing references. Extreme-contention
+ * deadlock-freedom is proven separately by `perf:load-scenario --concurrency`
+ * against real MySQL (the SQLite suite cannot reproduce InnoDB contention).
  */
 class EngineRequestReferenceAllocatorTest extends TestCase
 {
@@ -130,32 +136,17 @@ class EngineRequestReferenceAllocatorTest extends TestCase
     {
         $year = now()->year;
 
-        // Seed a 6-digit reference (999999) plus a run of 7-digit references
-        // immediately above it — cheap stand-in for a real year that crossed
-        // the boundary. A lexicographic string MAX() compares '999999' and
-        // '1000000'+ as different-length strings and always picks '999999'
-        // (the shorter string sorts higher: '9' > '1' at the first differing
-        // position), so every create re-derives sequence 1000000 regardless
-        // of how many 7-digit rows already exist. The single retry-with-
-        // attempt-offset in createWithUniqueReference can paper over exactly
-        // one stale collision, so this seeds enough 7-digit rows (6) to
-        // exhaust the method's full 5-attempt retry budget and force the
-        // permanent REFERENCE_ALLOCATION_FAILED the finding describes.
-        EngineRequest::withoutEvents(function () use ($year) {
-            foreach (array_merge([999999], range(1000000, 1000005)) as $sequence) {
-                EngineRequest::create([
-                    'reference' => sprintf('ENG-%d-%06d', $year, $sequence),
-                    'workflow_version_id' => $this->version->id,
-                    'current_stage_id' => $this->initialStage->id,
-                    'stage_entered_at' => now(),
-                    'status' => 'ACTIVE',
-                    'created_by' => $this->executor->id,
-                    'bank_id' => $this->bank->id,
-                    'data' => [],
-                    'version' => 1,
-                ]);
-            }
-        });
+        // API-003b: the reference now derives from the per-year sequence row,
+        // not from MAX() over engine_requests. Set the sequence to 999999 so the
+        // next allocation must roll into the 7th digit. sprintf('%06d', 1000000)
+        // is '1000000' (7 chars) — the pad is a MINIMUM width, so the reference
+        // correctly widens instead of truncating or wrapping. This is the
+        // width-transition the old MAX(CAST)-based derivation got wrong; the
+        // sequence allocator is correct at any digit width by construction.
+        DB::table('engine_request_reference_sequences')->updateOrInsert(
+            ['year' => (string) $year],
+            ['last_value' => 999999, 'created_at' => now(), 'updated_at' => now()],
+        );
 
         $response = $this->createRequest();
 
@@ -163,9 +154,42 @@ class EngineRequestReferenceAllocatorTest extends TestCase
         $newReference = $response->json('data.reference');
 
         $this->assertSame(
-            sprintf('ENG-%d-%06d', $year, 1000006),
+            sprintf('ENG-%d-%06d', $year, 1000000),
             $newReference,
-            'Next reference must continue the numeric sequence past the 6-digit width, not silently collide or regress.'
+            'Next reference must continue the numeric sequence past the 6-digit width, not truncate or wrap.'
+        );
+    }
+
+    public function test_reference_derives_from_sequence_row_not_existing_rows(): void
+    {
+        $year = now()->year;
+
+        // A high-numbered engine_requests reference must NOT influence the next
+        // allocation — the sequence row is the single source of truth. This is
+        // the structural guarantee that removes the old MAX()-scan race entirely.
+        EngineRequest::withoutEvents(function () use ($year) {
+            EngineRequest::create([
+                'reference' => sprintf('ENG-%d-%06d', $year, 500000),
+                'workflow_version_id' => $this->version->id,
+                'current_stage_id' => $this->initialStage->id,
+                'stage_entered_at' => now(),
+                'status' => 'ACTIVE',
+                'created_by' => $this->executor->id,
+                'bank_id' => $this->bank->id,
+                'data' => [],
+                'version' => 1,
+            ]);
+        });
+
+        // Sequence row still at its seeded baseline (0), so the next reference is
+        // 1 — independent of the 500000-numbered row sitting in engine_requests.
+        $response = $this->createRequest();
+
+        $response->assertCreated();
+        $this->assertSame(
+            sprintf('ENG-%d-%06d', $year, 1),
+            $response->json('data.reference'),
+            'Allocation must come from the sequence row, not a scan of existing references.'
         );
     }
 

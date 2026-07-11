@@ -77,4 +77,37 @@ The first run immediately surfaced a **real, previously-undocumented weakness**:
 
 ### Gate status
 
-Overflow correctness: **closed** (proven). Deadlock-resilience under realistic contention: **closed** (retry fix, proven 4-way). Deadlock-resilience under extreme same-gap contention: **open** — tracked as the follow-up **API-003b** (sequence-table allocator), deferred to Phase E/F as separate schema work, with a reproducing harness now in place to verify it.
+Overflow correctness: **closed** (proven). Deadlock-resilience under realistic contention: **closed** (retry fix, proven 4-way). Deadlock-resilience under extreme same-gap contention: **closed by API-003b below**.
+
+---
+
+## API-003b — sequence-table allocator (deadlock class eliminated)
+
+The residual above (extreme same-gap contention exhausts the retry budget) is now **fixed**, not just deferred. Implemented the per-year sequence-table allocator the finding named as the deterministic option.
+
+### Implementation
+
+- **Table** `engine_request_reference_sequences` (`year` PK, `last_value`, timestamps — mirrors the shape of the dropped legacy `import_request_reference_sequences`). Migration `2026_07_11_120001_create_engine_request_reference_sequences_table` also backfills the current year's `last_value` from the numeric-cast `MAX` of existing `ENG-{year}-*` references, so the first allocation continues past them.
+- **`EngineRequestReferenceAllocator`** service, `allocate(): string`. Single-responsibility, driver-branched:
+  - **MySQL:** `INSERT ... VALUES (?, 1) ON DUPLICATE KEY UPDATE last_value = LAST_INSERT_ID(last_value + 1)`, then `SELECT LAST_INSERT_ID()`. A single-row atomic increment — no read-then-write window, no gap-lock on the `reference` index, so the 1213 deadlock class cannot occur. (`year` is a MySQL reserved word — all identifiers backtick-quoted.)
+  - **SQLite** (test suite): `INSERT ... ON CONFLICT(year) DO UPDATE SET last_value = last_value + 1 RETURNING last_value` — the portable atomic equivalent (no `LAST_INSERT_ID` in SQLite). No other driver is supported; there is no MAX+1 fallback branch (both drivers this project uses have atomic upsert).
+- **Allocation runs BEFORE `create()`'s transaction** (`EngineRequestService::create()`), in its own committed step. A create rollback or deadlock-retry of that transaction leaves an unused number — a harmless gap. References must be unique + monotonic, not gapless. The old `createWithUniqueReference()` MAX+1 loop and its `isDuplicateKey()` helper were deleted.
+
+### Measured results (real dev MySQL, `perf:load-scenario --concurrency`)
+
+The exact contention shapes that broke the MAX+1 allocator (even with the API-003 deadlock-retry) now pass perfectly:
+
+| Contention (workers × creates) | MAX+1 + retry (API-003) | Sequence allocator (API-003b) |
+| --- | --- | --- |
+| 8 × 15 (120) | 77/120 landed, 15 `REFERENCE_ALLOCATION_FAILED`, 28 lost deadlocks | **120/120 landed, 0 failures, 0 deadlocks** |
+| 12 × 20 (240) | (worse — not run) | **240/240 landed, 0 failures, 0 deadlocks** |
+
+Every reference distinct at both levels; zero `REFERENCE_ALLOCATION_FAILED`; **zero deadlocks** (no "other errors" at all — the 1213s are gone, not merely retried). The single hot sequence row serializes allocation cleanly instead of racing the index gap.
+
+### Tests
+
+`EngineRequestReferenceAllocatorTest` rewritten for the new mechanism (SQLite): correct 6→7 digit width transition (seed sequence at 999999 → next is `ENG-{year}-1000000`), derivation from the sequence row not a scan of existing references, and sequential uniqueness. The extreme-contention proof is the MySQL harness above (SQLite is single-writer and cannot reproduce InnoDB contention).
+
+### Note on gaps
+
+The harness's created requests are cleaned up but leave the shared dev sequence advanced (e.g. `2026 = 360` after a 120+240 run) — real allocations simply continue from there. This is the intended gap-tolerant behavior, not a leak.
