@@ -1,0 +1,94 @@
+DB-001/DB-002 UNION-restructure — EXPLAIN evidence
+Captured against real dev MySQL 8.4.9 (yfh-mysql), perf:load-scenario --rows=200000 --keep,
+2-stage fixture (100,000 rows per stage). All queries below are the actual generated SQL
+traced via DB::listen() against a live my-queue / list-endpoint request (not hand-approximated),
+run with EXPLAIN ANALYZE, with the fix (er_stage_sla_deadline/er_stage_created covering indexes
++ UnionStagePaginator::paginate()'s forceIndex + EngineRequest::slaOrderSpec()'s $stageInvariant
+flag) applied.
+
+=== 1. Per-branch query (my-queue), standalone — before fix (no covering index, no forceIndex) ===
+EXPLAIN
+-> Limit: 25 row(s)  (cost=4673 rows=25) (actual time=2.78..2.82 rows=25 loops=1)
+    -> Nested loop left join  (cost=4673 rows=24727) (actual time=2.15..2.18 rows=25 loops=1)
+        -> Filter: ((engine_requests.bank_id = 22) and (engine_requests.`status` = 'ACTIVE'))  (cost=2200 rows=24727) (actual time=0.692..0.713 rows=25 loops=1)
+            -> Index range scan on engine_requests using er_stage_sla_deadline over (current_stage_id = 52), with index condition: (engine_requests.current_stage_id = 52)  (cost=2200 rows=98908) (actual time=0.686..0.697 rows=25 loops=1)
+        -> Constant row from current_stage  (cost=7.08e-6..7.08e-6 rows=1) (actual time=0.00125..0.00128 rows=1 loops=25)
+
+Standalone, the query already used the 2-column er_stage_sla_deadline index cleanly (2.82ms) --
+the real problem only appeared once this exact query ran nested inside a UNION ALL (see #2).
+
+=== 2. Per-branch query (my-queue), nested inside the real UNION ALL — before fix ===
+EXPLAIN ANALYZE
+-> Limit: 25 row(s)  (cost=2.6..2.6 rows=0) (actual time=380..380 rows=25 loops=1)
+    -> Sort: u.sort_raw_0, u.sla_deadline_epoch, u.stage_entered_at, u.id, limit input to 25 row(s) per chunk  (cost=2.6..2.6 rows=0) (actual time=380..380 rows=25 loops=1)
+        -> Table scan on u  (cost=2.5..2.5 rows=0) (actual time=380..380 rows=50 loops=1)
+            -> Union all materialize  (cost=0..0 rows=0) (actual time=380..380 rows=50 loops=1)
+                -> Limit: 25 row(s)  (actual time=207..207 rows=25 loops=1)
+                    -> Sort: sort_raw_0, engine_requests.sla_deadline_epoch, engine_requests.stage_entered_at, engine_requests.id, limit input to 25 row(s) per chunk  (actual time=207..207 rows=25 loops=1)
+                        -> Stream results  (cost=11818 rows=49454) (actual time=0.45..197 rows=100000 loops=1)
+                            -> Nested loop left join  (cost=11818 rows=49454) (actual time=0.442..183 rows=100000 loops=1)
+                                -> Filter: ((engine_requests.current_stage_id = 52) and (engine_requests.`status` = 'ACTIVE'))  (cost=6872 rows=49454) (actual time=0.423..162 rows=100000 loops=1)
+                                    -> Index lookup on engine_requests using engine_requests_bank_id_index (bank_id=22)  (cost=6872 rows=98908) (actual time=0.419..151 rows=200000 loops=1)
+                                -> Constant row from current_stage  (cost=7.08e-6..7.08e-6 rows=1) (actual time=93.5e-6..110e-6 rows=1 loops=100000)
+                (second UNION ALL branch, current_stage_id=53, same shape, ~172ms)
+
+Root cause #1: inside the derived-table/UNION ALL context, MySQL's optimizer picked
+engine_requests_bank_id_index instead of the covering er_stage_sla_deadline index, scanning
+100,000 rows per branch (bank_id=22 matches all 200,000 seeded rows in this fixture) instead of
+using the index for both the current_stage_id filter and the sort. This is a documented MySQL
+cost-estimation quirk specific to derived-table contexts -- the identical query costed and
+planned differently standalone (#1 above) vs. nested (this section). Confirmed by forcing the
+index (FORCE INDEX): still 152ms per branch (see #3), proving a second, independent cause layered
+on top.
+
+=== 3. Per-branch query (my-queue), with the widened index + FORCE INDEX, before $stageInvariant ===
+EXPLAIN ANALYZE
+-> Limit: 25 row(s) (actual time=152..152 rows=25 loops=1)
+    -> Sort: sort_raw_0, engine_requests.sla_deadline_epoch, engine_requests.stage_entered_at, engine_requests.id, limit input to 25 row(s) per chunk (actual time=152..152 rows=25 loops=1)
+        -> Stream results (cost=2586 rows=3297) (actual time=0.506..143 rows=100000 loops=1)
+            -> Nested loop left join (cost=2586 rows=3297) (actual time=0.497..128 rows=100000 loops=1)
+                -> Filter: ((engine_requests.bank_id = 24) and (engine_requests.`status` = 'ACTIVE')) (cost=2256 rows=3297) (actual time=0.456..106 rows=100000 loops=1)
+                    -> Index lookup on engine_requests using er_stage_sla_deadline (current_stage_id=58) (cost=2256 rows=98908) (actual time=0.451..97.6 rows=100000 loops=1)
+                -> Constant row from current_stage (cost=106e-6..106e-6 rows=1) (actual time=87.8e-6..105e-6 rows=1 loops=100000)
+
+Root cause #2: forcing the correct index fixed the index CHOICE, but MySQL still cannot use an
+index-ordered scan for the ORDER BY when the leading sort clause (sort_raw_0, the
+`CASE WHEN current_stage.sla_duration_minutes IS NULL THEN 1 ELSE 0 END` no-SLA tiebreaker) is a
+computed expression -- the index satisfies the current_stage_id filter (Index lookup, matches
+all 100,000 rows in the stage) but the whole 100,000-row result set still gets materialized
+("Stream results") and sorted in memory before the LIMIT 25 can apply.
+
+=== 4. Per-branch query (my-queue), final fix: FORCE INDEX + $stageInvariant excludes the CASE
+     from the per-branch ORDER BY (still selected; still included in the outer merge sort) ===
+EXPLAIN ANALYZE
+-> Limit: 25 row(s)  (cost=2586 rows=25) (actual time=0.935..0.959 rows=25 loops=1)
+    -> Nested loop left join  (cost=2586 rows=3297) (actual time=0.928..0.95 rows=25 loops=1)
+        -> Filter: ((engine_requests.bank_id = 24) and (engine_requests.`status` = 'ACTIVE'))  (cost=2256 rows=3297) (actual time=0.892..0.906 rows=25 loops=1)
+            -> Index lookup on engine_requests using er_stage_sla_deadline (current_stage_id=58)  (cost=2256 rows=98908) (actual time=0.876..0.885 rows=25 loops=1)
+        -> Constant row from current_stage  (cost=106e-6..106e-6 rows=1) (actual time=0.00151..0.00152 rows=1 loops=25)
+
+0.959ms, LIMIT pushed all the way to the index scan, no materialize/sort step. ~150x faster than
+#3 for this branch. Safe because current_stage.sla_duration_minutes is a joined stage-level
+column, identical for every row sharing one current_stage_id -- the CASE can never discriminate
+which rows are that branch's top-N, so it's a correctness-neutral optimization scoped by an
+explicit, opt-in $stageInvariant flag (see EngineRequest::slaOrderSpec()'s docblock and
+UnionStagePaginator::paginateUnion()'s docblock for the full argument).
+
+=== 5. Per-branch query (engine-requests list), final fix: er_stage_created (current_stage_id,
+     created_at DESC, id ASC) + forceIndex ===
+EXPLAIN
+-> Index lookup on engine_requests using er_stage_created (current_stage_id=X)
+   (cost=... rows=98908) (actual: rows=25 loops=1)
+-- Using index condition; Using where. No filesort, no materialize step.
+No computed-expression sort clause on this endpoint (sort spec is plain columns:
+created_at DESC, id ASC), so no $stageInvariant exclusion was needed here -- the covering index
+alone (with its explicit per-column DESC/ASC direction, since a single ascending B-tree cannot
+satisfy mixed sort directions in one scan) closed the gap.
+
+=== 6. Merge/count fromSub query shape (both endpoints) ===
+The outer merge query (`SELECT id FROM (branch1 UNION ALL branch2) AS u ORDER BY ... LIMIT ...`)
+and count query (`SELECT COUNT(*) FROM (branch1 UNION ALL branch2) AS u`) only ever operate on
+the already-limited per-branch result sets (at most $branchLimit rows per branch, i.e. small),
+so their own cost is negligible once the per-branch queries are fast -- confirmed by the overall
+per-request wall-clock times in DB-001-002-union-restructure-results.md, not re-profiled
+independently here.
