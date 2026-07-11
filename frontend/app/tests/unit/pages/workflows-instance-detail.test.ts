@@ -237,6 +237,27 @@ describe('workflows/instances/[id].vue', () => {
     expect(wrapper.text()).toContain('ENG-2026-000005')
   })
 
+  // UI-RBAC-002: a failed load must render a coded ErrorState with a retry, not
+  // a blank shell.
+  it('renders a 403 error state when the instance load is forbidden', async () => {
+    mockShow.mockRejectedValueOnce({ status: 403 })
+    const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('403')
+    expect(wrapper.text()).toContain('لا تملك صلاحية الوصول')
+    expect(wrapper.text()).toContain('إعادة المحاولة')
+  })
+
+  it('renders a rate-limit error state on a 429 load', async () => {
+    mockShow.mockRejectedValueOnce({ status: 429 })
+    const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('429')
+    expect(wrapper.text()).toContain('كثرة الطلبات')
+  })
+
   it('renders available actions derived from graph edges matching the current stage', async () => {
     const store = useEngineRequestsStore()
     store.current = makeInstance()

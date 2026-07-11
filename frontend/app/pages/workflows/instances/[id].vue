@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, toRef } from 'vue'
 import { toast } from 'vue-sonner'
-import { extractApiErrorCode } from '@/utils/apiErrors'
+import { extractApiErrorCode, extractHttpStatus } from '@/utils/apiErrors'
 import { useEngineRequestsStore } from '@/stores/engineRequests.store'
 import { useEngineFormSchema } from '@/composables/useEngineFormSchema'
 import { useEngineRequestActions } from '@/composables/useEngineRequestActions'
@@ -34,6 +34,7 @@ import {
   AlertDialogAction,
 } from '@/components/ui/alert-dialog'
 import { Skeleton } from '@/components/ui/skeleton'
+import ErrorState from '@/components/shared/ErrorState.vue'
 import { AlertTriangle } from 'lucide-vue-next'
 
 definePageMeta({ middleware: ['auth', 'screen'], requiredScreen: 'requests' })
@@ -55,11 +56,22 @@ const formData = ref<Record<string, unknown>>({})
 const comment = ref('')
 const actionBusy = ref(false)
 
+// UI-RBAC-002: a failed loadInstance (403 for an out-of-scope request, 404 for a
+// missing one, 429, or a server error) previously left store.current null with
+// no error branch, so the page rendered a blank shell. Capture the HTTP status
+// so the template can show ErrorState with the right code + a retry action.
+const loadErrorCode = ref<number | null>(null)
+
 async function load() {
-  await store.loadInstance(requestId.value)
-  await fetchSchema(requestId.value)
-  formData.value = store.current?.data ?? {}
-  claimedBy.value = store.current?.claimed_by ?? null
+  loadErrorCode.value = null
+  try {
+    await store.loadInstance(requestId.value)
+    await fetchSchema(requestId.value)
+    formData.value = store.current?.data ?? {}
+    claimedBy.value = store.current?.claimed_by ?? null
+  } catch (cause: unknown) {
+    loadErrorCode.value = extractHttpStatus(cause) ?? 500
+  }
 }
 
 // Native browser guard: warns on hard refresh or tab close when the wizard has
@@ -231,6 +243,28 @@ async function confirmAbandonDraft() {
       <Skeleton class="mb-4 h-8 w-64" />
       <Skeleton class="h-48 w-full" />
     </div>
+
+    <!-- UI-RBAC-002: the request could not be loaded (out-of-scope 403, missing
+         404, rate-limited 429, or server error). Show a coded error state with a
+         retry instead of a blank shell. -->
+    <ErrorState
+      v-else-if="loadErrorCode !== null && !store.current"
+      :code="loadErrorCode === 429 ? '429' : loadErrorCode"
+      :title="loadErrorCode === 429 ? 'تم إيقاف التحميل مؤقتاً' : undefined"
+      :description="
+        loadErrorCode === 429
+          ? 'تم إيقاف التحميل مؤقتاً بسبب كثرة الطلبات. حاول مرة أخرى بعد قليل.'
+          : undefined
+      "
+      :actions="[
+        { label: 'إعادة المحاولة', variant: 'default', onClick: load },
+        {
+          label: 'العودة إلى الطلبات',
+          variant: 'outline',
+          onClick: () => router.push('/workflows'),
+        },
+      ]"
+    />
 
     <template v-else-if="store.current">
       <PageHeader

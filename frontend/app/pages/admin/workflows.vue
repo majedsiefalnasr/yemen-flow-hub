@@ -85,6 +85,13 @@ const {
   archiveVersion,
 } = useWorkflows()
 
+// UI-RBAC-001: gate the route itself, not just the in-template ScreenGuard
+// wrappers. Without this, a user lacking workflow_designer access still mounts
+// the full designer shell and sees an empty page (every panel is withheld by
+// ScreenGuard). The screen middleware redirects them to /forbidden before the
+// page renders; the ScreenGuard wrappers remain as per-capability defense.
+definePageMeta({ middleware: ['auth', 'screen'], requiredScreen: 'workflow_designer' })
+
 // ── Version picker state ────────────────────────────────────────────────
 const selectedDefinitionId = ref<number | null>(null)
 const selectedVersionId = ref<number | null>(null)
