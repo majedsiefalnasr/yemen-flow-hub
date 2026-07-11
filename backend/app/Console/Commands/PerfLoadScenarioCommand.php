@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Exceptions\EngineException;
 use App\Models\Bank;
 use App\Models\Merchant;
 use App\Models\Organization;
@@ -14,6 +15,7 @@ use App\Models\WorkflowDefinition;
 use App\Models\WorkflowStage;
 use App\Models\WorkflowTransition;
 use App\Models\WorkflowVersion;
+use App\Services\Workflow\EngineRequestService;
 use App\Support\QueryMetrics;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Http\Kernel;
@@ -38,7 +40,7 @@ use Throwable;
  */
 class PerfLoadScenarioCommand extends Command
 {
-    protected $signature = 'perf:load-scenario {--rows=200000} {--keep : do not delete the seeded rows at the end} {--cleanup-only : delete any leftover PERF-LOAD-* fixture data and exit (recovery path if a prior run crashed before its own cleanup ran, e.g. an out-of-memory fatal that skips finally)}';
+    protected $signature = 'perf:load-scenario {--rows=200000} {--keep : do not delete the seeded rows at the end} {--cleanup-only : delete any leftover PERF-LOAD-* fixture data and exit (recovery path if a prior run crashed before its own cleanup ran, e.g. an out-of-memory fatal that skips finally)} {--concurrency=0 : instead of the p95 seed run, fork this many worker processes that each create requests in parallel through EngineRequestService::create() to load-test the reference allocator under true contention (API-003)} {--creates-per-worker=25 : with --concurrency, how many real creates each worker performs}';
 
     protected $description = 'Bulk-seed engine_requests and measure my-queue / list endpoint p95 + query counts (audit remediation load-run harness)';
 
@@ -64,6 +66,11 @@ class PerfLoadScenarioCommand extends Command
             $this->info('Cleanup done.');
 
             return self::SUCCESS;
+        }
+
+        $concurrency = (int) $this->option('concurrency');
+        if ($concurrency > 0) {
+            return $this->runConcurrencyScenario($concurrency, (int) $this->option('creates-per-worker'));
         }
 
         $rows = (int) $this->option('rows');
@@ -386,12 +393,218 @@ class PerfLoadScenarioCommand extends Command
         $this->line("  gate (query count constant across page sizes): {$gateStatus}");
     }
 
+    /**
+     * API-003 residual: load-test the reference allocator under TRUE
+     * concurrency. Forks $workers real OS processes that each call the
+     * production EngineRequestService::create() path $perWorker times,
+     * all racing on the same MAX(CAST(numeric suffix AS UNSIGNED))+1
+     * sequence against the same MySQL row-space. The SQLite test suite
+     * cannot reproduce this (single-writer), which is why this lives in
+     * the mysql-only harness rather than a PHPUnit test.
+     *
+     * Gate: every create must yield a distinct reference, with zero
+     * REFERENCE_ALLOCATION_FAILED — i.e. the unique-constraint retry loop
+     * must absorb every lost race within its 5-attempt budget.
+     */
+    private function runConcurrencyScenario(int $workers, int $perWorker): int
+    {
+        if (! function_exists('pcntl_fork')) {
+            $this->error('The pcntl extension is required for the concurrency scenario (pcntl_fork not available).');
+
+            return self::FAILURE;
+        }
+
+        $this->info("=== API-003 reference-allocator contention: {$workers} parallel workers × {$perWorker} creates each ===");
+        $this->info('Setting up fixture (bank, workflow, initial stage, permission, user)…');
+        $fixture = $this->buildFixture();
+
+        // buildFixture() grants EXECUTE only on the two non-initial stages
+        // (the p95 gates need exactly two accessible stages). Creating a
+        // request enters the INITIAL stage, so this scenario additionally
+        // needs EXECUTE on that stage — added here, not in the shared
+        // fixture, so the p95 run's accessible-stage count is untouched.
+        $initialStage = $fixture['version']->stages()->where('is_initial', true)->firstOrFail();
+        StagePermission::create([
+            'stage_id' => $initialStage->id,
+            'organization_id' => $fixture['bank']->organization_id,
+            'role_id' => Role::where('code', 'bank_admin')->firstOrFail()->id,
+            'access_level' => 'EXECUTE',
+            'display_label' => 'Intake',
+            'version' => 1,
+        ]);
+
+        // Each worker writes its outcome as one JSON line to a shared temp
+        // file (children cannot return data to the parent in-process; a file
+        // is the simplest robust IPC and is unlinked in the finally block).
+        $resultFile = tempnam(sys_get_temp_dir(), 'perf-ref-contention-');
+
+        try {
+            $expectedTotal = $workers * $perWorker;
+            $this->info("Forking {$workers} workers; expecting {$expectedTotal} unique references…");
+
+            $pids = [];
+            for ($w = 0; $w < $workers; $w++) {
+                $pid = pcntl_fork();
+
+                if ($pid === -1) {
+                    $this->error('pcntl_fork failed.');
+
+                    return self::FAILURE;
+                }
+
+                if ($pid === 0) {
+                    // Child: run the worker and exit. Never returns.
+                    $this->runContentionWorker($fixture, $perWorker, $resultFile);
+                    exit(0);
+                }
+
+                $pids[] = $pid;
+            }
+
+            // Parent: wait for every child to finish.
+            foreach ($pids as $pid) {
+                pcntl_waitpid($pid, $status);
+            }
+
+            return $this->reportContentionResults($fixture, $resultFile, $expectedTotal);
+        } catch (Throwable $e) {
+            $this->error('Concurrency scenario failed: '.$e->getMessage());
+            $this->error($e->getTraceAsString());
+
+            return self::FAILURE;
+        } finally {
+            @unlink($resultFile);
+            $this->info('Cleaning up seeded rows and fixture…');
+            $this->cleanup();
+            $this->info('Cleanup done.');
+        }
+    }
+
+    /**
+     * Runs inside a forked child. Reconnects the DB (an inherited MySQL
+     * socket is not safe to share across a fork), performs $perWorker real
+     * creates through the production service, and appends its outcome to the
+     * shared result file.
+     *
+     * @param  array{bank: Bank, stages: array{WorkflowStage, WorkflowStage}, version: WorkflowVersion, user: User, merchant: Merchant}  $fixture
+     */
+    private function runContentionWorker(array $fixture, int $perWorker, string $resultFile): void
+    {
+        // A forked process inherits the parent's open MySQL connection socket;
+        // sharing it corrupts the protocol. Drop it so this child opens its own.
+        DB::purge();
+
+        $service = app(EngineRequestService::class);
+        $user = User::findOrFail($fixture['user']->id);
+        $version = WorkflowVersion::findOrFail($fixture['version']->id);
+
+        $created = 0;
+        $allocationFailures = 0;
+        $otherErrors = [];
+
+        for ($i = 0; $i < $perWorker; $i++) {
+            try {
+                $service->create($version, [
+                    'merchant_id' => $fixture['merchant']->id,
+                    'data' => ['amount' => 100, 'currency' => 'USD'],
+                ], $user);
+                $created++;
+            } catch (EngineException $e) {
+                if ($e->getErrorCode() === 'REFERENCE_ALLOCATION_FAILED') {
+                    $allocationFailures++;
+                } else {
+                    $otherErrors[] = $e->getErrorCode().': '.$e->getMessage();
+                }
+            } catch (Throwable $e) {
+                $otherErrors[] = get_class($e).': '.$e->getMessage();
+            }
+        }
+
+        $line = json_encode([
+            'pid' => getmypid(),
+            'created' => $created,
+            'allocationFailures' => $allocationFailures,
+            'otherErrors' => $otherErrors,
+        ]).PHP_EOL;
+
+        file_put_contents($resultFile, $line, FILE_APPEND | LOCK_EX);
+    }
+
+    /**
+     * Parent-side aggregation and gate verdict for the contention scenario.
+     *
+     * @param  array{bank: Bank, stages: array{WorkflowStage, WorkflowStage}, version: WorkflowVersion, user: User, merchant: Merchant}  $fixture
+     */
+    private function reportContentionResults(array $fixture, string $resultFile, int $expectedTotal): int
+    {
+        $lines = array_filter(explode(PHP_EOL, (string) file_get_contents($resultFile)));
+
+        $reportedCreated = 0;
+        $allocationFailures = 0;
+        $otherErrors = [];
+
+        foreach ($lines as $line) {
+            $row = json_decode($line, true);
+            if (! is_array($row)) {
+                continue;
+            }
+            $reportedCreated += (int) ($row['created'] ?? 0);
+            $allocationFailures += (int) ($row['allocationFailures'] ?? 0);
+            $otherErrors = array_merge($otherErrors, (array) ($row['otherErrors'] ?? []));
+        }
+
+        // Ground truth: count what actually landed in the table for this
+        // fixture's bank, and how many of those references are distinct.
+        $bankId = $fixture['bank']->id;
+        $actualRows = DB::table('engine_requests')->where('bank_id', $bankId)->count();
+        $distinctRefs = DB::table('engine_requests')->where('bank_id', $bankId)->distinct()->count('reference');
+
+        $this->newLine();
+        $this->line("  workers reported created: {$reportedCreated} (expected {$expectedTotal})");
+        $this->line("  rows actually in table:   {$actualRows}");
+        $this->line("  distinct references:      {$distinctRefs}");
+        $this->line("  REFERENCE_ALLOCATION_FAILED: {$allocationFailures}");
+
+        if ($otherErrors !== []) {
+            $this->warn('  other errors ('.count($otherErrors).'):');
+            foreach (array_slice($otherErrors, 0, 10) as $err) {
+                $this->warn('    - '.$err);
+            }
+        }
+
+        $uniquenessHeld = $actualRows === $distinctRefs;
+        $noAllocFailure = $allocationFailures === 0;
+        $allLanded = $actualRows === $expectedTotal && $reportedCreated === $expectedTotal;
+
+        $this->newLine();
+        $this->line('  gate — every reference distinct (no duplicate escaped): '.($uniquenessHeld ? 'PASS' : 'FAIL'));
+        $this->line('  gate — zero REFERENCE_ALLOCATION_FAILED:               '.($noAllocFailure ? 'PASS' : 'FAIL'));
+        $this->line('  gate — every create landed exactly once:               '.($allLanded ? 'PASS' : 'FAIL'));
+
+        $passed = $uniquenessHeld && $noAllocFailure && $allLanded && $otherErrors === [];
+        $this->newLine();
+        $this->info($passed ? '  API-003 contention gate: PASS' : '  API-003 contention gate: FAIL');
+
+        return $passed ? self::SUCCESS : self::FAILURE;
+    }
+
     private function cleanup(): void
     {
         DB::table('engine_requests')->where('reference', 'like', self::REF_PREFIX.'%')->delete();
 
         $bank = Bank::where('code', 'PERFLOAD')->first();
         if ($bank !== null) {
+            // The concurrency scenario creates real requests through the service
+            // (ENG-* references, not PERF-LOAD-*) plus their workflow_history
+            // rows. Remove every request for this fixture bank — and its history
+            // first — so the stage delete below is not blocked by an FK. Scoped
+            // to the PERFLOAD bank only, so real data in other banks is untouched.
+            $fixtureRequestIds = DB::table('engine_requests')->where('bank_id', $bank->id)->pluck('id');
+            if ($fixtureRequestIds->isNotEmpty()) {
+                DB::table('workflow_history')->whereIn('request_id', $fixtureRequestIds)->delete();
+                DB::table('engine_requests')->whereIn('id', $fixtureRequestIds)->delete();
+            }
+
             $version = WorkflowVersion::whereHas('definition', fn ($q) => $q->where('code', 'like', 'PERF_LOAD_WF_%'))->first();
             if ($version !== null) {
                 WorkflowTransition::where('workflow_version_id', $version->id)->delete();

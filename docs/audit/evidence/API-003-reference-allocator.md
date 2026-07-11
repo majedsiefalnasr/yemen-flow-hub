@@ -43,6 +43,38 @@ Tests: 2, Assertions: 8
 
 `tests/Feature/Engine/EngineRequestTest.php` (38 tests, including the pre-existing `test_create_reference_unique`) — all green, no behavior change to the happy path (2-digit/6-digit sequences resolve identically before and after; only the boundary-crossing case differs).
 
-## Residual — concurrency contention not addressed
+## Concurrency contention — now load-tested against real MySQL
 
-The finding's second concern — "every create recomputes MAX and races other creators, resolved only by unique-constraint retry — serialization contention under concurrent load" — is **not fixed here**. The numeric-cast MAX fix corrects the overflow/correctness bug; it does not change the recompute-per-create pattern or add a dedicated sequence row/table. The finding's own recommendation offered the numeric-cast fix specifically as the lower-risk option ("casting keeps schema unchanged but still recomputes MAX") versus a per-year sequence-table allocator (bigger change, deterministic under contention, "Decide with Block 3 evidence"). Given no production contention evidence exists (pre-production, no real traffic), the schema-changing allocator is not justified here — this fix closes the correctness defect (the part with a concrete, reproducible failure) without the larger, harder-to-roll-back migration. Flagged as an explicit residual, not silently dropped.
+The finding's second concern — "every create recomputes MAX and races other creators, resolved only by unique-constraint retry — serialization contention under concurrent load" — was flagged as an untested residual in the overflow-fix pass above. It has now been **directly load-tested** with true parallel workers (not sequential retries, which the SQLite `:memory:` test suite cannot distinguish — SQLite is single-writer and does not reproduce InnoDB row/gap contention). This is why the test lives in the mysql-only harness, not PHPUnit.
+
+### Harness
+
+`php artisan perf:load-scenario --concurrency=N --creates-per-worker=M` (added to the existing `PerfLoadScenarioCommand`). It forks N real OS processes with `pcntl_fork`; each child `DB::purge()`s (a forked MySQL socket is unsafe to share), then calls the **production** `EngineRequestService::create()` path M times. All workers race on the same `MAX(CAST(...))+1` sequence and the same unique-`reference` index gap, in the same bank, with no think-time — the synthetic worst case. The parent aggregates and asserts three gates: every reference distinct, zero `REFERENCE_ALLOCATION_FAILED`, every create landed exactly once. Self-cleaning (removes the `ENG-*` requests + their `workflow_history` for the fixture bank, FK-safe), scoped to the `PERFLOAD` fixture bank so real data is never touched.
+
+### What the test found (real dev MySQL, `cby_imports`)
+
+The first run immediately surfaced a **real, previously-undocumented weakness**: under true parallel inserts, MySQL aborts the losing side with a `1213 Deadlock` on the INSERT — and the allocator's inner retry loop only catches `1062` duplicate-key, so deadlocked creates were silently lost (13/20 landed at 4 workers × 5).
+
+**Root cause of the loss:** the deadlock aborts `create()`'s *entire* outer `DB::transaction()`, so retrying just the insert in `createWithUniqueReference()` cannot help — its transaction is already dead.
+
+**Fix applied** (`EngineRequestService::create()`): wrap the transaction in Laravel's built-in retry — `DB::transaction($callback, 5)`. Laravel's `DetectsConcurrencyErrors` re-runs the closure on a detected concurrency error (`1213` deadlock / `1205` lock-wait / `40001`) **only**, not on `1062`. The two retry layers compose cleanly: the outer retry re-runs the whole transaction on an aborted-transaction deadlock; the inner loop still handles a plain reference collision within a live transaction.
+
+### Measured results (before → after the deadlock fix)
+
+| Contention (workers × creates) | Before fix | After fix |
+| --- | --- | --- |
+| 4 × 5 (20) | 13/20 landed — **FAIL** (7 deadlocks lost) | **20/20 landed — PASS**, 0 alloc failures |
+| 6 × 10 (60) | — | 47/60 — **FAIL** (5 `REFERENCE_ALLOCATION_FAILED`) |
+| 8 × 15 (120) | — | 77/120 — **FAIL** (15 `REFERENCE_ALLOCATION_FAILED`) |
+
+**Distinctness held at every level, before and after** (13/13, 20/20, 47/47, 77/77) — the allocator has **never** issued a duplicate reference. The core correctness property (no two requests share a reference) is solid; the failures are lost-write availability under a deadlock storm, not data corruption.
+
+### Honest verdict
+
+- The retry-widening is the correct **first** fix and closes realistic contention: **≤4-way sustained same-gap contention now passes** cleanly, where it lost writes before.
+- **Extreme contention (6+ parallel workers hitting the identical index gap at the same microsecond) still exhausts the 5-attempt budget.** This is inherent to the "compute `MAX+1`, insert, retry" pattern — retries re-collide under a storm, so merely raising the attempt count yields diminishing returns, not a fix. This synthetic shape (all creates in one bank, one gap, zero think-time) is far more adversarial than production, where creates spread across banks/users/human timing.
+- The **deterministic** elimination is the option the original finding named as the larger, separate change: a per-year sequence-table allocator (`reference_sequences` row updated with `INSERT ... ON DUPLICATE KEY UPDATE seq = LAST_INSERT_ID(seq + 1)`), which serializes allocation on one hot row instead of racing the whole index — removing the deadlock class entirely. That is a schema change and stays **separate approved work** per the audit's "each fix is separate approved work" rule.
+
+### Gate status
+
+Overflow correctness: **closed** (proven). Deadlock-resilience under realistic contention: **closed** (retry fix, proven 4-way). Deadlock-resilience under extreme same-gap contention: **open** — tracked as the follow-up **API-003b** (sequence-table allocator), deferred to Phase E/F as separate schema work, with a reproducing harness now in place to verify it.

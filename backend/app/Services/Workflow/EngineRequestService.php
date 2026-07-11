@@ -67,6 +67,17 @@ class EngineRequestService
             }
         }
 
+        // API-003: retry the whole transaction (not just the insert) on an
+        // InnoDB deadlock / lock-wait timeout. Under true concurrent creation,
+        // parallel inserts into the same unique-reference index race and MySQL
+        // aborts one side with a 1213 deadlock — which rolls the transaction
+        // back, so createWithUniqueReference()'s inner 1062 retry cannot help
+        // (its transaction is already dead). Laravel's transaction($cb, $attempts)
+        // re-runs the closure on a detected concurrency error (1213/1205) only,
+        // not on a duplicate key (1062) — so the two retry layers compose:
+        // outer handles aborted transactions, inner handles reference collision.
+        // Proven by php artisan perf:load-scenario --concurrency (see
+        // docs/audit/evidence/API-003-reference-allocator.md).
         return DB::transaction(function () use ($version, $initialStage, $data, $actor, $resolvedBankId) {
             // ARCH-002: the request enters its initial stage now; stamp the same
             // timestamp into the projection column and the CREATE history row so
@@ -116,7 +127,7 @@ class EngineRequestService
             );
 
             return $request->fresh(['currentStage', 'creator', 'bank', 'merchant']);
-        });
+        }, 5);
     }
 
     /**

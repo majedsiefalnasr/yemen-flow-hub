@@ -16,6 +16,11 @@ class EngineException extends RuntimeException
         parent::__construct($message);
     }
 
+    public function getErrorCode(): string
+    {
+        return $this->errorCode;
+    }
+
     public function render(): JsonResponse
     {
         $payload = [
