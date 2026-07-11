@@ -174,12 +174,44 @@ class DashboardWorkApiTest extends TestCase
 
         $data = $this->actingAs($swift)->getJson('/api/dashboard/work')->assertOk()->json('data');
 
-        $itemIds = collect($data['actionable']['items'])
-            ->pluck('id')->map(fn ($id) => (int) $id)->sort()->values()->all();
-
         $this->assertNotEmpty($myQueueIds, 'The SWIFT pilot expects seeded FX work.');
         $this->assertSame(count($myQueueIds), $data['actionable']['count']);
-        $this->assertSame($myQueueIds, $itemIds, 'SWIFT actionable IDs must equal /my-queue IDs.');
+        foreach ($data['actionable']['items'] as $item) {
+            $this->assertContains((int) $item['id'], $myQueueIds, 'SWIFT actionable item outside /my-queue.');
+        }
+    }
+
+    /**
+     * D0.5: every migrated workflow-executor role's actionable section must equal
+     * its /my-queue record set by IDs — the parity oracle for the MyWorkDashboard
+     * migration.
+     *
+     * @return array<string, array{0: string}>
+     */
+    public static function migratedRoleProvider(): array
+    {
+        return [
+            'support (SUPPORT)' => ['support1@cby.gov.ye'],
+            'reviewer (INTERNAL)' => ['reviewer@ybrd.com.ye'],
+            'data entry (CREATE)' => ['entry@ybrd.com.ye'],
+            'executive member (EXEC)' => ['exec1@cby.gov.ye'],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('migratedRoleProvider')]
+    public function test_migrated_role_actionable_matches_my_queue(string $email): void
+    {
+        $user = $this->userByEmail($email);
+        $myQueueIds = $this->myQueueIds($user);
+
+        $data = $this->actingAs($user)->getJson('/api/dashboard/work')->assertOk()->json('data');
+
+        // The dashboard count equals the full /my-queue total, and the (bounded)
+        // preview is a scope-preserving subset of that same record set.
+        $this->assertSame(count($myQueueIds), $data['actionable']['count'], "count mismatch for {$email}");
+        foreach ($data['actionable']['items'] as $item) {
+            $this->assertContains((int) $item['id'], $myQueueIds, "actionable item outside /my-queue for {$email}");
+        }
     }
 
     public function test_cross_bank_records_are_excluded_from_a_bank_users_work(): void

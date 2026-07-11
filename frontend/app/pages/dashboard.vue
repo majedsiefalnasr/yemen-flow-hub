@@ -7,13 +7,8 @@ import { UserRole } from '../types/enums'
 import { ROLE_LABELS, ROUTE_ROLE_MAP } from '../constants/workflow'
 import { Button } from '../components/ui/button'
 import PageHeader from '../components/layout/PageHeader.vue'
-import DataEntryDashboard from '../components/dashboard/DataEntryDashboard.vue'
-import BankReviewerDashboard from '../components/dashboard/BankReviewerDashboard.vue'
 import BankAdminDashboard from '../components/dashboard/BankAdminDashboard.vue'
-import SupportCommitteeDashboard from '../components/dashboard/SupportCommitteeDashboard.vue'
 import MyWorkDashboard from '../components/dashboard/MyWorkDashboard.vue'
-import ExecutiveDashboard from '../components/dashboard/ExecutiveDashboard.vue'
-import CommitteeDirectorDashboard from '../components/dashboard/CommitteeDirectorDashboard.vue'
 import CbyAdminDashboard from '../components/dashboard/CbyAdminDashboard.vue'
 
 definePageMeta({
@@ -59,17 +54,25 @@ const showNewRequestAction = computed(
       </template>
     </PageHeader>
 
-    <!-- Role-specific dashboard body -->
-    <DataEntryDashboard v-if="role === UserRole.DATA_ENTRY" />
-    <BankReviewerDashboard v-else-if="role === UserRole.BANK_REVIEWER" />
-    <BankAdminDashboard v-else-if="role === UserRole.BANK_ADMIN" />
-    <SupportCommitteeDashboard v-else-if="role === UserRole.SUPPORT_COMMITTEE" />
-    <!-- Phase D0.4 pilot: SWIFT Officer is the first role served by the shared,
-         permission-driven MyWorkDashboard. Remaining roles migrate in D0.5. -->
-    <MyWorkDashboard v-else-if="role === UserRole.SWIFT_OFFICER" />
-    <ExecutiveDashboard v-else-if="role === UserRole.EXECUTIVE_MEMBER" />
-    <CommitteeDirectorDashboard v-else-if="role === UserRole.COMMITTEE_DIRECTOR" />
+    <!-- Phase D0: workflow-executor roles are served by the shared,
+         permission-driven MyWorkDashboard (actionable work = /my-queue). The two
+         analytics-oriented roles (Bank Admin, CBY Admin) keep their dedicated
+         dashboards until their metrics move into MyWorkDashboard / the system
+         dashboard (D0.5 Bank Admin slice, D0.6 admin split). -->
+    <BankAdminDashboard v-if="role === UserRole.BANK_ADMIN" />
     <CbyAdminDashboard v-else-if="role === UserRole.CBY_ADMIN" />
+    <!-- Every workflow-executor role — including the Committee Director (FINAL) —
+         is served by the shared MyWorkDashboard (actionable work = /my-queue). -->
+    <MyWorkDashboard
+      v-else-if="
+        role === UserRole.DATA_ENTRY ||
+        role === UserRole.BANK_REVIEWER ||
+        role === UserRole.SUPPORT_COMMITTEE ||
+        role === UserRole.SWIFT_OFFICER ||
+        role === UserRole.EXECUTIVE_MEMBER ||
+        role === UserRole.COMMITTEE_DIRECTOR
+      "
+    />
 
     <!-- Unknown role -->
     <div

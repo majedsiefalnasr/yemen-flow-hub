@@ -6,12 +6,8 @@ import { useAuthStore } from '../stores/auth.store'
 import { UserRole } from '../types/enums'
 import { ROLE_LABELS, ROUTE_ROLE_MAP } from '../constants/workflow'
 import { Button } from '../components/ui/button'
-import DataEntryDashboard from '../components/dashboard/DataEntryDashboard.vue'
-import BankReviewerDashboard from '../components/dashboard/BankReviewerDashboard.vue'
 import BankAdminDashboard from '../components/dashboard/BankAdminDashboard.vue'
-import SupportCommitteeDashboard from '../components/dashboard/SupportCommitteeDashboard.vue'
-import SwiftOfficerDashboard from '../components/dashboard/SwiftOfficerDashboard.vue'
-import ExecutiveDashboard from '../components/dashboard/ExecutiveDashboard.vue'
+import MyWorkDashboard from '../components/dashboard/MyWorkDashboard.vue'
 import CbyAdminDashboard from '../components/dashboard/CbyAdminDashboard.vue'
 
 definePageMeta({
@@ -63,16 +59,20 @@ const showNewRequestAction = computed(
       </Button>
     </div>
 
-    <!-- Role-specific dashboard body -->
-    <DataEntryDashboard v-if="role === UserRole.DATA_ENTRY" />
-    <BankReviewerDashboard v-else-if="role === UserRole.BANK_REVIEWER" />
-    <BankAdminDashboard v-else-if="role === UserRole.BANK_ADMIN" />
-    <SupportCommitteeDashboard v-else-if="role === UserRole.SUPPORT_COMMITTEE" />
-    <SwiftOfficerDashboard v-else-if="role === UserRole.SWIFT_OFFICER" />
-    <ExecutiveDashboard
-      v-else-if="role === UserRole.EXECUTIVE_MEMBER || role === UserRole.COMMITTEE_DIRECTOR"
-    />
+    <!-- Phase D0: workflow-executor roles use the shared MyWorkDashboard; the
+         two analytics-oriented roles keep dedicated dashboards (see dashboard.vue). -->
+    <BankAdminDashboard v-if="role === UserRole.BANK_ADMIN" />
     <CbyAdminDashboard v-else-if="role === UserRole.CBY_ADMIN" />
+    <MyWorkDashboard
+      v-else-if="
+        role === UserRole.DATA_ENTRY ||
+        role === UserRole.BANK_REVIEWER ||
+        role === UserRole.SUPPORT_COMMITTEE ||
+        role === UserRole.SWIFT_OFFICER ||
+        role === UserRole.EXECUTIVE_MEMBER ||
+        role === UserRole.COMMITTEE_DIRECTOR
+      "
+    />
 
     <!-- Unknown role -->
     <div
