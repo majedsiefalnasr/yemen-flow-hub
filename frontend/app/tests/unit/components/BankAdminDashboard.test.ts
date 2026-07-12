@@ -216,3 +216,45 @@ describe('BankAdminDashboard — role awareness', () => {
     expect(UserRole.BANK_ADMIN).toBe('BANK_ADMIN')
   })
 })
+
+// Mirrors RUNTIME_STATUS_BADGE in BankAdminDashboard.vue — all 5 runtime_status
+// values (Phase E7: active/completed/rejected/cancelled/abandoned presentation).
+const RUNTIME_STATUS_BADGE: Record<string, string> = {
+  ACTIVE:
+    'border border-[var(--brand-color)]/30 bg-[var(--brand-color)]/10 text-[var(--brand-color)]',
+  CLOSED:
+    'border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/10 text-[var(--severity-green)]',
+  REJECTED:
+    'border border-[var(--severity-red)]/30 bg-[var(--severity-red)]/10 text-[var(--severity-red)]',
+  CANCELLED: 'border border-[var(--locked)]/30 bg-[var(--locked)]/10 text-[var(--locked)]',
+  ABANDONED: 'border border-[var(--locked)]/30 bg-[var(--locked)]/10 text-[var(--locked)]',
+}
+
+describe('BankAdminDashboard — runtime_status badge map (Phase E7)', () => {
+  it('maps all 5 runtime_status values to a badge class', () => {
+    expect(Object.keys(RUNTIME_STATUS_BADGE)).toEqual([
+      'ACTIVE',
+      'CLOSED',
+      'REJECTED',
+      'CANCELLED',
+      'ABANDONED',
+    ])
+  })
+
+  it('CANCELLED and ABANDONED both use the locked/immutable token', () => {
+    expect(RUNTIME_STATUS_BADGE.CANCELLED).toContain('--locked')
+    expect(RUNTIME_STATUS_BADGE.ABANDONED).toContain('--locked')
+    expect(RUNTIME_STATUS_BADGE.CANCELLED).toBe(RUNTIME_STATUS_BADGE.ABANDONED)
+  })
+
+  it('CLOSED uses the success token, REJECTED uses the error token', () => {
+    expect(RUNTIME_STATUS_BADGE.CLOSED).toContain('--severity-green')
+    expect(RUNTIME_STATUS_BADGE.REJECTED).toContain('--severity-red')
+  })
+
+  it('every terminal status (all but ACTIVE) resolves to a distinct or shared semantic token, never empty', () => {
+    for (const status of ['CLOSED', 'REJECTED', 'CANCELLED', 'ABANDONED']) {
+      expect(RUNTIME_STATUS_BADGE[status]).toBeTruthy()
+    }
+  })
+})

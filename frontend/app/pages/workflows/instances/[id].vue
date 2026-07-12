@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, toRef } from 'vue'
 import { toast } from 'vue-sonner'
-import { extractApiErrorCode, extractHttpStatus } from '@/utils/apiErrors'
+import { extractApiErrorCode, extractApiErrorMessage, extractHttpStatus } from '@/utils/apiErrors'
 import { useEngineRequestsStore } from '@/stores/engineRequests.store'
 import { useEngineFormSchema } from '@/composables/useEngineFormSchema'
 import { useEngineRequestActions } from '@/composables/useEngineRequestActions'
@@ -173,8 +173,26 @@ async function runAction(transitionId: number, requiresComment: boolean) {
     comment.value = ''
     await load()
   } catch (err) {
-    if (extractApiErrorCode(err) === 'CLAIM_NOT_HELD') {
+    const code = extractApiErrorCode(err)
+    if (code === 'CLAIM_NOT_HELD') {
       onClaimLost('CLAIM_NOT_HELD')
+    } else if (code === 'REQUEST_STALE') {
+      // 409: another user changed the request first — reload so the
+      // acting user sees current state instead of retrying blind.
+      toast.error('تم تعديل الطلب من قِبل مستخدم آخر. تم تحديث البيانات.')
+      await load()
+    } else if (code === 'TRANSITION_NOT_AVAILABLE') {
+      toast.error('هذا الإجراء لم يعد متاحاً في المرحلة الحالية للطلب.')
+      await load()
+    } else if (code === 'STAGE_FIELDS_INVALID' || extractHttpStatus(err) === 422) {
+      toast.error(extractApiErrorMessage(err, 'تعذّر التحقق من بيانات الطلب.'))
+    } else if (extractHttpStatus(err) === 429) {
+      toast.error('عدد كبير من الطلبات خلال وقت قصير. الرجاء الانتظار قليلاً والمحاولة مرة أخرى.')
+    } else {
+      // Phase E8: every other transition failure (500, unknown codes) was
+      // previously silently swallowed — the button just stopped spinning
+      // with no feedback at all.
+      toast.error('تعذّر تنفيذ الإجراء. حاول مرة أخرى.')
     }
   } finally {
     actionBusy.value = false

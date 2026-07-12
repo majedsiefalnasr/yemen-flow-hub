@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import type { PaginatedResponse, ReferenceTable, ReferenceValue } from '@/types/models'
 import { useApi } from '@/composables/useApi'
+import { extractApiErrorMessage } from '@/utils/apiErrors'
 
 type ListOptions = {
   page?: number

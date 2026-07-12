@@ -110,6 +110,11 @@ const mockExecuteAction = vi.fn().mockResolvedValue({ id: 5, version: 2 })
 const mockConflictError = ref(false)
 const mockFieldErrors = ref({})
 
+const mockToastError = vi.hoisted(() => vi.fn())
+vi.mock('vue-sonner', () => ({
+  toast: { error: mockToastError, success: vi.fn() },
+}))
+
 vi.mock('@/composables/useEngineRequestActions', () => ({
   useEngineRequestActions: () => ({
     executing: { value: false },
@@ -204,6 +209,8 @@ describe('workflows/instances/[id].vue', () => {
     mockConflictError.value = false
     mockFieldErrors.value = {}
     mockApiPost.mockClear()
+    mockExecuteAction.mockReset().mockResolvedValue({ id: 5, version: 2 })
+    mockToastError.mockClear()
     mockShow.mockResolvedValue({
       id: 5,
       reference: 'ENG-2026-000005',
@@ -680,6 +687,112 @@ describe('workflows/instances/[id].vue', () => {
       expect(preventDefaultSpy).not.toHaveBeenCalled()
 
       wrapper.unmount()
+    })
+  })
+
+  // Phase E8: runAction's catch block previously swallowed every error
+  // except CLAIM_NOT_HELD (409 REQUEST_STALE, 422 TRANSITION_NOT_AVAILABLE/
+  // field errors, 429, 500 all produced zero user feedback — the button just
+  // stopped spinning). These assert each branch now surfaces a toast.
+  describe('runAction error handling (Phase E8)', () => {
+    async function mountWithActionableStage() {
+      const store = useEngineRequestsStore()
+      store.current = makeInstance()
+      store.graph = {
+        nodes: [
+          {
+            id: 1,
+            code: 'INTAKE',
+            name: 'استلام',
+            display_label: null,
+            is_initial: true,
+            is_final: false,
+            sort_order: 0,
+          },
+        ],
+        edges: [
+          {
+            id: 9,
+            from_stage_id: 1,
+            to_stage_id: 2,
+            action_id: 1,
+            action_code: 'SUBMIT',
+            action_name: 'إرسال',
+            requires_comment: false,
+            is_self_loop: false,
+            is_return: false,
+          },
+        ],
+      }
+      const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
+      await wrapper.vm.$nextTick()
+      const actionButton = wrapper.findAll('button').find((btn) => btn.text().includes('إرسال'))
+      expect(actionButton).toBeTruthy()
+      await actionButton!.trigger('click')
+      await flushPromises()
+      return wrapper
+    }
+
+    it('shows a toast and reloads on REQUEST_STALE (409)', async () => {
+      mockExecuteAction.mockRejectedValue({
+        status: 409,
+        data: {
+          error_code: 'REQUEST_STALE',
+          message: 'Request has been modified by another user.',
+        },
+      })
+      mockShow.mockClear()
+
+      await mountWithActionableStage()
+
+      expect(mockToastError).toHaveBeenCalledWith(
+        'تم تعديل الطلب من قِبل مستخدم آخر. تم تحديث البيانات.',
+      )
+      expect(mockShow).toHaveBeenCalled()
+    })
+
+    it('shows a toast and reloads on TRANSITION_NOT_AVAILABLE (422)', async () => {
+      mockExecuteAction.mockRejectedValue({
+        status: 422,
+        data: { error_code: 'TRANSITION_NOT_AVAILABLE', message: 'not available' },
+      })
+      mockShow.mockClear()
+
+      await mountWithActionableStage()
+
+      expect(mockToastError).toHaveBeenCalledWith(
+        'هذا الإجراء لم يعد متاحاً في المرحلة الحالية للطلب.',
+      )
+      expect(mockShow).toHaveBeenCalled()
+    })
+
+    it('surfaces the backend message on STAGE_FIELDS_INVALID (422)', async () => {
+      mockExecuteAction.mockRejectedValue({
+        status: 422,
+        data: { error_code: 'STAGE_FIELDS_INVALID', message: 'Field validation failed.' },
+      })
+
+      await mountWithActionableStage()
+
+      expect(mockToastError).toHaveBeenCalledWith('Field validation failed.')
+    })
+
+    it('shows a rate-limit toast on 429', async () => {
+      mockExecuteAction.mockRejectedValue({ status: 429, data: {} })
+
+      await mountWithActionableStage()
+
+      expect(mockToastError).toHaveBeenCalledWith(
+        'عدد كبير من الطلبات خلال وقت قصير. الرجاء الانتظار قليلاً والمحاولة مرة أخرى.',
+      )
+    })
+
+    it('shows a generic toast on an unhandled 500', async () => {
+      mockExecuteAction.mockRejectedValue({ status: 500, data: {} })
+
+      await mountWithActionableStage()
+
+      expect(mockToastError).toHaveBeenCalledWith('تعذّر تنفيذ الإجراء. حاول مرة أخرى.')
     })
   })
 })

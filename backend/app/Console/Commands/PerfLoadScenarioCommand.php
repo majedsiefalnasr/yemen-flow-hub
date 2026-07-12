@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Exceptions\EngineException;
 use App\Models\Bank;
+use App\Models\EngineRequest;
 use App\Models\Merchant;
 use App\Models\Organization;
 use App\Models\Role;
@@ -16,6 +17,7 @@ use App\Models\WorkflowStage;
 use App\Models\WorkflowTransition;
 use App\Models\WorkflowVersion;
 use App\Services\Workflow\EngineRequestService;
+use App\Services\Workflow\EngineTransitionService;
 use App\Support\QueryMetrics;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Http\Kernel;
@@ -40,7 +42,7 @@ use Throwable;
  */
 class PerfLoadScenarioCommand extends Command
 {
-    protected $signature = 'perf:load-scenario {--rows=200000} {--keep : do not delete the seeded rows at the end} {--cleanup-only : delete any leftover PERF-LOAD-* fixture data and exit (recovery path if a prior run crashed before its own cleanup ran, e.g. an out-of-memory fatal that skips finally)} {--concurrency=0 : instead of the p95 seed run, fork this many worker processes that each create requests in parallel through EngineRequestService::create() to load-test the reference allocator under true contention (API-003)} {--creates-per-worker=25 : with --concurrency, how many real creates each worker performs}';
+    protected $signature = 'perf:load-scenario {--rows=200000} {--keep : do not delete the seeded rows at the end} {--cleanup-only : delete any leftover PERF-LOAD-* fixture data and exit (recovery path if a prior run crashed before its own cleanup ran, e.g. an out-of-memory fatal that skips finally)} {--concurrency=0 : instead of the p95 seed run, fork this many worker processes that each create requests in parallel through EngineRequestService::create() to load-test the reference allocator under true contention (API-003)} {--creates-per-worker=25 : with --concurrency, how many real creates each worker performs} {--transition-concurrency=0 : fork this many worker processes that all attempt the SAME transition on the SAME existing request simultaneously, to prove EngineTransitionService::execute()\'s lockForUpdate() serializes concurrent transitions (Phase E4 — exactly one success, the rest REQUEST_STALE)}';
 
     protected $description = 'Bulk-seed engine_requests and measure my-queue / list endpoint p95 + query counts (audit remediation load-run harness)';
 
@@ -71,6 +73,11 @@ class PerfLoadScenarioCommand extends Command
         $concurrency = (int) $this->option('concurrency');
         if ($concurrency > 0) {
             return $this->runConcurrencyScenario($concurrency, (int) $this->option('creates-per-worker'));
+        }
+
+        $transitionConcurrency = (int) $this->option('transition-concurrency');
+        if ($transitionConcurrency > 0) {
+            return $this->runTransitionConcurrencyScenario($transitionConcurrency);
         }
 
         $rows = (int) $this->option('rows');
@@ -584,6 +591,181 @@ class PerfLoadScenarioCommand extends Command
         $passed = $uniquenessHeld && $noAllocFailure && $allLanded && $otherErrors === [];
         $this->newLine();
         $this->info($passed ? '  API-003 contention gate: PASS' : '  API-003 contention gate: FAIL');
+
+        return $passed ? self::SUCCESS : self::FAILURE;
+    }
+
+    /**
+     * Phase E4: prove EngineTransitionService::execute()'s lockForUpdate()
+     * actually serializes concurrent transitions on the SAME request row.
+     * Forks $workers real OS processes; every worker reads the same request
+     * with the same starting `version` and races to execute the identical
+     * transition. lockForUpdate() forces MySQL to queue the racing
+     * transactions; only the first to commit sees a matching version, every
+     * later one re-reads the row post-lock, finds `version` advanced, and
+     * throws REQUEST_STALE. SQLite (:memory:, single-writer) cannot exhibit
+     * this — this scenario is intentionally mysql-only, outside PHPUnit.
+     *
+     * Gate: exactly one worker succeeds; every other worker fails with
+     * REQUEST_STALE (never a duplicate transition, never a lost update).
+     */
+    private function runTransitionConcurrencyScenario(int $workers): int
+    {
+        if (! function_exists('pcntl_fork')) {
+            $this->error('The pcntl extension is required for the concurrency scenario (pcntl_fork not available).');
+
+            return self::FAILURE;
+        }
+
+        $this->info("=== Phase E4 transition-lock contention: {$workers} parallel workers race the SAME transition on ONE request ===");
+        $this->info('Setting up fixture (bank, workflow, initial stage, permission, user, request)…');
+        $fixture = $this->buildFixture();
+
+        $initialStage = $fixture['version']->stages()->where('is_initial', true)->firstOrFail();
+        $role = Role::where('code', 'bank_admin')->firstOrFail();
+        StagePermission::create([
+            'stage_id' => $initialStage->id,
+            'organization_id' => $fixture['bank']->organization_id,
+            'role_id' => $role->id,
+            'access_level' => 'EXECUTE',
+            'display_label' => 'Intake',
+            'version' => 1,
+        ]);
+
+        $request = app(EngineRequestService::class)->create($fixture['version'], [
+            'merchant_id' => $fixture['merchant']->id,
+            'data' => ['amount' => 100, 'currency' => 'USD'],
+        ], User::findOrFail($fixture['user']->id));
+
+        $transition = WorkflowTransition::where('workflow_version_id', $fixture['version']->id)
+            ->where('from_stage_id', $initialStage->id)
+            ->firstOrFail();
+
+        $resultFile = tempnam(sys_get_temp_dir(), 'transition-race-');
+
+        try {
+            $this->info("Forking {$workers} workers, all targeting request #{$request->id} (starting version {$request->version})…");
+
+            $pids = [];
+            for ($w = 0; $w < $workers; $w++) {
+                $pid = pcntl_fork();
+
+                if ($pid === -1) {
+                    $this->error('pcntl_fork failed.');
+
+                    return self::FAILURE;
+                }
+
+                if ($pid === 0) {
+                    $this->runTransitionRaceWorker($fixture, $request, $transition, $resultFile);
+                    exit(0);
+                }
+
+                $pids[] = $pid;
+            }
+
+            foreach ($pids as $pid) {
+                pcntl_waitpid($pid, $status);
+            }
+
+            return $this->reportTransitionRaceResults($request, $resultFile, $workers);
+        } catch (Throwable $e) {
+            $this->error('Transition-concurrency scenario failed: '.$e->getMessage());
+            $this->error($e->getTraceAsString());
+
+            return self::FAILURE;
+        } finally {
+            @unlink($resultFile);
+            $this->info('Cleaning up seeded rows and fixture…');
+            $this->cleanup();
+            $this->info('Cleanup done.');
+        }
+    }
+
+    /**
+     * @param  array{bank: Bank, stages: array{WorkflowStage, WorkflowStage}, version: WorkflowVersion, user: User, merchant: Merchant}  $fixture
+     */
+    private function runTransitionRaceWorker(array $fixture, EngineRequest $request, WorkflowTransition $transition, string $resultFile): void
+    {
+        // Same reasoning as runContentionWorker(): an inherited MySQL socket
+        // is not safe to share across a fork.
+        DB::purge();
+
+        $service = app(EngineTransitionService::class);
+        $user = User::findOrFail($fixture['user']->id);
+        // Every worker starts from the SAME pre-fork version — this is the
+        // race: all of them believe they hold the current version.
+        $startingVersion = $request->version;
+
+        $outcome = 'unknown';
+        $errorCode = null;
+
+        try {
+            $service->execute($request, $transition->id, null, [], $startingVersion, $user);
+            $outcome = 'success';
+        } catch (EngineException $e) {
+            $outcome = 'failed';
+            $errorCode = $e->getErrorCode();
+        } catch (Throwable $e) {
+            $outcome = 'error';
+            $errorCode = get_class($e).': '.$e->getMessage();
+        }
+
+        $line = json_encode([
+            'pid' => getmypid(),
+            'outcome' => $outcome,
+            'errorCode' => $errorCode,
+        ]).PHP_EOL;
+
+        file_put_contents($resultFile, $line, FILE_APPEND | LOCK_EX);
+    }
+
+    private function reportTransitionRaceResults(EngineRequest $request, string $resultFile, int $workers): int
+    {
+        $lines = array_filter(explode(PHP_EOL, (string) file_get_contents($resultFile)));
+
+        $successes = 0;
+        $staleFailures = 0;
+        $otherErrors = [];
+
+        foreach ($lines as $line) {
+            $row = json_decode($line, true);
+            if (! is_array($row)) {
+                continue;
+            }
+            if (($row['outcome'] ?? null) === 'success') {
+                $successes++;
+            } elseif (($row['errorCode'] ?? null) === 'REQUEST_STALE') {
+                $staleFailures++;
+            } else {
+                $otherErrors[] = ($row['errorCode'] ?? 'unknown').' (outcome: '.($row['outcome'] ?? '?').')';
+            }
+        }
+
+        $this->newLine();
+        $this->line("  workers: {$workers}");
+        $this->line("  successful transitions:      {$successes}");
+        $this->line("  REQUEST_STALE (lost race):   {$staleFailures}");
+
+        if ($otherErrors !== []) {
+            $this->warn('  unexpected outcomes ('.count($otherErrors).'):');
+            foreach ($otherErrors as $err) {
+                $this->warn('    - '.$err);
+            }
+        }
+
+        $exactlyOneSuccess = $successes === 1;
+        $restStale = $staleFailures === ($workers - 1);
+        $noUnexpected = $otherErrors === [];
+
+        $this->newLine();
+        $this->line('  gate — exactly one worker succeeded:            '.($exactlyOneSuccess ? 'PASS' : 'FAIL'));
+        $this->line('  gate — every other worker got REQUEST_STALE:    '.($restStale ? 'PASS' : 'FAIL'));
+        $this->line('  gate — no unexpected outcomes:                  '.($noUnexpected ? 'PASS' : 'FAIL'));
+
+        $passed = $exactlyOneSuccess && $restStale && $noUnexpected;
+        $this->newLine();
+        $this->info($passed ? '  Phase E4 transition-lock gate: PASS' : '  Phase E4 transition-lock gate: FAIL');
 
         return $passed ? self::SUCCESS : self::FAILURE;
     }
