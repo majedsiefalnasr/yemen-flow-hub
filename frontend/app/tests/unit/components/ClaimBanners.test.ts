@@ -3,24 +3,36 @@
  * Pure logic tests without component mounting.
  */
 import { describe, it, expect } from 'vitest'
-import { UserRole, RequestStatus } from '../../../types/enums'
-import type { ImportRequest } from '../../../types/models'
-import { makeImportRequest } from '../fixtures/request-data'
+import { UserRole } from '../../../types/enums'
+import type { EngineRequest } from '../../../types/models'
 
-function makeRequest(overrides: Partial<ImportRequest> = {}): ImportRequest {
-  return makeImportRequest({
+function makeRequest(overrides: Partial<EngineRequest> = {}): EngineRequest {
+  return {
     id: 1,
-    reference_number: 'YFH-2026-000001',
-    bank_name: null,
-    status: RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
-    current_owner_role: UserRole.SUPPORT_COMMITTEE,
+    reference: 'YFH-2026-000001',
+    status: 'ACTIVE',
+    version: 1,
+    workflow_version_id: 1,
+    current_stage: null,
+    bank_id: null,
+    bank: null,
+    merchant_id: null,
+    merchant: null,
+    data: {},
     amount: 10000,
-    supplier_name: 'Supplier',
-    goods_description: 'Goods',
+    currency: 'USD',
+    invoice_number: null,
+    sla_status: null,
+    claimed_by: null,
+    claimed_by_user: null,
+    claimed_at: null,
+    claim_expires_at: null,
+    created_by: 1,
+    creator: null,
     created_at: '2026-05-16T00:00:00.000000Z',
     updated_at: '2026-05-16T00:00:00.000000Z',
     ...overrides,
-  })
+  }
 }
 
 // Logic from [id]/index.vue: showActiveReviewBanner
@@ -28,14 +40,16 @@ function shouldShowActiveReviewBanner(userRole: UserRole, isActiveReviewer: bool
   return userRole === UserRole.SUPPORT_COMMITTEE && isActiveReviewer
 }
 
-// Logic from [id]/index.vue: showClaimedByOthersBanner
+// Logic from [id]/index.vue: showClaimedByOthersBanner. `is_claimed_by_other`
+// is the backend's from-the-current-user's-perspective claim flag
+// (EngineRequestResource::toArray — true only when claimed AND not by me).
 function shouldShowClaimedByOthersBanner(
   userRole: UserRole,
   isActiveReviewer: boolean,
-  req: ImportRequest | null,
+  req: EngineRequest | null,
 ): boolean {
   if (!req || userRole !== UserRole.SUPPORT_COMMITTEE || isActiveReviewer) return false
-  return req.is_claimed && !req.is_claimed_by_me
+  return req.is_claimed_by_other === true
 }
 
 // Banner text: ClaimedByOthersBanner shows claimer name
@@ -61,30 +75,30 @@ describe('ActiveReviewBanner — visibility logic', () => {
 describe('ClaimedByOthersBanner — visibility logic', () => {
   it('shows when SUPPORT_COMMITTEE, not active reviewer, request claimed by others', () => {
     const req = makeRequest({
-      is_claimed: true,
-      is_claimed_by_me: false,
-      claimed_by: { id: 99, name: 'خالد' },
+      claimed_by: 99,
+      claimed_by_user: { id: 99, name: 'خالد' },
+      is_claimed_by_other: true,
     })
     expect(shouldShowClaimedByOthersBanner(UserRole.SUPPORT_COMMITTEE, false, req)).toBe(true)
   })
 
   it('hides when isActiveReviewer is true (active reviewer banner takes priority)', () => {
-    const req = makeRequest({ is_claimed: true, is_claimed_by_me: false })
+    const req = makeRequest({ claimed_by: 99, is_claimed_by_other: true })
     expect(shouldShowClaimedByOthersBanner(UserRole.SUPPORT_COMMITTEE, true, req)).toBe(false)
   })
 
-  it('hides when is_claimed_by_me is true', () => {
-    const req = makeRequest({ is_claimed: true, is_claimed_by_me: true })
+  it('hides when the request is claimed by the current user', () => {
+    const req = makeRequest({ claimed_by: 1, is_claimed_by_other: false })
     expect(shouldShowClaimedByOthersBanner(UserRole.SUPPORT_COMMITTEE, false, req)).toBe(false)
   })
 
   it('hides when request is not claimed', () => {
-    const req = makeRequest({ is_claimed: false, is_claimed_by_me: false })
+    const req = makeRequest({ claimed_by: null, is_claimed_by_other: false })
     expect(shouldShowClaimedByOthersBanner(UserRole.SUPPORT_COMMITTEE, false, req)).toBe(false)
   })
 
   it('hides for non-SUPPORT_COMMITTEE roles', () => {
-    const req = makeRequest({ is_claimed: true, is_claimed_by_me: false })
+    const req = makeRequest({ claimed_by: 99, is_claimed_by_other: true })
     expect(shouldShowClaimedByOthersBanner(UserRole.BANK_REVIEWER, false, req)).toBe(false)
   })
 

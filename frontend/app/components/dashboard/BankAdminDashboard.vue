@@ -16,7 +16,6 @@ import {
   CalendarDays,
 } from 'lucide-vue-next'
 import { useDashboardStore } from '../../stores/dashboard.store'
-import { UserRole } from '../../types/enums'
 import { NOT_ELIGIBLE_LABEL } from '../../constants/workflow'
 import type {
   BankAdminDashboardStats,
@@ -24,8 +23,7 @@ import type {
   BankAdminMonthlyEntry,
 } from '../../composables/useDashboard'
 import type { DualEntry } from '../../utils/bank-admin-helpers'
-import StatusBadge from '../shared/StatusBadge.vue'
-import { getRequestProgress } from '../../utils/requestProgress'
+import { Badge } from '../ui/badge'
 import {
   CHART_W,
   CHART_H,
@@ -123,6 +121,18 @@ const kpiGrid = computed(() => {
 
 type BankRecentRow = NonNullable<BankAdminDashboardStatsExtended['recent_requests']>[number]
 
+/** Runtime-status → severity token, per DESIGN.md (no legacy RequestStatus). */
+const RUNTIME_STATUS_BADGE: Record<string, string> = {
+  ACTIVE:
+    'border border-[var(--brand-color)]/30 bg-[var(--brand-color)]/10 text-[var(--brand-color)]',
+  CLOSED:
+    'border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/10 text-[var(--severity-green)]',
+  REJECTED:
+    'border border-[var(--severity-red)]/30 bg-[var(--severity-red)]/10 text-[var(--severity-red)]',
+  CANCELLED: 'border border-[var(--locked)]/30 bg-[var(--locked)]/10 text-[var(--locked)]',
+  ABANDONED: 'border border-[var(--locked)]/30 bg-[var(--locked)]/10 text-[var(--locked)]',
+}
+
 const bankRecentColumns: ColumnDef<BankRecentRow>[] = [
   {
     accessorKey: 'reference_number',
@@ -145,8 +155,7 @@ const bankRecentColumns: ColumnDef<BankRecentRow>[] = [
   {
     id: 'merchant',
     header: 'المستورد',
-    cell: ({ row }) =>
-      h('span', row.original.merchant?.name ?? row.original.supplier_name ?? 'غير متاح'),
+    cell: ({ row }) => h('span', row.original.merchant_name ?? 'غير متاح'),
   },
   {
     id: 'amount',
@@ -155,31 +164,18 @@ const bankRecentColumns: ColumnDef<BankRecentRow>[] = [
       h(
         'span',
         { class: 'direction-ltr font-tabular-nums' },
-        `${formatAmount(row.original.amount)} ${row.original.currency}`,
+        `${formatAmount(row.original.amount ?? 0)} ${row.original.currency}`,
       ),
   },
   {
-    id: 'status',
-    header: 'الحالة',
-    cell: ({ row }) => h(StatusBadge, { status: row.original.status, role: UserRole.BANK_ADMIN }),
-  },
-  {
-    id: 'progress',
-    header: 'التقدم',
+    id: 'stage',
+    header: 'المرحلة',
     cell: ({ row }) =>
-      h('div', { class: 'flex items-center gap-2 min-w-24' }, [
-        h('div', { class: 'flex-1 h-1.5 bg-muted rounded-full overflow-hidden' }, [
-          h('div', {
-            class: 'h-full bg-primary transition-all',
-            style: { width: `${getRequestProgress(row.original.status)}%` },
-          }),
-        ]),
-        h(
-          'span',
-          { class: 'text-xs text-muted-foreground whitespace-nowrap' },
-          `${getRequestProgress(row.original.status)}%`,
-        ),
-      ]),
+      h(
+        Badge,
+        { class: RUNTIME_STATUS_BADGE[row.original.status] ?? '' },
+        () => row.original.stage_name ?? row.original.stage_code ?? 'غير معروف',
+      ),
   },
   {
     id: 'actions',

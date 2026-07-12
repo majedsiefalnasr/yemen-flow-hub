@@ -19,28 +19,9 @@ export const useDashboardStore = defineStore('dashboard', {
         const { fetchStats } = useDashboard()
         const stats = await fetchStats()
 
-        // Normalize optional queue arrays so role switches never crash templates.
-        if ('support_queue' in stats) {
-          stats.support_queue = stats.support_queue ?? []
-        }
-        if ('review_queue' in stats) {
-          stats.review_queue = stats.review_queue ?? []
-        }
-        if ('swift_queue' in stats) {
-          stats.swift_queue = stats.swift_queue ?? []
-        }
-        if ('voting_queue' in stats) {
-          stats.voting_queue = stats.voting_queue ?? []
-          stats.customs_declaration_pending = stats.customs_declaration_pending ?? []
-        }
+        // Normalize the optional recent-requests list so templates never crash.
         if ('recent_requests' in stats) {
           stats.recent_requests = stats.recent_requests ?? []
-        }
-        if ('returned_requests' in stats) {
-          stats.returned_requests = stats.returned_requests ?? []
-        }
-        if ('draft_requests' in stats) {
-          stats.draft_requests = stats.draft_requests ?? []
         }
 
         this.stats = stats

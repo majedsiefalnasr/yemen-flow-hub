@@ -9,7 +9,6 @@ import type {
   RequestType,
   UserRole,
   VoteType,
-  VotingSessionStatus,
 } from './enums'
 
 export interface ProfileStats {
@@ -216,113 +215,6 @@ export interface Merchant {
   updated_at: string | null
 }
 
-export interface ImportRequest {
-  id: number
-  reference_number: string
-  bank_id: number
-  bank_name: string | null
-  merchant: { id: number; name: string; commercial_register: string | null } | null
-  status: RequestStatus
-  current_owner_role: UserRole
-  currency: string
-  amount: number
-  supplier_name: string
-  goods_description: string
-  port_of_entry: string
-  notes: string | null
-  goods_type: string | null
-  payment_terms: string | null
-  due_date: string | null
-  invoice_number: string | null
-  invoice_date: string | null
-  origin_country: string | null
-  arrival_port: string | null
-  shipping_port: string | null
-  customs_office: string | null
-  bl_number: string | null
-  trader_id: number | null
-  request_type: RequestType | null
-  coverage_type: CoverageType | null
-  currency_source: CurrencySource | null
-  payment_terms_mode: PaymentTermsMode | null
-  request_percentage: string | null
-  request_currency: string | null
-  requested_amount: string | null
-  invoice_type: InvoiceType | null
-  invoice_currency: string | null
-  unit_of_measure: string | null
-  total_invoice_amount: string | null
-  commodity: string | null
-  exporting_company_name: string | null
-  exporting_company_location: string | null
-  country_of_origin: string | null
-  port_of_loading: string | null
-  port_of_arrival: PortOfArrival | null
-  incoterm: Incoterm | null
-  final_destination: string | null
-  shipping_date: string | null
-  arrival_date: string | null
-  trader_snapshot_name: string | null
-  trader_snapshot_tax_number: string | null
-  trader_snapshot_tax_card_expiry: string | null
-  trader_snapshot_commercial_registration_number: string | null
-  trader_snapshot_commercial_registration_expiry: string | null
-  voting_rule_version: number
-  created_by: number
-  created_by_user?: { id: number; name: string } | null
-  last_updated_by?: number | null
-  last_updated_by_user?: { id: number; name: string } | null
-  submitted_by: number | null
-  submitted_by_user?: { id: number; name: string } | null
-  reviewed_by: number | null
-  reviewed_by_user?: { id: number; name: string } | null
-  internal_reviewer?: { id: number; name: string } | null
-  approved_by: number | null
-  approved_by_user?: { id: number; name: string } | null
-  rejected_by: number | null
-  rejected_by_user?: { id: number; name: string } | null
-  resubmitted_by: number | null
-  resubmitted_by_user?: { id: number; name: string } | null
-  support_reviewed_by?: number | null
-  support_reviewed_by_user?: { id: number; name: string } | null
-  support_reviewer?: { id: number; name: string } | null
-  claimed_by: { id: number; name: string } | null
-  support_claimed_by?: { id: number; name: string } | null
-  claimed_at?: string | null
-  claimed_until: string | null
-  is_claimed: boolean
-  is_claimed_by_me: boolean
-  can_be_claimed: boolean
-  submitted_at: string | null
-  bank_approved_at: string | null
-  support_approved_at: string | null
-  swift_uploaded_by: number | null
-  swift_uploaded_by_user?: { id: number; name: string } | null
-  swift_uploaded_at: string | null
-  voting_opened_by: number | null
-  voting_opened_at: string | null
-  voting_closed_by: number | null
-  voting_closed_at: string | null
-  voting_session_status: VotingSessionStatus | null
-  executive_decided_at: string | null
-  customs_issued_at: string | null
-  customs_declaration?: CustomsDeclarationSummary | null
-  bank_return_comment: string | null
-  bank_reject_comment: string | null
-  support_return_comment: string | null
-  revision_count: number
-  created_at: string
-  updated_at: string
-  documents?: RequestDocument[]
-  duplicate_warnings?: DuplicateWarning[]
-  votes_cast?: number
-  total_voters?: number
-  ready_to_close?: boolean
-  is_tie?: boolean
-  has_swift_document?: boolean
-  has_fx_request_document?: boolean
-}
-
 export interface DuplicateWarning {
   bank_name: string | null
   id?: number
@@ -499,14 +391,6 @@ export interface VotingTally {
   total_cast: number
   is_decided: boolean
   result: 'APPROVED' | 'REJECTED' | 'TIE' | 'PENDING'
-}
-
-export interface VotingDetail {
-  request: ImportRequest
-  tally: VotingTally
-  votes: RequestVote[]
-  total_members: number
-  my_vote: RequestVote | null
 }
 
 export interface RequestStageHistory {

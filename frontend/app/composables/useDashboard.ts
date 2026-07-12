@@ -1,28 +1,35 @@
-import type { ApiResponse, ImportRequest } from '../types/models'
+import type { ApiResponse } from '../types/models'
 import { useApi } from './useApi'
-
-export interface DataEntryDashboardStats {
-  draft: number
-  returned: number
-  under_cby_processing: number
-  completed: number
-  draft_requests: ImportRequest[]
-  returned_requests: ImportRequest[]
-  recent_requests: ImportRequest[]
-}
-
-export interface BankReviewerDashboardStats {
-  pending_review: number
-  at_cby: number
-  returned_by_support: number
-  approved_completed: number
-  review_queue: ImportRequest[]
-  downstream_queue?: ImportRequest[]
-}
 
 export interface BankAdminMonthlyEntry {
   month: string
   count: number
+}
+
+/**
+ * A read-model queue row as emitted by EngineRequestReadModel::resourceCollection
+ * (backend/app/Support/EngineRequestReadModel.php) — the shape every
+ * `recent_requests`-style list on /api/dashboard/stats actually returns.
+ * `status` is the 5-value runtime status (ACTIVE/CLOSED/REJECTED/CANCELLED/
+ * ABANDONED), not the legacy 22-value RequestStatus. There is no nested
+ * `merchant.name` or `supplier_name` — only the flat `merchant_name`.
+ */
+export interface DashboardQueueItem {
+  id: number
+  reference: string
+  reference_number: string
+  status: string
+  stage_code: string | null
+  stage_name: string | null
+  bank_id: number | null
+  bank_name: string | null
+  merchant_id: number | null
+  merchant_name: string | null
+  amount: number | null
+  currency: string | null
+  created_by: number | null
+  created_by_name: string | null
+  created_at: string | null
 }
 
 export interface BankAdminDashboardStats {
@@ -32,83 +39,7 @@ export interface BankAdminDashboardStats {
   rejected: number
   total_financed_amount: number
   monthly_requests: BankAdminMonthlyEntry[]
-  recent_requests: ImportRequest[]
-}
-
-export interface SupportCommitteeDashboardStats {
-  waiting_for_claim: number
-  active_by_me: number
-  claimed_by_others: number
-  recently_approved: number
-  support_queue: ImportRequest[]
-}
-
-export interface SwiftOfficerDashboardStats {
-  pending_swift_upload: number
-  uploaded: number
-  final_approved: number
-  final_rejected: number
-  swift_queue: ImportRequest[]
-}
-
-export interface VotingQueueItem extends ImportRequest {
-  my_vote?: 'approve' | 'reject' | null
-  votes_cast?: number
-  total_voters?: number
-}
-
-export interface ExecutiveDashboardStats {
-  waiting_for_voting_open: number
-  active_voting_sessions: number
-  decisions_approved: number
-  decisions_rejected: number
-  finalized_decisions: number
-  // pending_my_vote: sessions where EXECUTIVE_VOTING_OPEN and I have not voted
-  pending_my_vote?: number
-  voting_queue: VotingQueueItem[]
-  customs_declaration_pending?: ImportRequest[]
-  sessions_ready_to_close?: number
-  sessions_with_tie?: number
-  fx_confirmation_pending?: number
-  finalized_approved?: number
-  finalized_rejected?: number
-  voting_lifecycle_queue?: VotingQueueItem[]
-  fx_confirmation_queue?: ImportRequest[]
-}
-
-/**
- * A read-model queue row as emitted by EngineRequestReadModel::resourceCollection.
- * The Director queue uses these fields directly (the read model is not the full
- * ImportRequest shape).
- */
-export interface DirectorQueueItem {
-  id: number
-  reference: string
-  reference_number: string
-  status: string
-  stage_code: string | null
-  stage_name: string | null
-  bank_name: string | null
-  merchant_name: string | null
-  amount: number | null
-  currency: string | null
-  created_at: string | null
-}
-
-/**
- * COMMITTEE_DIRECTOR dashboard (UI-FX-001). The Director's actionable queue is
- * the FINAL stage — the same records /customs and my-queue surface. Executive
- * voting is out of V1 scope and intentionally absent from this contract.
- */
-export interface CommitteeDirectorDashboardStats {
-  final_pending: number
-  final_pending_queue: DirectorQueueItem[]
-  finalized_approved: number
-  finalized_rejected: number
-  // Backward-compatible keys retained during the dashboard migration; both now
-  // mirror the FINAL queue.
-  fx_confirmation_pending?: number
-  customs_declaration_pending?: DirectorQueueItem[]
+  recent_requests: DashboardQueueItem[]
 }
 
 export interface CbyAdminComplianceAlerts {
@@ -209,7 +140,7 @@ export interface CbyAdminDashboardStats {
   compliance_alerts: CbyAdminComplianceAlerts
   most_active_banks: Array<{ bank_id: number; bank_name: string; request_count: number }>
   monthly_requests?: CbyAdminMonthlyEntry[]
-  recent_requests?: ImportRequest[]
+  recent_requests?: DashboardQueueItem[]
   category_distribution?: CbyAdminCategoryEntry[]
   // governance KPIs
   active_workflow_requests?: CbyAdminKpi
@@ -235,15 +166,7 @@ export interface BankAdminDashboardStatsExtended extends BankAdminDashboardStats
   suspended_staff_with_active?: boolean
 }
 
-export type DashboardStats =
-  | DataEntryDashboardStats
-  | BankReviewerDashboardStats
-  | BankAdminDashboardStats
-  | SupportCommitteeDashboardStats
-  | SwiftOfficerDashboardStats
-  | ExecutiveDashboardStats
-  | CommitteeDirectorDashboardStats
-  | CbyAdminDashboardStats
+export type DashboardStats = BankAdminDashboardStats | CbyAdminDashboardStats
 
 export function useDashboard() {
   const { get } = useApi()

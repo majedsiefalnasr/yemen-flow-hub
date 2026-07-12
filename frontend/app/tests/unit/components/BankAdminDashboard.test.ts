@@ -2,27 +2,32 @@
  * BankAdminDashboard logic tests — pure function tests without component mounting.
  */
 import { describe, it, expect } from 'vitest'
-import { UserRole, RequestStatus } from '../../../types/enums'
-import type { ImportRequest } from '../../../types/models'
+import { UserRole } from '../../../types/enums'
 import type {
   BankAdminDashboardStats,
   BankAdminMonthlyEntry,
+  DashboardQueueItem,
 } from '../../../composables/useDashboard'
-import { makeImportRequest } from '../fixtures/request-data'
 
-function makeRequest(overrides: Partial<ImportRequest> = {}): ImportRequest {
-  return makeImportRequest({
+function makeRequest(overrides: Partial<DashboardQueueItem> = {}): DashboardQueueItem {
+  return {
     id: 1,
+    reference: 'YFH-2026-000001',
     reference_number: 'YFH-2026-000001',
-    status: RequestStatus.SUBMITTED,
-    current_owner_role: UserRole.BANK_ADMIN,
+    status: 'ACTIVE',
+    stage_code: 'INTERNAL',
+    stage_name: 'المراجعة الداخلية',
+    bank_id: 1,
+    bank_name: 'Bank Co.',
+    merchant_id: 1,
+    merchant_name: 'Merchant Co.',
     amount: 10000,
-    supplier_name: 'Supplier Co.',
-    goods_description: 'Goods',
+    currency: 'USD',
+    created_by: 1,
+    created_by_name: 'Entry User',
     created_at: '2026-05-16T00:00:00.000000Z',
-    updated_at: '2026-05-16T00:00:00.000000Z',
     ...overrides,
-  })
+  }
 }
 
 function makeStats(overrides: Partial<BankAdminDashboardStats> = {}): BankAdminDashboardStats {
@@ -51,8 +56,8 @@ function shouldShowEmptyState(stats: BankAdminDashboardStats): boolean {
   return stats.recent_requests.length === 0
 }
 
-function displayMerchantName(req: ImportRequest): string {
-  return req.merchant?.name ?? req.supplier_name
+function displayMerchantName(req: DashboardQueueItem): string {
+  return req.merchant_name ?? 'غير متاح'
 }
 
 const CHART_W = 480
@@ -123,19 +128,22 @@ describe('BankAdminDashboard — recent requests table', () => {
   it('recent request has required display fields', () => {
     const req = makeRequest({ reference_number: 'YFH-2026-000042', amount: 25000, currency: 'USD' })
     expect(req.reference_number).toBe('YFH-2026-000042')
-    expect(displayMerchantName(req)).toBe('Supplier Co.')
+    expect(displayMerchantName(req)).toBe('Merchant Co.')
     expect(req.amount).toBe(25000)
     expect(req.currency).toBe('USD')
-    expect(req.status).toBe(RequestStatus.SUBMITTED)
-    expect(req.updated_at).toBeDefined()
+    expect(req.status).toBe('ACTIVE')
+    expect(req.created_at).toBeDefined()
   })
 
-  it('prefers merchant name when merchant object exists', () => {
-    const req = makeRequest({
-      merchant: { id: 22, name: 'Merchant Co.', commercial_register: null },
-      supplier_name: 'Supplier Co.',
-    })
-    expect(displayMerchantName(req)).toBe('Merchant Co.')
+  it('falls back to a placeholder when merchant_name is absent', () => {
+    const req = makeRequest({ merchant_name: null })
+    expect(displayMerchantName(req)).toBe('غير متاح')
+  })
+
+  it('exposes the runtime status and stage name, not a legacy 22-value status', () => {
+    const req = makeRequest({ status: 'CLOSED', stage_name: 'مغلق — مكتمل' })
+    expect(req.status).toBe('CLOSED')
+    expect(req.stage_name).toBe('مغلق — مكتمل')
   })
 })
 

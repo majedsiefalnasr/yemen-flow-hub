@@ -285,7 +285,83 @@ implicit.
 
 ---
 
-**Proceeding to Step 8** (migrate badges/labels/timelines/filters/dashboards/
-notifications/tests off the 22-value `RequestStatus` enum — the frontend
-migration surface identified in §2 above) per the approved continuous-
-execution instruction.
+## 11. Step 8 — Frontend migration off `RequestStatus` (in progress)
+
+**Live production defect found and fixed.** `BankAdminDashboard.vue`'s
+recent-requests table was typed as `ImportRequest[]` but the backend has
+never returned that shape — `useDashboard.ts`'s `bankAdminStats`/
+`cbyadminStats` `recent_requests` field is `EngineRequestReadModel::resourceCollection()`
+(flat `merchant_name`, no nested `merchant.name`/`supplier_name`). The
+merchant column has been silently rendering "غير متاح" for every row in
+production. Fixed: `useDashboard.ts` retyped to a new `DashboardQueueItem`
+interface matching the real payload; `BankAdminDashboard.vue`'s table now
+reads `merchant_name` directly and replaced the `StatusBadge`/
+`getRequestProgress` (RequestStatus-only) cell with a runtime-status-colored
+`stage_name` badge — live-verified via `playwright-cli` (Bank Admin dashboard
+now shows real merchant names and correct Arabic stage labels, e.g.
+"المراجعة المساندة", "مغلق — مرفوض", "عمليات الصرف").
+
+**Removed as confirmed-dead** (zero live mount points/consumers, verified by
+grep before each removal): `WorkflowProgress.vue` + test, `WorkflowTimeline.vue`
++ test, `StatusBadge.vue` (orphaned once `BankAdminDashboard.vue` stopped using
+it), `utils/requestProgress.ts` (same), `SwiftUploadForm.vue`'s unused
+`request: ImportRequest` prop, `AuditTimeline.vue`'s consumer status (component
+itself has zero mount points — noted, not yet deleted), `types/models.ts`'s
+`ImportRequest` interface (0 live consumers after the above) and its
+now-dead-only `VotingDetail` interface (voting is out of V1), the dead
+per-role `useDashboard.ts` interfaces (`DataEntryDashboardStats`,
+`BankReviewerDashboardStats`, `SupportCommitteeDashboardStats`,
+`SwiftOfficerDashboardStats`, `ExecutiveDashboardStats`,
+`CommitteeDirectorDashboardStats`, `VotingQueueItem`, `DirectorQueueItem` — all
+0 live consumers, remnants of the D0.6-deleted dashboards), 4 test files for
+already-nonexistent pages/components (`SwiftUploadPage.test.ts`,
+`VotingPanel.test.ts` — `VotingPanel.vue` does not exist —
+`VotingRequestDetailPage.test.ts`, `RequestDetailClaimLogic.test.ts` — the
+`[id]/index.vue` page it claimed to mirror is a pre-migration route that no
+longer exists; the real `/workflows/instances/[id].vue` does not use any of
+the tested logic), and the now-fully-orphaned `tests/unit/fixtures/request-data.ts`.
+`dashboard.store.ts` simplified from a 7-branch queue-normalization block down
+to the one still-relevant `recent_requests` branch.
+
+**Verification:** typecheck error count returned to the exact pre-change
+baseline (19 — confirmed via `git stash`/`stash pop` A-B comparison; every
+count above 19 was a Step-8 regression, all fixed). All touched Vitest suites
+green (`BankAdminDashboard.test.ts` 16, `ClaimBanners.test.ts` 11,
+`dashboard.store.test.ts` 7 — rewritten to match the real 2-type
+`DashboardStats` union). ESLint/Prettier clean on all touched files. Live
+`playwright-cli` verification on `/dashboard` as Bank Admin (`admin@ybrd.com.ye`):
+correct merchant names and stage labels, 0 new console errors (pre-existing
+429 rate-limit noise from earlier session activity, unrelated).
+
+**Major finding — the remaining `RequestStatus` surface is almost entirely
+dead, not migratable.** After the above cleanup, exactly one production file
+still executes `RequestStatus`-driven logic in a way reachable from a live
+page: none. `constants/workflow.ts`'s entire enormous export surface
+(`STATUS_COLORS`, `STATUS_ICONS`, `STATUS_LABELS`, `DATA_ENTRY_STATUS_LABELS`,
+`STATUS_PROGRESS`, `ROLE_BUCKETS` — including the voting-era
+`EXECUTIVE_VOTING_OPEN`/`my_vote`/`ready_to_close`/`is_tie` branches that are
+explicitly out of V1 — `ROLE_FILTER_STATUSES`, `ROLE_ATTENTION_STATUSES`,
+`CBY_BANK_FILTER_ROLES`, `getBusinessStatus()`, `getStatusProgress()`) now has
+**zero live non-test consumers**. Its last production consumer,
+`AuditTimeline.vue`, itself has zero mount points (grep-confirmed). The 8
+`tests/unit/pages/requests/{role}-requests.test.ts` files exist solely to
+unit-test `ROLE_BUCKETS`'s data shape for a `/requests` role-tab page family
+that `frontend/CLAUDE.md` confirms no longer exists ("The legacy `/requests`...
+routes no longer exist").
+
+**Not yet executed — flagged for the next continuation, not blocking the
+Phase D checkpoint on its own:** deleting `constants/workflow.ts`'s dead
+export surface, `AuditTimeline.vue`, and the 8+3 test files that exist only to
+test that dead surface (`{role}-requests.test.ts` ×8, `workflow-buckets.test.ts`,
+`workflow-status.test.ts`, `AuditTimeline.test.ts`, plus `CorrectionBanner.test.ts`/
+`LockedBanner.test.ts`/`story-12-3-role-gates.test.ts` — not yet individually
+checked). This is a large, mostly-deletion pass (Steps 9-10's actual content
+turns out to be "confirm and delete" rather than "migrate," because the
+underlying `/requests` page family predates the current `/workflows` engine
+UI and was never fully retired from the codebase). Recommend confirming this
+disposition explicitly before executing it, since it is the single largest
+remaining diff in Phase D and removes test coverage entirely rather than
+replacing it with engine-shaped equivalents — the same "equivalent dynamic
+coverage exists" bar the D0 dashboard deletions were held to should apply
+here too, and for a `/requests` page family with no live successor page, that
+bar may not be reachable in the same way.

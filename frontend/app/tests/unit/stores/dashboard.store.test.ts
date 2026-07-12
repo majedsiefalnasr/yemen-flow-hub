@@ -1,11 +1,7 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import type {
-  DataEntryDashboardStats,
-  BankReviewerDashboardStats,
-  SupportCommitteeDashboardStats,
-  SwiftOfficerDashboardStats,
-  ExecutiveDashboardStats,
+  BankAdminDashboardStats,
   CbyAdminDashboardStats,
 } from '../../../composables/useDashboard'
 
@@ -17,48 +13,14 @@ vi.mock('../../../composables/useDashboard', () => ({
 
 const { useDashboardStore } = await import('../../../stores/dashboard.store')
 
-const DE_STATS: DataEntryDashboardStats = {
-  draft: 3,
-  returned: 1,
-  under_cby_processing: 5,
-  completed: 2,
-  draft_requests: [],
-  returned_requests: [],
+const BANK_ADMIN_STATS: BankAdminDashboardStats = {
+  total: 10,
+  pending: 3,
+  approved: 5,
+  rejected: 2,
+  total_financed_amount: 50000,
+  monthly_requests: [],
   recent_requests: [],
-}
-
-const BR_STATS: BankReviewerDashboardStats = {
-  pending_review: 4,
-  at_cby: 6,
-  returned_by_support: 2,
-  approved_completed: 8,
-  review_queue: [],
-}
-
-const SC_STATS: SupportCommitteeDashboardStats = {
-  waiting_for_claim: 3,
-  active_by_me: 1,
-  claimed_by_others: 2,
-  recently_approved: 5,
-  support_queue: [],
-}
-
-const SO_STATS: SwiftOfficerDashboardStats = {
-  pending_swift_upload: 4,
-  uploaded: 2,
-  final_approved: 10,
-  final_rejected: 1,
-  swift_queue: [],
-}
-
-const EXEC_STATS: ExecutiveDashboardStats = {
-  waiting_for_voting_open: 3,
-  active_voting_sessions: 1,
-  decisions_approved: 8,
-  decisions_rejected: 2,
-  finalized_decisions: 10,
-  voting_queue: [],
-  customs_declaration_pending: [],
 }
 
 const CBY_STATS: CbyAdminDashboardStats = {
@@ -88,7 +50,7 @@ describe('useDashboardStore', () => {
   })
 
   it('loadStats sets loading true during fetch then false after', async () => {
-    let resolveStats!: (v: DataEntryDashboardStats) => void
+    let resolveStats!: (v: BankAdminDashboardStats) => void
     mockFetchStats.mockReturnValue(
       new Promise((r) => {
         resolveStats = r
@@ -99,28 +61,30 @@ describe('useDashboardStore', () => {
     const promise = store.loadStats()
     expect(store.loading).toBe(true)
 
-    resolveStats(DE_STATS)
+    resolveStats(BANK_ADMIN_STATS)
     await promise
 
     expect(store.loading).toBe(false)
   })
 
-  it('loadStats stores data entry stats on success', async () => {
-    mockFetchStats.mockResolvedValue(DE_STATS)
+  it('loadStats stores bank admin stats on success', async () => {
+    mockFetchStats.mockResolvedValue(BANK_ADMIN_STATS)
     const store = useDashboardStore()
     await store.loadStats()
 
-    expect(store.stats).toEqual(DE_STATS)
+    expect(store.stats).toEqual(BANK_ADMIN_STATS)
     expect(store.error).toBeNull()
   })
 
-  it('loadStats stores bank reviewer stats on success', async () => {
-    mockFetchStats.mockResolvedValue(BR_STATS)
+  it('loadStats normalizes an undefined recent_requests to an empty array', async () => {
+    mockFetchStats.mockResolvedValue({
+      ...BANK_ADMIN_STATS,
+      recent_requests: undefined,
+    } as unknown as BankAdminDashboardStats)
     const store = useDashboardStore()
     await store.loadStats()
 
-    expect(store.stats).toEqual(BR_STATS)
-    expect(store.error).toBeNull()
+    expect(store.stats?.recent_requests).toEqual([])
   })
 
   it('loadStats sets error message on failure', async () => {
@@ -135,7 +99,7 @@ describe('useDashboardStore', () => {
 
   it('loadStats clears previous error on retry', async () => {
     mockFetchStats.mockRejectedValueOnce(new Error('network'))
-    mockFetchStats.mockResolvedValueOnce(DE_STATS)
+    mockFetchStats.mockResolvedValueOnce(BANK_ADMIN_STATS)
 
     const store = useDashboardStore()
     await store.loadStats()
@@ -143,34 +107,7 @@ describe('useDashboardStore', () => {
 
     await store.loadStats()
     expect(store.error).toBeNull()
-    expect(store.stats).toEqual(DE_STATS)
-  })
-
-  it('loadStats stores support committee stats on success', async () => {
-    mockFetchStats.mockResolvedValue(SC_STATS)
-    const store = useDashboardStore()
-    await store.loadStats()
-
-    expect(store.stats).toEqual(SC_STATS)
-    expect(store.error).toBeNull()
-  })
-
-  it('loadStats stores swift officer stats on success', async () => {
-    mockFetchStats.mockResolvedValue(SO_STATS)
-    const store = useDashboardStore()
-    await store.loadStats()
-
-    expect(store.stats).toEqual(SO_STATS)
-    expect(store.error).toBeNull()
-  })
-
-  it('loadStats stores executive stats on success', async () => {
-    mockFetchStats.mockResolvedValue(EXEC_STATS)
-    const store = useDashboardStore()
-    await store.loadStats()
-
-    expect(store.stats).toEqual(EXEC_STATS)
-    expect(store.error).toBeNull()
+    expect(store.stats).toEqual(BANK_ADMIN_STATS)
   })
 
   it('loadStats stores CBY admin stats on success', async () => {

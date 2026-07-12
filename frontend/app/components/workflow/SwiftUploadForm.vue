@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { CheckCircle2, Download, Eye, FileText, Lock, Upload, X } from 'lucide-vue-next'
-import type { ImportRequest } from '@/types/models'
 
 interface UploadedDocMeta {
   file: File
@@ -9,7 +8,6 @@ interface UploadedDocMeta {
 }
 
 defineProps<{
-  request: ImportRequest
   uploading?: boolean
 }>()
 
