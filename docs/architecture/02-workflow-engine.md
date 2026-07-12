@@ -26,20 +26,20 @@ this document does not duplicate its content.
 The engine is a set of focused services in `app/Services/Workflow/`, not
 one centralized class:
 
-| Service | Responsibility |
-| --- | --- |
-| `WorkflowDesignerService` | Author, validate, clone, publish, archive `WorkflowVersion`s and their stages/transitions/permissions |
-| `WorkflowVersionValidator` | Orchestrates validate-before-publish (delegates to the rule pack below) |
-| `WorkflowPublishRulePack` | The specific publish rules (reachability, executors, self-loops, field constraints, …) |
-| `EngineTransitionService` | Executes transitions, draft saves, and draft abandonment on `EngineRequest`s |
-| `StagePermissionResolver` | Resolves VIEW/EXECUTE access to a stage from `stage_permissions` |
-| `EngineClaimService` | Claim/heartbeat/release lifecycle |
-| `StageFieldRuleValidator` | Per-stage field enforcement (visible/editable/required) |
-| `SemanticRegistry` / `SemanticResolver` | Semantic-role/tag resolution, semantic-first with code-alias fallback |
-| `StageHookRegistry` | Effect/hook dispatch on stage entry/exit |
-| `WorkflowActionService` | The global, version-independent action catalog `WorkflowTransition.action_id` references |
-| `WorkflowGraphService` | Builds the `{nodes, edges}` stage graph for both the designer and per-request views |
-| `RequestProjectionSync` | Projects selected `data` JSON fields onto indexed `engine_requests` columns |
+| Service                                 | Responsibility                                                                                        |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `WorkflowDesignerService`               | Author, validate, clone, publish, archive `WorkflowVersion`s and their stages/transitions/permissions |
+| `WorkflowVersionValidator`              | Orchestrates validate-before-publish (delegates to the rule pack below)                               |
+| `WorkflowPublishRulePack`               | The specific publish rules (reachability, executors, self-loops, field constraints, …)                |
+| `EngineTransitionService`               | Executes transitions, draft saves, and draft abandonment on `EngineRequest`s                          |
+| `StagePermissionResolver`               | Resolves VIEW/EXECUTE access to a stage from `stage_permissions`                                      |
+| `EngineClaimService`                    | Claim/heartbeat/release lifecycle                                                                     |
+| `StageFieldRuleValidator`               | Per-stage field enforcement (visible/editable/required)                                               |
+| `SemanticRegistry` / `SemanticResolver` | Semantic-role/tag resolution, semantic-first with code-alias fallback                                 |
+| `StageHookRegistry`                     | Effect/hook dispatch on stage entry/exit                                                              |
+| `WorkflowActionService`                 | The global, version-independent action catalog `WorkflowTransition.action_id` references              |
+| `WorkflowGraphService`                  | Builds the `{nodes, edges}` stage graph for both the designer and per-request views                   |
+| `RequestProjectionSync`                 | Projects selected `data` JSON fields onto indexed `engine_requests` columns                           |
 
 There is no fixed, hardcoded state machine. Request lifecycles are
 defined entirely by published `WorkflowVersion` data and interpreted by
@@ -181,7 +181,7 @@ itself calls `SemanticResolver::publishErrors()`.
   `validateFieldRules()`, `validateFieldConstraints()`.
 - `validateStageActivity()` — blocks publish if: the initial stage is
   `INACTIVE`; any final stage is `INACTIVE`; any transition references an
-  inactive stage; or any *reachable* non-final stage is `INACTIVE`.
+  inactive stage; or any _reachable_ non-final stage is `INACTIVE`.
 
 ### Semantic-mapping publish gate: `SEMANTIC_MAPPING_MISSING` blocks, `SEMANTIC_DASHBOARD_ROLE_GAP` does not
 
@@ -219,7 +219,7 @@ this exact order:
 7. **Comment requirement** — if `transition->requires_comment` and the
    comment is blank → `COMMENT_REQUIRED` (422).
 8. **Field validation** — `StageFieldRuleValidator::validateStage(...,
-   enforceRequired: true, ...)` — required-field enforcement is **on**
+enforceRequired: true, ...)` — required-field enforcement is **on**
    for transitions → `STAGE_FIELDS_INVALID` (422) with a per-field error
    array on failure. (Contrast with `saveDraft()` below, which passes
    `enforceRequired: false`.)
@@ -291,7 +291,11 @@ private function resolveStatusAfterTransition(WorkflowStage $toStage): string
         return EngineRequestStatus::ACTIVE;
     }
     if ($toStage->final_outcome === null) {
-        Log::warning('Final stage reached with null final_outcome; defaulting to CLOSED.', [...]);
+        Log::warning('Final stage reached with null final_outcome; defaulting to CLOSED.', [
+            'stage_id' => $toStage->id,
+            'stage_code' => $toStage->code,
+        ]);
+
         return EngineRequestStatus::CLOSED;
     }
     return $toStage->final_outcome->toRequestStatus();
