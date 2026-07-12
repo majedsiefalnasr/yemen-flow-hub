@@ -31,11 +31,8 @@ as a bystander.
 For the request-state fields these permissions gate access to
 (`runtime_status`, `current_stage`, `final_outcome`), see
 [`05-request-state-model.md`](05-request-state-model.md). For the stage
-graph these permissions attach to, see `02-workflow-engine.md`
-(**planned, not yet written** — Step 4; today's authority is
-[`../01-workflow-and-business-rules.md`](../01-workflow-and-business-rules.md)
-together with
-[`../decisions/semantic-mapping.md`](../decisions/semantic-mapping.md)).
+graph these permissions attach to, see
+[`02-workflow-engine.md`](02-workflow-engine.md).
 
 ---
 

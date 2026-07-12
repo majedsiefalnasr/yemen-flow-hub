@@ -158,7 +158,7 @@ and the canonical request state model above.
 
 All other implementation decisions follow these docs in order of authority:
 
-1. `docs/01-workflow-and-business-rules.md` — Workflow stages, business rules (canonical status enum sections are superseded by the runtime state model above)
+1. `docs/architecture/02-workflow-engine.md` — Workflow engine: Designer lifecycle, topology, publishing, runtime transitions (canonical status enum sections are superseded by the runtime state model above)
 2. `docs/architecture/06-database-and-models.md` — Table schemas, verified against migrations 2026-07-12
 3. `docs/api-reference.md` — API contracts, endpoint conventions (partial coverage — see its Coverage status section)
 4. `docs/05-backend-guide.md` — Backend architecture, security rules

@@ -44,4 +44,4 @@ DRAFT
       -> BANK_RETURNED -> SUBMITTED
 ```
 
-This is the canonical business-rules status path (see `docs/01-workflow-and-business-rules.md` for the full enum, stage ownership, and business rules). The dynamic workflow engine implements this as a published `WorkflowVersion` made of `WorkflowStage`s and `WorkflowTransition`s, so the concrete stage codes and action names in the database are workflow-version-specific rather than fixed code constants.
+This diagram is historical: it shows one legacy fixed workflow path, not the current engine. The dynamic workflow engine implements workflow topology as a published `WorkflowVersion` made of designer-defined `WorkflowStage`s and `WorkflowTransition`s, so concrete stage codes and action names are workflow-version-specific rather than fixed code constants — see `docs/architecture/02-workflow-engine.md` for the current model.

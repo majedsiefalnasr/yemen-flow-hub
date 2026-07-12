@@ -8,12 +8,8 @@ to do something only a migration can do.
 
 For the entity chain referenced throughout (`WorkflowDefinition →
 WorkflowVersion → WorkflowStage/WorkflowTransition/StagePermission/
-FieldDefinition/StageFieldRule`), see `architecture/02-workflow-engine.md`
-(**planned, not yet written** — Step 4 of the consolidation plan; today's
-authority is
-[`../01-workflow-and-business-rules.md`](../01-workflow-and-business-rules.md)
-together with
-[`../decisions/semantic-mapping.md`](../decisions/semantic-mapping.md)).
+FieldDefinition/StageFieldRule`), see
+[`../architecture/02-workflow-engine.md`](../architecture/02-workflow-engine.md).
 For permission mechanics, see
 [`../architecture/03-permission-model.md`](../architecture/03-permission-model.md).
 

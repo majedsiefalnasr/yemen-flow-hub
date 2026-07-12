@@ -141,10 +141,8 @@ pivot level.
 ## Dynamic workflow engine tables
 
 The workflow is not hardcoded — it is authored as data across these
-tables. See `02-workflow-engine.md` (**planned, not yet written** — Step
-4; today's authority is
-[`../01-workflow-and-business-rules.md`](../01-workflow-and-business-rules.md))
-for how the engine consumes them.
+tables. See [`02-workflow-engine.md`](02-workflow-engine.md) for how the
+engine consumes them.
 
 ### workflow_definitions
 

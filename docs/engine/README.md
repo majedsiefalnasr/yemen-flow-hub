@@ -6,13 +6,11 @@ dashboard metric, effect, or screen) and
 [`dynamic-vs-fixed.md`](dynamic-vs-fixed.md) (the philosophy distinguishing
 designer-configurable from fixed) are both **live**.
 
-The workflow engine's canonical architecture doc,
-`architecture/02-workflow-engine.md`, is **planned, not yet written**
-(Step 4 of the consolidation plan — see
-[`../audit-functional/22-documentation-consolidation-plan.md`](../audit-functional/22-documentation-consolidation-plan.md)).
-Until then, the authoritative documentation for workflow stages/business
-rules is `docs/01-workflow-and-business-rules.md`, plus
+The workflow engine's canonical architecture doc is
+[`../architecture/02-workflow-engine.md`](../architecture/02-workflow-engine.md)
+— Designer lifecycle, workflow topology, publishing, and runtime
+transitions. See also
 [`../architecture/01-system-architecture.md`](../architecture/01-system-architecture.md)
 for overall system architecture and
 [`../decisions/semantic-mapping.md`](../decisions/semantic-mapping.md)
-for the `semantic_role` mechanism.
+for the `semantic_role` mechanism's dated rationale.

@@ -1088,6 +1088,163 @@ recurrence of the earlier staging problem from commit `307ead39`.
 (voting sections) — do these one at a time with a diff review each time,
 not as a batch.
 
+**Step 4A — ✅ DONE (2026-07-13).** Scope: only
+`docs/01-workflow-and-business-rules.md` →
+`docs/architecture/02-workflow-engine.md`. `docs/04-frontend-guide.md` →
+`docs/frontend-guide.md` and `docs/05-backend-guide.md` →
+`docs/backend-guide.md` were explicitly held for Step 4B/4C and not
+started.
+
+Pre-flight `git status` confirmed the baseline (2 pre-existing modified
+files — `.codex/config.toml`, `docs/audit-functional/12-phase-b-checkpoint.md`
+— plus 11 pre-existing untracked `docs/audit-functional/*` files) before
+touching anything; the same baseline was confirmed unchanged post-flight.
+Used `graphify query` for initial orientation and SocratiCode
+symbol/impact/search/flow analysis before documenting
+`EngineTransitionService`, `WorkflowDesignerService`,
+`WorkflowVersionValidator`, `SemanticResolver`, and `StageHookRegistry`.
+
+**Source verification performed.** Read
+`docs/01-workflow-and-business-rules.md` in full (696 lines) before
+deletion. Retrieved the former `docs/02-system-architecture.md`'s engine
+section via `git show 307ead39^:docs/02-system-architecture.md` (deleted
+in the Step 3A commit) per instruction to use Git history. Read
+`docs/decisions/semantic-mapping.md` in full. Read the relevant section
+of `docs/05-backend-guide.md` (lines 111–220) for context only — the file
+itself was not modified, per instruction. Read
+`EngineTransitionService::execute()`/`saveDraft()`/`abandonDraft()`/
+`resolveStatusAfterTransition()`,
+`WorkflowDesignerService::publishVersion()`/`ensureValidStateTransition()`/
+`cloneVersion()`, `WorkflowVersionValidator::validate()`,
+`SemanticResolver::publishErrors()`/`publishWarnings()`,
+`StageHookRegistry`, and the `WorkflowActionKind`/`WorkflowTransitionType`
+enums directly from current backend source, treating source as
+authoritative over every legacy document as instructed.
+
+**Inaccuracies discovered in legacy/existing docs (not silently
+inherited):**
+
+1. The legacy `docs/01-workflow-and-business-rules.md` claimed a
+   code-enforced `bank_reject_terminal` separation-of-duties guard
+   ("the creator cannot reject their own request"). Grepped
+   `backend/app/` directly (Policies, Http/Requests, Services/Workflow)
+   for SOD/self-reject/same-user logic and independently dispatched a
+   background SocratiCode agent to do the same search; both found zero
+   matches. `StagePermissionResolver` grants EXECUTE purely from
+   `stage_permissions` rows — no comparison against
+   `EngineRequest.created_by` exists anywhere. The new document states
+   this plainly in its "Separation of duties: convention, not a code
+   guard" section rather than carrying the false claim forward.
+2. `docs/api-reference.md`'s "editable states" sentence cited
+   `docs/01-workflow-and-business-rules.md` and named specific status
+   values (`DRAFT_REJECTED_INTERNAL`, `BANK_RETURNED`,
+   `SUPPORT_RETURNED`) as the editability gate. These are not real
+   `EngineRequestStatus` values, and `saveDraft()`'s actual gate (read
+   directly) is `runtime_status: ACTIVE` + EXECUTE permission + claim
+   held — the same gate as `execute()`, not a fixed status-name
+   whitelist. Corrected in place with an anchor link into the new
+   document's `saveDraft()` subsection.
+
+**Removed content** (all itemized in the new document's own "What this
+document removes from the legacy source" section, so it is not
+duplicated here): the fixed 18-value status diagram/vocabulary; Executive
+Voting stage/session/tally behavior as active engine functionality
+(explicitly stated as out-of-V1, not zero-code, linking to
+`api-reference.md`'s cleanup-debt inventory rather than describing dead
+symbols as live); "Voting Service"/centralized fixed-workflow language;
+fixed per-role workflow paths ("Owner: Bank SWIFT Officer," etc.); stale
+route families/static transition endpoints; the claim that a
+nonexistent `current_status` column or a frontend `RequestStatus` enum
+drives the engine; customs-declaration terminology for the current
+Director/FX-confirmation workflow.
+
+**Migration.** Tested whether `git diff --cached --stat -M50%` would
+detect a rename from the old path to the new one before choosing
+delete+add — it did not (695 deletions / 446 insertions, too dissimilar
+even at a lenient 50% threshold), so `git rm` +
+`git add docs/architecture/02-workflow-engine.md` is the correct
+representation, not a shortcut around the "prefer a history-preserving
+move" instruction.
+
+**Link updates** — every live reference to the old path was updated to
+point at the new document (repo-wide `grep` confirmed zero remaining
+live references afterward; the only surviving matches are this plan's
+own historical Step 3A/4 text, the new document's own verification-banner
+citation of the old path by name, and pre-existing `docs/superpowers/`
+planning artifacts, all correctly out of scope):
+
+- `docs/README.md` — Workflow engine row: planned → **live**.
+- `docs/architecture/README.md` — moved `02-workflow-engine.md` from
+  "Planned, not yet written" to "Live"; removed the now-dangling
+  authority pointer to the deleted file.
+- `docs/api-reference.md` — real content correction (inaccuracy #2
+  above), not just a link swap.
+- `docs/architecture/06-database-and-models.md` — "Dynamic workflow
+  engine tables" intro now links directly, no "planned" caveat.
+- `docs/architecture/03-permission-model.md` — stage-graph sentence now
+  links directly.
+- `docs/engine/README.md` — canonical architecture doc marked live
+  instead of planned.
+- `docs/engine/extension-guide.md` — entity-chain pointer now links
+  directly.
+- `AGENTS.md` — minimal path-only correction on the doc-authority list
+  (line 161 → now cites `docs/architecture/02-workflow-engine.md`); no
+  other change to that file, per instruction not to perform its Step 9
+  consolidation here.
+- `frontend/CLAUDE.md`, `backend/CLAUDE.md` — Docs Reference list entries
+  repointed.
+- `backend/README.md` — **deviation, not in the user's named file list**:
+  found during the repo-wide stale-reference sweep required by the
+  "update every live reference" instruction. Its workflow-status ASCII
+  diagram is legacy content out of scope for this step, but the sentence
+  citing `docs/01-workflow-and-business-rules.md` was a genuinely broken
+  link after the delete, so only that citation sentence was corrected
+  (reframed as historical, pointed at the new doc) — the diagram itself
+  was left untouched.
+
+**Checks performed.** Self-reviewed the new document against the 4
+forbidden-content categories (voting-session behavior, old status
+vocabulary, fixed-role workflow paths, customs terminology) via targeted
+`grep` — all matches found were inside the intentional "what this
+document removes" section, none reintroduced as active behavior. Wrote a
+script-based Markdown link/anchor checker covering all 12 touched files
+(path resolution + heading-to-slug matching using GitHub's slugger
+algorithm) — found and fixed one bad anchor
+(`#saveDraft--not-gated-by-a-fixed-editable-states-list` →
+`#savedraft-not-gated-by-a-fixed-editable-states-list`; em-dashes are
+stripped, not converted to hyphens, by GitHub's slugifier) before
+reaching zero broken links. Ran Prettier on all 12 touched files
+individually (the batched run intermittently hit a `frontend/`-local
+`prettier-plugin-tailwindcss` config-resolution error unrelated to these
+files; per-file runs from the correct working directory all passed) and
+confirmed `--check` stability on rerun. Read every formatted file back;
+found no stray leading `+`/`-` list artifacts. Found and fixed one real
+content defect during the read-back: the `resolveStatusAfterTransition()`
+code quote had a `[...]` truncation placeholder instead of the real
+`Log::warning()` array arguments — replaced with the exact source.
+
+**Deviations from the instructions as given:** `backend/README.md`
+(above) — not in the named file list, touched only for its broken link,
+not its stale diagram content, which stays out of scope. No other
+deviations.
+
+**Blockers:** none.
+
+**Files changed this step:** `docs/01-workflow-and-business-rules.md`
+(deleted), `docs/architecture/02-workflow-engine.md` (created), plus 10
+files with link/content corrections: `docs/README.md`,
+`docs/api-reference.md`, `docs/architecture/03-permission-model.md`,
+`docs/architecture/06-database-and-models.md`,
+`docs/architecture/README.md`, `docs/engine/README.md`,
+`docs/engine/extension-guide.md`, `AGENTS.md`, `frontend/CLAUDE.md`,
+`backend/CLAUDE.md`, `backend/README.md` — 11 files in that list (12
+total including the created/deleted pair). Pre-existing dirty/untracked
+baseline (2 modified, 11 untracked) confirmed untouched throughout.
+
+Holding for review before Step 4B (`docs/04-frontend-guide.md` →
+`docs/frontend-guide.md`) and Step 4C
+(`docs/05-backend-guide.md` → `docs/backend-guide.md`), per instruction.
+
 **Step 5 — Extract the 3 UX patterns from `docs/user-view/` into
 `docs/frontend-guide.md`** (density tiers, forbidden-actions table,
 cross-role handoffs pattern) as generic templates — this happens before

@@ -190,9 +190,7 @@ Non-admin users are scoped to stages they may VIEW (via `stage_permissions`); `s
 
 ```json
 {
-  "data": [
-    /* EngineRequestResource[] */
-  ],
+  "data": [/* EngineRequestResource[] */],
   "meta": { "current_page": 1, "last_page": 3, "per_page": 25, "total": 62 }
 }
 ```
@@ -382,7 +380,7 @@ PATCH /api/v1/engine-requests/{id}/draft
 
 There is no dedicated `PUT`/`DELETE /api/v1/engine-requests/{id}` endpoint. Requests are modified only via `PATCH .../draft` (while in an editable stage) or by executing a transition via `POST .../actions`; there is no request-deletion endpoint in the current API — draft requests are abandoned rather than deleted through this API.
 
-Editable states are still governed by the canonical business rules in `docs/01-workflow-and-business-rules.md` (editable only in `DRAFT`/`DRAFT_REJECTED_INTERNAL`/`BANK_RETURNED`/`SUPPORT_RETURNED`); the API enforces this by rejecting `draft`/`actions` calls with `REQUEST_CLOSED` (403) once the request leaves an editable stage.
+"Editable" is not a fixed status-name whitelist — `PATCH .../draft` uses the same gate as executing a transition (`runtime_status: ACTIVE` + EXECUTE stage permission + claim held, if the stage requires one; see [`architecture/02-workflow-engine.md`](architecture/02-workflow-engine.md#savedraft-not-gated-by-a-fixed-editable-states-list)). The API enforces this by rejecting `draft`/`actions` calls with `REQUEST_CLOSED` (403) once the request is no longer `ACTIVE`, or `STAGE_EXECUTION_FORBIDDEN`/`CLAIM_NOT_HELD` if the caller no longer holds the required permission/claim on the current stage.
 
 ---
 
