@@ -227,7 +227,8 @@ CBY_ADMIN
 - Do NOT mutate `current_status`/stage fields directly on the model — all transitions go through `EngineTransitionService::execute()`, which validates stage permissions, field rules, and claim ownership before moving an `EngineRequest` along a `WorkflowTransition`
 - Do NOT put business logic in controllers, Vue components, or routes
 - Do NOT expose requests outside a user's organization scope
-- Do NOT generate shared admin dashboards — every view is queue-scoped and role-scoped
+- Do NOT add a per-role dashboard component or a `role === UserRole.X` dashboard branch. Workflow users share one `MyWorkDashboard`; dashboard selection is capability-family (see **Dashboard Architecture** below)
+- Do NOT compute a "pending work" count from a bespoke per-role stats query. The actionable count, dashboard preview, nav badge, and `/my-queue` all resolve through the one shared `UserActionableRequestQuery` and must stay equal by record ID
 - Do NOT use statuses not in the canonical enum above
 - Do NOT render role-inappropriate UI controls and rely on backend rejection later; role-forbidden surfaces should not be mounted/rendered
 - Do NOT use `CBY_ADMIN` as a workflow super-actor for Director, SWIFT, Support, Bank Reviewer, or Executive Member actions
@@ -244,6 +245,23 @@ CBY_ADMIN
 - Use pessimistic locking (`lockForUpdate()` in `EngineTransitionService::execute()`) for vote submission and voting session closure
 - Validate file type as PDF-only for all document uploads
 - Return `REQUEST_CLOSED` (HTTP 403) for mutations on terminal/inactive requests — the distinct `WORKFLOW_IMMUTABLE_STATE` code (HTTP 409) applies only to editing a published/archived workflow *version* in the designer, not to runtime request state
+
+---
+
+## Dashboard Architecture (Phase D0 — the two-family model)
+
+Dashboards are **two families**, selected by **capability**, never by role name. Adding a dynamic role, stage, or workflow must not require a new Vue dashboard component or a frontend role/stage-map edit.
+
+**Operational family — `MyWorkDashboard.vue`** — the single dashboard for every workflow-executor user (and any future dynamic executor role, automatically). Sections: actionable work, claimed/assignable, tracking (VIEW-only), SLA alerts, recent activity, and small capability-gated operational KPIs. Fixed layout, dynamic data (Level 1); the metadata-driven widget catalog (Level 2) is a future enhancement.
+
+**Analytics & governance family** — dedicated dashboards only where the user category's purpose is fundamentally different from workflow execution:
+
+- `SystemAdminDashboard` (currently the `CbyAdminDashboard.vue` component) — platform governance + platform-wide analytics; gated on the `system_dashboard` screen capability.
+- `BankAdminDashboard.vue` — bank-scoped analytics (KPIs, monthly volume charts, financing totals), restricted by bank `DataScope`; gated on the `bank_analytics` screen capability. Bank Admin has **no** actionable queue, so it must not route through `MyWorkDashboard`.
+
+**Capability-family routing** (frontend `dashboard.vue` / `index.vue`, order): `system_dashboard.view` → SystemAdmin; else `bank_analytics.view` → BankAdmin; else → `MyWorkDashboard`. The backend enforces the same capabilities independently — `DashboardStatsService` gates the analytics branches on the capability, so revoking it removes analytics access and no workflow user can read another family's analytics. Frontend visibility never grants access.
+
+**The shared actionable-work invariant:** the actionable count, dashboard preview IDs, the `/workflows` nav badge, and `/my-queue` all come from one contract — `App\Services\Workflow\UserActionableRequestQuery` (ACTIVE requests on the user's EXECUTE stages, `DataScope`-scoped) — and must stay equal **by record ID**, not merely by count. The generic work API is `GET /api/dashboard/work` (`actionable` / `claimed` / `tracking` / `sla` / `recent_activity` / `metrics`); `actionable` is exactly the `/my-queue` record set. Analytics dashboards fabricate no workflow badge. Executive-voting dashboard UI is removed (voting is out of V1).
 
 ---
 
