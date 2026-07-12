@@ -4,14 +4,19 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Dashboard;
 
+use App\Enums\StageAccessLevel;
 use App\Models\Bank;
 use App\Models\EngineRequest;
+use App\Models\Organization;
+use App\Models\Role;
+use App\Models\StagePermission;
 use App\Models\User;
 use App\Models\WorkflowDefinition;
 use App\Models\WorkflowStage;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -198,7 +203,7 @@ class DashboardWorkApiTest extends TestCase
         ];
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('migratedRoleProvider')]
+    #[DataProvider('migratedRoleProvider')]
     public function test_migrated_role_actionable_matches_my_queue(string $email): void
     {
         $user = $this->userByEmail($email);
@@ -224,5 +229,60 @@ class DashboardWorkApiTest extends TestCase
         foreach ($data['actionable']['items'] as $item) {
             $this->assertStringStartsWith('ENG-2026-YBRD', $item['reference'], 'Cross-bank record leaked into actionable work.');
         }
+    }
+
+    /**
+     * D0 checkpoint: a brand-new role created through administration — never named
+     * in any frontend routing or backend match — receives actionable work purely
+     * from a stage-permission EXECUTE grant, with no code change. This is the proof
+     * that the dashboard scales with dynamic roles by configuration alone.
+     */
+    public function test_a_new_dynamic_role_receives_actionable_work_from_a_stage_grant(): void
+    {
+        $nc = Organization::query()->where('code', 'national_committee')->firstOrFail();
+        $v2 = $this->v2()->versions()->where('state', 'PUBLISHED')->orderByDesc('version_number')->firstOrFail();
+        $supportStage = WorkflowStage::query()
+            ->where('workflow_version_id', $v2->id)->where('code', 'SUPPORT')->firstOrFail();
+
+        // A new role with no seeded identity anywhere.
+        $newRole = Role::query()->create([
+            'organization_id' => $nc->id,
+            'code' => 'dynamic_reviewer_'.Str::lower(Str::random(5)),
+            'name' => 'Dynamic Reviewer',
+            'is_active' => true,
+            'version' => 1,
+        ]);
+
+        // Grant it EXECUTE on the SUPPORT stage — the only configuration step.
+        StagePermission::query()->create([
+            'stage_id' => $supportStage->id,
+            'organization_id' => $nc->id,
+            'role_id' => $newRole->id,
+            'access_level' => StageAccessLevel::EXECUTE,
+            'display_label' => 'Dynamic SUPPORT execute',
+            'version' => 1,
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'Dynamic User',
+            'email' => 'dynamic-'.uniqid().'@cby.gov.ye',
+            'password' => bcrypt('password'),
+            'organization_id' => $nc->id,
+            'is_active' => true,
+        ]);
+        $user->assignActiveRole($newRole->id);
+
+        // A request waiting at that stage.
+        $seeded = $this->seedV2Request('SUPPORT', 'YBRD');
+
+        $data = $this->actingAs($user->fresh())
+            ->getJson('/api/dashboard/work')->assertOk()->json('data');
+
+        // The new role sees the SUPPORT-stage work as actionable, with no frontend
+        // or routing change — and it equals its /my-queue record set.
+        $itemIds = collect($data['actionable']['items'])->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $this->assertGreaterThan(0, $data['actionable']['count']);
+        $this->assertContains($seeded->id, $itemIds);
+        $this->assertSame(count($this->myQueueIds($user->fresh())), $data['actionable']['count']);
     }
 }
