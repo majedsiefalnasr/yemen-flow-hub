@@ -18,7 +18,7 @@ import type { SidebarProps } from './ui/sidebar/types'
 import { buildOperationalNavBadges } from '@/composables/useNavBadges'
 import { NAV_ITEMS } from '@/constants/workflow'
 import { useAuthStore } from '@/stores/auth.store'
-import { useDashboardStore } from '@/stores/dashboard.store'
+import { useDashboardWorkStore } from '@/stores/dashboardWork.store'
 import { useNotificationsStore } from '@/stores/notifications.store'
 import { useOrgStore } from '@/stores/org.store'
 import { ICONS } from '@/utils/icon-map'
@@ -62,7 +62,7 @@ const props = withDefaults(defineProps<SidebarProps>(), {
 // ── State ─────────────────────────────────────────────────────────────
 
 const authStore = useAuthStore()
-const dashboardStore = useDashboardStore()
+const dashboardWorkStore = useDashboardWorkStore()
 const notificationsStore = useNotificationsStore()
 const orgStore = useOrgStore()
 const route = useRoute()
@@ -72,10 +72,12 @@ const lastBadgeRole = ref<UserRole | null>(null)
 
 const brandInitial = computed(() => orgStore.platformName.trim().charAt(0))
 
+// The /workflows badge is the shared actionable-work count (D0): count = badge =
+// dashboard actionable = /my-queue. Analytics users have no actionable work, so
+// they get no workflow badge.
 const navBadgesByRoute = computed(() =>
   buildOperationalNavBadges({
-    role: user.value?.role ?? null,
-    stats: dashboardStore.stats,
+    actionableCount: dashboardWorkStore.work?.actionable.count ?? null,
     unreadCount: notificationsStore.unreadCount,
   }),
 )
@@ -86,8 +88,8 @@ async function refreshOperationalBadges(forceDashboard = false) {
   await notificationsStore.refreshUnreadCount()
 
   const roleChanged = lastBadgeRole.value !== user.value.role
-  if (forceDashboard || roleChanged || !dashboardStore.stats) {
-    await dashboardStore.loadStats()
+  if (forceDashboard || roleChanged || !dashboardWorkStore.work) {
+    await dashboardWorkStore.loadWork()
     lastBadgeRole.value = user.value.role
   }
 }

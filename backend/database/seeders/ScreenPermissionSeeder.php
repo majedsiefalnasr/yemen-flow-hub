@@ -26,6 +26,12 @@ class ScreenPermissionSeeder extends Seeder
             'screen_permissions' => 'صلاحيات الشاشات',
             'notifications' => 'الإشعارات',
             'settings' => 'الإعدادات',
+            // Phase D0 dashboard-family capabilities. `system_dashboard` gates the
+            // platform governance/analytics dashboard + its APIs; `bank_analytics`
+            // gates the bank-scoped analytics dashboard + its APIs. Workflow users
+            // hold neither and fall through to the operational MyWorkDashboard.
+            'system_dashboard' => 'لوحة إدارة النظام',
+            'bank_analytics' => 'تحليلات البنك',
         ];
 
         foreach ($screens as $key => $label) {
@@ -51,6 +57,8 @@ class ScreenPermissionSeeder extends Seeder
                 'reports' => ['VIEW'],
                 // SEC-002: bank-scoped audit visibility, gated by audit_logs.bank_id.
                 'audit' => ['VIEW'],
+                // Routes Bank Admin to the bank-scoped analytics dashboard (D0).
+                'bank_analytics' => ['VIEW'],
                 'notifications' => ['VIEW'],
                 'settings' => ['VIEW'],
             ],
@@ -102,6 +110,8 @@ class ScreenPermissionSeeder extends Seeder
                 'audit' => ['VIEW', 'EXPORT'],
                 'reference_data' => ['VIEW', 'MANAGE'],
                 'screen_permissions' => ['VIEW', 'MANAGE'],
+                // Routes the system admin to the platform governance dashboard (D0).
+                'system_dashboard' => ['VIEW', 'MANAGE'],
                 'notifications' => ['VIEW'],
                 'settings' => ['VIEW', 'MANAGE'],
             ],

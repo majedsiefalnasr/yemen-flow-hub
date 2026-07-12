@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\WorkflowDefinition;
 use App\Models\WorkflowStage;
 use App\Models\WorkflowVersion;
+use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
@@ -36,6 +37,8 @@ class CbyAdminDashboardStatsTest extends TestCase
         parent::setUp();
         Cache::flush();
         $this->seedGovernance();
+        // D0: the system dashboard is gated on the system_dashboard capability.
+        $this->seed(ScreenPermissionSeeder::class);
 
         $this->bank = $this->makeBank('YCB');
         $this->otherBank = $this->makeBank('OTH');

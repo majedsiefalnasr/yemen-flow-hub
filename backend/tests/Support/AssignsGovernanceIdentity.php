@@ -8,6 +8,7 @@ use App\Models\Role;
 use App\Models\Team;
 use App\Models\User;
 use Database\Seeders\GovernanceSeeder;
+use Database\Seeders\ScreenPermissionSeeder;
 
 /**
  * Assigns governance pivot identity (organization/team/role) to a user created
@@ -24,6 +25,11 @@ trait AssignsGovernanceIdentity
     protected function seedGovernance(): void
     {
         $this->seed(GovernanceSeeder::class);
+        // D0: the dashboard families are gated on screen capabilities
+        // (bank_analytics / system_dashboard), which are part of the governance
+        // capability model — seed them alongside the governance identities so
+        // capability-gated behavior is exercised, not silently disabled.
+        $this->seed(ScreenPermissionSeeder::class);
     }
 
     protected function assignGovernanceIdentity(User $user, UserRole $userRole): User

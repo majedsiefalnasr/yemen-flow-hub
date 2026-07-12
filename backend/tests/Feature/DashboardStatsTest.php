@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\WorkflowDefinition;
 use App\Models\WorkflowStage;
 use App\Models\WorkflowVersion;
+use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -35,6 +36,10 @@ class DashboardStatsTest extends TestCase
         parent::setUp();
         Cache::flush();
         $this->seedGovernance();
+        // D0: the analytics dashboard families are gated on screen capabilities
+        // (bank_analytics / system_dashboard), so the analytics-role tests need the
+        // capability grants seeded alongside the governance identities.
+        $this->seed(ScreenPermissionSeeder::class);
 
         $this->bank = $this->makeBank('YCB');
         $this->otherBank = $this->makeBank('OTH');

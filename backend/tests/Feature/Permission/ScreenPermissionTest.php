@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Permission;
 
-use App\Enums\UserRole;
 use App\Models\Organization;
 use App\Models\Role;
 use App\Models\Screen;
@@ -60,9 +59,9 @@ class ScreenPermissionTest extends TestCase
 
     // ── AC 1: Catalog seeded ──────────────────────────────────────────────
 
-    public function test_catalog_has_14_screens(): void
+    public function test_catalog_has_16_screens(): void
     {
-        $this->assertSame(14, Screen::count());
+        $this->assertSame(16, Screen::count());
     }
 
     public function test_all_required_screens_exist(): void
@@ -71,6 +70,8 @@ class ScreenPermissionTest extends TestCase
             'organizations', 'teams', 'roles', 'banks', 'users',
             'merchants', 'workflow_designer', 'requests', 'reports',
             'audit', 'reference_data', 'screen_permissions', 'notifications', 'settings',
+            // D0 dashboard-family capabilities.
+            'system_dashboard', 'bank_analytics',
         ];
 
         foreach ($expected as $key) {
@@ -83,7 +84,7 @@ class ScreenPermissionTest extends TestCase
         $this->actingAs($this->admin)
             ->getJson('/api/v1/screens')
             ->assertOk()
-            ->assertJsonCount(14, 'data');
+            ->assertJsonCount(16, 'data');
     }
 
     // ── AC 2: PUT grants persist unique ───────────────────────────────────

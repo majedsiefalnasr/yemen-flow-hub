@@ -7,6 +7,7 @@ use App\Models\Bank;
 use App\Models\EngineRequest;
 use App\Models\User;
 use App\Services\Authorization\DataScope;
+use App\Services\Authorization\PermissionService;
 use App\Support\ApiResponse;
 use App\Support\EngineRequestReadModel;
 use App\Support\RoleCodes;
@@ -16,19 +17,29 @@ use Illuminate\Support\Collection;
 
 class DashboardStatsService
 {
+    public function __construct(private readonly PermissionService $permissions) {}
+
     public function stats(User $user): JsonResponse
     {
         $scope = $this->getScope($user);
 
+        // D0 dashboard-family capability enforcement (defense in depth). The
+        // analytics/governance families require BOTH the role and its own screen
+        // capability: a user whose analytics capability was revoked no longer
+        // receives analytics even while the role lingers, and the capability is the
+        // same signal the frontend routes on. Workflow roles are unaffected.
+        $analyticsGate = fn (string $roleCode, string $screen): bool => $user->hasRoleCode($roleCode)
+            && $this->permissions->userHasCapability($user, $screen, 'VIEW');
+
         return match (true) {
+            $analyticsGate(RoleCodes::SYSTEM_ADMIN, 'system_dashboard') => $this->cbyadminStats($user, $scope),
+            $analyticsGate(RoleCodes::BANK_ADMIN, 'bank_analytics') => $this->bankAdminStats($user, $scope),
             $user->hasRoleCode(RoleCodes::INTAKE) => $this->dataEntryStats($user, $scope),
             $user->hasRoleCode(RoleCodes::INTERNAL_REVIEWER) => $this->bankReviewerStats($user, $scope),
-            $user->hasRoleCode(RoleCodes::BANK_ADMIN) => $this->bankAdminStats($user, $scope),
             $user->hasRoleCode(RoleCodes::SUPPORT) => $this->supportCommitteeStats($user, $scope),
             $user->hasRoleCode(RoleCodes::FX_SWIFT) => $this->swiftOfficerStats($user, $scope),
             $user->hasRoleCode(RoleCodes::COMMITTEE_MANAGER) => $this->executiveMemberStats($user, $scope),
             $user->hasRoleCode(RoleCodes::COMMITTEE_DIRECTOR) => $this->committeeDirectorStats($user, $scope),
-            $user->hasRoleCode(RoleCodes::SYSTEM_ADMIN) => $this->cbyadminStats($user, $scope),
             default => ApiResponse::success([], 'Dashboard stats retrieved.'),
         };
     }

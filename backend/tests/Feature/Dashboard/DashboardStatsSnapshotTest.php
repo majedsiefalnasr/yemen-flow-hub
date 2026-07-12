@@ -5,6 +5,7 @@ namespace Tests\Feature\Dashboard;
 use App\Enums\UserRole;
 use App\Models\Bank;
 use App\Models\User;
+use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\Support\AssignsGovernanceIdentity;
@@ -19,6 +20,8 @@ class DashboardStatsSnapshotTest extends TestCase
     {
         parent::setUp();
         $this->seedGovernance();
+        // D0: analytics dashboard families are gated on screen capabilities.
+        $this->seed(ScreenPermissionSeeder::class);
     }
 
     public function test_empty_dashboard_payloads_are_characterized_by_role(): void

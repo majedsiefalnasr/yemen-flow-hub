@@ -1,58 +1,56 @@
 /**
- * Dashboard page role-routing logic tests — pure function tests.
+ * Dashboard page capability-family routing logic tests (Phase D0.6) — pure
+ * function tests. Routing is by capability, not role name: the operational
+ * MyWorkDashboard is the fallback for every workflow user (incl. any new dynamic
+ * executor role), and the two analytics/governance families are capability-gated.
  */
 import { describe, it, expect } from 'vitest'
-import { UserRole } from '../../../types/enums'
 
-// Logic mirrored from dashboard.vue: which component to render per role
-function resolveDashboardComponent(
-  role: UserRole | undefined,
-):
-  | 'DataEntryDashboard'
-  | 'BankReviewerDashboard'
-  | 'BankAdminDashboard'
-  | 'MyWorkDashboard'
-  | 'CbyAdminDashboard'
-  | 'Placeholder' {
-  // Analytics-oriented roles keep dedicated dashboards.
-  if (role === UserRole.BANK_ADMIN) return 'BankAdminDashboard'
-  if (role === UserRole.CBY_ADMIN) return 'CbyAdminDashboard'
-  // D0.4/D0.5: every workflow-executor role — including the Committee Director —
-  // is served by the shared MyWorkDashboard.
-  if (
-    role === UserRole.DATA_ENTRY ||
-    role === UserRole.BANK_REVIEWER ||
-    role === UserRole.SUPPORT_COMMITTEE ||
-    role === UserRole.SWIFT_OFFICER ||
-    role === UserRole.EXECUTIVE_MEMBER ||
-    role === UserRole.COMMITTEE_DIRECTOR
-  ) {
-    return 'MyWorkDashboard'
-  }
-  return 'Placeholder'
+type ScreenPermissions = Record<string, string[]>
+
+// Logic mirrored from dashboard.vue / index.vue: the dashboardFamily computed.
+function resolveDashboardFamily(
+  screenPermissions: ScreenPermissions,
+): 'SystemAdminDashboard' | 'BankAdminDashboard' | 'MyWorkDashboard' {
+  const can = (screen: string, capability: string): boolean =>
+    screenPermissions[screen]?.includes(capability) ?? false
+
+  if (can('system_dashboard', 'VIEW')) return 'SystemAdminDashboard'
+  if (can('bank_analytics', 'VIEW')) return 'BankAdminDashboard'
+  return 'MyWorkDashboard'
 }
 
-describe('Dashboard page — role-component routing', () => {
-  it.each([
-    UserRole.DATA_ENTRY,
-    UserRole.BANK_REVIEWER,
-    UserRole.SUPPORT_COMMITTEE,
-    UserRole.SWIFT_OFFICER,
-    UserRole.EXECUTIVE_MEMBER,
-    UserRole.COMMITTEE_DIRECTOR,
-  ])('renders MyWorkDashboard for workflow-executor role %s', (role) => {
-    expect(resolveDashboardComponent(role)).toBe('MyWorkDashboard')
+describe('Dashboard page — capability-family routing', () => {
+  it('routes a user with system_dashboard.view to SystemAdminDashboard', () => {
+    expect(resolveDashboardFamily({ system_dashboard: ['VIEW', 'MANAGE'] })).toBe(
+      'SystemAdminDashboard',
+    )
   })
 
-  it('renders BankAdminDashboard for BANK_ADMIN role (analytics-oriented)', () => {
-    expect(resolveDashboardComponent(UserRole.BANK_ADMIN)).toBe('BankAdminDashboard')
+  it('routes a user with bank_analytics.view to BankAdminDashboard', () => {
+    expect(resolveDashboardFamily({ bank_analytics: ['VIEW'] })).toBe('BankAdminDashboard')
   })
 
-  it('renders CbyAdminDashboard for CBY_ADMIN role (analytics-oriented)', () => {
-    expect(resolveDashboardComponent(UserRole.CBY_ADMIN)).toBe('CbyAdminDashboard')
+  it('routes a workflow user (no analytics capability) to MyWorkDashboard', () => {
+    // A typical executor holds only operational capabilities like `requests`.
+    expect(resolveDashboardFamily({ requests: ['VIEW', 'UPDATE'] })).toBe('MyWorkDashboard')
   })
 
-  it('renders Placeholder when role is undefined (unauthenticated edge case)', () => {
-    expect(resolveDashboardComponent(undefined)).toBe('Placeholder')
+  it('routes a brand-new dynamic role with no analytics capability to MyWorkDashboard', () => {
+    // The defining property: a new role gains its dashboard through capabilities,
+    // with no frontend change. Absent analytics capabilities → operational family.
+    expect(resolveDashboardFamily({})).toBe('MyWorkDashboard')
+  })
+
+  it('prefers system governance over bank analytics when both are held', () => {
+    expect(resolveDashboardFamily({ system_dashboard: ['VIEW'], bank_analytics: ['VIEW'] })).toBe(
+      'SystemAdminDashboard',
+    )
+  })
+
+  it('does not route by role name — capability absence alone decides the family', () => {
+    // No screen capabilities at all still resolves to the operational dashboard,
+    // never a role-specific component.
+    expect(resolveDashboardFamily({})).toBe('MyWorkDashboard')
   })
 })

@@ -3,13 +3,15 @@ import { FilePlus2 } from 'lucide-vue-next'
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.store'
+import { useScreenPermissions } from '../composables/useScreenPermissions'
 import { UserRole } from '../types/enums'
 import { ROLE_LABELS, ROUTE_ROLE_MAP } from '../constants/workflow'
 import { Button } from '../components/ui/button'
 import PageHeader from '../components/layout/PageHeader.vue'
 import BankAdminDashboard from '../components/dashboard/BankAdminDashboard.vue'
 import MyWorkDashboard from '../components/dashboard/MyWorkDashboard.vue'
-import CbyAdminDashboard from '../components/dashboard/CbyAdminDashboard.vue'
+// The CBY governance dashboard is the SystemAdmin (platform) dashboard family.
+import SystemAdminDashboard from '../components/dashboard/CbyAdminDashboard.vue'
 
 definePageMeta({
   middleware: ['auth', 'role'],
@@ -18,9 +20,21 @@ definePageMeta({
 
 const auth = useAuthStore()
 const router = useRouter()
+const { can } = useScreenPermissions()
 
 const role = computed(() => auth.user?.role)
 const userName = computed(() => auth.user?.name ?? '')
+
+// Phase D0 capability-family routing (backend enforces the same capabilities on
+// its endpoints). Order: system governance → bank analytics → operational work.
+// Workflow-executor roles hold neither analytics capability and fall through to
+// the shared MyWorkDashboard, so a new dynamic executor role is served with no
+// change here.
+const dashboardFamily = computed<'system' | 'bank' | 'work'>(() => {
+  if (can('system_dashboard', 'VIEW')) return 'system'
+  if (can('bank_analytics', 'VIEW')) return 'bank'
+  return 'work'
+})
 
 const ROLE_SUBTITLES: Record<UserRole, string> = {
   [UserRole.DATA_ENTRY]: 'موظف إدخال البيانات بالبنك التجاري',
@@ -54,51 +68,11 @@ const showNewRequestAction = computed(
       </template>
     </PageHeader>
 
-    <!-- Phase D0: workflow-executor roles are served by the shared,
-         permission-driven MyWorkDashboard (actionable work = /my-queue). The two
-         analytics-oriented roles (Bank Admin, CBY Admin) keep their dedicated
-         dashboards until their metrics move into MyWorkDashboard / the system
-         dashboard (D0.5 Bank Admin slice, D0.6 admin split). -->
-    <BankAdminDashboard v-if="role === UserRole.BANK_ADMIN" />
-    <CbyAdminDashboard v-else-if="role === UserRole.CBY_ADMIN" />
-    <!-- Every workflow-executor role — including the Committee Director (FINAL) —
-         is served by the shared MyWorkDashboard (actionable work = /my-queue). -->
-    <MyWorkDashboard
-      v-else-if="
-        role === UserRole.DATA_ENTRY ||
-        role === UserRole.BANK_REVIEWER ||
-        role === UserRole.SUPPORT_COMMITTEE ||
-        role === UserRole.SWIFT_OFFICER ||
-        role === UserRole.EXECUTIVE_MEMBER ||
-        role === UserRole.COMMITTEE_DIRECTOR
-      "
-    />
-
-    <!-- Unknown role -->
-    <div
-      v-else
-      class="border-border bg-background flex flex-col items-center gap-4 rounded-xl border px-8 py-12 text-center"
-      role="status"
-    >
-      <div class="bg-muted flex h-12 w-12 items-center justify-center rounded-full">
-        <svg
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-          class="text-muted-foreground"
-          aria-hidden="true"
-        >
-          <circle cx="12" cy="12" r="10" />
-          <line x1="12" y1="8" x2="12" y2="12" />
-          <line x1="12" y1="16" x2="12.01" y2="16" />
-        </svg>
-      </div>
-      <p class="text-muted-foreground max-w-sm text-sm">
-        لوحة التحكم غير متاحة للدور المحدد. يرجى التواصل مع المسؤول.
-      </p>
-    </div>
+    <!-- Phase D0 dashboard-family routing — by capability, not role name.
+         Governance/analytics families are capability-gated; every workflow user
+         (incl. any new dynamic executor role) falls through to MyWorkDashboard. -->
+    <SystemAdminDashboard v-if="dashboardFamily === 'system'" />
+    <BankAdminDashboard v-else-if="dashboardFamily === 'bank'" />
+    <MyWorkDashboard v-else />
   </div>
 </template>
