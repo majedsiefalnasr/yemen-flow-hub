@@ -723,6 +723,51 @@ agent's report (`DashboardKpiCard.vue`'s caller graph,
 confirmed; both were resolved with a direct follow-up grep/read before
 being cited in either document, rather than left as hedged claims.
 
+**Step 3B consistency correction (2026-07-12).** The prior correction
+round (commit `9045cb03`) fixed all 8 requested overstatements, but 4
+residual statements elsewhere in `docs/architecture/04-dashboard-architecture.md`
+and `docs/README.md` still implied the fully capability-only model the
+corrections had already disproven — leftover from earlier drafting, not
+new findings. Fixed:
+
+1. The document's own introduction still said the source decision
+   record's model "is now shipped" unqualified. Narrowed: the two-family
+   _component structure_ is shipped; the _capability-only end-to-end
+   selection model_ the decision record proposed is not, since fixed-role
+   constraints remain in route admission and backend analytics dispatch.
+2. The Executive Voting section called `executiveMemberStats()`/
+   `committeeDirectorStats()` "currently-unreachable," restating the
+   already-corrected "structurally unreachable" claim in different words.
+   Replaced with the already-established accurate scope: unreached under
+   default seeded capability assignments, potentially reachable after an
+   administrative capability reassignment.
+3. The "Prohibited patterns" section still had a "No role-name routing
+   branch" rule claiming no `role === 'X'` conditional exists "anywhere in
+   the dashboard routing path" — false, since `ROUTE_ROLE_MAP['/dashboard']`
+   - `requiredRoles.includes(auth.user.role)` is exactly that, and is
+     already documented above as existing architecture drift. Rewrote the
+     rule to scope it correctly: no _new_ per-role branch in _component
+     selection_ specifically; the existing route-admission gate is
+     documented drift, not something to describe as absent.
+4. `docs/README.md`'s permissions summary said "Permissions are
+   capability-based, not role-name checks scattered through code" —
+   too broad given the dashboard corrections. Replaced with: screen
+   capabilities and workflow stage permissions are the primary
+   authorization systems; a small number of explicit fixed-role guards
+   still exist alongside them and must be documented individually, with
+   a link to the dashboard-specific instance.
+
+Searched all live dashboard documentation for `currently-unreachable`,
+`never by role`, `no role-name routing`, and unqualified "model is now
+shipped" — zero remaining hits in `docs/architecture/04-dashboard-architecture.md`
+or `docs/README.md`. A broader sweep found one more hit outside the
+scope of this correction: `AGENTS.md:276` still says "never by role
+name" — left untouched, since `AGENTS.md`'s consolidation is Step 9 and
+you have twice explicitly instructed not to begin it early.
+`docs/architecture/05-request-state-model.md` was not touched — it
+already passed the prior focused accuracy review and needed no further
+changes.
+
 **Step 3A — ✅ DONE (2026-07-12).** Before touching any source document,
 used a `socraticode:codebase-explorer` subagent (resumed once after an
 API-error truncation) plus direct verification of the two claims it

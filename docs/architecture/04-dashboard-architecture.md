@@ -3,8 +3,14 @@
 **Verified:** 2026-07-12, against `frontend/app/` and `backend/app/`
 directly. Promotes `docs/audit-functional/14-dashboard-architecture-decision.md`
 (a dated, past-tense decision record proposing this model) into a
-present-tense canonical reference — the model that document proposed is
-now shipped.
+present-tense canonical reference. **The two-family component
+structure is shipped** — `MyWorkDashboard.vue` plus the two analytics
+dashboards, selected by a capability check rather than a per-role
+component branch. **The proposed capability-only end-to-end selection
+model is not fully shipped** — fixed-role constraints remain in route
+admission (`ROUTE_ROLE_MAP['/dashboard']`) and backend analytics
+dispatch (`hasRoleCode()` checks in `DashboardStatsService::stats()`),
+documented in full below.
 
 For the permission mechanics dashboards route on, see
 [`03-permission-model.md`](03-permission-model.md). For the request-state
@@ -287,9 +293,13 @@ No voting-session dashboard UI is mounted anywhere. Confirmed:
 - `DashboardStatsService`'s legacy `executiveVotingStats()` still returns
   zeroed voting keys (`waiting_for_voting_open`, `active_voting_sessions`,
   `decisions_approved`, `decisions_rejected`, `finalized_decisions`,
-  `pending_my_vote`, `voting_queue: []`), consumed only by the legacy,
-  currently-unreachable `executiveMemberStats()`/`committeeDirectorStats()`
-  branches above.
+  `pending_my_vote`, `voting_queue: []`), consumed only by the legacy
+  `executiveMemberStats()`/`committeeDirectorStats()` branches above —
+  **unreached under default seeded capability assignments**, and
+  **potentially reachable after an administrative capability
+  reassignment** (see "Legacy `DashboardStatsService` branches" above:
+  frontend capability-based component selection and the backend's fixed
+  role-code dispatch can diverge).
 - No live dashboard component renders these fields. The one voting-token
   reference found in the dashboard component tree —
   `DashboardKpiCard.vue`'s deprecated `variant="indigo"` → `var(--voting)`
@@ -325,9 +335,17 @@ verified against source:
   document's source decision record identified (three surfaces
   independently deciding "what is this user's pending work," able to
   disagree with each other and with `/my-queue`).
-- **No role-name routing branch.** Both routing pages use capability
-  checks (`can('system_dashboard'|'bank_analytics', 'VIEW')`) exclusively
-  — no `role === 'X'` conditional anywhere in the dashboard routing path.
+- **No new per-role dashboard component-selection branch.** The
+  _component-selection_ block (`dashboardFamily` computed in both routing
+  pages) is capability-based — `can('system_dashboard'|'bank_analytics', 'VIEW')`
+  exclusively, no `role === 'X'` conditional. **This does not mean the
+  entire routing path is role-free.** Fixed-role route _admission_
+  already exists (`requiredRoles: ROUTE_ROLE_MAP['/dashboard']`, checked
+  by `middleware/role.ts`) and is documented above as architecture drift
+  from the source decision record's capability-only proposal, not as an
+  additional pattern to avoid introducing — it already exists. Do not
+  add a _new_ role-name branch to component selection; do not describe
+  the existing route-admission gate as if it weren't there.
 - **No bespoke pending-work query.** Any new "how much work does this
   user have" count must go through `UserActionableRequestQuery`, not a
   new hand-rolled query — this is what keeps dashboard count, dashboard

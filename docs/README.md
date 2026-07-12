@@ -84,5 +84,11 @@ docs above; this is the short version so nothing below has to repeat it:
   alongside the capability — see
   [`architecture/04-dashboard-architecture.md`](architecture/04-dashboard-architecture.md)
   for the exact split between capability-led and fixed-role behavior.
-- **Permissions are capability-based**, not role-name checks scattered
-  through code — see [`architecture/03-permission-model.md`](architecture/03-permission-model.md).
+- **Screen capabilities and workflow stage permissions are the primary
+  authorization systems** — see
+  [`architecture/03-permission-model.md`](architecture/03-permission-model.md).
+  A small number of explicit fixed-role guards still exist alongside them
+  (e.g. dashboard route admission, the backend's analytics dispatch) and
+  must be documented individually rather than generalized away — see
+  [`architecture/04-dashboard-architecture.md`](architecture/04-dashboard-architecture.md)
+  for the dashboard-specific instance.
