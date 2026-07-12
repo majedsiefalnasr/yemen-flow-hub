@@ -771,12 +771,69 @@ Re-ran Prettier on the 4 touched files (`api-reference.md`,
 `architecture/01-system-architecture.md`, this plan doc) — clean and
 stable. Re-validated every internal link across all 15 files touched by
 Steps 2+3A+this correction round against the filesystem — all resolve or
-are annotated planned. Re-ran `php artisan route:list --path=api`
-(237 routes in the local environment at correction time, not recorded as
-a claim in the docs themselves per item 1). Confirmed via `git status`
-that only the 4 corrected files plus this record are dirty; the 2
-pre-existing dirty files and 11 pre-existing untracked files remain
-unchanged.
+are annotated planned. Re-ran `php artisan route:list --path=api`, which
+completed successfully; the total route count is not recorded as a fixed
+number, per item 1, because demo/switch-role routes register
+conditionally on `config('demo.allowed_environments')` and the total is
+environment-dependent. Confirmed via `git status` that the three
+documentation files (`api-reference.md`,
+`architecture/06-database-and-models.md`,
+`architecture/01-system-architecture.md`) plus this plan record were the
+four intended changed files, and that only those four are dirty; the 2
+pre-existing dirty files (`.codex/config.toml`,
+`docs/audit-functional/12-phase-b-checkpoint.md`) and 11 pre-existing
+untracked files remain unchanged.
+
+**Step 3A accuracy correction, round 2 (2026-07-12).** An independent
+review of commit `b4f8bdb3` confirmed it signed, co-authored, exactly the
+4 intended files, and Prettier-clean — but caught 2 remaining
+inaccuracies:
+
+1. `docs/api-reference.md`'s Executive Voting section claimed "no
+   vote-casting UI anywhere in the shipped frontend" and then documented
+   only `backend/app` cleanup debt, omitting frontend residue entirely.
+   Traced every frontend voting reference individually before writing
+   anything (not assumed dead from the symbol name): `VoteType`
+   (`frontend/app/types/enums.ts`) and a `vote: VoteType` model field —
+   zero consumers outside declarations/tests; the
+   `action.voting.cast`/`action.voting.close_finalize` role-surface
+   capability strings (`frontend/app/constants/role-surfaces.ts`) —
+   listed in every role's capability catalog but never queried by any
+   composable/store/component at runtime; `voting_session_timeout`/
+   `secret_voting` (`useAdminSettings.ts`) and `voting_analytics`
+   (`useReports.ts`) typed fields — referenced only in unit-test
+   fixtures, never rendered; a dead CSS rule
+   `.notification-row--voting` in `notifications.vue` — never
+   conditionally applied. Confirmed zero voting page files and zero
+   voting route/middleware registration anywhere in `frontend/app`.
+   Separately confirmed that every `var(--voting)`/`tone="voting"` hit in
+   `ActionRequiredStrip.vue`, `MetricCard.vue`, `ActiveReviewBanner.vue`,
+   `DashboardKpiCard.vue`, and `reports/index.vue` is the shared design
+   color token (indigo) styling unrelated KPI/banner content, not voting
+   functionality — explicitly not counted as residue, per your caution
+   against conflating color tokens with real voting code. Rewrote the
+   section to state the precise claim ("no live or mounted V1 voting
+   route, screen, or action surface") separately from the itemized
+   Backend/Frontend residue lists, plus a "Not residue" callout for the
+   color-token usages.
+2. This plan's own Step 3A correction record still stated the hardcoded
+   "237 registered API routes" count that item 1 of the previous
+   correction round had already removed from `api-reference.md` itself —
+   an inconsistency between the doc and its own change-log entry.
+   Replaced with "`route:list` completed successfully; total is
+   environment-dependent." Also replaced the ambiguous "only the 4
+   corrected files plus this record are dirty" with an explicit
+   enumeration: the three documentation files were the changed content,
+   this plan record is the fourth intended file, together they are "the
+   four."
+
+Re-ran Prettier on both files (`api-reference.md`, this plan doc) —
+clean and stable on rerun. Re-validated internal Markdown links in both
+files against the filesystem — all resolve. Confirmed via `git status`
+that only these 2 files are dirty; the 2 pre-existing dirty files and 11
+pre-existing untracked files remain unchanged. Verified the committed
+blobs post-commit with `git diff --stat HEAD -- <files>` to confirm no
+recurrence of the earlier staging problem from commit `307ead39`.
 
 **Step 4 — Rewrite the 3 heavily-stale files**
 (`docs/01-workflow-and-business-rules.md` → merges into

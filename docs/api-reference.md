@@ -457,18 +457,21 @@ DELETE /api/v1/engine-requests/{id}/claim
 
 # Executive Voting (out of V1 — no live routes)
 
-Executive Voting has **no live V1 workflow routes, vote-casting service,
-session model, or active vote data model.** There is no
-`POST /api/voting/{id}/vote`, no `.../close` endpoint, no dedicated
-`/api/voting/*` route family, no `request_votes` table (physically
-dropped — see
+Executive Voting has **no live or mounted V1 voting route, screen, or
+action surface.** There is no `POST /api/voting/{id}/vote`, no `.../close`
+endpoint, no dedicated `/api/voting/*` route family, no `request_votes`
+table (physically dropped — see
 [`architecture/06-database-and-models.md`](architecture/06-database-and-models.md)),
-and no `VotingSessionStatus` or vote-casting UI anywhere in the shipped
-frontend.
+no `VotingSessionStatus`, no voting page/route in `frontend/app/pages/`,
+and no route or middleware registration for a voting screen.
 
-**This does not mean zero voting-related code exists in `backend/app`.**
-Legacy compatibility/dead-code symbols remain, none of them reachable
-from a live route or active data path:
+**This does not mean zero voting-related code exists — in either
+`backend/app` or `frontend/app`.** Legacy compatibility/dead-code symbols
+remain on both sides, traced individually and confirmed unreachable from
+any live route, mounted component, or active data path (not assumed dead
+from the symbol name alone):
+
+**Backend:**
 
 - `NotificationType::VOTING_OPENED` (enum case) and matching voting
   notification templates in the notification-template registry —
@@ -480,6 +483,34 @@ from a live route or active data path:
 - The dashboard-stats voting fields (`waiting_for_voting_open`,
   `active_voting_sessions`, `voting_queue`) — see the Dashboard APIs
   section below; hardcoded to zero/empty, not backed by live data.
+
+**Frontend:**
+
+- `VoteType` (`frontend/app/types/enums.ts`) and the `vote: VoteType`
+  field on a model interface (`frontend/app/types/models.ts`) — zero
+  consumers outside their own declarations and unit tests.
+- `action.voting.cast` / `action.voting.close_finalize` role-surface
+  capability strings (`frontend/app/constants/role-surfaces.ts`) — listed
+  in the capability catalog for every role, but no composable, store, or
+  component anywhere in `frontend/app` queries either specific key at
+  runtime; not gating any mounted UI.
+- `voting_session_timeout` / `secret_voting` typed fields
+  (`useAdminSettings.ts`) and `voting_analytics` typed field
+  (`useReports.ts`) — present in TypeScript interfaces, referenced only
+  by unit-test fixtures, never read or rendered by any `.vue` template.
+- A dead CSS rule, `.notification-row--voting`
+  (`frontend/app/pages/notifications.vue`) — the class it styles is never
+  conditionally applied to any element.
+
+**Not residue — do not conflate with the above:** `var(--voting)` /
+`var(--color-voting)` and the `MetricCard` `tone="voting"` prop value
+(seen in `ActionRequiredStrip.vue`, `MetricCard.vue`,
+`ActiveReviewBanner.vue`, `DashboardKpiCard.vue`, `reports/index.vue`)
+are the shared **design-system color token** (indigo, `#5856d6`, per root
+`DESIGN.md`) reused for unrelated KPI/banner styling — e.g. coloring an
+"average processing time" metric card. These are visual tokens, not
+voting functionality, and were individually checked to confirm they
+render generic content, not vote-related data.
 
 These are recorded here as **cleanup debt**, not corrected in this
 documentation pass — removing dead code is out of scope for a
