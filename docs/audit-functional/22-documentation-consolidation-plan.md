@@ -742,13 +742,16 @@ new findings. Fixed:
    default seeded capability assignments, potentially reachable after an
    administrative capability reassignment.
 3. The "Prohibited patterns" section still had a "No role-name routing
-   branch" rule claiming no `role === 'X'` conditional exists "anywhere in
-   the dashboard routing path" — false, since `ROUTE_ROLE_MAP['/dashboard']`
-   - `requiredRoles.includes(auth.user.role)` is exactly that, and is
-     already documented above as existing architecture drift. Rewrote the
-     rule to scope it correctly: no _new_ per-role branch in _component
-     selection_ specifically; the existing route-admission gate is
-     documented drift, not something to describe as absent.
+   branch" heading, overbroad because fixed-role route admission exists.
+   Component selection itself has no `role === 'X'` branch — that part
+   of the original claim was accurate. But route admission is
+   nevertheless role-based: it is a fixed-role membership gate using
+   `ROUTE_ROLE_MAP['/dashboard']` together with
+   `requiredRoles.includes(auth.user.role)`, not a literal equality
+   conditional, and it is already documented above as existing
+   architecture drift. The prohibited rule was therefore narrowed to "do
+   not add a per-role component-selection branch," rather than claiming
+   no role-based check exists anywhere in the routing path.
 4. `docs/README.md`'s permissions summary said "Permissions are
    capability-based, not role-name checks scattered through code" —
    too broad given the dashboard corrections. Replaced with: screen
