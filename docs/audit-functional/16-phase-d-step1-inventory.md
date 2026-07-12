@@ -349,19 +349,136 @@ unit-test `ROLE_BUCKETS`'s data shape for a `/requests` role-tab page family
 that `frontend/CLAUDE.md` confirms no longer exists ("The legacy `/requests`...
 routes no longer exist").
 
-**Not yet executed — flagged for the next continuation, not blocking the
-Phase D checkpoint on its own:** deleting `constants/workflow.ts`'s dead
-export surface, `AuditTimeline.vue`, and the 8+3 test files that exist only to
-test that dead surface (`{role}-requests.test.ts` ×8, `workflow-buckets.test.ts`,
-`workflow-status.test.ts`, `AuditTimeline.test.ts`, plus `CorrectionBanner.test.ts`/
-`LockedBanner.test.ts`/`story-12-3-role-gates.test.ts` — not yet individually
-checked). This is a large, mostly-deletion pass (Steps 9-10's actual content
-turns out to be "confirm and delete" rather than "migrate," because the
-underlying `/requests` page family predates the current `/workflows` engine
-UI and was never fully retired from the codebase). Recommend confirming this
-disposition explicitly before executing it, since it is the single largest
-remaining diff in Phase D and removes test coverage entirely rather than
-replacing it with engine-shaped equivalents — the same "equivalent dynamic
-coverage exists" bar the D0 dashboard deletions were held to should apply
-here too, and for a `/requests` page family with no live successor page, that
-bar may not be reachable in the same way.
+## 12. Step 9 — Dead RequestStatus surface removal (dependency-proof pass + execution)
+
+**Dependency-proof pass — all 7 items confirmed clean before deletion:**
+
+1. **No registered route resolves to `/requests`.** Route enumeration
+   (`find frontend/app/pages -name "*.vue"`) and `constants/workflow.ts`'s own
+   `PROTECTED_ROUTES`/`ROUTE_ROLE_MAP` list 33 live pages — none under
+   `requests/`. `frontend/CLAUDE.md` independently confirms the family was
+   retired.
+2. **No dynamic import/lazy registration/plugin/story/helper mounts
+   `AuditTimeline.vue`.** Grep for the component name outside its own file
+   and tests: zero hits.
+3. **No production file imports the dead surface.** `RequestStatus`: 5
+   production files, all either the definition (`enums.ts`), a downstream
+   type alias with 0 live readers (`models.ts`'s `PaginatedResponse.status_totals`,
+   confirmed separately), or comment-only mentions (`useDashboard.ts`,
+   `BankAdminDashboard.vue`). `ROLE_BUCKETS`: 1 file (its own definition in
+   `constants/workflow.ts`) before removal. `STATUS_LABELS`/
+   `getBusinessStatus`: 1 real consumer, `AuditTimeline.vue` — itself
+   confirmed dead by item 2. Voting status mappings
+   (`EXECUTIVE_VOTING_OPEN/CLOSED`, `VotingSessionStatus`): 0 production
+   consumers outside the enum definitions.
+4. **No backend API contract returns the 22-value vocabulary as
+   authoritative.** No `RequestStatus` class/enum exists in
+   `backend/app/**/*.php` (the one substring match was `EngineRequestStatus`,
+   the unrelated 5-value runtime-status class). `EngineRequestResource`
+   returns `status`/`runtime_status` (5-value), `current_stage.semantic_role`,
+   `final_outcome` — never the 22-value vocabulary.
+5. **No notification/export/report/history view depends on these
+   constants.** `useReports.ts`, `useTableExport.ts`, `reports.store.ts`,
+   `DataTableBulkExport.vue`, `DataTableExport.vue`, and everything under
+   `pages/reports/` — grep-checked individually, zero imports from
+   `constants/workflow`'s dead surface.
+6. **The 8 role-request tests reference only the removed page family or
+   dead bucket logic.** Verified per-file: every one of the 281 total `it()`
+   blocks imports `RequestStatus` + `ROLE_BUCKETS`/`CBY_BANK_FILTER_ROLES`
+   directly, asserts on that data shape, and never mounts a component or
+   imports a live page.
+7. **Equivalent current behavior mapped.** See table below.
+
+**One real stop-and-check triggered, resolved without migration.**
+`story-12-3-role-gates.test.ts`'s "FX confirmation tab" / "SWIFT two-pill
+states" describe blocks share topic names with the live
+`EngineFxConfirmationPanel.vue`. Verified: the test file defines all its
+logic (`directorBanner`, `fxFlowState`, `swiftPills`, `swiftUploadAccess`,
+etc.) inline, never importing from any real component; grepped
+`EngineFxConfirmationPanel.vue` for those exact function/type names — zero
+matches. The live component already has its own dedicated coverage
+(`EngineFxConfirmationPanel.test.ts`, `useEngineFxConfirmation.test.ts`).
+Coincidental topic overlap, not shared implementation — cleared for removal.
+
+**Old test → current coverage mapping:**
+
+| Removed | Covered unreachable feature, or replacement |
+| ------- | -------------------------------------------- |
+| `AuditTimeline.test.ts` | Unreachable — component had 0 mount points. Live history rendering is the request-detail "السجل" tab (stage-transition list from `workflow_history`), unaffected, live-verified below. |
+| `CorrectionBanner.test.ts` | Unreachable — `CorrectionBanner.vue` had 0 external consumers. |
+| `LockedBanner.test.ts` | Unreachable — `LockedBanner.vue` had 0 external consumers. |
+| `story-12-3-role-gates.test.ts` | Unreachable pre-engine prototype logic (self-contained, never wired to a real component). FX-tab concern has live equivalent coverage: `EngineFxConfirmationPanel.test.ts` + `useEngineFxConfirmation.test.ts`. |
+| `workflow-buckets.test.ts`, `workflow-status.test.ts` | Unreachable — tested `ROLE_BUCKETS`/status-label data shape directly, no component/page consumer. |
+| `{role}-requests.test.ts` ×8 (bank-admin, bank-reviewer, cby-admin, committee-director, data-entry, executive-member, support-committee, swift-officer) | Unreachable — tested `ROLE_BUCKETS` for a `/requests` page family with no route. Current per-role actionable-work behavior is covered by `UserActionableRequestQueryTest`, `DashboardWorkApiTest`, the `/my-queue` parity assertions inside both, `MyWorkDashboard.test.ts`, and `useNavBadges.test.ts` (nav badge parity) — the dynamic, capability-driven replacement for the static per-role bucket model these tests exercised. |
+| `WorkflowProgress.test.ts`, `WorkflowTimelineSwiftMerge.test.ts` (removed in the Step 8 commit) | Unreachable — components had 0 mount points. |
+
+**Files removed (Step 9, this commit):** `components/workflow/AuditTimeline.vue`,
+`components/banners/CorrectionBanner.vue`, `components/banners/LockedBanner.vue`,
+their 3 test files, `tests/unit/pages/story-12-3-role-gates.test.ts`,
+`tests/unit/constants/{workflow-buckets,workflow-status}.test.ts`, and the 8
+`tests/unit/pages/requests/{role}-requests.test.ts` files — 17 files removed. From
+`constants/workflow.ts` (1037 → 341 lines): `STATUS_COLORS`, `STATUS_ICONS`,
+`BusinessStatus`, `getBusinessStatus()`, `DATA_ENTRY_REPRESENTATIVE_STATUS`,
+`ROLE_FILTER_STATUSES`, `DATA_ENTRY_STATUS_LABELS`, `STATUS_LABELS`,
+`SWIFT_DISPLAY_GROUP`, `STATUS_PROGRESS`, `getStatusProgress()`, `StageBucket`,
+`ROLE_BUCKETS` (including every `EXECUTIVE_VOTING_OPEN/CLOSED`, `my_vote`,
+`ready_to_close`, `is_tie` voting-era branch), `ROLE_ATTENTION_STATUSES`,
+`CBY_BANK_FILTER_ROLES`. The `RequestStatus` import itself is removed from
+`constants/workflow.ts`.
+
+**Kept, per explicit instruction:** `RequestStatus`/`VotingSessionStatus`/
+`VoteType` enum definitions in `types/enums.ts` (full removal is Step 10,
+separately gated on "all consumers migrated" — the definition itself still
+has 2 non-dead references: its own test and `PaginatedResponse.status_totals`,
+which has 0 live readers but wasn't in this turn's approved deletion scope);
+`types/enums.test.ts`'s `RequestStatus` block (tests the still-present enum
+shape); all `UserRole`-only exports in `constants/workflow.ts` (`ROLE_LABELS`,
+`ROLE_QUEUE_TITLES`, `BANK_ROLES`, `CBY_ROLES`, `CBY_OPERATIONAL_ROLES`,
+`NAV_ITEMS`, `PROTECTED_ROUTES`, `ROUTE_ROLE_MAP`, etc.) and the live
+`NOT_ELIGIBLE_*` labels (7 of 11 have live consumers, decoupled from
+`RequestStatus`); `runtime_status`, `current_stage`, `semantic_role`,
+`final_outcome`, current workflow-history rendering, designer-driven stage
+labels, and the active `semantic_role`-or-`code` compatibility fallback —
+none touched.
+
+**Verification (all against the approved checklist):**
+
+- Typecheck: **19 errors before, 19 after** — exact baseline maintained
+  (confirmed via `git stash`/`stash pop` A-B comparison both before and after
+  this pass).
+- Frontend suites (`pages`, `components`, `constants`, `types` — 61 test
+  files, 698 tests before removal): 8 files / 11 tests / 5 unhandled-rejection
+  errors failing, **all confirmed pre-existing** via the same stash A-B
+  comparison (`CommandPalette.test.ts`, `WorkflowPublishPanel.test.ts`,
+  `GovernanceRolesPage.test.ts`, `LoginPage.test.ts`, `OrganizationsPage.test.ts`,
+  `ReferenceDataPage.test.ts`, `TeamsPage.test.ts`, `notifications.page.test.ts`
+  — none touch `RequestStatus`/`ROLE_BUCKETS`/any removed file; the
+  `ReferenceDataPage.test.ts` errors are an unrelated `extractApiErrorMessage`
+  reference bug). Every test that does touch the removed surface passes or
+  was itself removed as part of this pass.
+- Backend: `tests/Feature/Dashboard/` 27/27 green (200 assertions);
+  `tests/Feature/Engine/` 291/291 green (1038 assertions).
+- ESLint/Prettier: clean on `constants/workflow.ts`.
+- Production build (`pnpm run build`): succeeds, no dead-import errors.
+- Route enumeration: 33 pages, no `/requests` family, confirmed independently
+  of the dependency-proof pass's item 1.
+- Final repo-wide search: `ROLE_BUCKETS` — 0 hits anywhere. Deleted component
+  names (`AuditTimeline`, `CorrectionBanner`, `LockedBanner`,
+  `WorkflowProgress`, `WorkflowTimeline`, `StatusBadge`) — 0 hits anywhere.
+  `EXECUTIVE_VOTING_OPEN/CLOSED` — 0 hits outside the still-present enum
+  definition. `RequestStatus` — 5 production files, all confirmed dead-weight
+  (definition, 1 unused type field, 2 comments) in item 3 above.
+- Live `playwright-cli` verification: System Admin
+  (`admin@cby.gov.ye`) → System Admin dashboard renders ("مؤشرات أداء النظام"),
+  0 console errors. Bank Admin (`admin@ybrd.com.ye`) → merchant column still
+  shows real names post-cleanup (unaffected by this pass, re-confirmed).
+  Director (`director@cby.gov.ye`) and SWIFT Officer (`swift@ybrd.com.ye`) →
+  both route to MyWorkDashboard ("طابور مهامي"). Request-detail history
+  ("السجل" tab, request A016 as System Admin) → renders the full stage-
+  transition list (إنشاء الطلب → المراجعة الداخلية → المراجعة المساندة →
+  القرار التنفيذي → مغلق — مرفوض) with actor names, timestamps, and action
+  codes, entirely independent of the deleted `AuditTimeline.vue`. Zero
+  non-rate-limit console errors across all navigations.
+
+No runtime consumer appeared during the dependency-proof pass or the
+post-deletion verification. Nothing required migration instead of deletion.
