@@ -21,13 +21,13 @@ function resolveDashboardFamily(
 }
 
 describe('Dashboard page — capability-family routing', () => {
-  it('routes a user with system_dashboard.view to SystemAdminDashboard', () => {
+  it('routes a user with the system_dashboard screen + VIEW capability to SystemAdminDashboard', () => {
     expect(resolveDashboardFamily({ system_dashboard: ['VIEW', 'MANAGE'] })).toBe(
       'SystemAdminDashboard',
     )
   })
 
-  it('routes a user with bank_analytics.view to BankAdminDashboard', () => {
+  it('routes a user with the bank_analytics screen + VIEW capability to BankAdminDashboard', () => {
     expect(resolveDashboardFamily({ bank_analytics: ['VIEW'] })).toBe('BankAdminDashboard')
   })
 

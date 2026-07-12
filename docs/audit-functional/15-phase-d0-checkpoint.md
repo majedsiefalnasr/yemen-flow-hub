@@ -56,10 +56,24 @@ projection-free `countBranch()` because aggregating over `withStageEntry()`'s
 
 ## 3. Capability-family routing + backend enforcement
 
-Frontend (`dashboard.vue`, `index.vue`), order: `system_dashboard.view` →
-`SystemAdminDashboard`; else `bank_analytics.view` → `BankAdminDashboard`; else →
-`MyWorkDashboard`. Two new screen capabilities seeded
+Frontend (`dashboard.vue`, `index.vue`), order: `system_dashboard` screen with
+`VIEW` → `SystemAdminDashboard`; else `bank_analytics` screen with `VIEW` →
+`BankAdminDashboard`; else → `MyWorkDashboard`. Two new screen capabilities seeded
 (`system_admin`→`system_dashboard`, `bank_admin`→`bank_analytics`).
+
+**Capability-naming contract (verified across all four layers — one canonical
+form, no dotted literal stored anywhere):**
+
+| Layer | System-admin | Bank-admin |
+| ----- | ------------ | ---------- |
+| Stored `screens.key` | `system_dashboard` | `bank_analytics` |
+| `/auth/me` `screen_permissions` map | `['system_dashboard' => ['VIEW','MANAGE']]` | `['bank_analytics' => ['VIEW']]` |
+| Frontend check (`useScreenPermissions().can`) | `can('system_dashboard','VIEW')` | `can('bank_analytics','VIEW')` |
+| Backend check (`PermissionService::userHasCapability`) | `userHasCapability($user,'system_dashboard','VIEW')` | `userHasCapability($user,'bank_analytics','VIEW')` |
+
+The check is **two arguments — screen key + capability verb**. The dotted
+`system_dashboard.view` form appears only in prose as shorthand and is never a
+stored value or a code literal.
 
 The backend enforces the same capabilities independently: `DashboardStatsService`
 gates the analytics branches on the capability (role **and** capability), so
@@ -112,12 +126,15 @@ Screenshots retained locally: `director-myworkdashboard-v2.png`,
 
 ## 6. Deferred / follow-ups
 
-- The `/dashboard/stats` endpoint and its per-role `*Stats()` methods still back
-  the analytics dashboards and are reachable by executor roles too; a later cleanup
-  can drop the executor-role `*Stats()` methods once nothing reads them. The nav
-  badge and work dashboard already read `/dashboard/work`.
-- Backward-compat Director keys on `committeeDirectorStats()` remain until the
-  analytics dashboards no longer need the shared shape.
+- **Residual dashboard-stats cleanup (approved follow-up, does not block Phase D):**
+  `/dashboard/stats` + the executor-specific `*Stats()` methods are temporary legacy
+  compatibility. Execute in this order, only after each precondition holds:
+  1. Inventory every remaining consumer of `/dashboard/stats` + the executor `*Stats()` methods.
+  2. Confirm workflow dashboards and navigation no longer use the executor stats branches (they already read `/dashboard/work` + the shared actionable query).
+  3. Remove the executor-specific stats methods (`dataEntryStats`, `bankReviewerStats`, `supportCommitteeStats`, `swiftOfficerStats`, `executiveMemberStats`, `committeeDirectorStats`) once the consumer count reaches zero.
+  4. Preserve only the analytics-family contracts required by system administration (`cbyadminStats`) and bank analytics (`bankAdminStats`).
+  5. Remove the backward-compatibility Director keys on `committeeDirectorStats()` once no consumer depends on them.
+  6. Add negative tests proving workflow users cannot access analytics-family payloads (already present in `DashboardFamilyCapabilityTest`; extend to the cleaned endpoint).
 - Backend voting-model deletion stays in the gated Phase F cleanup (only the voting
   **dashboard UI** was removed here).
 - `metrics` / `recent_activity` sections are empty placeholders (Level 1); the
