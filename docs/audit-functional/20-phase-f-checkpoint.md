@@ -10,15 +10,15 @@ cleanup only, per the approved Phase F charter. No new product behavior.
 
 ## 1. Legacy artifacts removed
 
-| Artifact | Reason | Verification |
-| -------- | ------ | ------------- |
-| `backend/database/seeders/NotificationSeeder.php` | Orphaned (zero callers) and broken (imports the deleted `ImportRequest` model and a `RequestStatus` class that never existed as a backend class) | 7/7 dependency-proof checklist passed (§5 of `19-phase-f-inventory.md`) |
-| `backend/app/Enums/VoteType.php` | Orphaned — zero usages anywhere outside its own file | `grep -rln` across `app/`, `database/` |
-| `backend/app/Enums/VotingSessionStatus.php` | Orphaned — a second, backend-only copy distinct from the frontend enum already removed in Phase D; zero usages | Same |
-| `backend/app/Exceptions/WorkflowLockedStateException.php` | Class exists but zero throw-sites anywhere; its `bootstrap/app.php` handler was unreachable in practice | `class_exists()` true, throw-site grep zero hits, zero test coverage |
-| `backend/app/Exceptions/DuplicateVoteException.php` | Zero throw-sites; shared a dead union-type handler with `VotingException` | Same |
-| `backend/app/Exceptions/VotingException.php` | Zero throw-sites | Same |
-| 3 dead `bootstrap/app.php` handler blocks + 4 `use` imports | Handlers for `WorkflowImmutableStateException` (class doesn't exist at all — `class_exists()` false), `WorkflowLockedStateException`, and the shared `DuplicateVoteException\|VotingException` handler — all unreachable | Task #13's full checklist (§5a of `19-phase-f-inventory.md`) |
+| Artifact                                                    | Reason                                                                                                                                                                                                                   | Verification                                                            |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| `backend/database/seeders/NotificationSeeder.php`           | Orphaned (zero callers) and broken (imports the deleted `ImportRequest` model and a `RequestStatus` class that never existed as a backend class)                                                                         | 7/7 dependency-proof checklist passed (§5 of `19-phase-f-inventory.md`) |
+| `backend/app/Enums/VoteType.php`                            | Orphaned — zero usages anywhere outside its own file                                                                                                                                                                     | `grep -rln` across `app/`, `database/`                                  |
+| `backend/app/Enums/VotingSessionStatus.php`                 | Orphaned — a second, backend-only copy distinct from the frontend enum already removed in Phase D; zero usages                                                                                                           | Same                                                                    |
+| `backend/app/Exceptions/WorkflowLockedStateException.php`   | Class exists but zero throw-sites anywhere; its `bootstrap/app.php` handler was unreachable in practice                                                                                                                  | `class_exists()` true, throw-site grep zero hits, zero test coverage    |
+| `backend/app/Exceptions/DuplicateVoteException.php`         | Zero throw-sites; shared a dead union-type handler with `VotingException`                                                                                                                                                | Same                                                                    |
+| `backend/app/Exceptions/VotingException.php`                | Zero throw-sites                                                                                                                                                                                                         | Same                                                                    |
+| 3 dead `bootstrap/app.php` handler blocks + 4 `use` imports | Handlers for `WorkflowImmutableStateException` (class doesn't exist at all — `class_exists()` false), `WorkflowLockedStateException`, and the shared `DuplicateVoteException\|VotingException` handler — all unreachable | Task #13's full checklist (§5a of `19-phase-f-inventory.md`)            |
 
 **Net removal:** 6 files deleted, 1 file edited (`bootstrap/app.php`, −22 lines net).
 
@@ -26,16 +26,16 @@ cleanup only, per the approved Phase F charter. No new product behavior.
 
 ## 2. Legacy artifacts retained, and why
 
-| Artifact | Why retained |
-| -------- | ------------- |
-| `LogicException` 403 handler in `bootstrap/app.php` (`WORKFLOW_IMMUTABLE_STATE`) | **Live and reachable** — 5 model `updating` guards (`ReferenceTable`, `CustomsDeclaration`, `WorkflowAction`, `WorkflowDefinition`, `ReferenceValue`) throw it on a direct `->update()` that dirties an immutable field. Task #13's own checklist corrected an earlier (Phase E) misclassification of this handler as dead — see §5a. |
-| 3 voting-era migration files (`create_request_votes_table`, `add_voted_at_and_auto_abstain...`, `add_eligible_voter_ids...`) | Immutable schema history — Laravel migrations are an append-only audit trail even for tables/columns later dropped. The tables/columns they describe no longer physically exist (confirmed via `Schema::hasTable()`), so there is nothing left to migrate away from (see F9, §5c). |
-| `CUSTOMS_DECLARATION_ISSUED` migration references (2 lines) | Same — immutable schema history. |
-| `audit.vue`'s `VOTE_SUBMITTED`/`VOTING_SESSION_OPENED`/`VOTING_SESSION_CLOSED`/`CUSTOMS_DECLARATION_ISSUED` label-map entries | Explicit historical-compatibility requirement (F2) — `formatAction()` already has a graceful unmapped-code fallback, so these cost nothing to keep and protect any environment where such historical `audit_logs` rows exist, even though none were found in this dev DB. |
-| `NotificationType::VOTING_OPENED`, `AuditAction::VOTE_CAST` (backend enums) | Registered in `NotificationRegistry`/`TemplateResolver` but never dispatched — genuinely dead in practice, but **not removed this pass**: removing a `NotificationType`/`AuditAction` case is a schema-adjacent decision (these values may be persisted as strings in historical rows) that deserves its own dependency-proof pass distinct from the exception-handler cleanup, consistent with "do not combine unrelated cleanups." Flagged for a future, dedicated Phase F sub-step. |
-| `DashboardStatsService`'s 6 executor-branch stats methods (`dataEntryStats`, `bankReviewerStats`, `supportCommitteeStats`, `swiftOfficerStats`, `executiveMemberStats`, `committeeDirectorStats`) | **Live, routed, and tested** (`GET /api/dashboard/stats`, exercised by `PivotDashboardDispatchTest`) — the frontend no longer calls this path for these 6 roles (`MyWorkDashboard.vue` uses `/api/dashboard/work` instead), but the API contract itself still works if called directly. Removing a working API response is a product-contract decision outside "no new product behavior" — explicitly not touched (F6, §4 of `19-phase-f-inventory.md`). |
-| `docs/user-view/*.md` (8 files) | Explicitly gated — `05-m1-workflow-contract.md` requires deletion/archival to be a separately approved task. A concrete archival proposal (move to `docs/archive/user-view/`, add a deprecation-banner README, fix 12 referencing links) was written but **not executed** — a review-only deliverable per F8's scope (§5b). |
-| `docs/user-view/`'s underlying `.md` files themselves | Same — see above. Their referencing docs (`AGENTS.md`, 10 audit-functional/superpowers docs) already correctly describe them as deprecated; only `docs/04-frontend-guide.md` had a stale contradiction, which **was** fixed (see §3 below — a correctness fix, not an archival action). |
+| Artifact                                                                                                                                                                                          | Why retained                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LogicException` 403 handler in `bootstrap/app.php` (`WORKFLOW_IMMUTABLE_STATE`)                                                                                                                  | **Live and reachable** — 5 model `updating` guards (`ReferenceTable`, `CustomsDeclaration`, `WorkflowAction`, `WorkflowDefinition`, `ReferenceValue`) throw it on a direct `->update()` that dirties an immutable field. Task #13's own checklist corrected an earlier (Phase E) misclassification of this handler as dead — see §5a.                                                                                                                                                  |
+| 3 voting-era migration files (`create_request_votes_table`, `add_voted_at_and_auto_abstain...`, `add_eligible_voter_ids...`)                                                                      | Immutable schema history — Laravel migrations are an append-only audit trail even for tables/columns later dropped. The tables/columns they describe no longer physically exist (confirmed via `Schema::hasTable()`), so there is nothing left to migrate away from (see F9, §5c).                                                                                                                                                                                                     |
+| `CUSTOMS_DECLARATION_ISSUED` migration references (2 lines)                                                                                                                                       | Same — immutable schema history.                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `audit.vue`'s `VOTE_SUBMITTED`/`VOTING_SESSION_OPENED`/`VOTING_SESSION_CLOSED`/`CUSTOMS_DECLARATION_ISSUED` label-map entries                                                                     | Explicit historical-compatibility requirement (F2) — `formatAction()` already has a graceful unmapped-code fallback, so these cost nothing to keep and protect any environment where such historical `audit_logs` rows exist, even though none were found in this dev DB.                                                                                                                                                                                                              |
+| `NotificationType::VOTING_OPENED`, `AuditAction::VOTE_CAST` (backend enums)                                                                                                                       | Registered in `NotificationRegistry`/`TemplateResolver` but never dispatched — genuinely dead in practice, but **not removed this pass**: removing a `NotificationType`/`AuditAction` case is a schema-adjacent decision (these values may be persisted as strings in historical rows) that deserves its own dependency-proof pass distinct from the exception-handler cleanup, consistent with "do not combine unrelated cleanups." Flagged for a future, dedicated Phase F sub-step. |
+| `DashboardStatsService`'s 6 executor-branch stats methods (`dataEntryStats`, `bankReviewerStats`, `supportCommitteeStats`, `swiftOfficerStats`, `executiveMemberStats`, `committeeDirectorStats`) | **Live, routed, and tested** (`GET /api/dashboard/stats`, exercised by `PivotDashboardDispatchTest`) — the frontend no longer calls this path for these 6 roles (`MyWorkDashboard.vue` uses `/api/dashboard/work` instead), but the API contract itself still works if called directly. Removing a working API response is a product-contract decision outside "no new product behavior" — explicitly not touched (F6, §4 of `19-phase-f-inventory.md`).                               |
+| `docs/user-view/*.md` (8 files)                                                                                                                                                                   | Explicitly gated — `05-m1-workflow-contract.md` requires deletion/archival to be a separately approved task. A concrete archival proposal (move to `docs/archive/user-view/`, add a deprecation-banner README, fix 12 referencing links) was written but **not executed** — a review-only deliverable per F8's scope (§5b).                                                                                                                                                            |
+| `docs/user-view/`'s underlying `.md` files themselves                                                                                                                                             | Same — see above. Their referencing docs (`AGENTS.md`, 10 audit-functional/superpowers docs) already correctly describe them as deprecated; only `docs/04-frontend-guide.md` had a stale contradiction, which **was** fixed (see §3 below — a correctness fix, not an archival action).                                                                                                                                                                                                |
 
 ---
 
@@ -88,6 +88,7 @@ the `ImportRequest`→`EngineRequest` architecture migration, commit
 
 **RESOLVED.** Rigorous re-investigation (corrected the Phase E checkpoint's
 earlier, less careful conclusion) found:
+
 - `WorkflowImmutableStateException` — class genuinely does not exist
   (`class_exists()` → false). Handler removed.
 - `WorkflowLockedStateException` — class exists, zero throw-sites. Class +
@@ -109,11 +110,12 @@ handlers' response shapes, confirmed removal changes nothing observable.
 
 **RESOLVED — root cause was a stale test fixture, not a production defect.**
 Two independent, compounding bugs, both found and fixed:
+
 1. `reference-data.vue`'s `onMounted` auto-selects the first table and
    fetches its values (added in commit `7a053d9b`, after the test file was
    last updated) — this consumed a `mockGet` response the test's own
    explicit-click assertion needed, silently starving it.
-2. `beforeEach`'s `vi.clearAllMocks()` only clears mock call *history*, not
+2. `beforeEach`'s `vi.clearAllMocks()` only clears mock call _history_, not
    queued `mockResolvedValueOnce` implementations (confirmed against
    current Vitest docs) — so a leftover queued response from one test could
    leak into the next test's queue across the file's run order.
@@ -168,16 +170,16 @@ use this as the current known frontend baseline.
 
 ## 9. Remaining known debt
 
-| ID | Status | Notes |
-| -- | ------ | ----- |
-| `BASELINE-FE-001` | Unchanged, known | 8 pre-existing failing files, unrelated to any audit-phase work |
-| `BASELINE-FE-004` | Unchanged, known | `auth.store.test.ts` `isCbyUser`/`isBankUser` getter bug, 7 tests |
-| `BASELINE-BE-001` | Unchanged, cosmetic | PHP/PDO SSL-constant deprecation noise |
-| `BASELINE-FMT-001` | Unchanged, known | Repo-wide Pint/ESLint debt outside touched files |
-| `BASELINE-BE-002` | Unchanged, known | 11 pre-existing frontend TS errors |
-| `NotificationType::VOTING_OPENED`, `AuditAction::VOTE_CAST` | Deferred | Dead in practice, deserves its own dependency-proof pass before removal (enum-value persistence risk) |
-| `DashboardStatsService`'s 6 executor-branch methods | Deferred, deliberate | Live/tested/unreachable-from-frontend; removal is a product-contract decision, out of "no new behavior" scope |
-| `docs/user-view/*.md` archival | Proposed, not executed | Concrete plan written (§5b of `19-phase-f-inventory.md`); awaiting go-ahead |
+| ID                                                          | Status                 | Notes                                                                                                         |
+| ----------------------------------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `BASELINE-FE-001`                                           | Unchanged, known       | 8 pre-existing failing files, unrelated to any audit-phase work                                               |
+| `BASELINE-FE-004`                                           | Unchanged, known       | `auth.store.test.ts` `isCbyUser`/`isBankUser` getter bug, 7 tests                                             |
+| `BASELINE-BE-001`                                           | Unchanged, cosmetic    | PHP/PDO SSL-constant deprecation noise                                                                        |
+| `BASELINE-FMT-001`                                          | Unchanged, known       | Repo-wide Pint/ESLint debt outside touched files                                                              |
+| `BASELINE-BE-002`                                           | Unchanged, known       | 11 pre-existing frontend TS errors                                                                            |
+| `NotificationType::VOTING_OPENED`, `AuditAction::VOTE_CAST` | Deferred               | Dead in practice, deserves its own dependency-proof pass before removal (enum-value persistence risk)         |
+| `DashboardStatsService`'s 6 executor-branch methods         | Deferred, deliberate   | Live/tested/unreachable-from-frontend; removal is a product-contract decision, out of "no new behavior" scope |
+| `docs/user-view/*.md` archival                              | Proposed, not executed | Concrete plan written (§5b of `19-phase-f-inventory.md`); awaiting go-ahead                                   |
 
 ---
 
