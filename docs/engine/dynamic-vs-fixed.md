@@ -42,11 +42,22 @@ Designer API, gated to `DRAFT`-state versions
   roles for **existing** screens.
 
 All of this is validated before it can go live —
-`WorkflowVersionValidator` and `WorkflowPublishRulePack` enforce DAG-ness,
-stage reachability (BFS from the initial stage), that every non-final
-stage has at least one active EXECUTE holder, and final-outcome
-consistency. A workflow that would leave a stage unreachable or
-unassignable fails publish rather than failing silently at runtime.
+`WorkflowVersionValidator` and `WorkflowPublishRulePack` enforce **stage
+reachability** (BFS from the initial stage flags unreachable/dead-end
+stages), that **every non-final stage has at least one active EXECUTE
+holder**, **final-stage/final-outcome consistency**, and that a self-loop
+transition (`from_stage_id === to_stage_id`) is explicitly marked
+`is_self_loop` rather than left ambiguous. A workflow that would leave a
+stage unreachable or unassignable fails publish rather than failing
+silently at runtime.
+
+This is **not** a general DAG (acyclic-graph) constraint — cyclic paths
+are common and intentional (a correction/return loop that sends a request
+back to an earlier stage for rework, for example). The validator does not
+reject cycles; it only requires that a transition whose `from_stage_id`
+equals its `to_stage_id` be explicitly flagged as a deliberate self-loop,
+so it's distinguishable from an accidental data-entry mistake — not that
+cycles in the broader stage graph are prohibited.
 
 ---
 

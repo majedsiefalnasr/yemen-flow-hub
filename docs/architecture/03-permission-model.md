@@ -1,17 +1,30 @@
 # Permission Model
 
-Yemen Flow Hub runs **two independent authorization systems**, not one. Both
-key off `roles.id`, but they gate different things, use different code
-paths, and must both be understood to reason about "can this user do X."
+Yemen Flow Hub runs **two independent authorization systems**, not one.
+They gate different things, use different code paths, and match on
+different dimensions — both must be understood to reason about "can this
+user do X."
 
 1. **Screen-capability system** — gates admin-console and analytics
-   screens (`system_dashboard`, `bank_analytics`, `merchants`, …).
+   screens (`system_dashboard`, `bank_analytics`, `merchants`, …). Grants
+   are **role-based**: a `screen_permissions` row is keyed by `role_id`.
 2. **Workflow stage-permission system** — gates VIEW/EXECUTE on
-   `EngineRequest` workflow stages.
+   `EngineRequest` workflow stages. Grants match on an **identity set**:
+   optional `organization_id`, `team_id`, `role_id`, and `user_id`
+   dimensions, not `role_id` alone (see §2 below).
 
 The `App\Enums\UserRole` PHP enum (the canonical role list quoted below) is
-a **third, thin layer**: it exists for API serialization only and is not
-itself consulted by either authorization system at runtime.
+**not consulted by either authorization system's runtime resolver**
+(`PermissionService::userHasCapability()` or
+`StagePermissionResolver::userCanAccessStage()`). It is, however, used
+elsewhere: `App\Models\User::asUserRole()`/`hasRole()`/`isBankRole()`/
+`isCbyRole()` (classification helpers), `scopeWithUserRole()`/
+`scopeWithoutUserRole()` (Eloquent query scopes), API serialization (e.g.
+`GET /api/auth/me`, `AuthController`), and
+`App\Services\Notifications\NotificationRegistry` (selecting notification
+recipients by `UserRole` case). Treat it as a role-classification and
+serialization vocabulary layered on top of the two permission systems, not
+as a bystander.
 
 For the request-state fields these permissions gate access to
 (`runtime_status`, `current_stage`, `final_outcome`), see
@@ -47,7 +60,7 @@ resolve against `App\Models\Role` (table `roles`, snake_case `code`, e.g.
 `support`, `committee_manager`, `committee_director`, `fx_confirm` — see
 `backend/app/Support/RoleCodes.php`) via the `user_roles` pivot.
 `backend/app/Support/UserRoleMapper.php` maps governance role codes to
-`UserRole` cases only for API responses (e.g. `GET /auth/me`). Note that
+`UserRole` cases only for API responses (e.g. `GET /api/auth/me`). Note that
 two governance codes — `committee_manager` and `fx_confirm` — both map to
 `UserRole::EXECUTIVE_MEMBER`.
 
@@ -70,7 +83,7 @@ are defined and granted to roles. **Screens cannot be created at runtime.**
 `ScreenController` exposes only `index()` — adding a new screen requires a
 migration, a seeder update, and a deploy. An admin can only reassign
 capabilities on **existing** screens, via
-`PUT roles/{role}/screen-permissions`.
+`PUT /api/v1/roles/{role}/screen-permissions`.
 
 The runtime gate is a plain service method, not a Laravel `Gate`/`Policy`:
 
@@ -237,10 +250,21 @@ cached login-time value:
 This is a **manual, per-call** contract — there is no Eloquent
 observer/event listener that auto-writes audit rows. Every mutating
 service (`EngineTransitionService`, `EngineClaimService`,
-`WorkflowDesignerService`, …) makes an explicit `AuditService::log()` call
-inside the same DB transaction as the mutation it's logging. When adding a
-new mutating service method, you must add this call yourself — it will
-not happen automatically.
+`WorkflowDesignerService`, `WorkflowActionService`, …) makes an explicit
+`AuditService::log()` call itself; when adding a new mutating service
+method, you must add this call yourself — it will not happen
+automatically.
+
+**The transaction boundary is caller-defined, not a property of
+`AuditService` itself.** `EngineTransitionService::execute()` does call
+`AuditService::log()` from inside its `DB::transaction()`, so a failed
+transition there rolls back its audit row along with the mutation. But
+this is not universal — e.g. `PasswordRecoveryService`'s
+`AuditService::log()` call runs after its `$user->save()` with no
+surrounding transaction, so the audit write and the mutation are two
+separate, sequential statements there, not one atomic unit. Check the
+specific caller before assuming its audit row is guaranteed atomic with
+the mutation it describes.
 
 `workflow_history` (per-transition stage log) is written by
 `EngineTransitionService::execute()` immediately before the paired audit

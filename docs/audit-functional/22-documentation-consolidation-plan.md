@@ -351,6 +351,87 @@ that only the 5 new files were added; the 2 pre-existing dirty files and
 11 pre-existing untracked files from before Step 2 began are unchanged.
 Prettier clean on all 5 files. No deviation from the plan as written.
 
+**Step 2 accuracy correction (2026-07-12).** A focused review caught 9
+overstated or imprecise claims across 4 of the 5 files (not
+`docs/README.md`) that the initial verification pass missed because it
+checked specific facts rather than every generalization built on top of
+them. All 9 were corrected directly against source, re-verified, and
+re-committed as a documentation-only follow-up (no production code
+touched):
+
+1. `architecture/03-permission-model.md` — removed "both systems key off
+   `roles.id`"; screen permissions are role-keyed, stage permissions match
+   an identity set (org/team/role/user, each optional).
+2. Same file — `UserRole` is not merely "for API serialization only"; it's
+   also used by `User::asUserRole()`/`hasRole()`/`isBankRole()`/
+   `isCbyRole()`, two query scopes, and
+   `Notifications\NotificationRegistry`'s recipient selection. It's simply
+   not consulted by the two permission _resolvers_.
+3. Same file — removed the blanket "every mutating service logs inside
+   the same DB transaction" claim. `AuditService::log()` is always a
+   manual, explicit call, but the transaction boundary is caller-defined:
+   `EngineTransitionService::execute()` does wrap it, but
+   `PasswordRecoveryService` calls it after a bare `$user->save()` with no
+   surrounding transaction.
+4. `engine/dynamic-vs-fixed.md` — removed "enforce DAG-ness." The
+   publish validator does not reject cycles; it only requires an
+   explicit `is_self_loop` flag when `from_stage_id === to_stage_id`.
+   Correction/return loops back to an earlier stage are intentional and
+   unrestricted.
+5. `engine/extension-guide.md` — clarified that every effect failure
+   rolls back the transition, but only an unexpected `\Throwable` gets
+   wrapped as `STAGE_HOOK_FAILED`/422; a domain exception
+   (`EngineException`, `FinancingLimitExceededException`,
+   `FinancingLockTimeoutException`, `CustomsException`) propagates with
+   its own error envelope intact.
+6. Same file — split "add a dashboard metric" by family: operational
+   metrics go through `DashboardWorkController`/`GET /api/dashboard/work`
+   (its `actionable` section backed directly by
+   `UserActionableRequestQuery`); analytics/governance metrics go through
+   `DashboardStatsService`/`GET /api/dashboard/stats`. The original text
+   blurred these into one pipeline.
+7. `docs/development-guide.md` — corrected "Vue 4" to "Vue 3.5"
+   (`frontend/package.json` pins `^3.5.13`) and removed "claim TTL" from
+   the Redis cell — claim expiry is `engine_requests.claim_expires_at`
+   (MySQL), not Redis.
+8. Same file — replaced the nonexistent `current_status` field with the
+   real persistence fields (`EngineRequest`'s `status`,
+   `current_stage_id`), and distinguished them from the API-facing names
+   `EngineRequestResource` maps them to (`runtime_status`,
+   `current_stage`).
+9. Normalized bare endpoint examples (`auth/me`,
+   `roles/{role}/screen-permissions`, `workflow-versions/{v}/validate`,
+   `workflow-versions/{v}/publish`) to their actual registered paths —
+   `GET /api/auth/me`, `PUT /api/v1/roles/{role}/screen-permissions`,
+   `POST /api/v1/workflow-versions/{workflowVersion}/validate`,
+   `POST /api/v1/workflow-versions/{workflowVersion}/publish` — confirmed
+   via `php artisan route:list`.
+
+**Item 10 was investigated and found to have no discrepancy to record.**
+The correction request's premise was that the backend registers
+`/api/v1/dashboard/work` while the frontend and AGENTS.md use
+`/api/dashboard/work`. `php artisan route:list --path=dashboard/work`
+shows exactly one registration:
+`GET|HEAD api/dashboard/work → Api\V1\DashboardWorkController@work`, sitting
+in an **unprefixed** `Route::middleware([...])->group()` block in
+`backend/routes/api.php` — not inside the adjacent `Route::prefix('v1')`
+group, despite the controller class living in the `Api\V1` namespace.
+There is no `v1`-prefixed registration of this route anywhere in
+`routes/api.php`, and `frontend/app/composables/useDashboardWork.ts`
+already calls `/api/dashboard/work`, matching AGENTS.md. Flagged this
+finding back before acting on it; confirmed with the requester to skip
+adding a false follow-up entry rather than record a mismatch that
+`route:list` does not show. No plan or code change results from item 10.
+
+Re-ran Prettier on all 4 corrected files (`03-permission-model.md`,
+`extension-guide.md`, `dynamic-vs-fixed.md`, `development-guide.md`) and
+re-validated every internal link in all 5 Step 2 files against the
+filesystem — all resolve or are annotated planned, unchanged from the
+original Step 2 pass. `docs/README.md` needed no changes for this
+correction. Confirmed via `git status` that only these 4 files plus the
+plan doc are dirty; the 2 pre-existing dirty files and 11 pre-existing
+untracked files remain unchanged.
+
 **Step 3 — Rewrite the 3 already-well-patched files in place first**
 (`docs/06-api-reference.md` → move to `docs/api-reference.md`,
 `docs/03-database-and-models.md` → `docs/architecture/06-database-and-models.md`

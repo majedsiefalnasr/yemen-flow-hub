@@ -24,14 +24,21 @@ git commit -m "type(scope): description"
 
 ## Tech stack
 
-|         | Backend (`backend/`)                  | Frontend (`frontend/`)                        |
-| ------- | ------------------------------------- | --------------------------------------------- |
-| Runtime | PHP 8.2+, Laravel 11                  | Nuxt 4, Vue 4, TypeScript                     |
-| Auth    | Laravel Sanctum                       | —                                             |
-| Data    | MySQL, Redis (queues/cache/claim TTL) | Pinia, VueUse                                 |
-| UI      | REST API, service-oriented            | Tailwind CSS v4, shadcn-vue, VeeValidate, Zod |
+|         | Backend (`backend/`)         | Frontend (`frontend/`)                        |
+| ------- | ---------------------------- | --------------------------------------------- |
+| Runtime | PHP 8.2+, Laravel 11         | Nuxt 4, Vue 3.5, TypeScript                   |
+| Auth    | Laravel Sanctum              | —                                             |
+| Data    | MySQL, Redis (queues, cache) | Pinia, VueUse                                 |
+| UI      | REST API, service-oriented   | Tailwind CSS v4, shadcn-vue, VeeValidate, Zod |
 
 Package manager: **pnpm** for all JavaScript tooling. Do not introduce Bun.
+
+Claim validity is **not** a Redis TTL — it's stored directly on
+`engine_requests.claim_expires_at` (MySQL), read and enforced by
+`App\Services\Workflow\EngineClaimService` against the live
+`AdminSettingsService`-backed `support_claim_ttl` setting. See
+[`architecture/03-permission-model.md`](architecture/03-permission-model.md)
+§4 for the claim mechanism and the TTL-source detail.
 
 ---
 
@@ -154,10 +161,15 @@ to.
 
 **Never:**
 
-- Mutate `current_status`/stage fields directly on a model — all
-  transitions go through `EngineTransitionService::execute()`, which
-  validates stage permissions, field rules, and claim ownership before
-  moving an `EngineRequest`.
+- Mutate `EngineRequest`'s persistence fields (`status`,
+  `current_stage_id`) directly on the model — all transitions go through
+  `EngineTransitionService::execute()`, which validates stage permissions,
+  field rules, and claim ownership before moving an `EngineRequest`. These
+  are the database columns; the API-facing names are different —
+  `EngineRequestResource` maps `status` → `runtime_status` and the
+  `currentStage` relation (keyed by `current_stage_id`) → `current_stage`
+  in every JSON response. Don't confuse the persistence field names with
+  the API field names when reading code vs. API docs.
 - Put business logic in controllers, Vue components, or routes.
 - Expose requests outside a user's organization scope — see
   `DataScope` in [`architecture/03-permission-model.md`](architecture/03-permission-model.md).

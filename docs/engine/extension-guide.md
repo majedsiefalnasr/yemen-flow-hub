@@ -33,8 +33,9 @@ Entirely data-driven through the Workflow Designer API, gated to
    `action_id`, `to_stage_id`).
 4. Add `StagePermission` rows granting VIEW/EXECUTE per role/org/team/user
    as needed (see the permission model doc for how these resolve).
-5. Run `POST workflow-versions/{v}/validate` before publish.
-6. Publish via `POST workflow-versions/{v}/publish`.
+5. Run `POST /api/v1/workflow-versions/{workflowVersion}/validate` before
+   publish.
+6. Publish via `POST /api/v1/workflow-versions/{workflowVersion}/publish`.
 
 **Always set `semantic_role`.** Every occupiable stage should carry one of
 `StageSemanticRole`'s 8 fixed cases (`INITIAL_ENTRY`, `BANK_REVIEW`,
@@ -101,7 +102,7 @@ Workflow Designer UI for these — there isn't one.
 - **New screen or `ScreenCapability`** — `ScreenController` exposes only
   `index()`; there is no store/update/destroy. Add the `Screen` row via
   migration + `ScreenPermissionSeeder` update, then grant it to roles via
-  `PUT roles/{role}/screen-permissions` (existing screens only — creating
+  `PUT /api/v1/roles/{role}/screen-permissions` (existing screens only — creating
   a new one is still a deploy).
 - **New effect code** — `App\Enums\WorkflowEffectCode` is a fixed enum
   (currently `financing.reserve`, `fx.confirmation_pdf`). A `WorkflowStage`
@@ -112,35 +113,59 @@ Workflow Designer UI for these — there isn't one.
   `App\Services\Workflow\Effects\FinancingLedgerEffect` for the shape),
   register it in `App\Services\Workflow\StageHookRegistry` (populated in
   `AppServiceProvider::boot()`), deploy. Effect firing happens inside
-  `EngineTransitionService::execute()`'s transaction — a failing effect
-  rolls back the transition (`STAGE_HOOK_FAILED`, 422).
+  `EngineTransitionService::execute()`'s transaction, and **every** effect
+  failure rolls back the transition — but the error envelope the caller
+  sees depends on what was thrown. A **domain exception** your effect
+  raises on purpose (`EngineException`, `FinancingLimitExceededException`,
+  `FinancingLockTimeoutException`, `CustomsException`) propagates as-is,
+  preserving its own `error_code` and status — write one of these when the
+  effect needs to reject the transition with a specific, client-facing
+  reason. Any **other, unexpected** `\Throwable` gets wrapped as a generic
+  `EngineException('STAGE_HOOK_FAILED', 422)` so the client never sees a
+  bare 500; this path also logs via `OperationalAlertLogger::failure()`.
+  Prefer throwing a domain exception over letting an unexpected one get
+  wrapped, when the failure is meaningful to the caller.
 
 ---
 
 ## Add a dashboard metric
 
-Current dashboards are **Level 1**: fixed Vue template, dynamic data.
-`App\Services\Dashboard\DashboardStatsService::stats()` dispatches on role
-via a hardcoded `match(true)`, with one private method per role hand
-computing its own counters — there is no metadata-driven widget catalog
-today (a `Level 2` metadata-driven widget catalog is a documented future
-enhancement, not present in code). Adding a new metric means:
+Current dashboards are **Level 1**: fixed Vue template, dynamic data —
+there is no metadata-driven widget catalog today (a `Level 2` catalog is a
+documented future enhancement, not present in code). Which pipeline a new
+metric belongs to depends on which dashboard family it's for; the two are
+separate contracts, not one shared one.
 
-1. Add the counter/query to the relevant private method in
-   `DashboardStatsService`, applying `DataScope::applyTo()` if the query
-   needs org-scoping (see the permission model doc — this is not
-   automatic).
-2. Surface it in `frontend/app/components/dashboard/MyWorkDashboard.vue`
-   (operational family) or the relevant analytics dashboard component, as
-   a new computed ref sourced from `GET /api/dashboard/work` or the
-   analytics endpoint.
+**Operational metrics (`MyWorkDashboard.vue`)** — actionable/claimed/
+tracking/SLA/recent-activity counts for a workflow-executor user — belong
+to the `GET /api/dashboard/work` contract, implemented by
+`App\Http\Controllers\Api\V1\DashboardWorkController::work()`. Its
+`actionable` section is produced directly by
+`App\Services\Workflow\UserActionableRequestQuery` (constructor-injected
+into the controller) — the same query `/my-queue` uses — so the dashboard
+count, preview, nav badge, and `/my-queue` never disagree. Any new
+_actionable-work_ metric must go through this query, not a bespoke count;
+anything else operational (claimed, tracking, SLA) is added to
+`DashboardWorkController`'s own response shape.
 
-Do not add a per-role dashboard branch or a bespoke stats query outside
-`UserActionableRequestQuery` for anything that should count as
-"actionable work" — see `architecture/04-dashboard-architecture.md`
-(**planned, not yet written** — Step 3; today's authority is AGENTS.md's
-"Dashboard Architecture" section) for the shared actionable-work invariant
-this must not violate.
+**Analytics/governance metrics** (`SystemAdminDashboard`,
+`BankAdminDashboard.vue`) belong to a different pipeline:
+`App\Services\Dashboard\DashboardStatsService::stats()`, which dispatches
+on role via a hardcoded `match(true)` with one private method per
+analytics role hand-computing its own counters, served by
+`DashboardController::stats()` (`GET /api/dashboard/stats`). Add a new
+analytics counter to the relevant private method here, applying
+`DataScope::applyTo()` if the query needs org-scoping (see the permission
+model doc — this is not automatic), then surface it in the corresponding
+analytics Vue component.
+
+**Never mix the two.** Do not add a per-role dashboard branch, and do not
+compute an "actionable work" count from a `DashboardStatsService` query or
+any other bespoke query — actionable work must continue to resolve
+through `UserActionableRequestQuery` exclusively. See
+`architecture/04-dashboard-architecture.md` (**planned, not yet written**
+— Step 3; today's authority is AGENTS.md's "Dashboard Architecture"
+section) for the shared actionable-work invariant this must not violate.
 
 ---
 
