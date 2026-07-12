@@ -432,6 +432,54 @@ correction. Confirmed via `git status` that only these 4 files plus the
 plan doc are dirty; the 2 pre-existing dirty files and 11 pre-existing
 untracked files remain unchanged.
 
+**Step 2 accuracy correction, round 2 (2026-07-12).** A further narrow
+review caught 4 more precision errors in 2 of the already-corrected
+files, verified directly against source before editing:
+
+1. `architecture/03-permission-model.md` — corrected classification
+   method ownership, which had model and enum reversed: it's
+   `App\Models\User::isBankUser()`/`isCbyUser()` (not `isBankRole()`/
+   `isCbyRole()` on the model), which delegate to
+   `App\Enums\UserRole::isBankRole()`/`isCbyRole()` on the enum itself
+   (not the model).
+2. Same file — removed the remaining "every mutating service makes an
+   explicit `AuditService::log()` call" framing. Confirmed a real
+   counterexample: `App\Services\Settings\UserPreferencesService` mutates
+   `user_preferences` via `updateForUser()`/`resetForUser()`/
+   `saveSection()` and calls `$user->save()` directly with **no
+   `AuditService` dependency at all** — not merely a caller that skips the
+   call, but a service that was never wired to make it. Rewrote to state
+   coverage must be verified per caller, not assumed from the pattern
+   being common elsewhere.
+3. `engine/extension-guide.md` — stopped writing
+   `EngineException('STAGE_HOOK_FAILED', 422)` as if that were the real
+   call. `App\Exceptions\EngineException::__construct()` is
+   `(string $message, string $errorCode, int $httpStatus = 422, array $errors = [])`
+   — the wrapped-throwable path constructs one with a real message plus
+   `errorCode: 'STAGE_HOOK_FAILED'`, `httpStatus: 422`; documented the
+   full shape instead of an inaccurate two-arg shorthand.
+4. Same file — corrected the "Analytics/governance metrics" section's
+   characterization of `DashboardStatsService`. Its `match(true)` in
+   `stats()` is not analytics-only: alongside the two analytics branches
+   (`cbyadminStats()`, `bankAdminStats()`), it still contains six legacy
+   workflow-role branches (`dataEntryStats()`, `bankReviewerStats()`,
+   `supportCommitteeStats()`, `swiftOfficerStats()`,
+   `executiveMemberStats()`, `committeeDirectorStats()`) for
+   `INTAKE`/`INTERNAL_REVIEWER`/`SUPPORT`/`FX_SWIFT`/
+   `COMMITTEE_MANAGER`/`COMMITTEE_DIRECTOR`. Rewrote to direct new
+   operational metrics to `DashboardWorkController` exclusively and new
+   analytics metrics to the two analytics branches only, explicitly
+   naming the six legacy branches as off-limits for extension rather than
+   describing the service as if it only served analytics roles.
+
+Re-ran Prettier on both corrected files (unchanged on first pass, no
+reformatting needed) and re-validated every internal link across all 5
+Step 2 files against the filesystem — all resolve or are annotated
+planned. Confirmed via `git status` that only `03-permission-model.md`,
+`extension-guide.md`, and this plan doc are dirty from this round; the 2
+pre-existing dirty files and 11 pre-existing untracked files remain
+unchanged.
+
 **Step 3 — Rewrite the 3 already-well-patched files in place first**
 (`docs/06-api-reference.md` → move to `docs/api-reference.md`,
 `docs/03-database-and-models.md` → `docs/architecture/06-database-and-models.md`

@@ -120,11 +120,14 @@ Workflow Designer UI for these — there isn't one.
   `FinancingLockTimeoutException`, `CustomsException`) propagates as-is,
   preserving its own `error_code` and status — write one of these when the
   effect needs to reject the transition with a specific, client-facing
-  reason. Any **other, unexpected** `\Throwable` gets wrapped as a generic
-  `EngineException('STAGE_HOOK_FAILED', 422)` so the client never sees a
-  bare 500; this path also logs via `OperationalAlertLogger::failure()`.
-  Prefer throwing a domain exception over letting an unexpected one get
-  wrapped, when the failure is meaningful to the caller.
+  reason. Any **other, unexpected** `\Throwable` gets wrapped in a new
+  `EngineException`, constructed with a fixed message, error code
+  `STAGE_HOOK_FAILED`, and HTTP status `422` (the exception's constructor
+  also takes the message as its first argument — this isn't a two-arg
+  call), so the client never sees a bare 500; this path also logs via
+  `OperationalAlertLogger::failure()`. Prefer throwing a domain exception
+  over letting an unexpected one get wrapped, when the failure is
+  meaningful to the caller.
 
 ---
 
@@ -149,20 +152,34 @@ anything else operational (claimed, tracking, SLA) is added to
 `DashboardWorkController`'s own response shape.
 
 **Analytics/governance metrics** (`SystemAdminDashboard`,
-`BankAdminDashboard.vue`) belong to a different pipeline:
-`App\Services\Dashboard\DashboardStatsService::stats()`, which dispatches
-on role via a hardcoded `match(true)` with one private method per
-analytics role hand-computing its own counters, served by
-`DashboardController::stats()` (`GET /api/dashboard/stats`). Add a new
-analytics counter to the relevant private method here, applying
-`DataScope::applyTo()` if the query needs org-scoping (see the permission
-model doc — this is not automatic), then surface it in the corresponding
-analytics Vue component.
+`BankAdminDashboard.vue`) belong to
+`App\Services\Dashboard\DashboardStatsService::stats()`, served by
+`DashboardController::stats()` (`GET /api/dashboard/stats`). **Read this
+service's current state carefully before touching it**: its `match(true)`
+dispatch is not analytics-only. Alongside the two analytics branches
+(`cbyadminStats()` gated on the `system_dashboard` capability,
+`bankAdminStats()` gated on `bank_analytics`), it still contains six
+**legacy workflow-role branches** — `dataEntryStats()`,
+`bankReviewerStats()`, `supportCommitteeStats()`, `swiftOfficerStats()`,
+`executiveMemberStats()`, `committeeDirectorStats()` — hand-computing
+stats for `INTAKE`/`INTERNAL_REVIEWER`/`SUPPORT`/`FX_SWIFT`/
+`COMMITTEE_MANAGER`/`COMMITTEE_DIRECTOR` role codes. These predate the
+`DashboardWorkController`/`UserActionableRequestQuery` operational
+contract above and are legacy, not a second valid path for operational
+data.
+
+**New analytics metrics** may extend `cbyadminStats()` or
+`bankAdminStats()`, applying `DataScope::applyTo()` if the query needs
+org-scoping (see the permission model doc — this is not automatic), then
+surfacing the result in the corresponding analytics Vue component. **Do
+not extend the six legacy workflow-role branches** — any new operational
+metric for a workflow-executor role belongs in `DashboardWorkController`
+per the section above, not in `DashboardStatsService`.
 
 **Never mix the two.** Do not add a per-role dashboard branch, and do not
-compute an "actionable work" count from a `DashboardStatsService` query or
-any other bespoke query — actionable work must continue to resolve
-through `UserActionableRequestQuery` exclusively. See
+compute an "actionable work" count from `DashboardStatsService` (legacy
+branches or otherwise) or any other bespoke query — actionable work must
+continue to resolve through `UserActionableRequestQuery` exclusively. See
 `architecture/04-dashboard-architecture.md` (**planned, not yet written**
 — Step 3; today's authority is AGENTS.md's "Dashboard Architecture"
 section) for the shared actionable-work invariant this must not violate.

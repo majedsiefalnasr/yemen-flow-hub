@@ -17,9 +17,11 @@ The `App\Enums\UserRole` PHP enum (the canonical role list quoted below) is
 **not consulted by either authorization system's runtime resolver**
 (`PermissionService::userHasCapability()` or
 `StagePermissionResolver::userCanAccessStage()`). It is, however, used
-elsewhere: `App\Models\User::asUserRole()`/`hasRole()`/`isBankRole()`/
-`isCbyRole()` (classification helpers), `scopeWithUserRole()`/
-`scopeWithoutUserRole()` (Eloquent query scopes), API serialization (e.g.
+elsewhere: `App\Models\User::asUserRole()`/`hasRole()`/`isBankUser()`/
+`isCbyUser()` (classification helpers — the last two delegate to
+`App\Enums\UserRole::isBankRole()`/`isCbyRole()` on the enum itself),
+`scopeWithUserRole()`/`scopeWithoutUserRole()` (Eloquent query scopes),
+API serialization (e.g.
 `GET /api/auth/me`, `AuthController`), and
 `App\Services\Notifications\NotificationRegistry` (selecting notification
 recipients by `UserRole` case). Treat it as a role-classification and
@@ -248,12 +250,24 @@ cached login-time value:
   (string, for unauthenticated/system entries `user_id` is `NULL`).
 
 This is a **manual, per-call** contract — there is no Eloquent
-observer/event listener that auto-writes audit rows. Every mutating
-service (`EngineTransitionService`, `EngineClaimService`,
-`WorkflowDesignerService`, `WorkflowActionService`, …) makes an explicit
-`AuditService::log()` call itself; when adding a new mutating service
-method, you must add this call yourself — it will not happen
-automatically.
+observer/event listener that auto-writes audit rows. Audit-sensitive
+mutations are expected to call `AuditService::log()` explicitly
+themselves; there is no mechanism that adds this automatically, so when
+writing a new mutating service method that should be audited, you must
+add the call yourself.
+
+**Coverage is not universal — verify per caller, don't assume it.**
+Several services do call it (`EngineTransitionService`,
+`EngineClaimService`, `WorkflowDesignerService`, `WorkflowActionService`,
+…), but at least one confirmed counterexample mutates without any
+`AuditService` dependency at all:
+`App\Services\Settings\UserPreferencesService` writes
+`$user->user_preferences` via `updateForUser()`/`resetForUser()`/
+`saveSection()` and calls `$user->save()` directly, with no
+`AuditService` injected into the class. Before documenting or relying on
+"this mutation is audited," check the specific service for an
+`AuditService` dependency and an actual `log()` call — do not assume
+coverage from the pattern being common elsewhere.
 
 **The transaction boundary is caller-defined, not a property of
 `AuditService` itself.** `EngineTransitionService::execute()` does call
