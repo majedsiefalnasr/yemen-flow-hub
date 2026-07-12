@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Enums\FieldType;
 use App\Enums\StageAccessLevel;
+use App\Enums\StageSemanticRole;
 use App\Enums\WorkflowVersionState;
 use App\Models\FieldDefinition;
 use App\Models\Role;
@@ -31,9 +32,11 @@ use Throwable;
  *  - B2: FINAL stage EXECUTE moves from committee_manager to committee_director.
  *  - B3: SWIFT package fields (swift_reference, swift_file, fx_request_file)
  *        required to leave FX; visible read-only downstream.
- *
- * B4 (semantic_role) is deferred to Phase D; V2 publishes validator-clean using
- * the runtime stage-code compatibility fallback.
+ *  - B4 (Phase D): semantic_role populated per stage through the designer
+ *        lifecycle (updateStage), the same mechanism a human designer user
+ *        would use. The runtime's semantic_role-or-code fallback
+ *        (EngineRequestReadModel::bucket(), SemanticResolver::stageForRole())
+ *        still holds for any version this command does not touch.
  */
 class PublishImportFinancingV2Command extends Command
 {
@@ -131,6 +134,7 @@ class PublishImportFinancingV2Command extends Command
                 $this->applyRejectSemantics($designer, $draft, $actor);
                 $this->applyFinalOwnership($designer, $draft, $actor);
                 $this->applySwiftPackage($fieldDesigner, $draft, $actor);
+                $this->applySemanticMetadata($designer, $draft, $actor);
 
                 $draft->refresh();
                 $errors = $validator->validate($draft);
@@ -273,6 +277,41 @@ class PublishImportFinancingV2Command extends Command
         }
 
         $this->info('B3: SWIFT package (swift_reference, swift_file, fx_request_file) required to leave FX; read-only downstream.');
+    }
+
+    /**
+     * B4: assign semantic_role to each operational stage, the same field a
+     * designer user sets through StoreWorkflowStageRequest/UpdateWorkflowStageRequest.
+     * Mirrors the WP-4 backfill migration's stage-code mapping so V2 stops
+     * relying solely on the runtime code-fallback. The two terminal stages
+     * (CLOSED_COMPLETED/CLOSED_REJECTED) intentionally keep semantic_role
+     * unset — they are identified by is_final + final_outcome, a separate
+     * concept from the in-flight semantic role (Phase D safety rule: do not
+     * force terminal outcomes into StageSemanticRole).
+     */
+    private function applySemanticMetadata(WorkflowDesignerService $designer, WorkflowVersion $draft, User $actor): void
+    {
+        $stages = $this->stageMap($draft);
+
+        $roles = [
+            'CREATE' => StageSemanticRole::INITIAL_ENTRY,
+            'INTERNAL' => StageSemanticRole::BANK_REVIEW,
+            'SUPPORT' => StageSemanticRole::SUPPORT_REVIEW,
+            'EXEC' => StageSemanticRole::EXECUTIVE_REVIEW,
+            'FX' => StageSemanticRole::SWIFT,
+            'FX_CONFIRM' => StageSemanticRole::FX_CONFIRMATION,
+            'FINAL' => StageSemanticRole::FINAL,
+        ];
+
+        foreach ($roles as $code => $role) {
+            $stage = WorkflowStage::query()->find($stages[$code]);
+            if ($stage === null || $stage->semantic_role === $role) {
+                continue;
+            }
+            $designer->updateStage($actor, $stage, ['semantic_role' => $role->value], $stage->version);
+        }
+
+        $this->info('B4: semantic_role assigned to the 7 operational stages (terminal CLOSED_* stages unaffected).');
     }
 
     /**

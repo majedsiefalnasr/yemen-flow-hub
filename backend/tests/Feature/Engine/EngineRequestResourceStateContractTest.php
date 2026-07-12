@@ -66,13 +66,30 @@ class EngineRequestResourceStateContractTest extends TestCase
         $data = $response->json('data');
         $this->assertSame('ACTIVE', $data['runtime_status']);
         $this->assertSame($data['status'], $data['runtime_status']);
-        // The freshly published V2 has semantic_role unset on every stage (WP-4
-        // metadata was never backfilled for this designer-published version) —
-        // the field must still be present (compatibility contract) and null,
-        // never absent or a crash.
+        // Phase D Step 6 (B4) populates semantic_role on V2's operational stages
+        // through the designer lifecycle at publish time.
+        $this->assertSame('SUPPORT_REVIEW', $data['current_stage']['semantic_role']);
+        $this->assertArrayNotHasKey('final_outcome', $data);
+    }
+
+    public function test_a_stage_with_unset_semantic_role_still_exposes_the_field_as_null(): void
+    {
+        // Compatibility contract (Phase D Step 7): a stage that predates or
+        // otherwise lacks semantic metadata must not crash the resource or
+        // omit the key — it degrades to null so the frontend can fall back
+        // to the stage `code`, exactly as EngineRequestReadModel::bucket()
+        // and SemanticResolver::stageForRole() already do server-side.
+        $request = $this->seedV2Request('SUPPORT');
+        $stage = WorkflowStage::query()->findOrFail($request->current_stage_id);
+        $stage->forceFill(['semantic_role' => null])->save();
+
+        $admin = User::query()->where('email', 'admin@cby.gov.ye')->firstOrFail();
+        $data = $this->actingAs($admin)
+            ->getJson("/api/v1/engine-requests/{$request->id}")
+            ->assertOk()->json('data');
+
         $this->assertArrayHasKey('semantic_role', $data['current_stage']);
         $this->assertNull($data['current_stage']['semantic_role']);
-        $this->assertArrayNotHasKey('final_outcome', $data);
     }
 
     public function test_closed_completed_stage_request_exposes_final_outcome(): void
