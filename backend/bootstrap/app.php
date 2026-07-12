@@ -4,15 +4,11 @@ use App\Enums\AuditAction;
 use App\Exceptions\CustomsException;
 use App\Exceptions\DocumentException;
 use App\Exceptions\DuplicateInvoiceMismatchException;
-use App\Exceptions\DuplicateVoteException;
 use App\Exceptions\FinancingLimitExceededException;
 use App\Exceptions\FinancingLockTimeoutException;
 use App\Exceptions\InvalidTransitionException;
 use App\Exceptions\SelfReviewException;
 use App\Exceptions\UnauthorizedTransitionException;
-use App\Exceptions\VotingException;
-use App\Exceptions\WorkflowImmutableStateException;
-use App\Exceptions\WorkflowLockedStateException;
 use App\Http\Middleware\AttachQueryMetricsHeaders;
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\EnsureActiveUser;
@@ -146,12 +142,6 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
-        $exceptions->render(function (DuplicateVoteException|VotingException $e, Request $request) {
-            if ($request->is('api/*')) {
-                return ApiResponse::error($e->getMessage(), [], 422);
-            }
-        });
-
         $exceptions->render(function (DocumentException $e, Request $request) {
             if ($request->is('api/*')) {
                 return ApiResponse::error($e->getMessage(), [], 422);
@@ -189,27 +179,6 @@ return Application::configure(basePath: dirname(__DIR__))
                     'success' => false,
                     'message' => $e->getMessage(),
                     'error_code' => 'WORKFLOW_IMMUTABLE_STATE',
-                ], 403);
-            }
-        });
-
-        $exceptions->render(function (WorkflowLockedStateException $e, Request $request) {
-            if ($request->is('api/*')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $e->getMessage(),
-                    'error_code' => 'WORKFLOW_LOCKED_STATE',
-                ], 422);
-            }
-        });
-
-        $exceptions->render(function (WorkflowImmutableStateException $e, Request $request) {
-            if ($request->is('api/*')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $e->getMessage(),
-                    'error_code' => 'WORKFLOW_IMMUTABLE_STATE',
-                    'current_status' => $e->currentStatus->value,
                 ], 403);
             }
         });

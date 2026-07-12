@@ -111,27 +111,25 @@ Backend authorization remains the source of truth.
 
 ## Per-Role UX Authority
 
-Role-specific UI decisions (operational posture, dashboard structure, KPI semantics, banner variants, density, micro-copy, status presentation, non-visibility rules) are governed by the per-role specifications in `docs/user-view/`.
+**Superseded (Phase D, 2026-07-12).** `docs/user-view/` is **deprecated
+historical material**, not current UX authority — it predates the dynamic
+workflow engine and describes a per-role static-status UX model (fixed role
+dashboards, the 22-value status enum, voting UI) that no longer matches the
+shipped architecture. See `AGENTS.md` § "Documentation — Source of Truth"
+for the authoritative statement. Do not cite `docs/user-view/{role}.md` as a
+spec for new UI work; it is retained only as a historical record of the
+original static-role design intent.
 
-Authority order for any role-specific UI decision:
+Role-specific UI decisions today are governed by:
 
-1. `docs/user-view/{role}.md` — the canonical per-role UX spec (8 files: data-entry, bank-reviewer, bank-admin, swift-officer, support-committee, executive-member, committee-director, cby-admin)
-2. This document — generic frontend conventions
+1. The shipped `frontend/` code — the visual and behavioral source of truth (see "Design Consistency Requirement" below)
+2. `DESIGN.md` / `frontend/DESIGN.md` / `frontend/SHADCN.md` — token and component rules
+3. The **dashboard-family model** in `AGENTS.md` § "Dashboard Architecture" — operational family (`MyWorkDashboard.vue`, capability-driven, works for any dynamic role) vs. analytics & governance family (`SystemAdminDashboard`/`CbyAdminDashboard.vue`, `BankAdminDashboard.vue`), not a per-role static spec
+4. This document — generic frontend conventions
 
-When `docs/user-view/` and a generic UI pattern in this document disagree, `docs/user-view/` wins for that role.
-
-`docs/user-view/` covers, per role:
-
-- Operational posture (work mode, primary surface, status language, visual density, decision tone)
-- Sidebar navigation set
-- Per-page structure (dashboard, requests list, request detail, role-specific pages)
-- KPI cards (sources, colors, click-throughs)
-- Banner variants and conditions
-- Action panel behavior per status
-- Forbidden actions / non-visibility enforcement
-- Cross-role handoffs
-
-UI work must start from the relevant `docs/user-view/{role}.md` rather than inventing role surfaces from scratch.
+UI work must start from the shipped `frontend/` patterns and the
+dashboard-family model, not from inventing role surfaces from scratch or
+from `docs/user-view/`.
 
 ---
 
@@ -139,7 +137,7 @@ UI work must start from the relevant `docs/user-view/{role}.md` rather than inve
 
 The UI prototype phase is complete. The shipped `frontend/` code is the visual source of truth. Every UI story must keep new and changed surfaces consistent with what is already built and with the design authority:
 
-1. **Spec citation** — line reference into `docs/user-view/{role}.md` showing the intended operational posture and layout for the surface
+1. **Pattern citation** — a reference to the existing shipped `frontend/` surface (component, page, or dashboard family) whose layout and operational posture this change follows
 2. **Token compliance** — every color, spacing, radius, shadow, and font drawn from `DESIGN.md` / `frontend/DESIGN.md`; no raw Tailwind color scales or hardcoded hex (see `frontend/SHADCN.md`)
 3. **Pattern reuse** — the surface composes existing `frontend/` components and matches sibling pages of the same role rather than inventing new affordances
 

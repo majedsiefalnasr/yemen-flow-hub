@@ -50,6 +50,11 @@ const VALUE = {
 
 async function mountPage(capabilities: Array<'VIEW' | 'MANAGE'>) {
   mockGet.mockResolvedValueOnce({ data: [TABLE], meta: META })
+  // reference-data.vue's onMounted auto-selects the first table (7a053d9b)
+  // and immediately fetches its values — queue that response too, or it
+  // silently consumes whatever a later test queues for its own explicit
+  // interaction.
+  mockGet.mockResolvedValueOnce({ data: [VALUE], meta: META })
   const pinia = createPinia()
   setActivePinia(pinia)
   const auth = useAuthStore()
@@ -71,7 +76,12 @@ async function mountPage(capabilities: Array<'VIEW' | 'MANAGE'>) {
 
 describe('reference data admin page', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    // clearAllMocks only clears call history, not queued mockResolvedValueOnce
+    // implementations (Vitest docs: mockClear vs mockReset) -- with clearAllMocks,
+    // an unconsumed queued response from one test leaked into the next test's
+    // mockGet queue, since every mountPage() call queues 2 responses (table list +
+    // onMounted's auto-select values fetch) but not every test consumes exactly 2.
+    vi.resetAllMocks()
   })
 
   it('does not mount the page without VIEW permission', async () => {
