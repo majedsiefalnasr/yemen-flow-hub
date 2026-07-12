@@ -242,9 +242,7 @@ defineExpose({
               type="email"
               autocomplete="email"
               class="bg-muted/30 h-11"
-              :aria-invalid="
-                submitAttempted && emailForm.errors.value.email ? 'true' : undefined
-              "
+              :aria-invalid="submitAttempted && emailForm.errors.value.email ? 'true' : undefined"
             />
             <p
               v-if="submitAttempted && emailForm.errors.value.email"
@@ -415,7 +413,7 @@ defineExpose({
       <div class="hero-main">
         <h1>منصة إدارة ومراجعة طلبات تمويل الواردات</h1>
         <p>
-          نظام موحّد لإدارة التقديم، المراجعة البنكية، مراجعة الدعم، رفع SWIFT، التصويت التنفيذي،
+          نظام موحّد لإدارة التقديم، المراجعة البنكية، مراجعة الدعم، رفع SWIFT، القرار التنفيذي،
           وإصدار تأكيد الصرف الخارجي.
         </p>
       </div>

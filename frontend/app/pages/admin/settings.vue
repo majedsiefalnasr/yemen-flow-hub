@@ -26,7 +26,6 @@ import {
   ShieldAlert,
   Square,
   Sun,
-  Workflow,
 } from 'lucide-vue-next'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
@@ -103,7 +102,6 @@ const cbyTabs = [
   { value: 'security', label: 'الأمن', icon: ShieldAlert },
   { value: 'notif', label: 'الإشعارات', icon: Bell },
   { value: 'email', label: 'البريد الإلكتروني', icon: Mail },
-  { value: 'workflow', label: 'سير العمل', icon: Workflow },
 ] as const
 
 // ── Bank Tab definitions ───────────────────────────────────────────────────────
@@ -248,16 +246,6 @@ const generalSettings = reactive({
   timeZone: 'GMT+3',
 })
 
-// ── CBY: Workflow settings ─────────────────────────────────────────────────────
-const workflowSettings = reactive({
-  supportMembers: '5',
-  executiveMembers: '6',
-  quorum: '4',
-  reviewHours: '48',
-  hiddenVoting: true,
-  managerWeight: true,
-})
-
 // ── CBY: Email settings ────────────────────────────────────────────────────────
 const emailSettings = reactive({
   approvalTemplate:
@@ -342,7 +330,7 @@ const bankNotifications = ref([
   {
     id: 'executive_decision',
     label: 'قرار الهيئة التنفيذية',
-    description: 'عند صدور نتيجة التصويت',
+    description: 'عند صدور القرار التنفيذي',
     enabled: true,
   },
   {
@@ -414,15 +402,6 @@ const emailPayload = computed(() => ({
   approvalTemplate: emailSettings.approvalTemplate,
 }))
 
-const workflowPayload = computed(() => ({
-  supportMembers: workflowSettings.supportMembers,
-  executiveMembers: workflowSettings.executiveMembers,
-  quorum: workflowSettings.quorum,
-  reviewHours: workflowSettings.reviewHours,
-  hiddenVoting: workflowSettings.hiddenVoting,
-  managerWeight: workflowSettings.managerWeight,
-}))
-
 const bankProfilePayload = computed(() => ({
   nameAr: bankProfile.nameAr.trim(),
   nameEn: bankProfile.nameEn.trim(),
@@ -453,7 +432,6 @@ onMounted(async () => {
   pendingBrandColor.value = themingStore.brandColor
   pendingBrandColorText.value = themingStore.brandColor
   settingsStore.markSectionClean('general', undefined, generalPayload.value)
-  settingsStore.markSectionClean('workflow', undefined, workflowPayload.value)
   settingsStore.markSectionClean('email', undefined, emailPayload.value)
   settingsStore.markSectionClean('notif', undefined, notifPayload.value)
   settingsStore.markSectionClean('security', undefined, securityPayload.value)
@@ -471,9 +449,6 @@ watch(fontPickerOpen, (opened) => {
 })
 
 // ── Dirty watchers ─────────────────────────────────────────────────────────────
-watch(workflowPayload, (value) => settingsStore.trackSectionState('workflow', value), {
-  deep: true,
-})
 watch(emailPayload, (value) => settingsStore.trackSectionState('email', value), { deep: true })
 watch(notifPayload, (value) => settingsStore.trackSectionState('notif', value), { deep: true })
 watch(securityPayload, (value) => settingsStore.trackSectionState('security', value), {
@@ -565,14 +540,6 @@ function saveEmailSettings() {
   toast.promise(settingsStore.saveSection('email', emailPayload.value), {
     loading: 'جاري حفظ إعدادات البريد...',
     success: 'تم حفظ إعدادات البريد بنجاح',
-    error: () => settingsStore.error || 'فشل حفظ الإعدادات.',
-  })
-}
-
-function saveWorkflowSettings() {
-  toast.promise(settingsStore.saveSection('workflow', workflowPayload.value), {
-    loading: 'جاري حفظ إعدادات سير العمل...',
-    success: 'تم حفظ إعدادات سير العمل بنجاح',
     error: () => settingsStore.error || 'فشل حفظ الإعدادات.',
   })
 }
@@ -1509,86 +1476,6 @@ async function saveBankSecurity() {
               >
                 <Loader2 v-if="settingsStore.saving" class="ms-2 h-4 w-4 animate-spin" />
                 حفظ إعدادات البريد
-              </Button>
-            </div>
-          </section>
-
-          <!-- ═══════════════════════════════════════════════════════════════ -->
-          <!-- CBY: Workflow                                                   -->
-          <!-- ═══════════════════════════════════════════════════════════════ -->
-          <section v-if="isCBYAdmin && activeSection === 'workflow'" class="space-y-6">
-            <div>
-              <h3 class="text-lg font-medium">إعدادات سير العمل</h3>
-              <p class="text-muted-foreground text-sm">
-                تكوين معاملات الموافقة، اللجان، وقواعد التصويت
-              </p>
-            </div>
-            <Separator />
-            <div class="space-y-4">
-              <div class="flex items-center gap-2">
-                <h3 class="text-sm font-semibold">هيكل اللجان</h3>
-                <Badge variant="secondary" class="text-xs">تنظيمي</Badge>
-              </div>
-              <div class="grid gap-5 md:grid-cols-2">
-                <FieldGroup>
-                  <FieldLabel>عدد أعضاء اللجنة المساندة</FieldLabel>
-                  <Input v-model="workflowSettings.supportMembers" type="number" min="1" />
-                </FieldGroup>
-                <FieldGroup>
-                  <FieldLabel>عدد أعضاء اللجنة التنفيذية</FieldLabel>
-                  <Input v-model="workflowSettings.executiveMembers" type="number" min="1" />
-                </FieldGroup>
-              </div>
-            </div>
-            <Separator />
-            <div class="space-y-4">
-              <div class="flex items-center gap-2">
-                <h3 class="text-sm font-semibold">النصاب والمهل</h3>
-                <Badge variant="secondary" class="text-xs">اجتماعات</Badge>
-              </div>
-              <div class="grid gap-5 md:grid-cols-2">
-                <FieldGroup>
-                  <FieldLabel>الحد الأدنى للنصاب القانوني</FieldLabel>
-                  <Input v-model="workflowSettings.quorum" type="number" min="1" />
-                </FieldGroup>
-                <FieldGroup>
-                  <FieldLabel>مهلة المراجعة (ساعات)</FieldLabel>
-                  <Input v-model="workflowSettings.reviewHours" type="number" min="1" />
-                </FieldGroup>
-              </div>
-            </div>
-            <Separator />
-            <div class="space-y-4">
-              <div class="flex items-center gap-2">
-                <h3 class="text-sm font-semibold">قواعد التصويت</h3>
-                <Badge variant="secondary" class="text-xs">صلاحيات</Badge>
-              </div>
-              <div class="space-y-3">
-                <div class="border-border flex items-center justify-between rounded-lg border p-4">
-                  <div>
-                    <p class="text-sm font-medium">تصويت سري</p>
-                    <p class="text-muted-foreground text-xs">
-                      إخفاء أصوات الأعضاء قبل إغلاق الجلسة
-                    </p>
-                  </div>
-                  <Switch v-model="workflowSettings.hiddenVoting" />
-                </div>
-                <div class="border-border flex items-center justify-between rounded-lg border p-4">
-                  <div>
-                    <p class="text-sm font-medium">ترجيح صوت المدير عند التعادل</p>
-                    <p class="text-muted-foreground text-xs">يملك مدير اللجنة صلاحية كسر التعادل</p>
-                  </div>
-                  <Switch v-model="workflowSettings.managerWeight" />
-                </div>
-              </div>
-            </div>
-            <div class="flex justify-end">
-              <Button
-                :disabled="!settingsStore.isSectionDirty('workflow') || settingsStore.saving"
-                @click="saveWorkflowSettings"
-              >
-                <Loader2 v-if="settingsStore.saving" class="ms-2 h-4 w-4 animate-spin" />
-                حفظ إعدادات سير العمل
               </Button>
             </div>
           </section>

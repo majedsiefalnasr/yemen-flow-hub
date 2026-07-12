@@ -164,25 +164,7 @@ const QUICK_ACTIONS: Partial<Record<UserRole, PaletteAction[]>> = {
       isQuickAction: true,
     },
   ],
-  [UserRole.EXECUTIVE_MEMBER]: [
-    {
-      id: 'qa-voting',
-      title: 'جلسات التصويت النشطة',
-      aliases: 'voting sessions active executive',
-      url: '/dashboard',
-      icon: ShieldCheck,
-      isQuickAction: true,
-    },
-  ],
   [UserRole.COMMITTEE_DIRECTOR]: [
-    {
-      id: 'qa-voting-control',
-      title: 'التحكم في جلسات التصويت',
-      aliases: 'voting control open close director',
-      url: '/dashboard',
-      icon: ShieldCheck,
-      isQuickAction: true,
-    },
     {
       id: 'qa-fx-confirm',
       title: 'تأكيد المصارفة الخارجية',
@@ -215,7 +197,10 @@ const QUICK_ACTIONS: Partial<Record<UserRole, PaletteAction[]>> = {
 // ── Group definition (route → group heading) ──────────────────────────
 
 const GROUP_DEFS: Array<{ heading: string; routes: string[] }> = [
-  { heading: 'الطلبات', routes: ['/workflows', '/workflows/instances/new', '/workflows', '/workflows/new'] },
+  {
+    heading: 'الطلبات',
+    routes: ['/workflows', '/workflows/instances/new', '/workflows', '/workflows/new'],
+  },
   { heading: 'الطوابير', routes: ['/dashboard', '/customs'] },
   {
     heading: 'الجهات والمستخدمون',

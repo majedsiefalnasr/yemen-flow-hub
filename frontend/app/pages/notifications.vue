@@ -14,7 +14,6 @@ import {
   Inbox,
   MoreHorizontal,
   SearchX,
-  Vote,
   XCircle,
 } from 'lucide-vue-next'
 import { Badge } from '@/components/ui/badge'
@@ -66,7 +65,7 @@ definePageMeta({
   requiredRoles: ROUTE_ROLE_MAP['/notifications'],
 })
 
-type Severity = 'critical' | 'warning' | 'success' | 'voting' | 'info'
+type Severity = 'critical' | 'warning' | 'success' | 'info'
 type NotificationTableRow = { original: Notification }
 
 const notificationsStore = useNotificationsStore()
@@ -123,7 +122,6 @@ function severityFor(notification: Notification): Severity {
     notification.data?.type === 'customs_issued'
   )
     return 'success'
-  if (notification.data?.type === 'voting_opened') return 'voting'
   if (notification.data?.type === 'swift_upload_requested') return 'info'
 
   const text = (notification.data?.message_ar ?? notification.data?.message ?? '').toLowerCase()
@@ -135,7 +133,6 @@ function severityFor(notification: Notification): Severity {
     return 'critical'
   if (text.includes('إعادة') || text.includes('معاد') || text.includes('نقص')) return 'warning'
   if (text.includes('اعتماد') || text.includes('صدر') || text.includes('مكتمل')) return 'success'
-  if (text.includes('تصويت') || text.includes('اللجنة')) return 'voting'
   return 'info'
 }
 
@@ -169,12 +166,6 @@ const SEVERITY_STYLES: Record<
     dotClass: 'bg-[var(--severity-green)] text-foreground',
     label: 'إنجاز',
   },
-  voting: {
-    icon: Vote,
-    iconWrap: 'bg-[var(--voting)]/12 text-[var(--voting)] ring-1 ring-[var(--voting)]/25',
-    dotClass: 'bg-[var(--voting)] text-primary-foreground',
-    label: 'تصويت',
-  },
   info: {
     icon: Bell,
     iconWrap: 'bg-[var(--info)]/12 text-[var(--info)] ring-1 ring-[var(--info)]/25',
@@ -187,7 +178,6 @@ const SEVERITY_FILTER_OPTIONS = [
   { label: 'عاجل', value: 'critical' },
   { label: 'مهم', value: 'warning' },
   { label: 'إنجاز', value: 'success' },
-  { label: 'تصويت', value: 'voting' },
   { label: 'إشعار', value: 'info' },
 ]
 
@@ -277,8 +267,6 @@ function notificationActionLabel(notification: Notification): string {
   switch (notification.data?.type) {
     case 'claim_released':
       return 'فتح الطلب ومراجعة المطالبة'
-    case 'voting_opened':
-      return 'فتح الطلب للتصويت'
     case 'swift_upload_requested':
       return 'فتح الطلب لرفع وثائق السويفت'
     case 'request_returned':
@@ -299,8 +287,6 @@ function notificationSummary(notification: Notification): string {
       return notification.data.reason === 'ttl_expired'
         ? 'تم تحرير مطالبة لجنة المساندة بسبب انتهاء مهلة النشاط. راجع الطلب إذا كنت بحاجة إلى استلامه مرة أخرى.'
         : `تم تحرير مطالبة لجنة المساندة${notification.data.released_by_name ? ` بواسطة ${notification.data.released_by_name}` : ''}. راجع الطلب قبل اتخاذ أي إجراء جديد.`
-    case 'voting_opened':
-      return 'تم فتح جلسة تصويت مرتبطة بهذا الطلب. افتح الطلب للاطلاع على التفاصيل واتخاذ إجراء التصويت إذا كان دورك يسمح بذلك.'
     case 'swift_upload_requested':
       return 'وصل الطلب إلى مرحلة وثائق السويفت. افتح الطلب أو صفحة السويفت لمراجعة المستندات المطلوبة.'
     case 'request_returned':

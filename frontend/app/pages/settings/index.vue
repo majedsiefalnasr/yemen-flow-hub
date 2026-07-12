@@ -567,13 +567,6 @@ const personalNotifications = ref([
     mandatory: true,
   },
   {
-    id: 'voting_opened' as keyof NotificationPreferences,
-    label: 'فتح جلسة التصويت',
-    description: 'عند فتح جلسة تصويت جديدة',
-    enabled: true,
-    mandatory: false,
-  },
-  {
     id: 'request_submitted' as keyof NotificationPreferences,
     label: 'تقديم طلب للمراجعة',
     description: 'عند تقديم طلب جديد للمراجعة',
