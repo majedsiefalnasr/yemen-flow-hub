@@ -295,12 +295,61 @@ directories, `git checkout` this file). No other deviation from the plan as
 written.
 
 **Step 2 — Write the 5 net-new documents that have no direct source-file
-predecessor** (`docs/engine/extension-guide.md`,
+predecessor. ✅ DONE (2026-07-12).** (`docs/engine/extension-guide.md`,
 `docs/engine/dynamic-vs-fixed.md`, `docs/development-guide.md`,
 `docs/README.md`, and `docs/architecture/03-permission-model.md` since it's
 assembled from fragments, not a rewrite of one file). These are additive —
 nothing is removed from the existing tree yet, so if content turns out
 wrong, only the new file needs fixing, no existing doc's meaning changed.
+
+Before writing, two SocratiCode codebase-explorer agents independently
+verified the permission-model and workflow-engine-extension claims against
+the actual backend source (not against legacy docs). This surfaced three
+corrections applied to the new docs rather than inherited from stale
+assumptions: (1) the live Support claim TTL is read from
+`AdminSettingsService`'s `support_claim_ttl` setting via
+`EngineClaimService::ttlMinutes()`, not from
+`config('workflow.support_claim_ttl_minutes')` — the config key exists but
+is unused at runtime; both default to 15 minutes today, so this had not
+surfaced as a behavioral bug, only a documentation-accuracy one; (2)
+AGENTS.md's "CBY_ADMIN must never act as a workflow super-actor" rule is
+enforced in code only for the single `merchants:MANAGE` screen capability
+(`PermissionService::userHasCapability()`) — the broader claim about
+Director/SWIFT/Support/Bank Reviewer/Executive stages is a seeding
+convention with no structural guard in `StagePermissionConsistency` or
+`StagePermissionPolicy`, documented as such rather than as a code-enforced
+invariant; (3) the runtime-status class is `App\Support\EngineRequestStatus`
+(a plain class with string constants), not `App\Enums\EngineRequestStatus`
+as AGENTS.md's phrasing implies. All three are noted explicitly in the new
+docs so they read as verified fact, not inherited assumption.
+
+Every internal link across all 5 files was extracted and checked against
+the filesystem; two classes of link bugs were found and fixed before
+commit: (a) `docs/README.md` initially linked to the existing numbered
+docs as `../0X-*.md`, which resolves outside `docs/` from a file that
+lives inside `docs/` — corrected to bare `0X-*.md` sibling links; (b)
+several links to the Step 3/4 not-yet-written architecture docs
+(`architecture/02-workflow-engine.md`, `architecture/04-dashboard-architecture.md`,
+`architecture/05-request-state-model.md`) were originally rendered as live
+Markdown links that would 404 until Steps 3–4 land — rewritten as plain
+code-span paths with an explicit "**planned, not yet written** — Step N;
+today's authority is X" annotation, so nothing in the new docs looks live
+when it isn't. Prettier's auto-reflow twice turned a line starting with a
+list-like character (`+`, then later a lone `-`) into a spurious bullet
+that duplicated or stranded adjacent text — caught both times by reading
+the file back after `--write` and confirming a second `--write` pass
+reported the file unchanged before moving on.
+
+Spot-verified a sample of the sub-agents' most load-bearing claims
+directly against source after drafting (not just trusting the agent
+reports): `UserRole` enum's 8 cases, `StageAccessLevel` (`VIEW`/`EXECUTE`
+only), `ScreenCapability` (`VIEW`/`MANAGE`/`EXPORT`), the claim-TTL
+divergence, the `merchants:MANAGE` guard's exact condition, and
+`EngineTransitionService::execute()`'s permission-before-claim check
+ordering — all matched the docs as written. Confirmed via `git status`
+that only the 5 new files were added; the 2 pre-existing dirty files and
+11 pre-existing untracked files from before Step 2 began are unchanged.
+Prettier clean on all 5 files. No deviation from the plan as written.
 
 **Step 3 — Rewrite the 3 already-well-patched files in place first**
 (`docs/06-api-reference.md` → move to `docs/api-reference.md`,
