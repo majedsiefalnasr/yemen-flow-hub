@@ -14,7 +14,11 @@ order (§5 "Files to archive", §9 the step-by-step migration sequence).
 Planned contents (not yet moved):
 
 - `audit-functional/` — the 22-file record of this project's 6-phase
-  RBAC/workflow audit (Phases A–F).
+  RBAC/workflow audit (Phases A–F, files `00`–`21`). This consolidation
+  plan itself (`22-documentation-consolidation-plan.md`) is a 23rd file in
+  the same directory but is not part of that audit trail — it stays live
+  in `docs/audit-functional/` until the migration it describes completes,
+  rather than moving here with the rest.
 - `audit-performance/` — the closed, separate performance/scalability audit.
 - `project-brief-2026-05.md` — the original project brief, once its
   still-current framing language is extracted into `docs/README.md`.

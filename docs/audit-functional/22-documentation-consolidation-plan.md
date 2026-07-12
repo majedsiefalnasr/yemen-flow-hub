@@ -52,10 +52,13 @@ later than `docs/user-view/`, which was frozen at the pre-engine snapshot.
 not staleness: the concept exists in code and in one buried ADR, nowhere in
 the "read this to understand the system" tier.
 
-`docs/audit-functional/` (22 files, this session's own phase-by-phase audit
-trail) and `docs/audit/` (a separate, closed performance/scalability audit,
-~20 files) are both audit-genre documents — valuable as historical record,
-wrong genre for "how the system works today."
+`docs/audit-functional/` (22 phase-by-phase audit artifacts, files `00`–`21`
+— this session's own audit trail; the directory also holds this
+consolidation plan itself as a 23rd file, which is not part of that audit
+trail and is addressed separately below) and `docs/audit/` (a separate,
+closed performance/scalability audit, ~20 files) are both audit-genre
+documents — valuable as historical record, wrong genre for "how the system
+works today."
 
 ---
 
@@ -107,10 +110,13 @@ docs/
 │   ├── README.md                      NEW — explains what's archived + why
 │   ├── project-brief-2026-05.md       ARCHIVE docs/00 (historical framing,
 │                                        superseded by architecture/*)
-│   ├── audit-functional/              MOVE docs/audit-functional/* here
-│   │                                    verbatim (all 22 files — historical
-│   │                                    audit trail, valuable, wrong genre
-│   │                                    for living docs)
+│   ├── audit-functional/              MOVE docs/audit-functional/00-21
+│   │                                    (22 audit-phase artifacts) here
+│   │                                    verbatim — historical audit trail,
+│   │                                    valuable, wrong genre for living
+│   │                                    docs; this plan (file 22) stays
+│   │                                    live until migration completes,
+│   │                                    see §9
 │   ├── audit-performance/             MOVE docs/audit/* here verbatim
 │   │                                    (closed performance audit, same
 │   │                                    reasoning)
@@ -185,13 +191,13 @@ frontend/SHADCN.md                     KEEP as-is (already current,
 
 ## 5. Files to archive (moved to `docs/archive/`, kept in full, banner added)
 
-| File(s)                                             | Destination                             | Why archive, not delete                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| --------------------------------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `docs/00-project-brief.md`                          | `docs/archive/project-brief-2026-05.md` | After extracting the framing language (§4), the rest is a snapshot of pre-engine thinking with genuine historical value (why the project started, original stage-lifecycle intent) — worth keeping as a dated artifact, not worth keeping as a "read this to understand the system" doc                                                                                                                                                                                                                                                                                                                                                 |
-| `docs/audit-functional/*.md` (all 22 files)         | `docs/archive/audit-functional/`        | This is the full record of the 6-phase RBAC/workflow audit this session performed — every fix has a commit hash, every finding has a test. Deleting it destroys the "why does the code look like this" trail. It is definitively **not** a living reference doc (it's phase-checkpoint genre), so it doesn't belong in the primary docs tree per your stated philosophy, but it has real audit/compliance value for a CBY-regulated financial platform.                                                                                                                                                                                 |
-| `docs/audit/*.md` (all ~20 files incl. `evidence/`) | `docs/archive/audit-performance/`       | Same reasoning — closed, dated, self-contained performance audit with its own remediation log. Zero overlap with the RBAC/workflow content, so archiving doesn't lose anything the new architecture docs would otherwise contain.                                                                                                                                                                                                                                                                                                                                                                                                       |
-| `docs/user-view/*.md` (8 files, 6,573 lines)        | `docs/archive/user-view/`               | Already explicitly gated in the Phase F closure report (§11 of `19-phase-f-inventory.md`) — deletion requires separate approval per your own prior instruction (link-fix + destination-agreement + dedicated commit). This plan does not override that gate; it re-confirms it. **UX-pattern content worth mining before archiving** (see the extraction note below), but the files themselves move, not merge, since 6,573 lines of route-by-route/table-by-table spec is too large to hand-merge without a dedicated pass.                                                                                                            |
-| `testing-manual/*.md` (9 files, 813 lines)          | `docs/archive/testing-manual/`          | **Decided 2026-07-12.** Predates the dynamic workflow engine (legacy status vocabulary throughout, `executive-member.md`/`committee-director.md` test a removed voting feature) and must not remain a live reference the QA team could mistake for current guidance, even though it's partially ahead of `docs/user-view/` on routes (`/workflows`, not `/requests`). Archived in full, not deleted — same reasoning as `docs/user-view/`: real historical/QA value, wrong genre for a live reference. Replaced going forward by `docs/testing-guide.md` (§7), a new actively-maintained document, not a refresh of the archived files. |
+| File(s)                                                                                                                                       | Destination                             | Why archive, not delete                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| --------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `docs/00-project-brief.md`                                                                                                                    | `docs/archive/project-brief-2026-05.md` | After extracting the framing language (§4), the rest is a snapshot of pre-engine thinking with genuine historical value (why the project started, original stage-lifecycle intent) — worth keeping as a dated artifact, not worth keeping as a "read this to understand the system" doc                                                                                                                                                                                                                                                                                                                                                                         |
+| `docs/audit-functional/00-21*.md` (22 files — the audit-phase artifacts; the directory's 23rd file, this plan itself, is excluded, see below) | `docs/archive/audit-functional/`        | This is the full record of the 6-phase RBAC/workflow audit this session performed — every fix has a commit hash, every finding has a test. Deleting it destroys the "why does the code look like this" trail. It is definitively **not** a living reference doc (it's phase-checkpoint genre), so it doesn't belong in the primary docs tree per your stated philosophy, but it has real audit/compliance value for a CBY-regulated financial platform. This plan (`22-documentation-consolidation-plan.md`) stays in place at `docs/audit-functional/` until the migration it describes finishes, rather than archiving alongside the audit it's reporting on. |
+| `docs/audit/*.md` (all ~20 files incl. `evidence/`)                                                                                           | `docs/archive/audit-performance/`       | Same reasoning — closed, dated, self-contained performance audit with its own remediation log. Zero overlap with the RBAC/workflow content, so archiving doesn't lose anything the new architecture docs would otherwise contain.                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `docs/user-view/*.md` (8 files, 6,573 lines)                                                                                                  | `docs/archive/user-view/`               | Already explicitly gated in the Phase F closure report (§11 of `19-phase-f-inventory.md`) — deletion requires separate approval per your own prior instruction (link-fix + destination-agreement + dedicated commit). This plan does not override that gate; it re-confirms it. **UX-pattern content worth mining before archiving** (see the extraction note below), but the files themselves move, not merge, since 6,573 lines of route-by-route/table-by-table spec is too large to hand-merge without a dedicated pass.                                                                                                                                    |
+| `testing-manual/*.md` (9 files, 813 lines)                                                                                                    | `docs/archive/testing-manual/`          | **Decided 2026-07-12.** Predates the dynamic workflow engine (legacy status vocabulary throughout, `executive-member.md`/`committee-director.md` test a removed voting feature) and must not remain a live reference the QA team could mistake for current guidance, even though it's partially ahead of `docs/user-view/` on routes (`/workflows`, not `/requests`). Archived in full, not deleted — same reasoning as `docs/user-view/`: real historical/QA value, wrong genre for a live reference. Replaced going forward by `docs/testing-guide.md` (§7), a new actively-maintained document, not a refresh of the archived files.                         |
 
 **Extraction note for `docs/user-view/`:** three patterns are genuinely
 valuable and don't exist anywhere else in the current doc set — the
@@ -279,10 +285,13 @@ stating migration is in progress, linking back to this plan, and (for
 `docs/architecture/` and `docs/engine/`) pointing at the still-authoritative
 existing docs in the meantime. `docs/archive/README.md` additionally
 previews its planned contents and re-states the `docs/user-view/` archival
-gate. No source file touched — verified via `git status` showing only the 3
-new files, zero modifications to any existing tracked file. All 4 relative
-links in the new files verified to resolve. Prettier clean. Fully
-reversible (`rm -rf` the 3 new directories). No deviation from the plan as
+gate. The three README files were added; the only existing tracked file
+touched was this consolidation plan itself, modified solely to record Step
+1's completion and apply the disclosed Markdown-lint fix (a language tag on
+the tree diagram's fenced code block) — no other existing tracked file was
+modified, confirmed via `git status`. All 3 Markdown links in the new files
+verified to resolve. Prettier clean. Fully reversible (`rm -rf` the 3 new
+directories, `git checkout` this file). No other deviation from the plan as
 written.
 
 **Step 2 — Write the 5 net-new documents that have no direct source-file
