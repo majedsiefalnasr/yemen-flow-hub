@@ -34,9 +34,9 @@ yemen-flow-hub/               ← Root Git repository (git@github.com:majedsiefa
 
 The project uses one Git repository:
 
-| Repo            | Remote                                              | Tracks                                                |
-| --------------- | --------------------------------------------------- | ----------------------------------------------------- |
-| Root monorepo   | `git@github.com:majedsiefalnasr/yemen-flow-hub.git` | Everything: `docs/`, `backend/`, `frontend/`, configs |
+| Repo          | Remote                                              | Tracks                                                |
+| ------------- | --------------------------------------------------- | ----------------------------------------------------- |
+| Root monorepo | `git@github.com:majedsiefalnasr/yemen-flow-hub.git` | Everything: `docs/`, `backend/`, `frontend/`, configs |
 
 `backend/` and `frontend/` are regular directories in the root repository. They are not submodules or nested Git repositories.
 
@@ -44,11 +44,11 @@ The project uses one Git repository:
 
 Each change is committed once in the root repository:
 
-| Change location                                 | Commit to                                                                      |
-| ----------------------------------------------- | ------------------------------------------------------------------------------ |
-| `docs/`, `AGENTS.md`, `DESIGN.md`, root configs | Root repo only (run `git` from `/`)                                            |
-| `backend/` code                                 | Root repo only                                                                 |
-| `frontend/` code                                | Root repo only                                                                 |
+| Change location                                 | Commit to                           |
+| ----------------------------------------------- | ----------------------------------- |
+| `docs/`, `AGENTS.md`, `DESIGN.md`, root configs | Root repo only (run `git` from `/`) |
+| `backend/` code                                 | Root repo only                      |
+| `frontend/` code                                | Root repo only                      |
 
 ```bash
 # From the repository root
@@ -159,11 +159,11 @@ and the canonical request state model above.
 All other implementation decisions follow these docs in order of authority:
 
 1. `docs/01-workflow-and-business-rules.md` — Workflow stages, business rules (canonical status enum sections are superseded by the runtime state model above)
-2. `docs/03-database-and-models.md` — Table schemas (canonical status/role enum sections are superseded by the runtime state model above)
-3. `docs/06-api-reference.md` — API contracts, endpoint conventions
+2. `docs/architecture/06-database-and-models.md` — Table schemas, verified against migrations 2026-07-12
+3. `docs/api-reference.md` — API contracts, endpoint conventions (partial coverage — see its Coverage status section)
 4. `docs/05-backend-guide.md` — Backend architecture, security rules
 5. `docs/04-frontend-guide.md` — Frontend architecture, UI rules
-6. `docs/02-system-architecture.md` — Overall architecture
+6. `docs/architecture/01-system-architecture.md` — Overall architecture, verified against source 2026-07-12
 7. `DESIGN.md` — Root visual design system (colors, typography, spacing, elevation)
 
 ### Frontend-specific context files (mandatory for all frontend work)
@@ -267,7 +267,7 @@ CBY_ADMIN
 - Wrap external FX confirmation generation/completion in a single database transaction
 - Use pessimistic locking (`lockForUpdate()` in `EngineTransitionService::execute()`) for every workflow transition, guarding against concurrent stage moves on the same request
 - Validate file type as PDF-only for all document uploads
-- Return `REQUEST_CLOSED` (HTTP 403) for mutations on terminal/inactive requests — the distinct `WORKFLOW_IMMUTABLE_STATE` code (HTTP 409) applies only to editing a published/archived workflow *version* in the designer, not to runtime request state
+- Return `REQUEST_CLOSED` (HTTP 403) for mutations on terminal/inactive requests — the distinct `WORKFLOW_IMMUTABLE_STATE` code (HTTP 409) applies only to editing a published/archived workflow _version_ in the designer, not to runtime request state
 
 ---
 
@@ -386,7 +386,7 @@ Tool prefixes vary by client:
 - Login rate limit: 5 attempts/minute per IP
 - Account lockout: after 10 consecutive failures (15-minute lockout)
 - All workflow transitions: transactional and atomic
-- All file downloads: validated by backend policy (see `docs/06-api-reference.md` permission matrix)
+- All file downloads: validated by backend policy (see `docs/api-reference.md` permission matrix)
 - Failed auth attempts: logged to `audit_logs` with `user_id: NULL` for unauthenticated
 
 ---

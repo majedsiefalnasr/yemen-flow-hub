@@ -1,16 +1,18 @@
-# Workflow Engine Documentation — Migration In Progress
+# Workflow Engine Documentation
 
-This directory is being populated as part of the approved documentation
-consolidation. Content migration is in progress; see
-[`docs/audit-functional/22-documentation-consolidation-plan.md`](../audit-functional/22-documentation-consolidation-plan.md)
-for the full plan, the source-of-truth map, and the step-by-step migration
-sequence currently being executed.
+[`extension-guide.md`](extension-guide.md) (how to safely add a new
+workflow, stage, field, semantic field, semantic role, capability,
+dashboard metric, effect, or screen) and
+[`dynamic-vs-fixed.md`](dynamic-vs-fixed.md) (the philosophy distinguishing
+designer-configurable from fixed) are both **live**.
 
-This directory will hold the extension guide (how to safely add a new
-workflow, stage, field, semantic field, semantic role, capability, dashboard
-metric, effect, or screen) and the dynamic-vs-fixed philosophy document.
-
-Until that migration completes, the authoritative documentation for the
-workflow engine remains `docs/01-workflow-and-business-rules.md`,
-`docs/02-system-architecture.md`, and
-`docs/decisions/semantic-mapping.md`.
+The workflow engine's canonical architecture doc,
+`architecture/02-workflow-engine.md`, is **planned, not yet written**
+(Step 4 of the consolidation plan — see
+[`../audit-functional/22-documentation-consolidation-plan.md`](../audit-functional/22-documentation-consolidation-plan.md)).
+Until then, the authoritative documentation for workflow stages/business
+rules is `docs/01-workflow-and-business-rules.md`, plus
+[`../architecture/01-system-architecture.md`](../architecture/01-system-architecture.md)
+for overall system architecture and
+[`../decisions/semantic-mapping.md`](../decisions/semantic-mapping.md)
+for the `semantic_role` mechanism.

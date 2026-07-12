@@ -149,11 +149,11 @@ Screenshots for visual-regression of specific stories live under `docs/ui-parity
 
 All roles share the same component library, but role surfaces compose differently based on operational posture:
 
-| Posture | Roles | Density | Characteristics |
-| ------- | ----- | ------- | --------------- |
-| Distraction-free / low-density | SWIFT_OFFICER | Low | Focused upload work; minimal navigation; locked-data summaries; single-purpose pages |
-| Operational queue density | DATA_ENTRY, BANK_REVIEWER, SUPPORT_COMMITTEE, EXECUTIVE_MEMBER | Medium | Queue-first; action-required strips; 3–4 KPI cards; primary work table |
-| Governance / lifecycle density | COMMITTEE_DIRECTOR, CBY_ADMIN, BANK_ADMIN | High | Composite action strips (multi-row); 4–6 KPI grids; multiple queue/intelligence tables; oversight without operational claim authority |
+| Posture                        | Roles                                                          | Density | Characteristics                                                                                                                       |
+| ------------------------------ | -------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Distraction-free / low-density | SWIFT_OFFICER                                                  | Low     | Focused upload work; minimal navigation; locked-data summaries; single-purpose pages                                                  |
+| Operational queue density      | DATA_ENTRY, BANK_REVIEWER, SUPPORT_COMMITTEE, EXECUTIVE_MEMBER | Medium  | Queue-first; action-required strips; 3–4 KPI cards; primary work table                                                                |
+| Governance / lifecycle density | COMMITTEE_DIRECTOR, CBY_ADMIN, BANK_ADMIN                      | High    | Composite action strips (multi-row); 4–6 KPI grids; multiple queue/intelligence tables; oversight without operational claim authority |
 
 Density is a property of the role's spec — not of the component library. The same `KpiCard`, `ActionRequiredStrip`, and `WorkflowProgress` components serve all three postures by composition. Do not fork components per role.
 
@@ -602,7 +602,7 @@ Status badges must be:
 
 # Internal Workflow Statuses
 
-Full canonical status enum (source of truth: `docs/03-database-and-models.md`):
+Full canonical status enum (source of truth was `docs/03-database-and-models.md`, now moved to `docs/architecture/06-database-and-models.md` — but note this whole section describes the pre-engine 18-value status vocabulary; it is stale relative to the current `runtime_status`/`current_stage`/`semantic_role`/`final_outcome` model and is scheduled for removal in Step 4's rewrite of this file):
 
 - DRAFT
 - DRAFT_REJECTED_INTERNAL

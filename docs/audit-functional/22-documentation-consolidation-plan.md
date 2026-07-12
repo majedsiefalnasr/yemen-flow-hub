@@ -480,13 +480,201 @@ planned. Confirmed via `git status` that only `03-permission-model.md`,
 pre-existing dirty files and 11 pre-existing untracked files remain
 unchanged.
 
-**Step 3 — Rewrite the 3 already-well-patched files in place first**
-(`docs/06-api-reference.md` → move to `docs/api-reference.md`,
-`docs/03-database-and-models.md` → `docs/architecture/06-database-and-models.md`
-with the stale enum block removed, `docs/02-system-architecture.md` →
-`docs/architecture/01-system-architecture.md` with the dashboard section
-replaced by a pointer to the new dashboard-architecture doc). These are the
-lowest-risk rewrites since ~60-70% of each file survives unchanged.
+**Step 3 — split into two independently reviewed substeps (clarified
+2026-07-12).** `docs/README.md`'s Step 2 table already assigns 5
+documents to "Step 3" — `architecture/01-system-architecture.md`,
+`architecture/04-dashboard-architecture.md`,
+`architecture/05-request-state-model.md`,
+`architecture/06-database-and-models.md`, and `api-reference.md` — but
+the migration sequence as originally written only listed 3 of them,
+silently omitting `04-dashboard-architecture.md` and
+`05-request-state-model.md`. Splitting corrects that gap and keeps each
+substep separately reviewable rather than bundling 5 documents of
+differing risk into one step:
+
+**Step 3A — rewrite/move the 3 already-well-patched files with a direct
+source predecessor:**
+
+- `docs/06-api-reference.md` → `docs/api-reference.md` (move, minimal
+  content change, routes re-verified against `php artisan route:list`).
+- `docs/03-database-and-models.md` →
+  `docs/architecture/06-database-and-models.md` (rewrite, stale
+  status-enum and voting material removed, schema re-verified against
+  migrations/models).
+- `docs/02-system-architecture.md` →
+  `docs/architecture/01-system-architecture.md` (rewrite, the stale
+  fixed-per-role dashboard section replaced with an annotated pointer to
+  Step 3B's not-yet-written dashboard-architecture doc).
+
+These are the lowest-risk rewrites since ~60-70% of each file survives
+unchanged, and each already has a direct 1:1 source predecessor.
+
+**Step 3B — write the 2 documents `docs/README.md` assigns to Step 3
+but that have no direct source-file predecessor:**
+
+- `docs/architecture/04-dashboard-architecture.md` — promotes
+  `audit-functional/14`'s decision-record content to canonical reference
+  genre (per §2's tree note), explains why it replaced fixed per-role
+  dashboards, explains the shared actionable-work invariant.
+- `docs/architecture/05-request-state-model.md` — the 4-concept model
+  (`runtime_status`/`current_stage`/`semantic_role`/`final_outcome`),
+  merging `docs/03`'s schema notes with AGENTS.md's canonical-model
+  section, explaining why the old `RequestStatus` enum no longer exists.
+
+Both are assembled from fragments (an audit checkpoint, scattered
+AGENTS.md sections) rather than a single source file being renamed, so
+they're closer in kind to Step 2's net-new documents than to 3A's
+rewrites — hence the separate substep and separate review gate.
+
+**Step 3A — ✅ DONE (2026-07-12).** Before touching any source document,
+used a `socraticode:codebase-explorer` subagent (resumed once after an
+API-error truncation) plus direct verification of the two claims it
+flagged as unresolved, to check every retained schema/route/behavioral
+claim against current source — not carried over from the prior version of
+any file.
+
+**`docs/06-api-reference.md` → `docs/api-reference.md`** (moved via `git
+mv` to preserve history). Cross-checked against `php artisan
+route:list --path=api` (237 registered API routes). Findings: the
+documented endpoints were individually accurate, but the document covers
+only a fraction of the real API surface — entire route families are
+undocumented (Workflow Designer admin CRUD, reference data admin,
+org/team/role/screen admin, merchants, governance/compliance,
+profile/MFA/sessions, search, most `ReportController` analytics
+endpoints, plus smaller gaps like `available-workflows`, `.../abandon`,
+`.../documents/{document}/replace`, and several `AuthController` routes).
+Per your direction (see below), did not expand Step 3A into a full
+rewrite to close this gap — instead added a prominent "Coverage status"
+section stating the verification date/method, listing every undocumented
+route family by name, and directing readers to `route:list` and the
+controllers as the temporary authority for anything not yet covered.
+Corrected two real inaccuracies while moving: the claim-TTL reference
+(`config('workflow.support_claim_ttl_minutes')` is unused; the live value
+is `AdminSettingsService`'s `support_claim_ttl`, same finding as the
+Step 2 corrections), and removed the entire "Voting"/"Allowed
+Votes"/"Voting Rules" sections plus scattered voting mentions
+("Voting statistics" dashboard claim, "Executive queues are
+voting-scoped," two "voting open/close" transition examples) — confirmed
+via `grep` across `backend/app` that no `EXECUTIVE_VOTING_OPEN`,
+`AUTO_ABSTAIN_TIMEOUT`, or vote-type enum exists anywhere in the
+codebase; Executive Voting is out of V1 per AGENTS.md, and this
+functionality was never merely deprecated in this doc but described as
+if live. Kept the one general (non-voting-specific) concurrency-locking
+paragraph, retitled from "Voting Concurrency Protection" to "Transition
+Concurrency Protection," since the underlying pessimistic-locking
+mechanism it describes is real and applies to every transition, not a
+voting-specific one.
+
+**Missing API-family documentation is a defined follow-up, not a silent
+deferral.** Tracked here in this plan (this entry) and referenced from
+`docs/api-reference.md`'s own Coverage status section: `docs/api-reference.md`
+must not be treated as the complete canonical API reference until a
+future step documents the Workflow Designer admin API, reference data
+admin, org/team/role/screen admin, merchants, governance/compliance
+endpoints, `ReportController`'s analytics family, profile/MFA/session
+management, search, and the smaller per-family gaps listed above. This
+follow-up needs its own step number when scheduled — it is out of scope
+for the current 12-step sequence as written and should be added
+explicitly before Steps 3B–12 are considered to fully close out API
+documentation.
+
+**`docs/03-database-and-models.md` → `docs/architecture/06-database-and-models.md`**
+(rewrite; old file removed via `git rm` since content changed
+substantially, not a straight move). Verified against
+`backend/database/migrations/` and `backend/app/Models/` directly.
+Findings went well beyond the originally-scoped "remove the stale status
+enum and voting material": confirmed real schema drift on nearly every
+table — `workflow_stages` was missing `semantic_role`, `attached_effects`,
+and `final_outcome` columns (all added by later migrations); `engine_requests`
+was missing `claim_stage_id`, `stage_entered_at`, `sla_deadline_epoch`,
+`invoice_number_normalized`, and several composite indexes; `workflow_history`
+was missing `correlation_id` (the UUID shared with paired `audit_logs`
+rows) and its `to_stage_id` nullable change; `audit_logs` was missing
+`bank_id`; `customs_declarations` was missing `metadata`,
+`signed_fx_doc_*`, `generated_by`, `signed_uploaded_by`, and its
+`issued_by`-now-nullable change, plus its `request_id` column has been
+fully dropped (not merely deprecated) by the same migration that drops
+the legacy tables; and a wholly undocumented new table,
+`engine_request_reference_sequences`, exists. Also confirmed the
+`engine_requests.status` column is a plain `string(20)`, not a
+database-level enum — the 5-value `ACTIVE`/`CLOSED`/`REJECTED`/
+`CANCELLED`/`ABANDONED` constraint (matching AGENTS.md's canonical
+`runtime_status`, not the old doc's undocumented-as-incomplete 3-value
+claim) is application-level only, via `App\Support\EngineRequestStatus`.
+Removed the "Voting Rules"/"Vote Types Enum"/"Voting Session Status Enum"
+sections and the 18-value pre-engine "Workflow Status Enum" entirely
+(rather than annotating them as historical, since AGENTS.md is explicit
+that this vocabulary was replaced, not merely supplemented, by the
+4-concept request-state model) — confirmed via the same drop-migration
+(`2026_07_01_000001_p5_drop_legacy_import_request_tables.php`) that
+`request_votes` was physically dropped alongside `import_requests`,
+`request_documents`, and `request_stage_history`.
+
+**`docs/02-system-architecture.md` → `docs/architecture/01-system-architecture.md`**
+(rewrite; old file removed via `git rm`). Corrected "Vue 4" to "Vue 3.5"
+(same finding as Step 2); replaced the large fixed-per-role "Queue-Based
+Dashboard Architecture" and "Visibility Model" sections (per-role
+dashboard enumeration including an Executive voting queue) with an
+annotated pointer to `04-dashboard-architecture.md` (**planned, Step
+3B**) and a short note that the fixed-per-role model is superseded by the
+two-family model, rather than silently deleting the content with no
+successor pointer. Verified the backend/frontend service class names and
+folder structures directly (`ls backend/app`, `ls frontend/app`) — both
+had drifted from what the doc listed (backend: doc was missing
+`Console/`, `Exceptions/`, `Mail/`, `OpenApi/`, `Providers/`, `Rules/`,
+and claimed `Actions/`/`Events/`/`Notifications/` that don't currently
+exist as top-level directories; frontend: doc claimed a `services/`
+folder that doesn't exist and was missing `lib/`, `schemas/`, `tests/`).
+Confirmed all 7 named `Services/Workflow/` classes
+(`WorkflowDesignerService`, `WorkflowVersionValidator`,
+`StagePermissionResolver`, `EngineTransitionService`,
+`EngineClaimService`, `StageFieldRuleValidator`, `RequestProjectionSync`)
+and `AuditService`'s location still match.
+
+**Link updates.** Found and fixed every in-scope live reference to the 3
+old paths: `AGENTS.md` (2 spots — the doc-authority list and the file
+downloads bullet), `frontend/CLAUDE.md`, `backend/CLAUDE.md`, this plan's
+own §2 tree/§5 table entries were already forward-looking and needed no
+change, `docs/README.md` (3 table rows flipped from "planned" to
+"live"), `docs/architecture/README.md` (rewritten — it previously
+claimed `docs/00`–`docs/07` as the fallback authority, which was now
+false for 2 of those paths), `docs/engine/README.md` (rewritten — it
+still described the extension guide/dynamic-vs-fixed docs as
+not-yet-written, though Step 2 already shipped them, and referenced the
+now-deleted `docs/02-system-architecture.md`), and `docs/04-frontend-guide.md`
+(one dead link to `docs/03-database-and-models.md`, fixed to point at the
+new path with a note that the section itself is stale pre-engine material
+scheduled for Step 4's rewrite — not rewritten now, since that's
+out-of-scope for 3A). `docs/superpowers/plans/*.md` references were left
+untouched — AI-tooling scaffolding, out of scope per the original scoping
+decision.
+
+**Verification.** Prettier run on all 10 touched files, clean and stable
+on the first pass for most; one file (`docs/04-frontend-guide.md`) needed
+a second Prettier pass whose diff was reviewed and confirmed to contain
+only table/list reflow, no content change. Every internal link across all
+14 files touched by Steps 2+3A was extracted and checked against the
+filesystem — found and fixed one live-looking link in the new database
+doc pointing at the not-yet-written `04-dashboard-architecture.md`
+(rewrote to the same plain-code-span "planned" annotation pattern used
+elsewhere), then re-verified zero broken links remain. Confirmed via
+`git status` that the working tree's dirty/untracked set matches exactly
+what Step 3A was expected to touch, plus the 2 pre-existing dirty files
+and 11 pre-existing untracked files from before this session began,
+unchanged throughout.
+
+**Deviations from the plan as written**, all disclosed above rather than
+silently absorbed: (1) `docs/03-database-and-models.md`'s rewrite went
+well beyond "remove the stale status enum and voting material" once
+schema verification surfaced broader drift — every table needed at least
+minor correction; (2) `docs/06-api-reference.md`'s move surfaced a large
+undocumented-route-family gap that was explicitly scoped out of 3A per
+your direction and instead recorded as a defined, owned follow-up (not
+yet assigned a step number) rather than silently left as an implicit
+"someday"; (3) `docs/architecture/README.md` and `docs/engine/README.md`
+needed more than link fixes — their narrative content was stale relative
+to Step 2's already-shipped files and 3A's newly-live files, so both were
+substantively rewritten, not just patched.
 
 **Step 4 — Rewrite the 3 heavily-stale files**
 (`docs/01-workflow-and-business-rules.md` → merges into

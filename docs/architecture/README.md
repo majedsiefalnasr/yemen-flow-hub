@@ -1,12 +1,16 @@
-# Architecture Documentation — Migration In Progress
+# Architecture Documentation
 
-This directory is being populated as part of the approved documentation
-consolidation. Content migration is in progress; see
-[`docs/audit-functional/22-documentation-consolidation-plan.md`](../audit-functional/22-documentation-consolidation-plan.md)
-for the full plan, the source-of-truth map, and the step-by-step migration
-sequence currently being executed.
+**Live:** [`01-system-architecture.md`](01-system-architecture.md),
+[`03-permission-model.md`](03-permission-model.md),
+[`06-database-and-models.md`](06-database-and-models.md).
 
-Until that migration completes, the authoritative documentation remains the
-existing files at `docs/00-project-brief.md` through
-`docs/07-account-recovery-and-mail.md`, `AGENTS.md`, and the frontend/backend
-`CLAUDE.md` family.
+**Planned, not yet written** (Step 3B/4 of the consolidation plan — see
+[`../audit-functional/22-documentation-consolidation-plan.md`](../audit-functional/22-documentation-consolidation-plan.md)):
+`02-workflow-engine.md`, `04-dashboard-architecture.md`,
+`05-request-state-model.md`. Until those land, their authority remains
+`docs/01-workflow-and-business-rules.md` and AGENTS.md's "Dashboard
+Architecture" and "Canonical Request State Model" sections respectively.
+
+Files at `docs/00-project-brief.md`, `docs/04-frontend-guide.md`, and
+`docs/05-backend-guide.md` remain authoritative for topics not yet
+migrated (Step 4).

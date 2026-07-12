@@ -216,5 +216,5 @@ Full rules in `../docs/` and `../AGENTS.md`. Key files:
 
 - `../docs/01-workflow-and-business-rules.md` — workflow stages and simplified status mapping
 - `../docs/04-frontend-guide.md` — frontend architecture
-- `../docs/06-api-reference.md` — API contracts (endpoints, response shapes)
+- `../docs/api-reference.md` — API contracts (endpoints, response shapes)
 - `../DESIGN.md` — visual design system

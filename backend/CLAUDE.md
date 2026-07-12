@@ -106,7 +106,7 @@ Role enum values: `DATA_ENTRY`, `BANK_REVIEWER`, `SWIFT_OFFICER`, `SUPPORT_COMMI
     "error_code": "REQUEST_CLOSED"
   }
   ```
-- Immutable/terminal (non-`ACTIVE`) requests return HTTP 403 with `REQUEST_CLOSED` — the distinct `WORKFLOW_IMMUTABLE_STATE` code (HTTP 409) applies only to editing a published/archived workflow *version* in the designer, not to runtime request state
+- Immutable/terminal (non-`ACTIVE`) requests return HTTP 403 with `REQUEST_CLOSED` — the distinct `WORKFLOW_IMMUTABLE_STATE` code (HTTP 409) applies only to editing a published/archived workflow _version_ in the designer, not to runtime request state
 
 ## Context7 Usage
 
@@ -157,6 +157,6 @@ When backend work needs browser-based verification (integration paths, auth/sess
 Full rules in `../docs/` and `../AGENTS.md`. Key files:
 
 - `../docs/01-workflow-and-business-rules.md` — workflow stages
-- `../docs/03-database-and-models.md` — table schemas and enums
+- `../docs/architecture/06-database-and-models.md` — table schemas and enums
 - `../docs/05-backend-guide.md` — backend architecture
-- `../docs/06-api-reference.md` — API contracts
+- `../docs/api-reference.md` — API contracts
