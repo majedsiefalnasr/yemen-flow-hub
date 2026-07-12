@@ -61,7 +61,7 @@ wrong genre for "how the system works today."
 
 ## 2. Proposed documentation tree
 
-```
+```text
 docs/
 ├── README.md                          NEW — top-level index, "start here"
 ├── architecture/
@@ -272,11 +272,18 @@ Each step is independently reversible and independently verifiable. Do not
 proceed to step N+1 until step N is reviewed and approved — this mirrors
 the audit's own phase-gate discipline.
 
-**Step 1 — Create the new tree skeleton (zero content changes).**
-Create `docs/architecture/`, `docs/engine/`, `docs/archive/` directories
-with placeholder README files stating "content migration in progress, see
-`docs/audit-functional/22-documentation-consolidation-plan.md`." No source
-file touched. Fully reversible (`rm -rf` the new dirs).
+**Step 1 — Create the new tree skeleton (zero content changes). ✅ DONE
+(2026-07-12).** Created `docs/architecture/README.md`,
+`docs/engine/README.md`, `docs/archive/README.md` — each a placeholder
+stating migration is in progress, linking back to this plan, and (for
+`docs/architecture/` and `docs/engine/`) pointing at the still-authoritative
+existing docs in the meantime. `docs/archive/README.md` additionally
+previews its planned contents and re-states the `docs/user-view/` archival
+gate. No source file touched — verified via `git status` showing only the 3
+new files, zero modifications to any existing tracked file. All 4 relative
+links in the new files verified to resolve. Prettier clean. Fully
+reversible (`rm -rf` the 3 new directories). No deviation from the plan as
+written.
 
 **Step 2 — Write the 5 net-new documents that have no direct source-file
 predecessor** (`docs/engine/extension-guide.md`,
