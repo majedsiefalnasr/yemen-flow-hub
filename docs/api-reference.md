@@ -1,5 +1,67 @@
 # API Reference
 
+## Coverage status
+
+**Verified:** 2026-07-12, against `php artisan route:list --path=api` run
+directly on this repository's `backend/`.
+
+Every endpoint documented below was checked against a real registered
+route at verification time, and the accompanying claims (settings keys,
+error codes, permission matrices, row limits) were checked against the
+implementing source files — not carried over unverified from the prior
+version of this document. Where verification found this document was
+stale, this move corrected it (see the claim-TTL note under Support
+Review Claiming, and the removal of the Voting section below — Executive
+Voting is out of V1 and no corresponding route, enum, or session model
+exists in the codebase anymore).
+
+**This document is not yet a complete API reference.** It accurately
+covers the primary `EngineRequest` lifecycle, authentication basics,
+document/FX-confirmation endpoints, settings, notifications, and report
+exports — but the following registered route families exist in
+`backend/routes/api.php` and are **not yet documented here**:
+
+- The full Workflow Designer admin API — `workflow-definitions`,
+  `workflow-versions` (+ `clone`/`validate`/`publish`/`archive`/`graph`),
+  `workflow-versions/{v}/stages`, `workflow-actions`,
+  `workflow-versions/{v}/transitions`, `workflow-stages/{s}/permissions`,
+  `workflow-stages/{s}/field-rules`, `field-groups`, `fields` (+
+  `options`).
+- Reference data admin — `reference-tables`, `reference-values` (+
+  activate/deactivate lifecycle on both).
+- Org-structure admin — `organizations`, `teams`, `roles` (+
+  activate/deactivate), `screens`, `screen-permissions/matrix`.
+- `merchants` (full CRUD).
+- Governance/compliance — `governance/impact`, `banks/{bank}/lifecycle-impact`,
+  `compliance/duplicate-invoices`, `compliance/expired-documents`,
+  `compliance/sla-breaches`.
+- Analytics report endpoints on `ReportController` — `reports/by-bank`,
+  `by-currency`, `by-merchant`, `by-sector`, `by-workflow-stage`,
+  `requests-over-time`, `sla`, `stage-duration`, `summary`,
+  `team-performance` (distinct from the `reports/exports` async-export
+  family, which **is** documented below).
+- `Profile`/MFA/session management (`api/profile/*`) and `Search`
+  (`api/search`, `api/search/recent`).
+- Several `AuthController` routes beyond login/logout/me: PIN login,
+  password forgot/reset/verify, OTP verification, demo-user/demo-role
+  switching.
+- Smaller gaps on already-documented families: `GET
+/api/v1/engine-requests/available-workflows`, `POST
+/api/v1/engine-requests/{id}/abandon`, `POST
+/api/v1/engine-requests/{id}/documents/{document}/replace`, and the
+  async audit-log export routes (`POST /api/v1/audit-logs/export`, `GET
+.../export/{reportExport}`, `.../download`).
+
+**Documenting these families is a defined follow-up**, tracked in
+`docs/audit-functional/22-documentation-consolidation-plan.md` — it is
+not silently deferred or abandoned; this document should not be treated
+as the complete canonical API reference until that follow-up lands. Until
+then, for any route not covered above, `php artisan route:list` and the
+registered controller in `backend/app/Http/Controllers/Api/` are the
+authoritative source.
+
+---
+
 # API Overview
 
 Yemen Flow Hub uses a REST API architecture.
@@ -118,7 +180,9 @@ Non-admin users are scoped to stages they may VIEW (via `stage_permissions`); `s
 
 ```json
 {
-  "data": [ /* EngineRequestResource[] */ ],
+  "data": [
+    /* EngineRequestResource[] */
+  ],
   "meta": { "current_page": 1, "last_page": 3, "per_page": 25, "total": 62 }
 }
 ```
@@ -307,7 +371,7 @@ Editable states are still governed by the canonical business rules in `docs/01-w
 
 # Workflow APIs
 
-There is no per-action fixed route family (`POST /api/workflow/{id}/submit`, `.../bank-approve`, `.../support-approve`, etc.) — every workflow action (submit, bank approve/reject, support approve/reject, SWIFT upload's status effect, voting open/close, finalize decision) is executed through one generic endpoint:
+There is no per-action fixed route family (`POST /api/workflow/{id}/submit`, `.../bank-approve`, `.../support-approve`, etc.) — every workflow action (submit, bank approve/reject, support approve/reject, SWIFT upload's status effect, executive review decision, finalize decision) is executed through one generic endpoint:
 
 # Execute a Workflow Action (Generic)
 
@@ -338,18 +402,18 @@ POST /api/v1/engine-requests/{id}/actions
 
 ## Error Codes
 
-| Code                        | HTTP | Meaning                                                              |
-| --------------------------- | ---- | --------------------------------------------------------------------- |
-| `REQUEST_CLOSED`             | 403  | Request is no longer `ACTIVE`                                        |
-| `REQUEST_STALE`              | 409  | `version` does not match the request's current version               |
-| `TRANSITION_NOT_AVAILABLE`   | 422  | The transition doesn't exist, or doesn't originate from the current stage |
-| `STAGE_EXECUTION_FORBIDDEN`  | 403  | Caller lacks EXECUTE access to the current stage                     |
-| `CLAIM_NOT_HELD`             | 403  | The stage requires a claim and the caller doesn't hold it            |
-| `COMMENT_REQUIRED`           | 422  | Transition requires a comment and none was provided                  |
-| `STAGE_FIELDS_INVALID`       | 422  | Per-stage field validation failed (includes an `errors` array)       |
-| `STAGE_HOOK_FAILED`          | 422  | An unexpected error from a stage entry/exit hook (domain-specific exceptions, e.g. `FinancingLimitExceededException`, propagate with their own codes) |
+| Code                        | HTTP | Meaning                                                                                                                                               |
+| --------------------------- | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `REQUEST_CLOSED`            | 403  | Request is no longer `ACTIVE`                                                                                                                         |
+| `REQUEST_STALE`             | 409  | `version` does not match the request's current version                                                                                                |
+| `TRANSITION_NOT_AVAILABLE`  | 422  | The transition doesn't exist, or doesn't originate from the current stage                                                                             |
+| `STAGE_EXECUTION_FORBIDDEN` | 403  | Caller lacks EXECUTE access to the current stage                                                                                                      |
+| `CLAIM_NOT_HELD`            | 403  | The stage requires a claim and the caller doesn't hold it                                                                                             |
+| `COMMENT_REQUIRED`          | 422  | Transition requires a comment and none was provided                                                                                                   |
+| `STAGE_FIELDS_INVALID`      | 422  | Per-stage field validation failed (includes an `errors` array)                                                                                        |
+| `STAGE_HOOK_FAILED`         | 422  | An unexpected error from a stage entry/exit hook (domain-specific exceptions, e.g. `FinancingLimitExceededException`, propagate with their own codes) |
 
-Bank approval/rejection, support approval/rejection/return, opening/closing an executive voting stage, and finalizing a decision are all just different `transition_id` values executed through this one endpoint — they are not separate routes.
+Bank approval/rejection, support approval/rejection/return, an executive review decision, and finalizing a decision are all just different `transition_id` values executed through this one endpoint — they are not separate routes.
 
 ---
 
@@ -367,42 +431,10 @@ DELETE /api/v1/engine-requests/{id}/claim
 
 - Only stages with `requires_claim = true` (e.g. support review) use this lifecycle
 - Only one reviewer can hold an active claim at a time (`STAGE_CLAIMED`, 409, on conflicting claim attempts)
-- Claims expire after a TTL (`config('workflow.support_claim_ttl_minutes')`, default 15 minutes) unless extended by a heartbeat
+- Claims expire after a TTL — the live value is the admin-configurable `support_claim_ttl` setting (`AdminSettingsService`, default 15 minutes, 5–60 range; see Admin Operational Settings below), not the `config('workflow.support_claim_ttl_minutes')` key, which exists but is not read by the claim service — unless extended by a heartbeat
 - The heartbeat endpoint must be called every 60 seconds by the frontend while the reviewer is on the request page, or the claim expires
 - Only the current claim holder may heartbeat/release their own claim (`CLAIM_NOT_HELD`, 403, otherwise); `system_admin` may force-release any claim
 - Claiming/heartbeat/release responses return the updated `EngineRequestResource` (`{ "success": true, "data": {...} }`)
-
----
-
-# Voting
-
-Executive voting has no dedicated `/api/voting/*` route family or `GET /api/voting`/`GET /api/voting/{id}` queue endpoints. A voting-stage request is retrieved and acted on exactly like any other request:
-
-- List/queue: `GET /api/v1/engine-requests` or `GET /api/v1/engine-requests/my-queue`, filtered to the voting stage (`stage_id`)
-- Details: `GET /api/v1/engine-requests/{id}`
-- Submitting a vote, opening a session, closing a session, and finalizing the decision are all `POST /api/v1/engine-requests/{id}/actions` calls with the applicable `transition_id`
-
-# Allowed Votes
-
-```text
-APPROVE
-REJECT
-ABSTAIN
-AUTO_ABSTAIN_TIMEOUT
-```
-
----
-
-# Voting Rules
-
-- Voting only during EXECUTIVE_VOTING_OPEN
-- Voting sessions controlled by Executive Committee Director
-- Director also votes as a regular member
-- Director resolves ties
-- No minimum quorum exists
-- Any member not voting before closure becomes AUTO_ABSTAIN_TIMEOUT
-- AUTO_ABSTAIN_TIMEOUT differs from manual ABSTAIN
-- Executive rejected requests remain permanently locked
 
 ---
 
@@ -490,15 +522,15 @@ GET /api/v1/engine-requests/{id}/documents/{document}/download
 ## Permission Matrix
 
 | Role               | Request Documents | SWIFT Document | External FX Confirmation PDF |
-| ------------------ | ----------------- | -------------- | ----------------------- |
-| DATA_ENTRY         | Own bank only     | No             | No                      |
-| BANK_REVIEWER      | Own bank only     | Own bank only  | Own bank only           |
-| BANK_ADMIN         | Own bank only     | Own bank only  | No                      |
-| SWIFT_OFFICER      | Own bank only     | Own bank only  | No                      |
-| SUPPORT_COMMITTEE  | Yes (all banks)   | No             | No                      |
-| EXECUTIVE_MEMBER   | Yes (all banks)   | Yes            | No                      |
-| COMMITTEE_DIRECTOR | Yes (all banks)   | Yes            | Yes                     |
-| CBY_ADMIN          | Yes (all banks)   | Yes            | Yes                     |
+| ------------------ | ----------------- | -------------- | ---------------------------- |
+| DATA_ENTRY         | Own bank only     | No             | No                           |
+| BANK_REVIEWER      | Own bank only     | Own bank only  | Own bank only                |
+| BANK_ADMIN         | Own bank only     | Own bank only  | No                           |
+| SWIFT_OFFICER      | Own bank only     | Own bank only  | No                           |
+| SUPPORT_COMMITTEE  | Yes (all banks)   | No             | No                           |
+| EXECUTIVE_MEMBER   | Yes (all banks)   | Yes            | No                           |
+| COMMITTEE_DIRECTOR | Yes (all banks)   | Yes            | Yes                          |
+| CBY_ADMIN          | Yes (all banks)   | Yes            | Yes                          |
 
 Document access is validated at the backend policy layer (per-stage `stage_permissions` plus bank scoping). Frontend visibility is not sufficient.
 Document API payloads do not expose a reusable `download_url`; clients should download with an authenticated request to the download endpoint above.
@@ -676,8 +708,12 @@ GET /api/dashboard/stats
 - Pending requests
 - Approved requests
 - Rejected requests
-- Voting statistics
 - Workflow counts
+
+Voting-related fields (`waiting_for_voting_open`, `active_voting_sessions`,
+`voting_queue`) still appear in the response shape but are hardcoded to
+zero/empty — Executive Voting is out of V1 and there is no live voting
+data to populate them.
 
 # Dashboard Philosophy
 
@@ -800,16 +836,16 @@ POST /api/admin/settings/{key}/reset
 
 ## Live settings keys and runtime consumers
 
-| Key | Default | Validation | Runtime consumer |
-| --- | --- | --- | --- |
-| `support_claim_ttl` | `15` | 5–60 minutes | `EngineClaimService` — claim TTL and heartbeat extension |
-| `pdf_upload_size_limit` | `10` | 1–50 MB | `UploadSizeLimit` — PDF upload `max:` rules on document/SWIFT/FX confirmation requests |
-| `login_lockout_attempts` | `5` | 1–20 attempts | `AuthSecuritySettings` → `AuthController` account lockout threshold |
-| `login_lockout_duration` | `15` | 5–60 minutes | `AuthSecuritySettings` → `AuthController` lockout window |
-| `mfa_required` | `false` | boolean | `AuthSecuritySettings` → login MFA gate, profile MFA restrictions, admin display |
-| `duplicate_invoice_policy` | `warn` | `warn` \| `block` | `DuplicateInvoiceChecker` — duplicate invoice precheck severity on create/transition |
-| `trusted_device_ttl_hours` | `24` | 1–720 hours | `AuthSecuritySettings` → `TrustedDeviceService` remembered-device expiry |
-| `step_up_window_minutes` | `10` | 1–120 minutes | `AuthSecuritySettings` → `StepUpService` step-up verification window |
+| Key                        | Default | Validation        | Runtime consumer                                                                       |
+| -------------------------- | ------- | ----------------- | -------------------------------------------------------------------------------------- |
+| `support_claim_ttl`        | `15`    | 5–60 minutes      | `EngineClaimService` — claim TTL and heartbeat extension                               |
+| `pdf_upload_size_limit`    | `10`    | 1–50 MB           | `UploadSizeLimit` — PDF upload `max:` rules on document/SWIFT/FX confirmation requests |
+| `login_lockout_attempts`   | `5`     | 1–20 attempts     | `AuthSecuritySettings` → `AuthController` account lockout threshold                    |
+| `login_lockout_duration`   | `15`    | 5–60 minutes      | `AuthSecuritySettings` → `AuthController` lockout window                               |
+| `mfa_required`             | `false` | boolean           | `AuthSecuritySettings` → login MFA gate, profile MFA restrictions, admin display       |
+| `duplicate_invoice_policy` | `warn`  | `warn` \| `block` | `DuplicateInvoiceChecker` — duplicate invoice precheck severity on create/transition   |
+| `trusted_device_ttl_hours` | `24`    | 1–720 hours       | `AuthSecuritySettings` → `TrustedDeviceService` remembered-device expiry               |
+| `step_up_window_minutes`   | `10`    | 1–120 minutes     | `AuthSecuritySettings` → `StepUpService` step-up verification window                   |
 
 All reads go through `SettingResolver::get()` (DB row first, config/bootstrap default fallback, 1-hour cache). Updates via `AdminSettingsService` call `SettingResolver::forget()` on write.
 
@@ -836,12 +872,12 @@ Exports are generated asynchronously. Poll `GET .../exports/{id}` until `status`
 
 CSV exports cap at **10,000** rows (`GenerateReportExport::ROW_LIMIT`). When more rows match the filters, the job sets:
 
-| Field | Meaning |
-| ----- | ------- |
-| `total_matching` | Rows matching filters before the cap |
-| `exported_count` | Rows written to the file (≤ 10,000) |
-| `truncated` | `true` when `total_matching` > `exported_count` |
-| `truncation_note` | User-facing Arabic/English note when truncated |
+| Field             | Meaning                                         |
+| ----------------- | ----------------------------------------------- |
+| `total_matching`  | Rows matching filters before the cap            |
+| `exported_count`  | Rows written to the file (≤ 10,000)             |
+| `truncated`       | `true` when `total_matching` > `exported_count` |
+| `truncation_note` | User-facing Arabic/English note when truncated  |
 
 The CSV preamble (first line after BOM) repeats the truncation summary. Clients should surface `truncation_note` or an equivalent toast when `truncated` is true.
 
@@ -1007,14 +1043,14 @@ There is no separate `WORKFLOW_LOCKED_STATE` code for non-terminal locked stages
 
 ---
 
-# Voting Concurrency Protection
+# Transition Concurrency Protection
 
-There is no dedicated `POST /api/voting/{id}/vote` or `.../close` endpoint. Vote submission and voting-session closure are both executed via `POST /api/v1/engine-requests/{id}/actions`, and `EngineTransitionService::execute()` uses database-level pessimistic locking (`lockForUpdate()`) on the `EngineRequest` row for every transition, which covers vote submission and session closure against race conditions.
+`EngineTransitionService::execute()` uses database-level pessimistic locking (`lockForUpdate()`) on the `EngineRequest` row for **every** transition through `POST /api/v1/engine-requests/{id}/actions` — this is the same locking already described under Execute a Workflow Action above, not a mechanism specific to any one transition type.
 
 Behavior:
+
 - A transition attempted against a stale `version` is rejected with `REQUEST_STALE` (409) rather than applied.
 - All transitions are transactional.
-- Session closure atomically marks all non-voted members as `AUTO_ABSTAIN_TIMEOUT` (per the business rules in `docs/01-workflow-and-business-rules.md`).
 
 ---
 
@@ -1026,8 +1062,7 @@ The backend must guarantee:
 - Bank visibility is organization-scoped
 - Actions remain role-scoped
 - Queue visibility is operationally scoped
-- Support queues are workflow-scoped
-- Executive queues are voting-scoped
+- Every role's queue (Support, Executive, and all others) resolves through the same stage-permission-scoped mechanism (`StagePermissionResolver`/`UserActionableRequestQuery`) — none has a bespoke scoping rule
 
 Data Entry users:
 
