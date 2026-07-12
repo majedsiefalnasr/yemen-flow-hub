@@ -34,6 +34,11 @@ class EngineRequestResource extends JsonResource
             'id' => $this->id,
             'reference' => $this->reference,
             'status' => $this->status,
+            // M6 canonical state contract: an explicit alias for `status` so the
+            // frontend can migrate off the legacy 22-value RequestStatus enum onto
+            // {runtime_status, current_stage.semantic_role, final_outcome} without
+            // relying on the ambiguous bare `status` key. Same value as `status`.
+            'runtime_status' => $this->status,
             'version' => $this->version,
             'workflow_version_id' => $this->workflow_version_id,
             'workflow_version' => $this->whenLoaded('workflowVersion', fn () => [
@@ -50,11 +55,23 @@ class EngineRequestResource extends JsonResource
                 'id' => $this->currentStage->id,
                 'code' => $this->currentStage->code,
                 'name' => $this->currentStage->name,
+                // Nullable: stages on workflow versions published before WP-4
+                // (semantic metadata) or versions pinned before this rollout may
+                // have no semantic_role set. Consumers must not assume non-null.
+                'semantic_role' => $this->currentStage->semantic_role?->value,
                 'is_initial' => $this->currentStage->is_initial,
                 'is_final' => $this->currentStage->is_final,
                 'sla_duration_minutes' => $this->currentStage->sla_duration_minutes,
                 'requires_claim' => $this->currentStage->requires_claim,
             ]),
+            // M6 canonical state contract: how the request ended, distinct from the
+            // in-flight semantic_role. Only meaningful once the request has reached
+            // its final stage; null while still active. Sourced from the current
+            // (final) stage's own final_outcome column, not a request-level column.
+            'final_outcome' => $this->when(
+                $this->relationLoaded('currentStage') && $this->currentStage !== null && $this->currentStage->is_final,
+                fn () => $this->currentStage->final_outcome?->value,
+            ),
             // Whether the signed-in user may EXECUTE the current stage. Drives the
             // detail page's action panel and edit mode. Assignment-based even for
             // system admins (admins widen visibility, never execute authority),
