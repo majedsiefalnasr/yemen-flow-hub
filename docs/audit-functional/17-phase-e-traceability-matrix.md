@@ -1,10 +1,19 @@
-# Phase E — 17-Finding Traceability Matrix
+# Phase E — Findings Traceability Matrix
 
 **Evidence date:** 2026-07-12 · **Baseline:** `main` post-`5212d91d` (Phase D close)
 
 Maps every finding from [`04-final-report.md`](./04-final-report.md) §6 to its
 fix commit, automated test, manual verification, and current status. Built as
 part of Phase E item 9 (regression-hardening and system-verification phase).
+
+**Canonical count (reconciled 2026-07-12):** `04-final-report.md` §6 tracks
+**16 original findings** (verified by direct row count — see reconciliation
+note below). Phase E surfaced **1 additional finding** (E8-001) during
+verification, for **17 findings total across the audit's full lifecycle**.
+Earlier checkpoint prose in this session incorrectly implied WF-002 had no
+standalone row (it does — see the corrected table below); that was a
+drafting error in this matrix, not a change to the source audit record or
+any finding ID. No ID has been renumbered, merged, or dropped.
 
 **Status legend:** ✅ RESOLVED (fix landed, verified) · 🟡 DEFERRED (explicitly
 gated to a later phase, tracked) · ⚪ N/A (accepted V1 behavior, not a defect)
@@ -18,6 +27,7 @@ gated to a later phase, tracked) · ⚪ N/A (accepted V1 behavior, not a defect)
 | **RBAC-002**        | High     | `3e0c5a43` fix(auth): reject admin-only and universal screen grants in update API                                 | `Phase2RbacProbeTest` (cf2 admin-only-screen cases) — green post-fix                                                                                              | —                                                                                                                                 | ✅ RESOLVED                                                                |
 | **RBAC-001**        | High     | `2978881f` fix(auth): authorize only the active pivot on an active role                                            | `Phase2RbacProbeTest` (cf1 inactive-pivot cases) — green post-fix                                                                                                 | —                                                                                                                                 | ✅ RESOLVED                                                                |
 | **WF-001**          | High     | `ef99c8b5` (same V2 build — B1: reasoned rejects + explicit self-loop)                                             | `Phase3WorkflowConfigurationProbeTest` (3/3, fixed to seed V2 in Phase E1 — was stale-config false-positive, not a live regression) · `PublishImportFinancingV2CommandTest` | —                                                                                                                                 | ✅ RESOLVED                                                                |
+| **WF-002** _(re-scoped Critical→High post-M1)_ | High | `ef99c8b5` (same V2 build — B2: FINAL stage EXECUTE moved `committee_manager`→`committee_director`, reasoned rejects) | `PublishImportFinancingV2CommandTest` (asserts FINAL ownership post-build) · `OutcomeSemanticsTest` (final-outcome transition semantics) · full RBAC matrix re-run (Phase E2) confirms Director-only FINAL execute | Live (Phase E2/E5): Director role's FINAL-stage EXECUTE confirmed via the role/permission matrix; Executive Member deciding at EXEC (not voting) is accepted V1, not a defect | ✅ RESOLVED                                                                |
 | **RBAC-005**        | High     | `39e74922` fix(workflow): align Director dashboard with its FINAL queue (UI-FX-001/RBAC-005)                      | —                                                                                                                                                                  | Live (Phase E6): Director's `/workflows` nav link resolves without a 403 redirect                                              | ✅ RESOLVED                                                                |
 | **UI-FX-001**       | High     | `39e74922` (same commit — Director dashboard/`/customs` queue unification)                                        | —                                                                                                                                                                  | Live (Phase E5): Director dashboard "0" matches `/customs` "طلبات جاهزة للإصدار (0)" — counts agree                             | ✅ RESOLVED                                                                |
 | **API-UI-001**      | High     | `18552127` docs(workflow): record Phase C checkpoint (API-UI-001, UI-RBAC, Director parity) + underlying MySQL/single-flight fix | —                                                                                                                                                                  | Live: no retry-storm observed in this session's `/customs`, `/workflows` navigation (isolated 429s were this session's own rapid testing pace, confirmed via clean reload) | ✅ RESOLVED                                                                |
@@ -29,19 +39,19 @@ gated to a later phase, tracked) · ⚪ N/A (accepted V1 behavior, not a defect)
 | **CF-6 / F-DOC-1**  | Medium   | `9e4dfe06`, `a0c7a44d`...`5212d91d` (Phase D's full AGENTS.md rewrite, esp. the D Step 11 doc-reconciliation commits) | —                                                                                                                                                                  | Phase E9: `grep -n "22-status\|8-role" AGENTS.md` → 0 hits; canonical 4-concept state model + 8-role enum both current           | ✅ RESOLVED                                                                |
 | **STATUS-DRIFT-001**| High     | `99b5de7f`, `8b9388df`, `1451185d`, plus the full Phase D Steps 8-12 sequence (RequestStatus enum + all 1,119 refs removed) | 24+ frontend test files updated/added across Phase D; `types/enums.test.ts` confirms no `RequestStatus` export exists                                            | Live: verified across System Admin, Bank Admin, Director, SWIFT Officer, Data Entry, Bank Reviewer, Support Committee, Executive Member (Phase E6) — all read `runtime_status`/`current_stage`/`semantic_role`/`final_outcome`, zero references to the deleted enum | ✅ RESOLVED                                                                |
 
-**WF-002** (re-scoped Critical→High post-M1, see `04-final-report.md` §6 note)
-is folded into the same `ef99c8b5` V2 build (B2: FINAL EXECUTE moved from
-`committee_manager` to `committee_director`) — not a separate row above
-because the final report's finding table treats it as a footnoted variant of
-the WF-001 row group; its two concrete defects (FINAL ownership, reasoned
-rejects) are both covered by the same commit and the same
-`PublishImportFinancingV2CommandTest`/`OutcomeSemanticsTest` suites. Verified
-live: Director-only FINAL-stage EXECUTE confirmed via the role/permission
-matrix in Phase E2's full RBAC run.
+**WF-002 re-scope note** (context, not a status change): the M1 designer-first
+review originally framed WF-002 as "Executive Members wrongly decide instead
+of voting" — that framing was withdrawn (Executive Voting is out of V1;
+Executive Committee deciding directly at EXEC is accepted V1 behavior).
+WF-002 was downgraded Critical→High and narrowed to its two remaining
+concrete defects (FINAL ownership, reasoned rejects), both resolved by the
+same `ef99c8b5` V2 build as WF-001/WF-003 — see the WF-002 row above. This
+narrowing happened during the original audit (pre-Phase-A), not during
+Phase E; it does not change the finding count.
 
 ---
 
-## New finding surfaced during Phase E (not in the original 17)
+## New finding surfaced during Phase E (not in the original 16)
 
 **E8-001 (Medium, RESOLVED same session).** `runAction()` in
 `frontend/app/pages/workflows/instances/[id].vue` silently swallowed every
@@ -61,12 +71,15 @@ reference.
 
 | Status                                  | Count |
 | ---------------------------------------- | ----- |
-| ✅ RESOLVED                              | 16    |
+| Original findings (`04-final-report.md` §6, verified row count) | 16 |
+| ✅ RESOLVED (original findings)          | 16    |
+| New finding surfaced + resolved in Phase E | 1 (E8-001) |
+| **Total findings tracked across the audit's full lifecycle** | **17** |
 | 🟡 DEFERRED (Phase F, tracked, non-blocking) | 0 (CF-5's dead-code cleanup is tracked but not a live defect) |
-| New findings surfaced + resolved in Phase E | 1 (E8-001) |
 
-All 16 tracked findings from the original audit are resolved with commit +
-test + verification evidence. The compatibility fallback
+All 16 original findings plus the 1 finding discovered during Phase E
+verification (E8-001) are resolved with commit + test + verification
+evidence — 17 findings total, 17 resolved, 0 open. The compatibility fallback
 (`SemanticRegistry::stageCodeAliases()`) remains intentionally active per its
 documented exit criteria (see `AGENTS.md` — not itself a finding, a tracked
 temporary mechanism). Backend voting-model artifacts (`VoteType` enum,
