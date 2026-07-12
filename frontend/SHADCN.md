@@ -206,14 +206,14 @@ import {
   TableEmpty,
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
-import StatusBadge from '@/components/shared/StatusBadge.vue'
+import { Badge } from '@/components/ui/badge'
 </script>
 
 <Card class="border-0 shadow" aria-labelledby="queue-heading">
   <CardHeader class="pb-2">
     <div class="flex items-center justify-between">
       <CardTitle id="queue-heading" class="text-sm font-semibold">طابور العمل</CardTitle>
-      <Button variant="link" size="sm" class="text-xs h-auto p-0" @click="router.push('/requests')">عرض الكل</Button>
+      <Button variant="link" size="sm" class="text-xs h-auto p-0" @click="router.push('/workflows')">عرض الكل</Button>
     </div>
   </CardHeader>
   <CardContent class="p-0">
@@ -221,9 +221,9 @@ import StatusBadge from '@/components/shared/StatusBadge.vue'
       <TableHeader>
         <TableRow>
           <TableHead class="text-right">المرجع</TableHead>
-          <TableHead class="text-right">المورد</TableHead>
+          <TableHead class="text-right">المستورد</TableHead>
           <TableHead class="text-right">المبلغ</TableHead>
-          <TableHead class="text-right">الحالة</TableHead>
+          <TableHead class="text-right">المرحلة</TableHead>
           <TableHead class="text-right">إجراء</TableHead>
         </TableRow>
       </TableHeader>
@@ -232,14 +232,16 @@ import StatusBadge from '@/components/shared/StatusBadge.vue'
           v-for="req in queue.slice(0, 8)"
           :key="req.id"
           class="cursor-pointer"
-          @click="router.push(`/requests/${req.id}`)"
+          @click="router.push(`/workflows/instances/${req.id}`)"
         >
-          <TableCell class="font-mono text-primary">{{ req.reference_number }}</TableCell>
-          <TableCell>{{ req.supplier_name }}</TableCell>
+          <TableCell class="font-mono text-primary">{{ req.reference }}</TableCell>
+          <TableCell>{{ req.merchant?.name ?? 'غير متاح' }}</TableCell>
           <TableCell class="font-mono">{{ formatAmount(req.amount, req.currency) }}</TableCell>
-          <TableCell><StatusBadge :status="req.status" :role="userRole" /></TableCell>
+          <!-- Status badge: build inline from current_stage / runtime_status / final_outcome
+               and the semantic token map — there is no shared StatusBadge component. -->
+          <TableCell><Badge :class="stageBadgeClass(req)">{{ req.current_stage?.name }}</Badge></TableCell>
           <TableCell @click.stop>
-            <Button size="sm" variant="outline" @click="router.push(`/requests/${req.id}`)">عرض</Button>
+            <Button size="sm" variant="outline" @click="router.push(`/workflows/instances/${req.id}`)">عرض</Button>
           </TableCell>
         </TableRow>
         <TableEmpty v-if="queue.length === 0" :columns="5">
@@ -307,10 +309,7 @@ import { Badge } from '@/components/ui/badge'
 <!-- Outline -->
 <Badge variant="outline">مسودة</Badge>
 
-<!-- Custom semantic color (when StatusBadge is not appropriate) -->
-<Badge class="border border-[var(--voting)]/30 bg-[var(--voting)]/10 text-[var(--voting)]">
-  تصويت مفتوح
-</Badge>
+<!-- Custom semantic color (build inline from runtime_status/current_stage/final_outcome; no shared StatusBadge component) -->
 <Badge
   class="border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/10 text-[var(--severity-green)]"
 >

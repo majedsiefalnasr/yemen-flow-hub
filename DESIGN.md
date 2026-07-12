@@ -345,9 +345,9 @@ Badges use shadcn `Badge` (`badgeVariants`):
 - **Shape:** `rounded-4xl` (chip), height `h-5` (20px), padding `px-2 py-0.5`.
 - **Font:** `text-xs font-medium`.
 - **Variants:** `default` (brand), `secondary` (muted), `destructive` (red), `outline`.
-- **Custom semantic chips:** when `StatusBadge` is not appropriate, tint with a token at /10 plus a /30 border, e.g. voting: `bg-[var(--voting)]/10 text-[var(--voting)] border border-[var(--voting)]/30`.
+- **Semantic chips:** tint with a token at /10 plus a /30 border, e.g. `bg-[var(--severity-green)]/10 text-[var(--severity-green)] border border-[var(--severity-green)]/30`.
 
-Always prefer the role-aware `<StatusBadge :status :role />` over hand-built chips.
+Status presentation reads `current_stage.name` (the designer-defined stage label) plus `runtime_status`/`final_outcome` for terminal state — never a static frontend status enum. There is no shared `StatusBadge` component; build the badge inline from `Badge` + the semantic token for the stage/outcome, as `BankAdminDashboard.vue` does.
 
 ---
 

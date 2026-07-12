@@ -53,7 +53,7 @@ This is NOT a public SaaS app. It is an institutional back-office tool used dail
 ## Strategic Principles
 
 1. **Queue-first.** Every role dashboard starts with its primary operational queue. Supporting numbers are secondary.
-2. **Status is everything.** The 22-status canonical enum drives every visual decision. StatusBadge is always role-aware.
+2. **Status is everything.** The canonical request state (`runtime_status`, `current_stage`, `semantic_role`, `final_outcome`) drives every visual decision — never a static frontend status enum.
 3. **No speculative UI.** Never render a feature whose status or role guard is uncertain. Ask the docs first.
 4. **Empty states are healthy.** An empty queue means the operator is caught up. Communicate this positively.
 5. **Errors are recoverable.** Every error state has a retry action. Never leave the user stuck.

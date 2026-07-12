@@ -156,18 +156,23 @@ class="text-start"   <!-- not text-left -->
 
 ## 7 — Status Badge Color Mapping
 
-Every status badge is role-aware (use `<StatusBadge :status="..." :role="UserRole.xxx" />`).  
-When building custom inline chips (not StatusBadge), use this mapping:
+Status is never a static frontend enum. Read `runtime_status` (ACTIVE/CLOSED/
+REJECTED/CANCELLED/ABANDONED), `current_stage` (designer-defined stage code +
+name + `semantic_role`), and `final_outcome` (COMPLETED/REJECTED/CANCELLED/
+ABANDONED/null) from the API, and build a `Badge` inline with the matching
+semantic token — see `BankAdminDashboard.vue`'s `RUNTIME_STATUS_BADGE` map for
+the reference pattern. There is no shared `StatusBadge` component.
 
 | Status category                 | Color token                    | bg/10 tint                      |
 | ------------------------------- | ------------------------------ | ------------------------------- |
 | Approved / Completed / Uploaded | `--severity-green`             | `bg-[var(--severity-green)]/10` |
 | Rejected / Error                | `--severity-red`               | `bg-[var(--severity-red)]/10`   |
 | Pending / Action required       | `--severity-amber`             | `bg-[var(--severity-amber)]/10` |
-| Voting open/closed              | `--voting`                     | `bg-[var(--voting)]/10`         |
 | SWIFT stages                    | `--info`                       | `bg-[var(--info)]/10`           |
 | Locked / Immutable              | `--locked`                     | `bg-[var(--locked)]/10`         |
 | In progress / Neutral           | `text-foreground` + `bg-muted` |                                 |
+
+Executive Voting is not part of V1 — do not add a voting badge category.
 
 ---
 

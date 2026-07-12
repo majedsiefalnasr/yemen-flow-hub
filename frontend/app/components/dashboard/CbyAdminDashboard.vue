@@ -7,7 +7,6 @@ import { useRouter } from 'vue-router'
 import {
   Activity,
   AlertTriangle,
-  Vote,
   DollarSign,
   ShieldAlert,
   Server,
@@ -106,12 +105,6 @@ const KPI_CONFIGS: KpiConfig[] = [
     label: 'انتهاكات SLA',
     icon: AlertTriangle,
     drilldown: '/workflows?tab=needs_attention',
-  },
-  {
-    key: 'open_voting_sessions',
-    label: 'جلسات تصويت مفتوحة',
-    icon: Vote,
-    drilldown: '/workflows?tab=executive_voting',
   },
   {
     key: 'fx_confirmation_pending',
@@ -258,7 +251,6 @@ const bankRiskColumns: ColumnDef<CbyAdminBankRiskRow>[] = [
 
 // ── Critical events ─────────────────────────────────────────────────────────
 const GOVERNANCE_EVENT_ICONS: Record<string, typeof Activity> = {
-  voting_finalized: CheckCircle2,
   fx_completed: DollarSign,
   role_changed: ShieldAlert,
   security_login: AlertTriangle,
@@ -411,81 +403,27 @@ onMounted(() => {
         </CardContent>
       </Card>
 
-      <!-- Two-column: Executive Voting Oversight + Bank Risk Intelligence -->
-      <div class="grid grid-cols-2 gap-6 max-lg:grid-cols-1">
-        <!-- Executive Voting Oversight -->
-        <Card class="border-0 shadow" aria-labelledby="voting-oversight-heading">
-          <CardHeader class="pb-3">
-            <CardTitle id="voting-oversight-heading" class="text-sm font-semibold"
-              >الإشراف على التصويت التنفيذي</CardTitle
-            >
-            <CardDescription class="text-xs">جلسات التصويت المفتوحة (قراءة فقط)</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div
-              v-if="!stats.executive_voting_sessions?.length"
-              class="text-muted-foreground py-8 text-center text-sm"
-              role="status"
-            >
-              <CheckCircle2
-                class="mx-auto mb-2 size-6 text-[var(--severity-green)]"
-                aria-hidden="true"
-              />
-              لا توجد جلسات تصويت مفتوحة
-            </div>
-            <ul v-else class="flex flex-col gap-3">
-              <li
-                v-for="session in stats.executive_voting_sessions"
-                :key="session.id"
-                class="border-border hover:border-primary/40 flex cursor-pointer flex-col gap-1.5 rounded-lg border p-3 transition-colors"
-                @click="router.push(`/workflows/instances/${session.id}`)"
-              >
-                <div class="flex items-center justify-between gap-2">
-                  <span class="text-primary font-mono text-xs">{{ session.reference_number }}</span>
-                  <span class="text-muted-foreground text-xs">{{
-                    formatDateShort(session.opened_at)
-                  }}</span>
-                </div>
-                <div class="flex items-center justify-between gap-2">
-                  <span class="text-foreground text-xs">{{ session.bank_name }}</span>
-                  <span class="text-xs font-medium">{{
-                    new Intl.NumberFormat('en-US', {
-                      style: 'currency',
-                      currency: session.currency,
-                      maximumFractionDigits: 0,
-                    }).format(session.amount)
-                  }}</span>
-                </div>
-                <div v-if="session.waiting_for.length" class="text-xs text-[var(--severity-amber)]">
-                  <span class="font-medium">بانتظار: </span>{{ session.waiting_for.join('، ') }}
-                </div>
-              </li>
-            </ul>
-          </CardContent>
-        </Card>
-
-        <!-- Bank Risk Intelligence -->
-        <RankedListCard
-          title="استخبارات مخاطر البنوك"
-          description="انقر على العمود للفرز"
-          content-class="p-0"
-          aria-labelledby="bank-risk-heading"
+      <!-- Bank Risk Intelligence -->
+      <RankedListCard
+        title="استخبارات مخاطر البنوك"
+        description="انقر على العمود للفرز"
+        content-class="p-0"
+        aria-labelledby="bank-risk-heading"
+      >
+        <div
+          v-if="!sortedBankRisk.length"
+          class="text-muted-foreground py-8 text-center text-sm"
+          role="status"
         >
-          <div
-            v-if="!sortedBankRisk.length"
-            class="text-muted-foreground py-8 text-center text-sm"
-            role="status"
-          >
-            لا توجد بيانات مخاطر
-          </div>
-          <DataTable
-            v-else
-            :data="sortedBankRisk"
-            :columns="bankRiskColumns"
-            @row-click="(row) => router.push(`/workflows?bank=${row.bank_id}`)"
-          />
-        </RankedListCard>
-      </div>
+          لا توجد بيانات مخاطر
+        </div>
+        <DataTable
+          v-else
+          :data="sortedBankRisk"
+          :columns="bankRiskColumns"
+          @row-click="(row) => router.push(`/workflows?bank=${row.bank_id}`)"
+        />
+      </RankedListCard>
 
       <!-- Compliance & Audit Signals -->
       <section v-if="stats.compliance_signals?.length" aria-labelledby="signals-heading">
@@ -553,11 +491,7 @@ onMounted(() => {
 
       <!-- Empty state when no governance data yet -->
       <div
-        v-if="
-          !stats.workflow_pressure_map?.length &&
-          !stats.executive_voting_sessions?.length &&
-          !stats.bank_risk_intelligence?.length
-        "
+        v-if="!stats.workflow_pressure_map?.length && !stats.bank_risk_intelligence?.length"
         class="border-border rounded-xl border border-dashed p-8 text-center"
         role="status"
       >

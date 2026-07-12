@@ -10,7 +10,6 @@ import type {
   CbyAdminDashboardStats,
   CbyAdminKpi,
   CbyAdminWorkflowPressureRow,
-  CbyAdminVotingSession,
   CbyAdminComplianceSignal,
   CbyAdminCriticalEvent,
 } from '../../../composables/useDashboard'
@@ -73,12 +72,6 @@ describe('CbyAdminDashboard 12.2 — resolvedKpi()', () => {
   it('returns fallback for system_availability when absent', () => {
     const stats = makeBaseStats()
     expect(resolvedKpi(stats, 'system_availability').value).toBe(0)
-  })
-
-  it('returns open_voting_sessions KPI when present', () => {
-    const kpi = makeKpi({ value: 3, severity: 'amber' })
-    const stats = makeBaseStats({ open_voting_sessions: kpi })
-    expect(resolvedKpi(stats, 'open_voting_sessions').value).toBe(3)
   })
 
   it('treats a plain numeric value (legacy shape) as fallback with blue severity', () => {
@@ -192,11 +185,10 @@ describe('CbyAdminDashboard 12.2 — severity helpers', () => {
 // ── Governance stats shape ────────────────────────────────────────────────────
 
 describe('CbyAdminDashboard 12.2 — governance stats optional fields', () => {
-  it('all 6 KPI slots are optional on CbyAdminDashboardStats', () => {
+  it('all 5 KPI slots are optional on CbyAdminDashboardStats', () => {
     const stats = makeBaseStats()
     expect(stats.active_workflow_requests).toBeUndefined()
     expect(stats.sla_violations).toBeUndefined()
-    expect(stats.open_voting_sessions).toBeUndefined()
     expect(stats.fx_confirmation_pending).toBeUndefined()
     expect(stats.bank_risk_alerts).toBeUndefined()
     expect(stats.system_availability).toBeUndefined()
@@ -205,18 +197,16 @@ describe('CbyAdminDashboard 12.2 — governance stats optional fields', () => {
   it('governance panel fields are optional on CbyAdminDashboardStats', () => {
     const stats = makeBaseStats()
     expect(stats.workflow_pressure_map).toBeUndefined()
-    expect(stats.executive_voting_sessions).toBeUndefined()
     expect(stats.bank_risk_intelligence).toBeUndefined()
     expect(stats.compliance_signals).toBeUndefined()
     expect(stats.critical_events).toBeUndefined()
   })
 
-  it('all 6 KPI slots can be populated', () => {
+  it('all 5 KPI slots can be populated', () => {
     const kpi = makeKpi({ value: 10, severity: 'amber' })
     const stats = makeBaseStats({
       active_workflow_requests: kpi,
       sla_violations: kpi,
-      open_voting_sessions: kpi,
       fx_confirmation_pending: kpi,
       bank_risk_alerts: kpi,
       system_availability: kpi,
@@ -224,7 +214,6 @@ describe('CbyAdminDashboard 12.2 — governance stats optional fields', () => {
     const keys: (keyof CbyAdminDashboardStats)[] = [
       'active_workflow_requests',
       'sla_violations',
-      'open_voting_sessions',
       'fx_confirmation_pending',
       'bank_risk_alerts',
       'system_availability',
@@ -247,20 +236,6 @@ describe('CbyAdminDashboard 12.2 — governance stats optional fields', () => {
     expect(row.trend).toBe('up')
   })
 
-  it('executive_voting_session carries waiting_for member list', () => {
-    const session: CbyAdminVotingSession = {
-      id: 5,
-      reference_number: 'YFH-2026-000005',
-      bank_name: 'بنك اليمن المركزي',
-      amount: 250000,
-      currency: 'USD',
-      opened_at: '2026-05-26T10:00:00.000000Z',
-      waiting_for: ['Ahmed', 'Sara'],
-    }
-    expect(session.waiting_for).toHaveLength(2)
-    expect(session.waiting_for[0]).toBe('Ahmed')
-  })
-
   it('compliance_signal carries link_route for drilldown', () => {
     const signal: CbyAdminComplianceSignal = {
       id: 'dup-suppliers-2026-05-26',
@@ -278,13 +253,13 @@ describe('CbyAdminDashboard 12.2 — governance stats optional fields', () => {
   it('critical_event carries event_type and summary', () => {
     const event: CbyAdminCriticalEvent = {
       id: 1,
-      event_type: 'voting_finalized',
-      summary: 'تم اعتماد جلسة تصويت YFH-2026-000005 بقرار نهائي',
-      actor_name: 'لجنة التنفيذية',
+      event_type: 'fx_completed',
+      summary: 'تم إصدار تأكيد المصارفة الخارجية للطلب YFH-2026-000005',
+      actor_name: 'مدير اللجنة',
       created_at: '2026-05-26T10:00:00.000000Z',
       link_route: '/workflows/instances/5',
     }
-    expect(event.event_type).toBe('voting_finalized')
+    expect(event.event_type).toBe('fx_completed')
     expect(event.summary).toContain('YFH-2026')
   })
 })

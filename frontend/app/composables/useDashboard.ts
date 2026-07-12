@@ -93,16 +93,6 @@ export interface CbyAdminWorkflowPressureRow {
   trend: 'up' | 'stable' | 'down'
 }
 
-export interface CbyAdminVotingSession {
-  id: number
-  reference_number: string
-  bank_name: string
-  amount: number
-  currency: string
-  opened_at: string
-  waiting_for: string[]
-}
-
 export interface CbyAdminBankRiskRow {
   bank_id: number
   bank_name: string
@@ -115,7 +105,7 @@ export interface CbyAdminBankRiskRow {
 
 export interface CbyAdminComplianceSignal {
   id: string
-  type: 'sla_breach' | 'duplicate_invoice' | 'high_risk_bank' | 'stale_vote' | 'audit_anomaly'
+  type: 'sla_breach' | 'duplicate_invoice' | 'high_risk_bank' | 'audit_anomaly'
   title: string
   description: string
   severity: 'red' | 'amber' | 'blue'
@@ -145,13 +135,11 @@ export interface CbyAdminDashboardStats {
   // governance KPIs
   active_workflow_requests?: CbyAdminKpi
   sla_violations?: CbyAdminKpi
-  open_voting_sessions?: CbyAdminKpi
   fx_confirmation_pending?: CbyAdminKpi
   bank_risk_alerts?: CbyAdminKpi
   system_availability?: CbyAdminKpi
   // governance panels
   workflow_pressure_map?: CbyAdminWorkflowPressureRow[]
-  executive_voting_sessions?: CbyAdminVotingSession[]
   bank_risk_intelligence?: CbyAdminBankRiskRow[]
   compliance_signals?: CbyAdminComplianceSignal[]
   critical_events?: CbyAdminCriticalEvent[]

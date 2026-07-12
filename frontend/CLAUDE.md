@@ -15,7 +15,7 @@ Commit frontend changes from the root repository:
 
 ```bash
 git add frontend/<files>
-git commit -m "feat(voting): add session open/close director controls"
+git commit -m "feat(workflow): add FX confirmation signed-document upload"
 ```
 
 Conventional commit format: `type(scope): description`
@@ -24,7 +24,7 @@ Never add or commit generated artifacts from `graphify-out/`, `_bmad-output/impl
 
 Examples:
 
-- `feat(voting): add session open/close director controls`
+- `feat(workflow): add FX confirmation signed-document upload`
 - `fix(support-queue): show heartbeat claim indicator`
 - `style(rtl): fix table alignment in request details`
 
@@ -46,37 +46,20 @@ Business logic stays in composables, stores, and services. Components are presen
 ### Project structure
 
 ```
-frontend/
+frontend/app/
 ├── components/
 │   ├── ui/          ← shadcn-vue primitives only
-│   ├── forms/       ← Form components
-│   ├── workflow/    ← Workflow-specific components
-│   ├── voting/      ← Voting interface components
-│   ├── dashboard/   ← Queue/dashboard widgets
-│   ├── audit/       ← Audit trail components
-│   ├── tables/      ← Data tables
-│   └── layout/      ← Layout components
-├── composables/
-│   ├── useAuth.ts
-│   ├── usePermissions.ts
-│   ├── useWorkflow.ts
-│   ├── useVoting.ts
-│   └── useApi.ts
-├── stores/
-│   ├── auth.store.ts
-│   ├── requests.store.ts
-│   ├── workflow.store.ts
-│   ├── voting.store.ts
-│   └── notifications.store.ts
-├── services/
-│   ├── api/
-│   ├── auth/
-│   ├── requests/
-│   └── voting/
+│   ├── workflow/    ← Engine-request-specific components (forms, FX confirmation, SWIFT)
+│   ├── dashboard/   ← MyWorkDashboard + the two analytics dashboards (Bank/System Admin)
+│   ├── banners/     ← Claim/lock/correction state banners
+│   ├── shared/       ← Cross-cutting presentation widgets
+│   └── admin/       ← Governance/admin screens (roles, orgs, teams, screen permissions)
+├── composables/     ← useEngine*, useDashboard, useDashboardWork, useAuth, etc.
+├── stores/          ← auth, dashboard, dashboardWork, engineRequests, notifications, org, settings
 ├── middleware/
-│   ├── auth.ts
-│   ├── guest.ts
-│   └── role.ts
+│   ├── auth.ts / auth.global.ts / guest.ts
+│   ├── role.ts
+│   └── screen.ts
 ├── pages/
 ├── layouts/
 ├── types/
@@ -114,10 +97,8 @@ Frontend permissions are for UX only (hiding actions). Backend is the source of 
 
 ### Status handling
 
-- Internal statuses: use the canonical enum from `AGENTS.md` exactly
-- Data Entry users receive **simplified statuses** only (see mapping in `../docs/01-workflow-and-business-rules.md`)
-- Never show CBY internal workflow stages to Data Entry users
-- Status → simplified label mapping must be centralized in a single composable/constant
+- Use the canonical request state model from `AGENTS.md`: `runtime_status`, `current_stage` (designer-defined stage, incl. `semantic_role`), and `final_outcome` — never a static frontend status enum
+- Never show CBY internal workflow stages to Data Entry users; the current stage's designer label and the runtime status drive what a role sees, not a hardcoded per-role status map
 
 ### Support claim heartbeat
 
@@ -135,10 +116,6 @@ Locked workflow states must visually communicate lock:
 - Lock icon + "Locked" badge
 - `#f5f5f7` field backgrounds with `#8e8e93` text
 - Read-only banner at top of request
-
-### Voting concurrency UI
-
-After submitting a vote, optimistically update the UI. If server returns `VOTING_SESSION_CLOSED`, revert and show notification.
 
 ## Design Tokens (from DESIGN.md)
 
@@ -177,13 +154,13 @@ Container max: `1600px`. Sidebar: `280px` expanded / `72px` collapsed. Grid: `8p
 /staff            ← CBY Admin only
 ```
 
-The legacy `/requests`, `/requests/new`, `/requests/[id]`, `/voting`, `/voting/[id]`, top-level `/users`, and top-level `/banks` routes no longer exist. Executive voting is presented within `/workflows/instances/[id]` when the request's current stage is a voting stage, not on a separate `/voting` route.
+The legacy `/requests`, `/requests/new`, `/requests/[id]`, `/voting`, `/voting/[id]`, top-level `/users`, and top-level `/banks` routes no longer exist. Executive Voting is not part of V1 — there is no voting UI anywhere, including within `/workflows/instances/[id]`.
 
 ## Anti-patterns (never generate)
 
 - Shared analytics dashboards visible to all roles equally
 - Charts, KPIs, or vanity metrics on operational dashboards
-- `INTERNAL_REJECTED` or `WAITING_SWIFT` status values (wrong enum names)
+- A static frontend status enum (`RequestStatus`-style) reconstructing state from labels instead of reading `runtime_status`/`current_stage`/`final_outcome`
 - LTR layouts adapted to RTL by just flipping direction
 - Business logic inside Vue `<script setup>` directly
 - Frontend-only visibility filtering without backend enforcement

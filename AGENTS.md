@@ -145,16 +145,26 @@ Frontend lint must pass with zero warnings. Do not disable rules broadly to hide
 
 ## Documentation — Source of Truth
 
-All implementation decisions must follow these docs in order of authority:
+The **Workflow Designer and the runtime engine are authoritative** for
+workflow stages, transitions, permissions, and semantic metadata — not a
+static doc. `docs/user-view/*.md` is **deprecated historical material**: it
+predates the dynamic workflow engine and describes a per-role static-status
+UX model that no longer matches the shipped architecture (fixed role
+dashboards, the 22-value status enum, voting UI). Do not treat it as current
+UX authority; it is retained only as historical record of the original
+static-role design intent. For current UI decisions, follow the shipped
+`frontend/` code, `DESIGN.md`, `frontend/DESIGN.md`, `frontend/SHADCN.md`,
+and the canonical request state model above.
 
-1. `docs/user-view/*.md` — enterprise-grade per-role UX specifications (operational posture, dashboard structure, page interaction patterns, status presentation, density, micro-copy, RTL, non-visibility)
-2. `docs/01-workflow-and-business-rules.md` — Workflow stages, business rules, status enums
-3. `docs/03-database-and-models.md` — Canonical status/role enums, table schemas
-4. `docs/06-api-reference.md` — API contracts, endpoint conventions
-5. `docs/05-backend-guide.md` — Backend architecture, security rules
-6. `docs/04-frontend-guide.md` — Frontend architecture, UI rules
-7. `docs/02-system-architecture.md` — Overall architecture
-8. `DESIGN.md` — Root visual design system (colors, typography, spacing, elevation)
+All other implementation decisions follow these docs in order of authority:
+
+1. `docs/01-workflow-and-business-rules.md` — Workflow stages, business rules (canonical status enum sections are superseded by the runtime state model above)
+2. `docs/03-database-and-models.md` — Table schemas (canonical status/role enum sections are superseded by the runtime state model above)
+3. `docs/06-api-reference.md` — API contracts, endpoint conventions
+4. `docs/05-backend-guide.md` — Backend architecture, security rules
+5. `docs/04-frontend-guide.md` — Frontend architecture, UI rules
+6. `docs/02-system-architecture.md` — Overall architecture
+7. `DESIGN.md` — Root visual design system (colors, typography, spacing, elevation)
 
 ### Frontend-specific context files (mandatory for all frontend work)
 
@@ -166,44 +176,57 @@ These three files are loaded automatically by `frontend/CLAUDE.md` and must be r
 | `frontend/DESIGN.md`  | Color token rules (semantic vars vs raw Tailwind), RTL border rule, skeleton/error/banner patterns                     |
 | `frontend/SHADCN.md`  | Complete shadcn-vue reference: 30+ components with copy-paste recipes, import paths, decision table, 10 absolute rules |
 
-**Rule:** Any AI tool working on frontend code must treat these three files as equally authoritative as `docs/user-view/*.md` for UI decisions. Violations (raw `<button>`, raw `<table>`, `text-red-600` instead of `text-[var(--severity-red)]`, etc.) are the same class of error as using a wrong status enum.
+**Rule:** Any AI tool working on frontend code must treat these three files as authoritative for UI decisions, alongside the canonical request state model below. Violations (raw `<button>`, raw `<table>`, `text-red-600` instead of `text-[var(--severity-red)]`, etc.) are the same class of error as reading `runtime_status`/`current_stage`/`semantic_role`/`final_outcome` incorrectly.
 
-`docs/user-view/*.md` intentionally supersedes older customs-declaration terminology. Where older docs or code say "customs declaration" for the final Director workflow, align new work to external FX confirmation (`تأكيد مصارفة خارجية`) and the `FX_CONFIRMATION_PENDING` handoff unless a correction story explicitly preserves a legacy alias during migration.
+Where older docs or code say "customs declaration" for the final Director workflow, align new work to external FX confirmation (`تأكيد مصارفة خارجية`) and the FX-confirmation stage handoff unless a correction story explicitly preserves a legacy alias during migration.
 
-The UI prototype phase is complete. The shipped `frontend/` code is now the visual source of truth, governed by `DESIGN.md`, `frontend/DESIGN.md`, `frontend/SHADCN.md`, and `docs/user-view/*.md`. New UI must match the patterns already built in `frontend/` and the tokens in `DESIGN.md`; there is no separate prototype to clone from.
+The UI prototype phase is complete. The shipped `frontend/` code is now the visual source of truth, governed by `DESIGN.md`, `frontend/DESIGN.md`, and `frontend/SHADCN.md`. New UI must match the patterns already built in `frontend/` and the tokens in `DESIGN.md`; there is no separate prototype to clone from, and `docs/user-view/*.md` is not a current source (see above).
 
 ---
 
-## Canonical Status Enum (Backend & Frontend must match exactly)
+## Canonical Request State Model (Backend & Frontend must match exactly)
 
-```
-DRAFT
-DRAFT_REJECTED_INTERNAL
-SUBMITTED
-BANK_REVIEW
-BANK_RETURNED
-BANK_REJECTED
-BANK_APPROVED
-SUPPORT_REVIEW_PENDING
-SUPPORT_REVIEW_IN_PROGRESS
-SUPPORT_APPROVED
-SUPPORT_REJECTED
-SUPPORT_RETURNED
-WAITING_FOR_SWIFT
-SWIFT_UPLOADED
-WAITING_FOR_VOTING_OPEN
-EXECUTIVE_VOTING_OPEN
-EXECUTIVE_VOTING_CLOSED
-EXECUTIVE_APPROVED
-EXECUTIVE_REJECTED
-FX_CONFIRMATION_PENDING
-CUSTOMS_DECLARATION_ISSUED
-COMPLETED
-```
+The old 22-value frontend `RequestStatus` enum has been **removed** (Phase D,
+M6 Option B). Request state is four separate concepts, never one combined
+static enum:
 
-`BANK_RETURNED` (Story 8.1) is the editable state when a Bank Reviewer returns a submitted request to Data Entry for correction. `SUPPORT_RETURNED` (Story 8.2) is the editable state when the Support Committee returns an approved bank request to the originating bank for correction. `BANK_REJECTED` (Story 8.3) is the terminal state when a Bank Reviewer rejects a request outright (no re-submission path).
+- **`runtime_status`** — `ACTIVE | CLOSED | REJECTED | CANCELLED | ABANDONED` (backend `EngineRequestStatus`)
+- **`current_stage`** — the designer-defined stage the request currently occupies: `code`, `name`, `is_initial`, `is_final`, `sla_duration_minutes`, `requires_claim`, plus `semantic_role`
+- **`current_stage.semantic_role`** — one of `StageSemanticRole`'s 8 cases (`INITIAL_ENTRY`, `BANK_REVIEW`, `SUPPORT_REVIEW`, `SWIFT`, `EXECUTIVE_REVIEW`, `FINANCE_RESERVE`, `FX_CONFIRMATION`, `FINAL`); nullable for stages that predate semantic-role rollout, resolved via the stage-code compatibility fallback (below)
+- **`final_outcome`** — `COMPLETED | REJECTED | CANCELLED | ABANDONED | null`; lives on the terminal stage the request reached, separate from `semantic_role` (a stage never carries both a semantic role and a final outcome)
 
-`CUSTOMS_DECLARATION_ISSUED` is legacy terminology retained only until the external FX confirmation migration is completed. New stories must not introduce additional customs-facing UI copy for the Director completion workflow.
+Workflow stages, transitions, and their labels are **designer-defined**, not
+a hardcoded frontend enum. Any request-state UI (badges, timelines, filters,
+dashboards) must read these four fields from the API — never re-derive state
+from a static status vocabulary or a display label.
+
+`EXECUTIVE_REVIEW` is the current semantic-role name for the executive
+decision stage (renamed from the legacy `EXECUTIVE_VOTE`; the backing enum
+value was renamed together with the case, avoiding a name/value mismatch).
+**Executive Voting is not part of V1** — no voting UI, voting session status,
+or vote-casting surface should be reintroduced; `VotingSessionStatus` and the
+frontend `RequestStatus` voting values (`EXECUTIVE_VOTING_OPEN`,
+`EXECUTIVE_VOTING_CLOSED`, `WAITING_FOR_VOTING_OPEN`) have been removed.
+
+`CUSTOMS_DECLARATION_ISSUED` was legacy terminology for the external FX
+confirmation completion state; it no longer exists as a status value. Use
+`current_stage`/`final_outcome` plus the FX-confirmation stage's designer
+label instead. New stories must not introduce customs-facing UI copy for the
+Director completion workflow.
+
+### Compatibility fallback (temporary — has exit criteria, do not remove yet)
+
+`EngineRequestReadModel::bucket()` and `SemanticResolver::stageForRole()`
+resolve a stage by `semantic_role` first, falling back to a hardcoded
+stage-`code` match (`SemanticRegistry::stageCodeAliases()`) when
+`semantic_role` is unset. This exists so requests on workflow versions
+published before the semantic-role rollout (or any future hand-built DRAFT
+version) still resolve correctly. **Removal criteria (all must hold):** every
+workflow version reachable by an ACTIVE request has `semantic_role` set on
+every occupiable stage; no consumer relies on the `codes` half of the
+fallback; a regression test proves the code-only path is dead; no archived
+version with ACTIVE requests still depends on it. Not yet met — do not
+remove.
 
 ## Canonical Role Enum
 
@@ -229,7 +252,7 @@ CBY_ADMIN
 - Do NOT expose requests outside a user's organization scope
 - Do NOT add a per-role dashboard component or a `role === UserRole.X` dashboard branch. Workflow users share one `MyWorkDashboard`; dashboard selection is capability-family (see **Dashboard Architecture** below)
 - Do NOT compute a "pending work" count from a bespoke per-role stats query. The actionable count, dashboard preview, nav badge, and `/my-queue` all resolve through the one shared `UserActionableRequestQuery` and must stay equal by record ID
-- Do NOT use statuses not in the canonical enum above
+- Do NOT combine `runtime_status`, `current_stage`, and `final_outcome` into one static status enum, and do NOT reintroduce a frontend `RequestStatus`-style vocabulary
 - Do NOT render role-inappropriate UI controls and rely on backend rejection later; role-forbidden surfaces should not be mounted/rendered
 - Do NOT use `CBY_ADMIN` as a workflow super-actor for Director, SWIFT, Support, Bank Reviewer, or Executive Member actions
 - Do NOT create `AI-PROTOTYPE-PROMPT.md` — that file lives only in the root repo
@@ -238,11 +261,11 @@ CBY_ADMIN
 ### Always Do
 
 - Enforce organization-scoped visibility at the database query level
-- Start role UI decisions from the relevant `docs/user-view/{role}.md`: operational queue first, supporting metrics second, least privilege on uncertainty
+- Start role UI decisions from the shipped `frontend/` patterns and the dashboard-family model below: operational queue first, supporting metrics second, least privilege on uncertainty. `docs/user-view/*.md` is deprecated historical material, not a UX source (see Documentation — Source of Truth)
 - Log every workflow transition to both `workflow_history` (per-transition stage log; replaces the dropped `request_stage_history` table) and `audit_logs`
 - Include `role` (at time of action) in every audit log entry
 - Wrap external FX confirmation generation/completion in a single database transaction
-- Use pessimistic locking (`lockForUpdate()` in `EngineTransitionService::execute()`) for vote submission and voting session closure
+- Use pessimistic locking (`lockForUpdate()` in `EngineTransitionService::execute()`) for every workflow transition, guarding against concurrent stage moves on the same request
 - Validate file type as PDF-only for all document uploads
 - Return `REQUEST_CLOSED` (HTTP 403) for mutations on terminal/inactive requests — the distinct `WORKFLOW_IMMUTABLE_STATE` code (HTTP 409) applies only to editing a published/archived workflow *version* in the designer, not to runtime request state
 

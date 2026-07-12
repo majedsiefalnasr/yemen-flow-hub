@@ -22,7 +22,7 @@ Never add or commit generated artifacts from `graphify-out/`, `_bmad-output/impl
 Examples:
 
 - `feat(workflow): add support claim heartbeat endpoint`
-- `fix(voting): prevent race condition on session closure`
+- `fix(workflow): prevent race condition on concurrent stage transitions`
 - `chore(db): add role column to audit_logs migration`
 
 ## Stack
@@ -68,9 +68,9 @@ Organization-scoped filtering must happen at the **Eloquent query level** — ne
 
 Every workflow transition logs to BOTH `workflow_history` (the per-transition stage log, tied to `engine_requests`; replaces the dropped `request_stage_history` table) AND `audit_logs`. The `audit_logs` table includes `user_role` (role at time of action) plus `old_values`/`new_values` JSON — there are no dedicated `from_status`/`to_status` columns.
 
-### Voting concurrency
+### Transition concurrency
 
-Executive voting is executed as a stage transition/action on the generic engine endpoint (`POST /api/engine-requests/{id}/actions`), not a dedicated `/api/voting/*` route family. `EngineTransitionService::execute()` locks the `EngineRequest` row (`lockForUpdate()`) before applying a transition, which covers vote submission and voting-session closure against race conditions. Session closure atomically applies `AUTO_ABSTAIN_TIMEOUT` to all non-voted members.
+`EngineTransitionService::execute()` locks the `EngineRequest` row (`lockForUpdate()`) before applying any stage transition, guarding every workflow action against concurrent moves on the same request — not a voting-specific mechanism. Executive Voting is not part of V1: there is no `/api/voting/*` route family, no vote-casting UI, and no voting session lifecycle in the current runtime. The underlying `VoteType`/vote-related enums remain in the codebase (backend voting-model deletion is gated to a later cleanup phase) but are not exercised by any live transition or UI surface.
 
 ### Support claim TTL
 
