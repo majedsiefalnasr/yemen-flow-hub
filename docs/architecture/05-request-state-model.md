@@ -30,11 +30,19 @@ static status enum:
 4. `final_outcome`
 
 Do not reintroduce a `RequestStatus`-style vocabulary that reconstructs
-state from a label instead of reading these four fields directly. Every
-one of the 22 old values maps to some combination of the four fields
-below — but the mapping is contextual (workflow-version-specific stage
-identity, not a fixed string), so there is no static lookup table to
-resurrect.
+state from a label instead of reading these four fields directly. **Not
+every one of the old 22 values has a current equivalent.** All _current_
+request state must be represented by the four concepts below — but
+several of the removed values were specific to the voting-session
+feature itself (e.g. `WAITING_FOR_VOTING_OPEN`, `EXECUTIVE_VOTING_OPEN`,
+`EXECUTIVE_VOTING_CLOSED`), and that feature was removed, not merely
+renamed. Those values have **no live V1 equivalent to map to** — do not
+attempt to reconstruct them from the four fields, and do not recreate
+them as dead branches "just in case." Retired feature-specific values
+must not be mapped or recreated; only genuinely still-live business
+positions (e.g. "waiting for SWIFT," "with the Executive Committee")
+have a current representation, expressed via `current_stage` and its
+`semantic_role`.
 
 ---
 
@@ -119,21 +127,35 @@ cast to `App\Enums\StageSemanticRole` (nullable enum cast).
 **Nullable, and this is load-bearing** for stages that predate the
 semantic-role rollout (see the compatibility fallback below).
 
-### `EXECUTIVE_REVIEW`, not `EXECUTIVE_VOTING`
+### `EXECUTIVE_REVIEW` on the backend — but real frontend contract drift
 
-`StageSemanticRole::EXECUTIVE_REVIEW` is the current, and only, case for
-the executive decision stage. Confirmed clean: `EXECUTIVE_VOTING`,
-`EXECUTIVE_VOTE`, `EXECUTIVE_VOTING_OPEN`, `EXECUTIVE_VOTING_CLOSED`, and
-`WAITING_FOR_VOTING_OPEN` return **zero matches** anywhere in
-`backend/app` or `frontend/app` — no alias, no dead case, no
-comment-only reference. The rename from the legacy name is complete, not
-partial.
+**Backend:** `App\Enums\StageSemanticRole::EXECUTIVE_REVIEW` is the
+current, and only, case for the executive decision stage.
+`EXECUTIVE_VOTING`, `EXECUTIVE_VOTING_OPEN`, `EXECUTIVE_VOTING_CLOSED`,
+and `WAITING_FOR_VOTING_OPEN` return zero matches anywhere in
+`backend/app` — no alias, no dead case, no comment-only reference.
 
-Executive Voting itself is out of V1 — this is a distinct fact from the
-`EXECUTIVE_REVIEW` naming. `EXECUTIVE_REVIEW` denotes the stage where the
-Executive Committee reviews and decides on a request (approve/reject);
-it does not imply a voting-session UI, vote-casting mechanism, or
-multi-member tally exists — none of that does. See
+**Frontend: real, live contract drift, not fully clean.**
+`frontend/app/types/models.ts`'s `StageSemanticRole` TypeScript type
+still declares `'EXECUTIVE_VOTE'` as one of its 8 union members, and is
+**missing `'EXECUTIVE_REVIEW'` entirely** — the type does not contain the
+string the backend actually emits. A prior verification pass claimed
+"zero matches" for voting-named semantic-role strings across both
+`backend/app` and `frontend/app`; that claim was wrong for the frontend
+half — it searched for `EXECUTIVE_VOTING` (with the `-ING` suffix) and
+missed the frontend's actual residual spelling, `EXECUTIVE_VOTE`. This is
+the same class of drift as the frontend `EngineRequestStatus` type
+documented above (a live-but-incomplete/incorrect TypeScript type that no
+longer matches its backend counterpart) — not corrected here (no
+production code changed in this documentation pass), but recorded
+explicitly rather than asserted clean.
+
+Executive Voting the _feature_ remains out of V1 regardless of this
+naming drift — these are two distinct facts. `EXECUTIVE_REVIEW` denotes
+the stage where the Executive Committee reviews and decides on a request
+(approve/reject); it does not imply a voting-session UI, vote-casting
+mechanism, or multi-member tally exists — none of that does, on either
+side of the stack. See
 [`04-dashboard-architecture.md`](04-dashboard-architecture.md) and
 [`api-reference.md`](../api-reference.md) for the full inventory of
 voting-related cleanup debt that remains unreachable in source but does
@@ -150,10 +172,32 @@ conventional).
 
 **Exactly 4 cases:** `COMPLETED`, `REJECTED`, `CANCELLED`, `ABANDONED`.
 
-**Lives on the terminal stage, never combined with `semantic_role` on
-the same stage row.** A stage is either mid-flow (has a `semantic_role`,
-`final_outcome` is null) or terminal (has a `final_outcome`, and
-practically `semantic_role: FINAL` if set at all) — not both.
+**Lives on the terminal stage — by intended architecture and current
+convention, not by a code-enforced guard.** The intended design, and the
+current Import Financing V2 workflow's actual convention, is: a stage is
+either mid-flow (carries a `semantic_role`, `final_outcome` stays null)
+or terminal (carries a `final_outcome`, `semantic_role` stays null) — not
+both on the same row. In Import Financing V2 specifically, the terminal
+`CLOSED_*` stages keep `semantic_role` null and carry `final_outcome`
+instead.
+
+`StageSemanticRole::FINAL` is a separate case from this — it marks the
+_operational_ `FINAL` stage in the stage graph (the stage a request
+passes through on its way to completion), and is **not itself a terminal
+outcome value**. A stage with `semantic_role: FINAL` does not
+automatically carry a `final_outcome`; the two remain independently
+nullable columns.
+
+**No structural validation currently prevents a stage row from carrying
+both `semantic_role` and `final_outcome` simultaneously.**
+`StoreWorkflowStageRequest`/`UpdateWorkflowStageRequest` validate each
+field independently (`semantic_role` against `Rule::enum(StageSemanticRole::class)`,
+`final_outcome` against its own rule) with no cross-field check between
+them, and no model-level or database-level constraint enforces mutual
+exclusivity either. Do not document "never combined" as code-enforced
+until such a guard actually exists — today it is a convention this
+workflow version happens to follow, not an invariant the system
+guarantees.
 
 **API serialization is conditional, and "absent" is not the same as
 "null."** `EngineRequestResource` exposes `final_outcome` only when the
@@ -252,15 +296,30 @@ each against current source:
    depends on the fallback still working). Settling this criterion
    requires querying `workflow_stages` joined against `engine_requests`
    directly against a real database, not the codebase.
-2. **No consumer relies on the `codes` half of the fallback.** — **Not
-   met, confirmed.** `EngineRequestReadModel::bucket()` is called from
-   roughly 40 call sites across `ProfileController` and
-   `DashboardStatsService`; every one of them goes through the single
-   `bucket()` method whose SQL always includes the `code IN (...)` half.
-   There is no call-site variant that uses roles-only.
-   `SemanticResolver::stageForRole()` is likewise called only through its
-   explicit-then-alias-fallback path (from `publishWarnings()` and
-   `CustomsFxPdfEffect`), with no roles-only alternative anywhere.
+2. **No consumer relies on the `codes` half of the fallback.** — **Two
+   separate claims here; only one is confirmed by static analysis.**
+   Confirmed: there is no roles-only consumer path anywhere in source.
+   `EngineRequestReadModel::bucket()` is called from roughly 40 call
+   sites across `ProfileController` and `DashboardStatsService`; every
+   one of them goes through the single `bucket()` method whose SQL always
+   includes the `code IN (...)` half — there is no call-site variant that
+   omits it. `SemanticResolver::stageForRole()` is likewise called only
+   through its explicit-then-alias-fallback path (from
+   `publishWarnings()` and `CustomsFxPdfEffect`), with no roles-only
+   alternative anywhere. **This proves the implementation still executes
+   a query containing both conditions at every call site — it does not
+   prove that any live record's result actually depends on the `codes`
+   half firing.** Whether the `codes` half is ever the one that matches a
+   real row (as opposed to `semantic_role` always matching first, with
+   `codes` present in the SQL but never the decisive clause) requires a
+   live database query, runtime telemetry, or a targeted regression test
+   — none of which this document has performed. Removing the fallback
+   today would additionally require changing the shared `bucket()`/
+   `stageForRole()` implementation itself, since no alternate code path
+   exists to fall back to. **Do not mark this criterion "confirmed not
+   met" from call-site count alone** — the call-site count proves the
+   _code path_ is still exercised; it does not prove _runtime data
+   dependence_, which remains unconfirmed either way.
 3. **A regression test proves the code-only path is dead.** — Not
    verified to exist; no such test was found during this pass.
 4. **No archived version with ACTIVE requests still depends on it.** —
@@ -294,28 +353,42 @@ with `runtime_status` but govern entirely different things:
 
 ### Valid and invalid combinations (verified, not invented)
 
-`WorkflowPublishRulePack::validateStageActivity()` runs at publish time
-and blocks publishing a `WorkflowVersion` if: the initial stage is
-`INACTIVE`; any final stage is `INACTIVE`; any transition references an
-inactive stage; or any **reachable** non-final stage is `INACTIVE`.
-Combined with `WorkflowVersionState::isEditable()` gating all stage edits
-to `DRAFT` only:
+`WorkflowPublishRulePack::validateReachability()` rejects **every**
+unreachable stage at publish time, regardless of its `status`
+(`STAGE_UNREACHABLE` error) — there is no exemption for unreachable
+`INACTIVE` stages specifically. Separately,
+`WorkflowPublishRulePack::validateStageActivity()` blocks publishing if:
+the initial stage is `INACTIVE`; any final stage is `INACTIVE`; any
+transition references an inactive stage; or any _reachable_ non-final
+stage is `INACTIVE`. Combined with `WorkflowVersionState::isEditable()`
+gating all stage edits to `DRAFT` only:
 
-- **Valid:** a `PUBLISHED` version's reachable stages are always
-  `status: ACTIVE` at the moment of publish, and stay that way — stages
-  become immutable once published, so a stage cannot be flipped to
-  `INACTIVE` after the fact either. An `ACTIVE`-runtime-status
-  `EngineRequest` sitting on a reachable stage of a `PUBLISHED` version
-  will therefore always find that stage `status: ACTIVE`.
-- **Valid, if unusual:** an **unreachable** `INACTIVE` stage can coexist
-  within a `PUBLISHED` version — the rule pack only checks reachable
-  stages. No `ACTIVE` request could ever be occupying it, by definition
-  of unreachable.
-- **Invalid, structurally prevented, not merely discouraged:** an
-  `ACTIVE`-runtime-status `EngineRequest` whose `current_stage` has
-  `status: INACTIVE` and is reachable from the version's initial stage.
-  The publish validator and the DRAFT-only edit gate together make this
-  combination impossible to reach, not just unlikely — do not write
-  defensive code assuming it can occur, but do not assume the underlying
-  invariant is undocumented either; it is enforced by
-  `WorkflowPublishRulePack`, cited above.
+- **Valid:** through the supported publish path, a `PUBLISHED` version's
+  stages are always `status: ACTIVE` at the moment of publish (an
+  unreachable stage is rejected outright by `validateReachability()`
+  before `validateStageActivity()`'s reachable-only check would even
+  apply) — and stay `ACTIVE`, since stages become immutable once
+  published. An `ACTIVE`-runtime-status `EngineRequest` sitting on a
+  stage of a `PUBLISHED` version that was published through this path
+  will therefore find that stage `status: ACTIVE`.
+- **Not possible through the supported publish path:** an unreachable
+  `INACTIVE` stage surviving into a `PUBLISHED` version.
+  `validateReachability()` rejects any unreachable stage outright, so
+  this combination cannot arise from a version that went through
+  `POST .../publish`.
+- **Precise scope of what's actually guaranteed:** the current validated
+  publish/edit path prevents an `ACTIVE`-runtime-status `EngineRequest`
+  from occupying an `INACTIVE` stage **for any `WorkflowVersion` that was
+  published through the supported `POST .../publish` flow and never
+  modified outside it.** This is not the same claim as "the database
+  guarantees this combination cannot exist." No database constraint,
+  model-level cast, or trigger independently enforces stage/request
+  status consistency — the guarantee comes entirely from application-layer
+  validation at the moment of publish. A row modified directly (a manual
+  DB update, a data migration, a legacy pre-validator-era version, or any
+  write path that bypasses `WorkflowDesignerService`/`WorkflowPublishRulePack`)
+  is not covered by this guarantee. Do not claim the combination is
+  "universally impossible at the database level" — state precisely that
+  the _validated publish/edit path_ prevents it for newly published
+  versions, and that nothing independent of that path enforces it for
+  externally modified or legacy data.

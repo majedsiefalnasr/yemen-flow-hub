@@ -13,19 +13,28 @@ fields dashboards render, see
 
 ---
 
-## Two dashboard families, selected by capability
+## Two dashboard families, selected by capability — with remaining fixed-role constraints
 
-Dashboards are **two families**, chosen by capability, never by role
-name:
+Dashboards are **two families**, and _which component renders_ inside
+the dashboard page is chosen by capability, not a `role === X` branch.
+**This is not capability-only end to end** — route admission to the
+dashboard page itself, and the backend's analytics data dispatch, both
+still gate on a fixed role code alongside the capability. Treat this as
+capability-led frontend family selection with remaining fixed-role
+constraints in route admission and analytics backend dispatch — not as
+fully capability-only behavior. The gap between the two is architecture
+drift from the design this document's source decision record proposed,
+not an intentional hybrid design.
 
-1. **Operational family — `MyWorkDashboard.vue`.** The single dashboard
-   for every workflow-executor user (and any future dynamic executor
-   role, automatically — no code change needed to onboard one).
+1. **Operational family — `MyWorkDashboard.vue`.** The dashboard for
+   every workflow-executor user whose role is listed in
+   `ROUTE_ROLE_MAP['/dashboard']` (see below) and who holds neither
+   analytics capability.
 2. **Analytics/governance family** — `CbyAdminDashboard.vue` (imported
    and aliased `SystemAdminDashboard` — there is no separately-named
    `SystemAdminDashboard.vue` file) and `BankAdminDashboard.vue`.
 
-### Verified routing order
+### Frontend component-selection order (capability-based)
 
 Both `frontend/app/pages/dashboard.vue` and `frontend/app/pages/index.vue`
 implement the **same routing logic independently** (not via a shared
@@ -49,12 +58,39 @@ Order confirmed: `system_dashboard` VIEW capability checked first, then
 `bank_analytics` VIEW, then fallthrough to `MyWorkDashboard`. `can()`
 comes from `useScreenPermissions()`, reading a client-side capability map
 (`auth.screenPermissions`) populated at login — not a live per-check API
-call.
+call. **This is the only part of dashboard selection that is genuinely
+capability-only** — which of the 3 components renders, once the user is
+already admitted to the `/dashboard` route.
 
-### Backend gate, verified independently
+### Route admission is a fixed-role gate, not capability-based
 
-The backend does not trust this frontend routing. `DashboardStatsService::stats()`
-independently gates both analytics branches:
+Before component selection ever runs, both pages declare:
+
+```ts
+definePageMeta({
+  middleware: ["auth", "role"],
+  requiredRoles: ROUTE_ROLE_MAP["/dashboard"],
+});
+```
+
+`frontend/app/middleware/role.ts` checks
+`requiredRoles.includes(auth.user.role)` and denies the route entirely if
+the user's `UserRole` is not in that list.
+`ROUTE_ROLE_MAP['/dashboard']` currently lists all 8 canonical roles
+(confirmed via `frontend/app/constants/role-surfaces.ts`'s `nav.dashboard`
+surface entry, present in every role's block), so in practice no
+currently-seeded role is denied today — but this is a **fixed role-code
+list**, not a capability check. A future dynamic role that isn't added to
+this list would be denied the `/dashboard` route entirely, before
+component selection could ever route it to `MyWorkDashboard`. **Do not
+claim a future dynamic executor role reaches `MyWorkDashboard`
+automatically with no code change** — `ROUTE_ROLE_MAP['/dashboard']` is
+that code change, and it is not derived from capabilities.
+
+### Backend analytics gate requires both a fixed role code and a capability
+
+`DashboardStatsService::stats()` gates both analytics branches on **role
+code AND capability**, not capability alone:
 
 ```php
 $analyticsGate = fn (string $roleCode, string $screen): bool => $user->hasRoleCode($roleCode)
@@ -67,23 +103,35 @@ return match (true) {
 };
 ```
 
-Revoking a user's `system_dashboard`/`bank_analytics` capability removes
-analytics access even if the frontend routing were somehow bypassed —
-frontend visibility never grants access.
+`hasRoleCode(RoleCodes::SYSTEM_ADMIN)` and `hasRoleCode(RoleCodes::BANK_ADMIN)`
+are **fixed role-code checks**, hardcoded in this `match`, not resolved
+from the capability system. A user who holds the `system_dashboard`
+capability but not the `SYSTEM_ADMIN` role code does not reach
+`cbyadminStats()` — they fall through to whichever legacy branch their
+actual role matches (see "Legacy `DashboardStatsService` branches" below
+for what that means in practice). This is the precise mismatch the
+frontend/backend split creates: the frontend's `can()` check has no
+role-code condition, so it can route a user to an analytics _component_
+based on capability alone, while the backend's `match` can simultaneously
+route that same user's _data_ to a legacy branch based on role code
+alone, if the two ever diverge (see the reassignment scenario below).
 
-### Why capability, not role name
+### Why component selection is capability-based, with the caveats above
 
-A per-role dashboard component or `role === X` branch requires a code
-change every time a new dynamic role, stage, or workflow is designed.
-Capability-based routing does not: any role granted the `system_dashboard`
-or `bank_analytics` screen capability gets that dashboard automatically;
-every other role gets `MyWorkDashboard`, whose content is entirely
-derived from the user's stage permissions and claims, not their role
-name. Confirmed via source: zero `role === 'X'` branches exist in either
-routing page (`grep -rn "role ===" frontend/app/pages` matching
-`dashboard` returns nothing), and exactly 3 mountable dashboard
-components exist in `frontend/app/components/dashboard/` — no 4th, 5th,
-6th, 7th, or 8th per-role file.
+A per-role dashboard _component_ requires a code change every time a new
+role needs a different UI. Component selection avoids that: any user
+whose capability check passes reaches the matching component without a
+frontend code change. This does not extend to route admission (fixed
+role list, above) or backend analytics dispatch (fixed role code +
+capability, above) — both of those still require a code change to
+onboard a genuinely new dynamic role. Confirmed via source: zero
+`role === 'X'` branches exist in either routing page's **component
+selection** logic specifically (`grep -rn "role ===" frontend/app/pages`
+matching `dashboard` returns nothing in that block), and exactly 3
+mountable dashboard components exist in
+`frontend/app/components/dashboard/` — no 4th, 5th, 6th, 7th, or 8th
+per-role file. The fixed-role constraints documented above sit alongside
+this, not instead of it.
 
 ---
 
@@ -189,19 +237,46 @@ above, it still contains 6 legacy workflow-role branches
 (`dataEntryStats`, `bankReviewerStats`, `supportCommitteeStats`,
 `swiftOfficerStats`, `executiveMemberStats`, `committeeDirectorStats`).
 
-**These legacy branches are unreachable from the current frontend
-routing.** `EXECUTIVE_MEMBER`/`COMMITTEE_DIRECTOR` and the other
-workflow-executor roles hold neither `system_dashboard` nor
-`bank_analytics` capability, so `dashboard.vue`/`index.vue` route them to
-`MyWorkDashboard`, which calls only `GET /api/dashboard/work` — nothing
-in `frontend/app` calls `GET /api/dashboard/stats` for these roles today.
-The legacy branches' zeroed voting fields (`waiting_for_voting_open`,
-`active_voting_sessions`, `voting_queue`, etc. — see below) are therefore
-dead payload, not a reachable bug. See
+**These legacy branches are not structurally unreachable — they are
+unreached under default seeded capability assignments, which is a
+weaker guarantee.** Under the default seeding, `EXECUTIVE_MEMBER`/
+`COMMITTEE_DIRECTOR` and the other workflow-executor roles hold neither
+`system_dashboard` nor `bank_analytics` capability, so
+`dashboard.vue`/`index.vue` route them to `MyWorkDashboard`, which calls
+only `GET /api/dashboard/work` — nothing in `frontend/app` calls
+`GET /api/dashboard/stats` for these roles under that default
+configuration.
+
+**But screen capabilities are administratively reassignable**
+(`PUT /api/v1/roles/{role}/screen-permissions`), while the backend's
+analytics gate is fixed to specific role codes (`SYSTEM_ADMIN`,
+`BANK_ADMIN` — see above), not derived from the capability grant. This
+creates a real possible mismatch: if an administrator grants the
+`system_dashboard` or `bank_analytics` capability to a role other than
+`SYSTEM_ADMIN`/`BANK_ADMIN` (e.g. to `COMMITTEE_DIRECTOR`), the
+**frontend** would route that user's component selection to an analytics
+dashboard (`can()` only checks the capability), while the **backend**
+would still fall through `DashboardStatsService::stats()`'s `match` to
+that role's legacy branch (`committeeDirectorStats()`, since
+`hasRoleCode(SYSTEM_ADMIN)`/`hasRoleCode(BANK_ADMIN)` would both be
+false) — an analytics component rendering a legacy-branch payload it
+wasn't designed for.
+
+**Do not call the legacy payload universally dead.** Whether this
+mismatch is currently exploitable depends on the live database's
+`screen_permissions` grants, which this document cannot verify by static
+analysis — settling it requires a live database query, runtime
+configuration inspection, or a targeted regression test that attempts
+the reassignment and checks the resulting dashboard payload. Under the
+default seeded grants, the legacy branches' zeroed voting fields
+(`waiting_for_voting_open`, `active_voting_sessions`, `voting_queue`,
+etc. — see below) are unreached payload — but "unreached under defaults"
+and "structurally unreachable" are different claims, and this document
+only supports the former. See
 [`engine/extension-guide.md`](../engine/extension-guide.md) for the rule
-this implies: new operational metrics must use `DashboardWorkController`
-exclusively; new analytics metrics may extend only the two capability-gated
-branches, never the 6 legacy ones.
+this implies regardless: new operational metrics must use
+`DashboardWorkController` exclusively; new analytics metrics may extend
+only the two capability-gated branches, never the 6 legacy ones.
 
 ---
 

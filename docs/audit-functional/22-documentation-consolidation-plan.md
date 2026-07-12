@@ -548,24 +548,58 @@ it proposed is now shipped. Verified: the exact frontend routing order
 `MyWorkDashboard`), confirmed independently duplicated across
 `dashboard.vue` and `index.vue` (same logic, not shared via a
 composable — a real architectural fact, recorded rather than silently
-smoothed over); the backend's independent capability gate in
+smoothed over); the backend's independent gate in
 `DashboardStatsService::stats()`'s `match(true)`; the exact, exhaustive
-`GET /api/dashboard/work` response shape (5 top-level keys, confirmed no
-others exist — `recent_activity`/`metrics` are hardcoded empty arrays,
-fetched by the frontend store but rendered by no template markup); the
-actionable-work invariant's three call sites all resolving to
-`UserActionableRequestQuery` by direct code reference; that
+`GET /api/dashboard/work` response shape — **6 top-level keys**
+(`actionable`, `claimed`, `tracking`, `sla`, `recent_activity`,
+`metrics`), confirmed no others exist — `recent_activity`/`metrics` are
+hardcoded empty arrays, fetched by the frontend store but rendered by no
+template markup; the actionable-work invariant's three call sites all
+resolving to `UserActionableRequestQuery` by direct code reference; that
 `SystemAdminDashboard` is an import alias for `CbyAdminDashboard.vue`,
-not a separately-named file; that the 6 legacy `DashboardStatsService`
+not a separately-named file; and that `DashboardKpiCard.vue` (the one
+component containing a `--voting` color-token mapping) has zero callers
+anywhere in `frontend/app`, confirmed via a direct follow-up grep after
+the first agent flagged it as not fully confirmed. Also confirmed zero
+backend widget/metric-catalog code exists (Level 2 is correctly
+documented as not-yet-built) and zero per-role dashboard _components_
+beyond the 3 that exist today.
+
+**Step 3B accuracy correction (2026-07-12) — dashboard selection is not
+capability-only end to end.** An independent review caught that the
+original write overstated capability-based selection. Corrected in
+`docs/architecture/04-dashboard-architecture.md` and `docs/README.md`:
+`dashboard.vue`/`index.vue` gate route _admission_ via
+`definePageMeta({ middleware: ['auth', 'role'], requiredRoles: ROUTE_ROLE_MAP['/dashboard'] })`
+— a fixed role-code list, checked by `middleware/role.ts`'s
+`requiredRoles.includes(auth.user.role)` — before component selection
+ever runs. `DashboardStatsService::stats()`'s analytics gate requires
+**both** a fixed role code (`hasRoleCode(SYSTEM_ADMIN)`/
+`hasRoleCode(BANK_ADMIN)`) **and** the corresponding capability, not
+capability alone. The document no longer states "never by role name" or
+that a future dynamic executor role reaches `MyWorkDashboard`
+automatically with no code change — `ROUTE_ROLE_MAP['/dashboard']` is
+that code change. Documented as capability-led frontend _component_
+selection with remaining fixed-role constraints in route admission and
+backend analytics dispatch — recorded as architecture drift from the
+source decision record's proposal, not intended capability-only
+behavior.
+
+**Also corrected: the legacy `DashboardStatsService` branches are not
+structurally unreachable.** The original write claimed the 6 legacy
 workflow-role branches are confirmed unreachable from current frontend
-routing (none of those roles hold the analytics capabilities that would
-route them to `/api/dashboard/stats`); and that `DashboardKpiCard.vue`
-(the one component containing a `--voting` color-token mapping) has zero
-callers anywhere in `frontend/app`, confirmed via a direct follow-up
-grep after the first agent flagged it as not fully confirmed. Also
-confirmed zero backend widget/metric-catalog code exists (Level 2 is
-correctly documented as not-yet-built) and zero per-role dashboard
-components beyond the 3 that exist today.
+routing. Narrowed: they are unreached **under default seeded capability
+assignments**, a weaker claim. Since `system_dashboard`/`bank_analytics`
+capabilities are administratively reassignable
+(`PUT /api/v1/roles/{role}/screen-permissions`) while the backend gate
+remains fixed to specific role codes, granting an analytics capability to
+a different role would route the frontend to an analytics component
+while the backend fell through to that role's legacy branch — a real
+possible mismatch, not merely hypothetical. Whether this is exploitable
+today depends on live `screen_permissions` grants, which requires a
+database query, runtime configuration inspection, or a targeted
+regression test to settle — not asserted either way. The legacy payload
+is documented as unreached-under-defaults, not universally dead.
 
 **`docs/architecture/05-request-state-model.md`** — documents the
 4-concept model with exact persistence fields, casts, nullability, and
@@ -580,34 +614,80 @@ values; `EngineRequestResource` exposes the value twice (`status` alias
   previously recorded anywhere: `final_outcome: COMPLETED` produces
   `runtime_status: CLOSED`, not `runtime_status: COMPLETED` (no such
   runtime_status value exists) — flagged as an easy mistake given the two
-  enums don't share a naming scheme. Confirmed `EXECUTIVE_REVIEW` (not
-  `EXECUTIVE_VOTING`) is clean with zero legacy-name residue anywhere in
-  either `backend/app` or `frontend/app`. Confirmed
-  `CUSTOMS_DECLARATION_ISSUED` is dead on the backend (`AuditAction` uses
-  `CUSTOMS_ISSUED`) but found **live, unreachable dead-code residue on the
-  frontend**: `frontend/app/pages/audit.vue`'s `ACTION_LABELS` map still
-  contains `CUSTOMS_DECLARATION_ISSUED` plus 3 dead voting-related keys
+  enums don't share a naming scheme. Confirmed `CUSTOMS_DECLARATION_ISSUED`
+  is dead on the backend (`AuditAction` uses `CUSTOMS_ISSUED`) but found
+  **live, unreachable dead-code residue on the frontend**:
+  `frontend/app/pages/audit.vue`'s `ACTION_LABELS` map still contains
+  `CUSTOMS_DECLARATION_ISSUED` plus 3 dead voting-related keys
   (`VOTE_SUBMITTED`, `VOTING_SESSION_OPENED`, `VOTING_SESSION_CLOSED`) that
   match no case in the live `AuditAction` enum — recorded as cleanup debt,
-  not corrected (no production code changed). Checked all 4 semantic-role
-  fallback removal criteria against current source: criterion (c) — no
-  consumer relies on the fallback's `codes` half — confirmed **not met**
-  (~40 call sites through `EngineRequestReadModel::bucket()`, all still
-  using the OR-fallback); criteria (a)/(b)/(d) require a live database
-  query to settle and could not be confirmed by static analysis alone,
-  documented as such rather than asserted either way. Also found and
-  documented, as a real drift not previously flagged: the frontend's
-  `EngineRequestStatus` TypeScript type (a different, still-live type from
-  the removed `RequestStatus`) is missing `CANCELLED` and `ABANDONED`,
-  covering only 3 of the backend's 5 runtime_status values. Documented the
+  not corrected (no production code changed). Documented the
   `WorkflowVersion.state`/`WorkflowStage.status` distinction from
   `runtime_status`, including that `WorkflowStage.status` is a validated
   plain string, not a PHP enum cast (unlike `semantic_role`/`final_outcome`,
-  which are) — and verified via `WorkflowPublishRulePack::validateStageActivity()`
-  that the one "invalid" state combination worth documenting
-  (`runtime_status: ACTIVE` on a reachable `INACTIVE` stage) is
-  structurally prevented by the publish validator and the DRAFT-only edit
-  gate together, not merely unlikely.
+  which are).
+
+**Step 3B accuracy correction (2026-07-12) — 5 further corrections in
+this same document:**
+
+1. **`EXECUTIVE_REVIEW`/`EXECUTIVE_VOTE` — real frontend drift, not
+   clean.** The original write claimed zero legacy-name residue anywhere
+   in `backend/app` or `frontend/app`, because it searched for
+   `EXECUTIVE_VOTING` and missed the frontend's actual residual spelling.
+   `frontend/app/types/models.ts`'s `StageSemanticRole` TypeScript type
+   still declares `'EXECUTIVE_VOTE'` as a union member and is **missing
+   `'EXECUTIVE_REVIEW'` entirely** — the type does not contain the string
+   the backend actually emits. Corrected to document this as real,
+   live frontend contract drift, alongside the already-documented
+   incomplete `EngineRequestStatus` type. The backend enum (`EXECUTIVE_REVIEW`,
+   no `EXECUTIVE_VOTING`/`EXECUTIVE_VOTE` residue) and Executive Voting's
+   out-of-V1 status are both preserved as accurate; only the frontend
+   "clean" claim was wrong.
+2. **The 22-value `RequestStatus` mapping claim was overstated.** The
+   original write said every one of the 22 old values maps to a current
+   4-field combination. Corrected: retired feature-specific values (the
+   voting-session-only ones, e.g. `WAITING_FOR_VOTING_OPEN`,
+   `EXECUTIVE_VOTING_OPEN`, `EXECUTIVE_VOTING_CLOSED`) have no live V1
+   equivalent, because the feature itself was removed, not renamed. All
+   _current_ request state must be represented by the four concepts;
+   retired feature-specific values must not be mapped or recreated.
+3. **`semantic_role`/`final_outcome` "never combined" is not
+   code-enforced.** `StoreWorkflowStageRequest`/`UpdateWorkflowStageRequest`
+   validate each field independently with no cross-field guard, and no
+   model- or database-level constraint enforces mutual exclusivity.
+   Corrected to distinguish the intended architecture and the current
+   Import Financing V2 convention (terminal `CLOSED_*` stages keep
+   `semantic_role` null, use `final_outcome`) from an enforced invariant;
+   also clarified `StageSemanticRole::FINAL` marks the operational
+   `FINAL` stage and is not itself a terminal outcome.
+4. **Fallback removal criterion 2 ("no consumer relies on the `codes`
+   half") was over-concluded from call-site count alone.** The ~40
+   call-site figure proves every consumer still _executes_ a query
+   containing both the `semantic_role` and `code` conditions — it does
+   not prove any live record's _result_ actually depends on the `codes`
+   half being the decisive clause. Corrected to require a live database
+   query, runtime telemetry, or a targeted regression test to settle
+   actual data dependence, and to state plainly that static analysis
+   proves no roles-only consumer path exists (so removal would require
+   changing the shared implementation) without claiming runtime
+   dependence is "confirmed not met." The overall conclusion — none of
+   the 4 criteria confirmed satisfied, do not remove the fallback — is
+   unchanged and still holds.
+5. **The "structurally prevented" claim about `INACTIVE` stages was
+   partly wrong and overstated where accurate.** The original write
+   claimed an unreachable `INACTIVE` stage "can coexist" within a
+   `PUBLISHED` version because the rule pack "only checks reachable
+   stages" — false: `WorkflowPublishRulePack::validateReachability()`
+   rejects **every** unreachable stage regardless of `status`, with no
+   activity-status exemption. Corrected to state unreachable `INACTIVE`
+   stages cannot survive the supported publish path at all. Separately,
+   the claim that an `ACTIVE` request on an `INACTIVE` stage is
+   "structurally prevented"/impossible was too broad: the guarantee holds
+   only for the _validated publish/edit path_ (a version published
+   through `POST .../publish` and never modified outside it) — no
+   database constraint independently guarantees it for externally
+   modified writes or legacy pre-validator data. Corrected to state this
+   precisely rather than as a universal database-level guarantee.
 
 **Cross-document link activation.** Replaced every live "planned, not
 yet written — Step 3B" annotation pointing at these two files with real

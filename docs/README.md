@@ -74,10 +74,15 @@ docs above; this is the short version so nothing below has to repeat it:
   doc.
 - **Executive Voting is out of V1 scope.** No voting UI, voting session
   status, or vote-casting surface exists or should be reintroduced.
-- **Dashboards are two families**, chosen by capability, never by role
-  name: the operational `MyWorkDashboard.vue` for every workflow-executor
-  role, and dedicated analytics dashboards
-  (`SystemAdminDashboard`/`BankAdminDashboard.vue`) for governance/analytics
-  roles whose purpose is fundamentally not workflow execution.
+- **Dashboards are two families**, with component selection led by
+  capability rather than a `role === X` branch: the operational
+  `MyWorkDashboard.vue` for every workflow-executor role, and dedicated
+  analytics dashboards (`SystemAdminDashboard`/`BankAdminDashboard.vue`)
+  for governance/analytics roles whose purpose is fundamentally not
+  workflow execution. Route admission to the dashboard page and the
+  backend's analytics data dispatch both still gate on a fixed role code
+  alongside the capability — see
+  [`architecture/04-dashboard-architecture.md`](architecture/04-dashboard-architecture.md)
+  for the exact split between capability-led and fixed-role behavior.
 - **Permissions are capability-based**, not role-name checks scattered
   through code — see [`architecture/03-permission-model.md`](architecture/03-permission-model.md).
