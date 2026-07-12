@@ -175,10 +175,8 @@ to.
   `DataScope` in [`architecture/03-permission-model.md`](architecture/03-permission-model.md).
 - Add a per-role dashboard component, or combine `runtime_status`,
   `current_stage`, and `final_outcome` into a single static status enum —
-  see `architecture/05-request-state-model.md` and
-  `architecture/04-dashboard-architecture.md` (both **planned, not yet
-  written**, Step 3; today's authority is AGENTS.md's "Canonical Request
-  State Model" and "Dashboard Architecture" sections).
+  see [`architecture/05-request-state-model.md`](architecture/05-request-state-model.md)
+  and [`architecture/04-dashboard-architecture.md`](architecture/04-dashboard-architecture.md).
 - Compute a "pending work" count from a bespoke per-role query — the
   actionable count, dashboard preview, nav badge, and `/my-queue` all
   resolve through one shared query and must stay equal by record ID.

@@ -180,9 +180,8 @@ per the section above, not in `DashboardStatsService`.
 compute an "actionable work" count from `DashboardStatsService` (legacy
 branches or otherwise) or any other bespoke query — actionable work must
 continue to resolve through `UserActionableRequestQuery` exclusively. See
-`architecture/04-dashboard-architecture.md` (**planned, not yet written**
-— Step 3; today's authority is AGENTS.md's "Dashboard Architecture"
-section) for the shared actionable-work invariant this must not violate.
+[`../architecture/04-dashboard-architecture.md`](../architecture/04-dashboard-architecture.md)
+for the shared actionable-work invariant this must not violate.
 
 ---
 

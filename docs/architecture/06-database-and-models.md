@@ -25,9 +25,8 @@ MySQL. The schema is workflow-oriented: request state is expressed by
 which `workflow_stages` row a request currently occupies, not by a fixed
 business-status column. For the 4-concept request-state model
 (`runtime_status`/`current_stage`/`semantic_role`/`final_outcome`) these
-tables implement, see `05-request-state-model.md` (**planned, not yet
-written** — Step 3B of the consolidation plan; today's authority is
-AGENTS.md's "Canonical Request State Model" section). For permission
+tables implement, see
+[`05-request-state-model.md`](05-request-state-model.md). For permission
 mechanics on top of the governance tables below, see
 [`03-permission-model.md`](03-permission-model.md).
 
@@ -553,5 +552,4 @@ Visibility Rules" section for the exact composition and
 [`03-permission-model.md`](03-permission-model.md) for the underlying
 mechanism. Actions remain role/capability-scoped on top of this base
 visibility; dashboards remain operationally scoped (see
-`04-dashboard-architecture.md` — **planned, not yet written**, Step 3B;
-today's authority is AGENTS.md's "Dashboard Architecture" section).
+[`04-dashboard-architecture.md`](04-dashboard-architecture.md)).

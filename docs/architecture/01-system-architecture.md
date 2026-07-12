@@ -42,7 +42,7 @@ navigation, organization-scoped request visibility, queue-scoped
 dashboards, request timelines, read-only and editable states — reading
 `runtime_status`/`current_stage`/`final_outcome` from the API rather than
 reconstructing status from a static frontend enum (see
-`05-request-state-model.md`, planned, Step 3B).
+[`05-request-state-model.md`](05-request-state-model.md)).
 
 ### Folder structure
 
@@ -90,14 +90,12 @@ previously enumerated a fixed per-role dashboard for each of Data Entry,
 Bank Reviewer, SWIFT Officer, Support Committee, Executive Committee,
 Committee Director, and CBY Admin, including voting-queue content for
 Executive/Director roles. That model is **superseded** — see
-`04-dashboard-architecture.md` (**planned, not yet written** — Step 3B of
-the consolidation plan; today's authority is AGENTS.md's "Dashboard
-Architecture" section) for the current two-family model
-(`MyWorkDashboard.vue` operational family for every workflow-executor
-role vs. dedicated analytics dashboards for governance roles) and the
-shared actionable-work invariant that replaced per-role dashboard
-branching. Executive Voting is out of V1 — there is no voting queue or
-voting-session dashboard content in the current UI.
+[`04-dashboard-architecture.md`](04-dashboard-architecture.md) for the
+current two-family model (`MyWorkDashboard.vue` operational family for
+every workflow-executor role vs. dedicated analytics dashboards for
+governance roles) and the shared actionable-work invariant that replaced
+per-role dashboard branching. Executive Voting is out of V1 — there is no
+voting queue or voting-session dashboard content in the current UI.
 
 ---
 

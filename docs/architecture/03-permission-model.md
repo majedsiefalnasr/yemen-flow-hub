@@ -30,11 +30,9 @@ as a bystander.
 
 For the request-state fields these permissions gate access to
 (`runtime_status`, `current_stage`, `final_outcome`), see
-`05-request-state-model.md` (**planned, not yet written** — Step 3 of the
-consolidation plan; today's authority is AGENTS.md's "Canonical Request
-State Model" section). For the stage graph these permissions attach to,
-see `02-workflow-engine.md` (**planned, not yet written** — Step 4;
-today's authority is
+[`05-request-state-model.md`](05-request-state-model.md). For the stage
+graph these permissions attach to, see `02-workflow-engine.md`
+(**planned, not yet written** — Step 4; today's authority is
 [`../01-workflow-and-business-rules.md`](../01-workflow-and-business-rules.md)
 together with
 [`../decisions/semantic-mapping.md`](../decisions/semantic-mapping.md)).
@@ -103,9 +101,8 @@ App\Services\Authorization\PermissionService::userHasCapability(
 `App\Services\Dashboard\DashboardStatsService` routes on this exact
 `system_dashboard` → `SYSTEM_ADMIN` / `bank_analytics` → `BANK_ADMIN`
 capability check to select which analytics dashboard a user gets — the
-same capability-family routing described in `04-dashboard-architecture.md`
-(**planned, not yet written** — Step 3; today's authority is AGENTS.md's
-"Dashboard Architecture" section).
+same capability-family routing described in
+[`04-dashboard-architecture.md`](04-dashboard-architecture.md).
 
 ### CBY_ADMIN restriction on `merchants:MANAGE`
 

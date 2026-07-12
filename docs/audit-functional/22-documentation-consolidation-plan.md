@@ -526,6 +526,123 @@ AGENTS.md sections) rather than a single source file being renamed, so
 they're closer in kind to Step 2's net-new documents than to 3A's
 rewrites — hence the separate substep and separate review gate.
 
+**Step 3B — ✅ DONE (2026-07-12).** Pre-flight `git status` confirmed the
+baseline (2 pre-existing modified files, 11 pre-existing untracked
+files) before touching either file. Used `graphify query` for initial
+orientation — broad queries against `graphify-out/graph.json` returned
+stale/noisy results (matched old spec docs and vendored framework code
+rather than live source), so narrowed to targeted queries (e.g.
+`UserActionableRequestQuery DashboardWorkController`), which returned
+accurate, current results and confirmed the graph did not need
+re-indexing for this task. Dispatched two parallel
+`socraticode:codebase-explorer` subagents — one per document — to trace
+every claim against `backend/app/` and `frontend/app/` directly, plus
+two manual follow-up checks to resolve items the first agent flagged as
+not-fully-confirmed.
+
+**`docs/architecture/04-dashboard-architecture.md`** — promotes
+`audit-functional/14-dashboard-architecture-decision.md` (a dated,
+past-tense proposal) into a present-tense canonical reference; the model
+it proposed is now shipped. Verified: the exact frontend routing order
+(`system_dashboard` VIEW → `bank_analytics` VIEW → fallthrough
+`MyWorkDashboard`), confirmed independently duplicated across
+`dashboard.vue` and `index.vue` (same logic, not shared via a
+composable — a real architectural fact, recorded rather than silently
+smoothed over); the backend's independent capability gate in
+`DashboardStatsService::stats()`'s `match(true)`; the exact, exhaustive
+`GET /api/dashboard/work` response shape (5 top-level keys, confirmed no
+others exist — `recent_activity`/`metrics` are hardcoded empty arrays,
+fetched by the frontend store but rendered by no template markup); the
+actionable-work invariant's three call sites all resolving to
+`UserActionableRequestQuery` by direct code reference; that
+`SystemAdminDashboard` is an import alias for `CbyAdminDashboard.vue`,
+not a separately-named file; that the 6 legacy `DashboardStatsService`
+workflow-role branches are confirmed unreachable from current frontend
+routing (none of those roles hold the analytics capabilities that would
+route them to `/api/dashboard/stats`); and that `DashboardKpiCard.vue`
+(the one component containing a `--voting` color-token mapping) has zero
+callers anywhere in `frontend/app`, confirmed via a direct follow-up
+grep after the first agent flagged it as not fully confirmed. Also
+confirmed zero backend widget/metric-catalog code exists (Level 2 is
+correctly documented as not-yet-built) and zero per-role dashboard
+components beyond the 3 that exist today.
+
+**`docs/architecture/05-request-state-model.md`** — documents the
+4-concept model with exact persistence fields, casts, nullability, and
+API serialization for each. Confirmed `App\Support\EngineRequestStatus`
+(not `App\Enums\EngineRequestStatus`) as the runtime_status source, 5
+values; `EngineRequestResource` exposes the value twice (`status` alias
+
+- canonical `runtime_status`). Confirmed `final_outcome`'s exact
+  conditional serialization: **absent from JSON** (not `null`) unless the
+  current stage is loaded, non-null, and `is_final` — a precision the
+  prior documentation lacked. Discovered and documented a mapping not
+  previously recorded anywhere: `final_outcome: COMPLETED` produces
+  `runtime_status: CLOSED`, not `runtime_status: COMPLETED` (no such
+  runtime_status value exists) — flagged as an easy mistake given the two
+  enums don't share a naming scheme. Confirmed `EXECUTIVE_REVIEW` (not
+  `EXECUTIVE_VOTING`) is clean with zero legacy-name residue anywhere in
+  either `backend/app` or `frontend/app`. Confirmed
+  `CUSTOMS_DECLARATION_ISSUED` is dead on the backend (`AuditAction` uses
+  `CUSTOMS_ISSUED`) but found **live, unreachable dead-code residue on the
+  frontend**: `frontend/app/pages/audit.vue`'s `ACTION_LABELS` map still
+  contains `CUSTOMS_DECLARATION_ISSUED` plus 3 dead voting-related keys
+  (`VOTE_SUBMITTED`, `VOTING_SESSION_OPENED`, `VOTING_SESSION_CLOSED`) that
+  match no case in the live `AuditAction` enum — recorded as cleanup debt,
+  not corrected (no production code changed). Checked all 4 semantic-role
+  fallback removal criteria against current source: criterion (c) — no
+  consumer relies on the fallback's `codes` half — confirmed **not met**
+  (~40 call sites through `EngineRequestReadModel::bucket()`, all still
+  using the OR-fallback); criteria (a)/(b)/(d) require a live database
+  query to settle and could not be confirmed by static analysis alone,
+  documented as such rather than asserted either way. Also found and
+  documented, as a real drift not previously flagged: the frontend's
+  `EngineRequestStatus` TypeScript type (a different, still-live type from
+  the removed `RequestStatus`) is missing `CANCELLED` and `ABANDONED`,
+  covering only 3 of the backend's 5 runtime_status values. Documented the
+  `WorkflowVersion.state`/`WorkflowStage.status` distinction from
+  `runtime_status`, including that `WorkflowStage.status` is a validated
+  plain string, not a PHP enum cast (unlike `semantic_role`/`final_outcome`,
+  which are) — and verified via `WorkflowPublishRulePack::validateStageActivity()`
+  that the one "invalid" state combination worth documenting
+  (`runtime_status: ACTIVE` on a reachable `INACTIVE` stage) is
+  structurally prevented by the publish validator and the DRAFT-only edit
+  gate together, not merely unlikely.
+
+**Cross-document link activation.** Replaced every live "planned, not
+yet written — Step 3B" annotation pointing at these two files with real
+links, across `docs/README.md` (2 table rows), `docs/architecture/README.md`
+(rewritten Live/Planned lists), `docs/development-guide.md`,
+`docs/architecture/03-permission-model.md` (2 spots),
+`docs/architecture/01-system-architecture.md` (2 spots),
+`docs/architecture/06-database-and-models.md` (2 spots), and
+`docs/engine/extension-guide.md`. Confirmed via `grep` that zero
+"planned...Step 3B" annotations remain anywhere outside
+`docs/audit-functional/`. `AGENTS.md` was deliberately **not** rewritten
+— its consolidation remains Step 9, per your explicit instruction not to
+begin it early.
+
+**Verification.** Ran Prettier on all 10 touched files; stable on rerun.
+Extracted and resolved every internal Markdown link across all Step
+3B-touched files against the filesystem — all resolve. Confirmed via
+`git status` that only the intended files are dirty; the 2 pre-existing
+dirty files and 11 pre-existing untracked files from before Step 3B
+began remain unchanged. Verified the committed blobs with
+`git diff --stat HEAD -- <touched-files>` — empty, confirming no
+recurrence of the `307ead39` staging issue.
+
+**Deviations**, disclosed rather than absorbed: (1) both new documents
+surfaced real drift beyond what the source decision record and AGENTS.md
+described — the frontend routing duplication, the `EngineRequestStatus`
+type's missing 2 values, and the `audit.vue` dead-code residue were not
+previously documented anywhere; all are recorded as findings/cleanup
+debt, not silently fixed, since fixing them is a code change out of
+scope for a documentation step. (2) Two items in the first verification
+agent's report (`DashboardKpiCard.vue`'s caller graph,
+`reports/index.vue`'s `tone="voting"` context) were flagged as not fully
+confirmed; both were resolved with a direct follow-up grep/read before
+being cited in either document, rather than left as hedged claims.
+
 **Step 3A — ✅ DONE (2026-07-12).** Before touching any source document,
 used a `socraticode:codebase-explorer` subagent (resumed once after an
 API-error truncation) plus direct verification of the two claims it
