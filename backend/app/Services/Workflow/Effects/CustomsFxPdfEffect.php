@@ -119,7 +119,7 @@ class CustomsFxPdfEffect
             'port_of_entry' => $portOfEntry,
             'bank_approved_at' => $this->firstEnteredAt($request, StageSemanticRole::BANK_REVIEW),
             'support_approved_at' => $this->firstEnteredAt($request, StageSemanticRole::SUPPORT_REVIEW),
-            'executive_decided_at' => $this->firstEnteredAt($request, StageSemanticRole::EXECUTIVE_VOTE),
+            'executive_decided_at' => $this->firstEnteredAt($request, StageSemanticRole::EXECUTIVE_REVIEW),
         ];
     }
 

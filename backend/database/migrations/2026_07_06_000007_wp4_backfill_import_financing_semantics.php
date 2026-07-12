@@ -45,7 +45,7 @@ return new class extends Migration
             'CREATE' => StageSemanticRole::INITIAL_ENTRY->value,
             'INTERNAL' => StageSemanticRole::BANK_REVIEW->value,
             'SUPPORT' => StageSemanticRole::SUPPORT_REVIEW->value,
-            'EXEC' => StageSemanticRole::EXECUTIVE_VOTE->value,
+            'EXEC' => StageSemanticRole::EXECUTIVE_REVIEW->value,
             'FX' => StageSemanticRole::SWIFT->value,
             'FX_CONFIRM' => StageSemanticRole::FX_CONFIRMATION->value,
             'FINAL' => StageSemanticRole::FINAL->value,

@@ -25,7 +25,7 @@ final class EngineRequestReadModel
         'at_cby' => [
             'roles' => [
                 StageSemanticRole::SUPPORT_REVIEW,
-                StageSemanticRole::EXECUTIVE_VOTE,
+                StageSemanticRole::EXECUTIVE_REVIEW,
                 StageSemanticRole::SWIFT,
                 StageSemanticRole::FX_CONFIRMATION,
                 StageSemanticRole::FINAL,
@@ -34,7 +34,7 @@ final class EngineRequestReadModel
         ],
         'support_queue' => ['roles' => [StageSemanticRole::SUPPORT_REVIEW], 'codes' => ['SUPPORT']],
         'swift_queue' => ['roles' => [StageSemanticRole::SWIFT], 'codes' => ['FX']],
-        'executive_queue' => ['roles' => [StageSemanticRole::EXECUTIVE_VOTE], 'codes' => ['EXEC']],
+        'executive_queue' => ['roles' => [StageSemanticRole::EXECUTIVE_REVIEW], 'codes' => ['EXEC']],
         'fx_confirmation_queue' => ['roles' => [StageSemanticRole::FX_CONFIRMATION], 'codes' => ['FX_CONFIRM']],
         'fx_confirmation_pending' => ['roles' => [StageSemanticRole::FX_CONFIRMATION], 'codes' => ['FX_CONFIRM']],
         // The Committee Director's own actionable queue: the final-confirmation

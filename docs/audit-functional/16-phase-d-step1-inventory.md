@@ -100,24 +100,22 @@ backfill record of what already ran, not live logic):
 | `app/Support/EngineRequestReadModel.php:28,37` | `dashboardRoles()`-style bucket list; `'executive_queue' => ['roles' => [EXECUTIVE_VOTE], 'codes' => ['EXEC']]`. | Mechanical — same bucket, new case name. `'EXEC'` code fallback unaffected. |
 | `app/Services/Workflow/SemanticRegistry.php:43,92` | `stageCodeAliases()['EXEC'] => EXECUTIVE_VOTE`; `dashboardRoles()` list. | Mechanical. |
 | `app/Services/Workflow/Effects/CustomsFxPdfEffect.php:122` | `firstEnteredAt($request, StageSemanticRole::EXECUTIVE_VOTE)` to resolve `executive_decided_at` for the FX PDF snapshot. | Mechanical — argument only, no logic change. |
-| `database/migrations/2026_07_06_000007_wp4_backfill_import_financing_semantics.php:48` | Historical backfill: `'EXEC' => StageSemanticRole::EXECUTIVE_VOTE->value`. | **Do not touch.** Historical migrations are immutable records of what ran; a PHP enum case rename does not retroactively invalidate an already-applied migration (it stores the string value `'EXECUTIVE_VOTE'`, not the case reference, at execution time). |
+| `database/migrations/2026_07_06_000007_wp4_backfill_import_financing_semantics.php:48` | **Correction (post-execution finding):** this is not a frozen historical record — its `up()` calls `StageSemanticRole::EXECUTIVE_VOTE->value` as a live PHP enum-case reference, re-evaluated on every `php artisan migrate` (fresh clone, CI, `RefreshDatabase` test runs). It is conditionally idempotent (checks `IMPORT_FINANCING` exists, matches on `code = 'EXEC'`) but its *class body* still needs to compile against the current enum. | **Must be updated, not left alone.** Confirmed by execution: renaming the enum case without updating this file breaks `php artisan migrate` on any fresh database (undefined enum case — fatal error), which every CI run and `RefreshDatabase` test performs. Fixed alongside the Step 4 rename in the same commit. |
 
-No other backend file references the case. The rename is a 4-file mechanical
-change plus a data consideration: any **already-persisted** `semantic_role`
-column value of `'EXECUTIVE_VOTE'` (e.g. from the WP-4 backfill migration) will
-no longer match the enum after rename unless the enum's backing string also
-changes and existing rows are updated, or the enum keeps the same backing
-string while only the case name changes.
+No other backend file references the case. Live-DB check (2026-07-12, local
+dev): `WorkflowStage::whereNotNull('semantic_role')->count()` returned **0** —
+no persisted row currently holds `'EXECUTIVE_VOTE'` in this environment, so no
+row-level data backfill was needed here. Any environment where this migration
+already ran against real data (and wasn't reseeded since) would need a
+one-time `UPDATE workflow_stages SET semantic_role = 'EXECUTIVE_REVIEW' WHERE
+semantic_role = 'EXECUTIVE_VOTE'` before deploying the renamed enum — flagged
+for release-checklist attention, not executed here since no such row exists
+locally.
 
-**Recommendation for Step 4:** keep the backing string stable during the
-rename (`case EXECUTIVE_REVIEW = 'EXECUTIVE_VOTE';` is the wrong pattern — it
-reintroduces a name/value mismatch of exactly the kind M6 is eliminating).
-Correct approach: rename both the case and the value
-(`EXECUTIVE_REVIEW = 'EXECUTIVE_REVIEW'`), then add a one-time data migration
-updating any persisted `workflow_stages.semantic_role = 'EXECUTIVE_VOTE'` rows
-to `'EXECUTIVE_REVIEW'`. This must run **after** the enum rename ships and
-**before** any read path assumes the new value — sequencing detail for the
-Step 4 implementation, not yet executed.
+**Correction applied:** the rename kept the case name and backing string
+identical (`EXECUTIVE_REVIEW = 'EXECUTIVE_REVIEW'`), avoiding a
+`case EXECUTIVE_REVIEW = 'EXECUTIVE_VOTE'` name/value mismatch — consistent
+with M6's goal of eliminating exactly that class of drift.
 
 ---
 

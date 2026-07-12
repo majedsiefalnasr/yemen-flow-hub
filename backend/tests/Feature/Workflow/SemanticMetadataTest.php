@@ -63,7 +63,7 @@ class SemanticMetadataTest extends TestCase
         $reserve = $version->stages()->create([
             'code' => 'reserve',
             'name' => 'Reserve',
-            'semantic_role' => StageSemanticRole::EXECUTIVE_VOTE,
+            'semantic_role' => StageSemanticRole::EXECUTIVE_REVIEW,
             'attached_effects' => [WorkflowEffectCode::FINANCING_RESERVE->value],
             'sort_order' => 1,
         ]);
