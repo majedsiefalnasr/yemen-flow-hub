@@ -11,8 +11,8 @@ export interface BankAdminMonthlyEntry {
  * (backend/app/Support/EngineRequestReadModel.php) — the shape every
  * `recent_requests`-style list on /api/dashboard/stats actually returns.
  * `status` is the 5-value runtime status (ACTIVE/CLOSED/REJECTED/CANCELLED/
- * ABANDONED), not the legacy 22-value RequestStatus. There is no nested
- * `merchant.name` or `supplier_name` — only the flat `merchant_name`.
+ * ABANDONED). There is no nested `merchant.name` or `supplier_name` — only
+ * the flat `merchant_name`.
  */
 export interface DashboardQueueItem {
   id: number

@@ -5,7 +5,6 @@ import type {
   InvoiceType,
   PaymentTermsMode,
   PortOfArrival,
-  RequestStatus,
   RequestType,
   UserRole,
   VoteType,
@@ -353,7 +352,6 @@ export interface PaginatedResponse<T> {
     last_page: number
     per_page: number
     total: number
-    status_totals?: Partial<Record<RequestStatus, number>>
   }
 }
 

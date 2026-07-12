@@ -1,47 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { RequestStatus, UserRole, VoteType } from '../../../types/enums'
-
-describe('RequestStatus', () => {
-  const EXPECTED_STATUSES = [
-    'DRAFT',
-    'DRAFT_REJECTED_INTERNAL',
-    'BANK_RETURNED',
-    'BANK_REJECTED',
-    'SUPPORT_RETURNED',
-    'SUBMITTED',
-    'BANK_REVIEW',
-    'BANK_APPROVED',
-    'SUPPORT_REVIEW_PENDING',
-    'SUPPORT_REVIEW_IN_PROGRESS',
-    'SUPPORT_APPROVED',
-    'SUPPORT_REJECTED',
-    'WAITING_FOR_SWIFT',
-    'SWIFT_UPLOADED',
-    'WAITING_FOR_VOTING_OPEN',
-    'EXECUTIVE_VOTING_OPEN',
-    'EXECUTIVE_VOTING_CLOSED',
-    'EXECUTIVE_APPROVED',
-    'EXECUTIVE_REJECTED',
-    'CUSTOMS_DECLARATION_ISSUED',
-    'FX_CONFIRMATION_PENDING',
-    'COMPLETED',
-  ]
-
-  it('has exactly 22 canonical status values', () => {
-    const values = Object.values(RequestStatus)
-    expect(values).toHaveLength(22)
-  })
-
-  it.each(EXPECTED_STATUSES)('defines %s', (status) => {
-    expect(Object.values(RequestStatus)).toContain(status)
-  })
-
-  it('enum values match their keys (no aliasing)', () => {
-    for (const [key, value] of Object.entries(RequestStatus)) {
-      expect(value).toBe(key)
-    }
-  })
-})
+import { UserRole, VoteType } from '../../../types/enums'
 
 describe('UserRole', () => {
   const EXPECTED_ROLES = [

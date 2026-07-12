@@ -1,31 +1,3 @@
-/** 22 canonical workflow states — must match backend RequestStatus exactly */
-export enum RequestStatus {
-  DRAFT = 'DRAFT',
-  DRAFT_REJECTED_INTERNAL = 'DRAFT_REJECTED_INTERNAL',
-  SUBMITTED = 'SUBMITTED',
-  BANK_REVIEW = 'BANK_REVIEW',
-  BANK_APPROVED = 'BANK_APPROVED',
-  BANK_RETURNED = 'BANK_RETURNED',
-  SUPPORT_RETURNED = 'SUPPORT_RETURNED',
-  BANK_REJECTED = 'BANK_REJECTED',
-  SUPPORT_REVIEW_PENDING = 'SUPPORT_REVIEW_PENDING',
-  SUPPORT_REVIEW_IN_PROGRESS = 'SUPPORT_REVIEW_IN_PROGRESS',
-  SUPPORT_APPROVED = 'SUPPORT_APPROVED',
-  SUPPORT_REJECTED = 'SUPPORT_REJECTED',
-  WAITING_FOR_SWIFT = 'WAITING_FOR_SWIFT',
-  SWIFT_UPLOADED = 'SWIFT_UPLOADED',
-  WAITING_FOR_VOTING_OPEN = 'WAITING_FOR_VOTING_OPEN',
-  EXECUTIVE_VOTING_OPEN = 'EXECUTIVE_VOTING_OPEN',
-  EXECUTIVE_VOTING_CLOSED = 'EXECUTIVE_VOTING_CLOSED',
-  EXECUTIVE_APPROVED = 'EXECUTIVE_APPROVED',
-  EXECUTIVE_REJECTED = 'EXECUTIVE_REJECTED',
-  /** Legacy alias — preserved during migration to external FX confirmation terminology */
-  CUSTOMS_DECLARATION_ISSUED = 'CUSTOMS_DECLARATION_ISSUED',
-  /** Post-Director-finalization state: SWIFT uploaded, Director signs/completes external FX confirmation */
-  FX_CONFIRMATION_PENDING = 'FX_CONFIRMATION_PENDING',
-  COMPLETED = 'COMPLETED',
-}
-
 /** 8 canonical roles — must match backend UserRole exactly */
 export enum UserRole {
   DATA_ENTRY = 'DATA_ENTRY',
@@ -103,10 +75,4 @@ export enum Incoterm {
   FOB = 'FOB',
   CFR = 'CFR',
   CIF = 'CIF',
-}
-
-export enum VotingSessionStatus {
-  OPEN = 'OPEN',
-  CLOSED = 'CLOSED',
-  FINALIZED = 'FINALIZED',
 }

@@ -121,7 +121,7 @@ const kpiGrid = computed(() => {
 
 type BankRecentRow = NonNullable<BankAdminDashboardStatsExtended['recent_requests']>[number]
 
-/** Runtime-status → severity token, per DESIGN.md (no legacy RequestStatus). */
+/** Runtime-status → severity token, per DESIGN.md. */
 const RUNTIME_STATUS_BADGE: Record<string, string> = {
   ACTIVE:
     'border border-[var(--brand-color)]/30 bg-[var(--brand-color)]/10 text-[var(--brand-color)]',
