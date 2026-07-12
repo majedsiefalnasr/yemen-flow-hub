@@ -2,8 +2,16 @@
 
 ## Coverage status
 
-**Verified:** 2026-07-12, against `php artisan route:list --path=api` run
-directly on this repository's `backend/`.
+**Verification method:** `php artisan route:list --path=api`, run
+directly on this repository's `backend/` in the local development
+environment on 2026-07-12. Route totals are **not** recorded here as a
+fixed number — demo/switch-role routes (`api/auth/demo-users`,
+`api/auth/switch-demo-user`, `api/auth/switch-demo-role`) register
+conditionally on `config('demo.allowed_environments')`, so the total
+route count varies by environment (e.g. staging/production with demo
+routes disabled will show fewer routes than local). Re-run the command
+above in the target environment to get an accurate count rather than
+trusting any number recorded here.
 
 Every endpoint documented below was checked against a real registered
 route at verification time, and the accompanying claims (settings keys,
@@ -12,8 +20,9 @@ implementing source files — not carried over unverified from the prior
 version of this document. Where verification found this document was
 stale, this move corrected it (see the claim-TTL note under Support
 Review Claiming, and the removal of the Voting section below — Executive
-Voting is out of V1 and no corresponding route, enum, or session model
-exists in the codebase anymore).
+Voting has no live V1 route, service, or session model, though some
+legacy compatibility symbols remain in the codebase; see that section for
+the precise scope of what still exists).
 
 **This document is not yet a complete API reference.** It accurately
 covers the primary `EngineRequest` lifecycle, authentication basics,
@@ -32,9 +41,9 @@ exports — but the following registered route families exist in
 - Org-structure admin — `organizations`, `teams`, `roles` (+
   activate/deactivate), `screens`, `screen-permissions/matrix`.
 - `merchants` (full CRUD).
-- Governance/compliance — `governance/impact`, `banks/{bank}/lifecycle-impact`,
-  `compliance/duplicate-invoices`, `compliance/expired-documents`,
-  `compliance/sla-breaches`.
+- Governance/compliance — `governance/impact`,
+  `banks/{bank}/lifecycle-impact`, `compliance/duplicate-invoices`,
+  `compliance/expired-documents`, `compliance/sla-breaches`.
 - Analytics report endpoints on `ReportController` — `reports/by-bank`,
   `by-currency`, `by-merchant`, `by-sector`, `by-workflow-stage`,
   `requests-over-time`, `sla`, `stage-duration`, `summary`,
@@ -45,20 +54,21 @@ exports — but the following registered route families exist in
 - Several `AuthController` routes beyond login/logout/me: PIN login,
   password forgot/reset/verify, OTP verification, demo-user/demo-role
   switching.
-- Smaller gaps on already-documented families: `GET
-/api/v1/engine-requests/available-workflows`, `POST
-/api/v1/engine-requests/{id}/abandon`, `POST
-/api/v1/engine-requests/{id}/documents/{document}/replace`, and the
-  async audit-log export routes (`POST /api/v1/audit-logs/export`, `GET
-.../export/{reportExport}`, `.../download`).
+- Smaller gaps on already-documented families:
+  `GET /api/v1/engine-requests/available-workflows`,
+  `POST /api/v1/engine-requests/{id}/abandon`,
+  `POST /api/v1/engine-requests/{id}/documents/{document}/replace`,
+  `POST /api/v1/audit-logs/export`,
+  `GET /api/v1/audit-logs/export/{reportExport}`,
+  `GET /api/v1/audit-logs/export/{reportExport}/download`.
 
-**Documenting these families is a defined follow-up**, tracked in
-`docs/audit-functional/22-documentation-consolidation-plan.md` — it is
-not silently deferred or abandoned; this document should not be treated
-as the complete canonical API reference until that follow-up lands. Until
-then, for any route not covered above, `php artisan route:list` and the
-registered controller in `backend/app/Http/Controllers/Api/` are the
-authoritative source.
+**Documenting these families is Step 13 of the consolidation plan**
+(`docs/audit-functional/22-documentation-consolidation-plan.md`, "Complete
+API Reference Coverage") — it has an assigned step, not an open-ended
+"someday"; this document should not be treated as the complete canonical
+API reference until that step lands. Until then, for any route not
+covered above, `php artisan route:list` and the registered controller in
+`backend/app/Http/Controllers/Api/` are the authoritative source.
 
 ---
 
@@ -237,19 +247,26 @@ Stats queries use the same organization/stage scoping as list endpoints (`Engine
 
 # Request Visibility Rules
 
-The API must NEVER return requests outside the user's organization scope.
+Request visibility combines **two independent dimensions** — being in
+the same organization does not by itself grant access to every request
+in that organization:
 
-The platform uses:
+1. **Organization/bank scope** — `DataScope::forUser()` +
+   `EngineRequest::scopeForUser()` (`applyTo(..., 'engine_requests.bank_id')`).
+2. **Stage VIEW permission** — for any non-`system_admin` user, the list
+   endpoint additionally intersects against
+   `StagePermissionResolver::accessibleStageIds($user, StageAccessLevel::VIEW)`
+   (`App\Http\Controllers\Api\V1\EngineRequestController::index()`). Only
+   `system_admin` bypasses this and sees every stage.
 
-- Organization-scoped visibility (via `stage_permissions` resolved against the caller's organization/team/role)
-- Role-scoped actions
-- Queue-based operational filtering
+A user must satisfy **both** to see a given request — organization/bank
+membership alone is not sufficient. Role-scoped actions and queue-based
+operational filtering apply on top of this base visibility.
 
-Visibility enforcement must happen at:
+Visibility enforcement happens at:
 
-- Query level
-- API level
-- Dynamic workflow engine level (`StagePermissionResolver`)
+- Query level (`DataScope::applyTo()`, `accessibleStageIds()`)
+- API level (controller composes both scopes)
 - Policy level
 
 The platform is NOT a shared admin dashboard.
@@ -438,6 +455,40 @@ DELETE /api/v1/engine-requests/{id}/claim
 
 ---
 
+# Executive Voting (out of V1 — no live routes)
+
+Executive Voting has **no live V1 workflow routes, vote-casting service,
+session model, or active vote data model.** There is no
+`POST /api/voting/{id}/vote`, no `.../close` endpoint, no dedicated
+`/api/voting/*` route family, no `request_votes` table (physically
+dropped — see
+[`architecture/06-database-and-models.md`](architecture/06-database-and-models.md)),
+and no `VotingSessionStatus` or vote-casting UI anywhere in the shipped
+frontend.
+
+**This does not mean zero voting-related code exists in `backend/app`.**
+Legacy compatibility/dead-code symbols remain, none of them reachable
+from a live route or active data path:
+
+- `NotificationType::VOTING_OPENED` (enum case) and matching voting
+  notification templates in the notification-template registry —
+  unreferenced by any live transition.
+- `AuditAction::VOTE_CAST` (enum case) — no code path constructs an
+  audit log entry with this action.
+- `App\DTOs\Voting\VotingTally` and `App\Http\Resources\VotingTallyResource`
+  — dead classes, not constructed anywhere reachable from a controller.
+- The dashboard-stats voting fields (`waiting_for_voting_open`,
+  `active_voting_sessions`, `voting_queue`) — see the Dashboard APIs
+  section below; hardcoded to zero/empty, not backed by live data.
+
+These are recorded here as **cleanup debt**, not corrected in this
+documentation pass — removing dead code is out of scope for a
+documentation correction. Do not build new functionality that depends on
+any of these symbols; do not assume they are wired to anything live
+because they still compile.
+
+---
+
 # Document APIs
 
 There is no standalone `/api/documents/*` route family. Documents are nested under the owning request:
@@ -491,6 +542,44 @@ Returns `DOCUMENT_LOCKED` (422) if the document was uploaded on a stage the requ
 
 ---
 
+# Replace Request Document
+
+Documents support **controlled versioned replacement**, not blanket
+immutability. Not documented in the prior version of this file — added
+here after finding
+`App\Services\Documents\EngineRequestDocumentReplacementService` and its
+route.
+
+## Endpoint
+
+```http
+POST /api/v1/engine-requests/{engineRequest}/documents/{document}/replace
+```
+
+## Behavior
+
+`EngineRequestDocumentReplacementService::replace()` — the existing
+document is marked `status: Superseded` with `superseded_by` set to the
+new document's ID; the new document is created `status: Active` with
+`version` incremented by one. Both writes happen inside one DB
+transaction, and the replacement is audited
+(`AuditAction::DOCUMENT_REPLACED`).
+
+## Restrictions
+
+- Returns `DOCUMENT_NOT_REPLACEABLE` (422) if the target document is
+  soft-deleted (`trashed()`), or if its current `status` is not `Active`
+  (i.e. it was already superseded by an earlier replacement).
+- **Not gated by stage or document type.** Replacement is not restricted
+  to the stage the document was originally uploaded on, and there is no
+  document-type exclusion (e.g. no SWIFT-specific carve-out) in
+  `EngineRequestDocumentReplacementService` — the `DOCUMENT_LOCKED`
+  stage-exit restriction described under Delete Request Document above
+  applies only to **deletion**, not to replacement.
+- PDF only, same upload validation as the initial upload endpoint.
+
+---
+
 # Upload SWIFT Document
 
 There is no separate `/api/workflow/{id}/swift-upload` endpoint. The SWIFT officer uploads the SWIFT document through the same generic document endpoint used by every other stage:
@@ -502,8 +591,7 @@ POST /api/v1/engine-requests/{id}/documents
 ## Restrictions
 
 - Only SWIFT Officer role (enforced via stage permissions on the SWIFT-upload stage, not a hardcoded role check on this endpoint)
-- Only while the request is on the stage that requires the SWIFT document
-- SWIFT cannot be replaced after upload (enforced by `DOCUMENT_LOCKED` once the request leaves that stage)
+- Only while the request is on the stage that requires the SWIFT document (applies to the **initial upload**; a subsequent replacement goes through `POST .../documents/{document}/replace` above, which is not stage-gated — see that section for its own restrictions)
 - Request remains read-only for that stage once the required document is present and the transition to the next stage executes
 - PDF only
 - Authenticated and rate-limited: exceeding the upload throttle returns HTTP `429` with the standard JSON error envelope
@@ -1066,7 +1154,10 @@ The backend must guarantee:
 
 Data Entry users:
 
-- Can view all bank requests
+- Can view requests within their bank's scope **that they also hold VIEW
+  stage-permission on** — bank membership is necessary but not
+  sufficient; see "Request Visibility Rules" above for the two-dimension
+  model.
 - Should receive simplified business statuses
 - Should NOT receive detailed CBY workflow stages
 

@@ -535,12 +535,15 @@ any file.
 
 **`docs/06-api-reference.md` → `docs/api-reference.md`** (moved via `git
 mv` to preserve history). Cross-checked against `php artisan
-route:list --path=api` (237 registered API routes). Findings: the
-documented endpoints were individually accurate, but the document covers
-only a fraction of the real API surface — entire route families are
-undocumented (Workflow Designer admin CRUD, reference data admin,
-org/team/role/screen admin, merchants, governance/compliance,
-profile/MFA/sessions, search, most `ReportController` analytics
+route:list --path=api`, run locally on 2026-07-12 — the route count is
+**not** recorded as a fixed number here, since demo/switch-role routes
+register conditionally on `config('demo.allowed_environments')` and the
+total varies by environment. Findings: the documented endpoints were
+individually accurate, but the document covers only a fraction of the
+real API surface — entire route families are undocumented (Workflow
+Designer admin CRUD, reference data admin, org/team/role/screen admin,
+merchants, governance/compliance, profile/MFA/sessions, search, most
+`ReportController` analytics
 endpoints, plus smaller gaps like `available-workflows`, `.../abandon`,
 `.../documents/{document}/replace`, and several `AuthController` routes).
 Per your direction (see below), did not expand Step 3A into a full
@@ -559,7 +562,16 @@ via `grep` across `backend/app` that no `EXECUTIVE_VOTING_OPEN`,
 `AUTO_ABSTAIN_TIMEOUT`, or vote-type enum exists anywhere in the
 codebase; Executive Voting is out of V1 per AGENTS.md, and this
 functionality was never merely deprecated in this doc but described as
-if live. Kept the one general (non-voting-specific) concurrency-locking
+if live. **Correction (2026-07-12, see the follow-up correction round
+below):** this original grep was too narrow — it disproved a live V1
+voting _feature_ (routes, session model, active vote data) but did not
+disprove all voting-related symbols in `backend/app`. Legacy compatibility
+symbols remain (`NotificationType::VOTING_OPENED`, `AuditAction::VOTE_CAST`,
+`App\DTOs\Voting\VotingTally`, `VotingTallyResource`), unreachable from any
+live route but present in the codebase — see `docs/api-reference.md`'s
+"Executive Voting (out of V1 — no live routes)" section, which now
+documents this distinction precisely instead of claiming zero. Kept the
+one general (non-voting-specific) concurrency-locking
 paragraph, retitled from "Voting Concurrency Protection" to "Transition
 Concurrency Protection," since the underlying pessimistic-locking
 mechanism it describes is real and applies to every transition, not a
@@ -676,6 +688,96 @@ needed more than link fixes — their narrative content was stale relative
 to Step 2's already-shipped files and 3A's newly-live files, so both were
 substantively rewritten, not just patched.
 
+**Step 3A accuracy correction (2026-07-12).** A further review caught 9
+overstated or imprecise claims, spanning 3 of the Step 3A files, verified
+directly against source before editing:
+
+1. `docs/api-reference.md` — removed the hardcoded "237 registered
+   routes" count; replaced with the verification command, environment,
+   and date, plus an explicit note that demo/switch-role routes register
+   conditionally on `config('demo.allowed_environments')` so the total
+   varies by environment. Applied the same fix to this plan's own Step
+   3A record above.
+2. Same file — corrected the voting-removal wording from an implied
+   "zero voting code anywhere in `backend/app`" to the precise claim: no
+   live V1 workflow routes, vote-casting service, session model, or
+   active vote data model, **but** legacy compatibility/dead-code symbols
+   remain (`NotificationType::VOTING_OPENED`, `AuditAction::VOTE_CAST`,
+   voting notification templates, `App\DTOs\Voting\VotingTally`,
+   `VotingTallyResource`, the zeroed dashboard-stats voting fields).
+   Recorded these as cleanup debt in a new "Executive Voting (out of V1
+   — no live routes)" section — no production code touched.
+3. `docs/architecture/06-database-and-models.md` — reconstructed
+   `users`, `banks`, `organizations`/`teams`/`roles`, and the
+   `user_roles`/`user_teams` pivots from every applicable migration (not
+   just the base create), not the assumed shape from the prior doc
+   version. Confirmed `users.role` is fully dropped
+   (`2026_07_07_000001_drop_users_role_column.php`), added
+   `organizations.classification` (the field `DataScope::forUser()`
+   reads), added `version`/optimistic-concurrency columns across
+   `banks`/`organizations`/`teams`/`roles`, added `user_roles.is_active`
+   (confirmed present) and confirmed `user_teams` has **no** equivalent
+   column, added the 4 missing `workflow_transitions` fields
+   (`is_default_submit`, `is_self_loop`, `transition_type`,
+   `is_destructive`, all from
+   `2026_07_06_000004_wp3_designer_validation_columns.php`), and added
+   the previously-undocumented `field_groups` and `stage_field_rules`
+   tables plus a fuller `field_definitions` column list (it had ~9
+   columns documented vs. ~24 actual).
+4. Same file — added an explicit "Coverage status" section stating this
+   is a core-workflow schema reference, not an exhaustive database
+   catalog, and listing the omitted table families (reference data,
+   merchants, notifications, report-exports, archive tables, screens —
+   the last already covered in the permission-model doc instead).
+   Updated `docs/architecture/01-system-architecture.md` to stop calling
+   it "the full schema."
+5. Same 2 files — corrected `engine_request_documents`: added the
+   missing `status` column (`DocumentStatus` enum: `active`\|`superseded`)
+   and replaced "immutable uploads (SWIFT documents cannot be replaced)"
+   with an accurate description of controlled versioned replacement via
+   `EngineRequestDocumentReplacementService`, confirmed
+   `DOCUMENT_LOCKED` gates deletion only (by stage), not replacement, and
+   confirmed no document-type exclusion exists for SWIFT specifically.
+   Added a "Replace Request Document" section to `docs/api-reference.md`
+   documenting the endpoint, which had never been documented at all.
+6. `docs/architecture/06-database-and-models.md`,
+   `docs/architecture/01-system-architecture.md`, and
+   `docs/api-reference.md` — corrected request visibility in all three:
+   confirmed via `EngineRequest::scopeForUser()` and
+   `EngineRequestController::index()` that visibility requires **both**
+   `DataScope` (organization/bank) **and** stage VIEW permission
+   (`StagePermissionResolver::accessibleStageIds()`) for any
+   non-`system_admin` user — replaced every "all users inside the same
+   bank can view all bank requests" / "Data Entry users can view all bank
+   requests" claim with the precise two-dimension composition.
+7. `docs/architecture/01-system-architecture.md` — corrected "current
+   stage expresses business status — not a separate status column" (which
+   implied there's no separate status column) to state plainly that
+   `engine_requests` has **two** separate columns: `status` (the 5-value
+   runtime lifecycle) and `current_stage_id` (the fine-grained business
+   position), neither substituting for the other.
+8. Added **Step 13 — Complete API Reference Coverage** to this plan
+   (below, after Step 12), with the exact route families already listed
+   in `docs/api-reference.md`'s Coverage status section as its acceptance
+   scope — the missing-API-documentation follow-up now has an assigned
+   step rather than "needs a step number when scheduled."
+9. `docs/api-reference.md` — repaired the Coverage status section's
+   malformed multiline inline-code (endpoint examples that had been
+   split mid-backtick across lines by an earlier automated reflow),
+   restoring every example to one complete, correctly-rendered endpoint.
+
+Re-ran Prettier on the 4 touched files (`api-reference.md`,
+`architecture/06-database-and-models.md`,
+`architecture/01-system-architecture.md`, this plan doc) — clean and
+stable. Re-validated every internal link across all 15 files touched by
+Steps 2+3A+this correction round against the filesystem — all resolve or
+are annotated planned. Re-ran `php artisan route:list --path=api`
+(237 routes in the local environment at correction time, not recorded as
+a claim in the docs themselves per item 1). Confirmed via `git status`
+that only the 4 corrected files plus this record are dirty; the 2
+pre-existing dirty files and 11 pre-existing untracked files remain
+unchanged.
+
 **Step 4 — Rewrite the 3 heavily-stale files**
 (`docs/01-workflow-and-business-rules.md` → merges into
 `docs/architecture/02-workflow-engine.md`, `docs/04-frontend-guide.md` →
@@ -741,6 +843,49 @@ rather than being written against docs that don't exist yet. Reuse
 `testing-manual/`'s structural scaffolding (test-user-alias table, evidence
 template, exit criteria) from its archived location; do not reuse its
 state/workflow/permission content.
+
+**Step 13 — Complete API Reference Coverage (assigned 2026-07-12).**
+`docs/api-reference.md`'s Coverage status section (added in Step 3A) documents
+only the primary `EngineRequest` lifecycle, authentication basics,
+document/FX-confirmation endpoints, settings, notifications, and report
+exports. This step closes the gap by documenting every remaining
+registered route family, so `docs/api-reference.md` can drop its "not yet
+complete" caveat. Acceptance scope — the exact families already
+enumerated in `docs/api-reference.md`'s Coverage status section:
+
+- The full Workflow Designer admin API (`workflow-definitions`,
+  `workflow-versions` + `clone`/`validate`/`publish`/`archive`/`graph`,
+  `workflow-versions/{v}/stages`, `workflow-actions`,
+  `workflow-versions/{v}/transitions`, `workflow-stages/{s}/permissions`,
+  `workflow-stages/{s}/field-rules`, `field-groups`, `fields` + `options`).
+- Reference data admin (`reference-tables`, `reference-values` +
+  activate/deactivate lifecycle).
+- Org-structure admin (`organizations`, `teams`, `roles` +
+  activate/deactivate, `screens`, `screen-permissions/matrix`).
+- `merchants` (full CRUD).
+- Governance/compliance (`governance/impact`,
+  `banks/{bank}/lifecycle-impact`, `compliance/duplicate-invoices`,
+  `compliance/expired-documents`, `compliance/sla-breaches`).
+- `ReportController`'s analytics endpoints (`reports/by-bank`,
+  `by-currency`, `by-merchant`, `by-sector`, `by-workflow-stage`,
+  `requests-over-time`, `sla`, `stage-duration`, `summary`,
+  `team-performance`).
+- `Profile`/MFA/session management (`api/profile/*`) and `Search`
+  (`api/search`, `api/search/recent`).
+- Remaining `AuthController` routes (PIN login, password
+  forgot/reset/verify, OTP verification, demo-user/demo-role switching).
+- The smaller documented gaps: `GET
+/api/v1/engine-requests/available-workflows`, `POST
+/api/v1/engine-requests/{id}/abandon`, the audit-log async export
+  routes.
+
+Re-run `php artisan route:list --path=api` at execution time rather than
+trusting this list as final — new routes may exist by then. On
+completion, update `docs/api-reference.md`'s Coverage status section to
+state full coverage (or a narrowed remaining gap, if new routes were
+added in the interim) rather than deleting the section outright — the
+verification-method framing (date, command, environment caveat) stays
+useful even once coverage is complete.
 
 Each step above should land as its own commit, following the existing
 `docs(scope): description` convention this session already used

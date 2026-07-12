@@ -4,6 +4,23 @@
 `backend/app/Models/` directly (not carried over from the prior version
 of this document).
 
+## Coverage status
+
+**This is a core-workflow schema reference, not an exhaustive database
+catalog.** It covers the tables the dynamic workflow engine, permission
+model, and request lifecycle depend on directly. The following table
+families exist in `backend/database/migrations/` but are **not**
+documented here: reference data (`reference_tables`, `reference_values`),
+`merchants`, notification tables (`notifications`, notification
+templates/preferences), report-export tables (`report_exports`,
+`report_presets`), `audit_log_archives`/`workflow_history_archives`
+(retention-policy archival, mentioned only in passing below),
+`screens`/`screen_permissions` (documented instead in
+[`03-permission-model.md`](03-permission-model.md) §1), and any
+migration-only/data-backfill tables with no ongoing application read
+path. Extending this document to cover those families is a candidate for
+a future step, not assumed complete by omission.
+
 MySQL. The schema is workflow-oriented: request state is expressed by
 which `workflow_stages` row a request currently occupies, not by a fixed
 business-status column. For the 4-concept request-state model
@@ -20,57 +37,105 @@ mechanics on top of the governance tables below, see
 
 ### banks
 
-| Field      | Type           |
-| ---------- | -------------- |
-| id         | bigint         |
-| name       | string, unique |
-| code       | string, unique |
-| is_active  | boolean        |
-| created_at | timestamp      |
-| updated_at | timestamp      |
+| Field           | Type                                           |
+| --------------- | ---------------------------------------------- |
+| id              | bigint                                         |
+| organization_id | foreignId, nullable                            |
+| name            | string, unique                                 |
+| code            | string, unique                                 |
+| license_number  | string, nullable                               |
+| swift_code      | string, nullable, unique                       |
+| status          | enum (`ACTIVE`\|`SUSPENDED`), default `ACTIVE` |
+| is_active       | boolean                                        |
+| version         | unsigned bigint, default 1                     |
+| created_at      | timestamp                                      |
+| updated_at      | timestamp                                      |
+
+`name` survived an add-then-revert cycle (a migration briefly split it
+into `name_ar`/`name_en`, then a later migration reverted to the single
+`name` column) — the schema has only ever had `name` as its live state.
+`organization_id`, `license_number`, `swift_code`, `status`, and
+`version` were added later, alongside `organizations.classification`
+(below) — see `Bank::$fillable`.
 
 ### users
 
-| Field         | Type                |
-| ------------- | ------------------- |
-| id            | bigint              |
-| bank_id       | foreignId, nullable |
-| name          | string              |
-| email         | string, unique      |
-| password      | string              |
-| role          | string, indexed     |
-| is_active     | boolean             |
-| last_login_at | timestamp, nullable |
-| created_at    | timestamp           |
-| updated_at    | timestamp           |
-
-`role` is a legacy single-value column retained for backward
-compatibility. Live authorization is resolved through the
+**`users.role` was dropped** (`2026_07_07_000001_drop_users_role_column.php`)
+and no longer exists on this table — it is not merely deprecated. Live
+authorization is resolved entirely through the
 `organizations`/`teams`/`roles` governance tables below via the
-`user_roles`/`user_teams` pivot tables, not this column alone — see
+`user_roles`/`user_teams` pivot tables — see
 [`03-permission-model.md`](03-permission-model.md).
+
+| Field                     | Type                            |
+| ------------------------- | ------------------------------- |
+| id                        | bigint                          |
+| organization_id           | foreignId, nullable             |
+| bank_id                   | foreignId, nullable             |
+| name                      | string                          |
+| email                     | string, unique                  |
+| locale                    | string, nullable, default `ar`  |
+| phone                     | string, nullable                |
+| password                  | string (hashed)                 |
+| pin_code_hash             | string, nullable                |
+| pin_enabled               | boolean, default false          |
+| must_change_password      | boolean, default false          |
+| temporary_password_set_at | timestamp, nullable             |
+| password_changed_at       | timestamp, nullable             |
+| is_active                 | boolean, default true           |
+| user_preferences          | json, nullable                  |
+| avatar_variant            | string(20), default `beam`      |
+| mfa_enabled               | boolean, default true           |
+| totp_secret               | string, nullable                |
+| totp_enabled              | boolean, default false          |
+| totp_recovery_codes       | json, nullable                  |
+| last_login_at             | timestamp, nullable             |
+| email_verified_at         | timestamp, nullable             |
+| remember_token            | string, nullable (Laravel std.) |
+| version                   | unsigned bigint, default 1      |
+| created_at                | timestamp                       |
+| updated_at                | timestamp                       |
+
+Confirmed dropped, no longer present: `role` (as above); `avatar_color`
+and `avatar_colors` (both added then dropped in the same migration
+cycle — only `avatar_variant` survives as the live avatar-related
+column).
 
 ### Governance tables: organizations, teams, roles
 
 The permission model is built on an organization/team/role hierarchy
 rather than a single fixed `role` enum.
 
-**organizations** — `id`, `code` (unique), `name`, `is_system`,
-`is_active`, timestamps.
+**organizations** — `id`, `code` (unique), `name`, **`classification`**
+(string(40), not-null, indexed — added
+`2026_07_06_000001_add_classification_to_organizations_table.php`,
+backfilled from `OrganizationClassification`; this is the field
+`DataScope::forUser()` reads to decide system-wide vs. own-bank scope,
+see [`03-permission-model.md`](03-permission-model.md) §3), `is_system`,
+`is_active`, **`version`** (unsigned bigint, default 1), timestamps.
 
 **teams** — `id`, `organization_id` (foreignId), `code`, `name`,
-`is_system`, `is_active`, timestamps. Unique on `(organization_id,
-code)`.
+`is_system`, `is_active`, **`version`** (unsigned bigint, default 1),
+timestamps. Unique on `(organization_id, code)`.
 
 **roles** — `id`, `organization_id` (foreignId), `code`, `name`,
-`is_system`, `is_active`, timestamps. Unique on `(organization_id,
-code)`.
+`is_system`, `is_active`, **`version`** (unsigned bigint, default 1),
+timestamps. Unique on `(organization_id, code)`.
 
-**user_roles / user_teams** (pivots) — `user_roles` links `users` to
-`roles` (unique per `user_id`/`role_id` pair); `user_teams` links `users`
-to `teams` (unique per `user_id`/`team_id` pair). A user may hold
-multiple roles/teams; these pivots are what `stage_permissions` matches
-against.
+**user_roles** (pivot) — `id`, `user_id` (foreignId), `role_id`
+(foreignId), **`is_active`** (boolean, default true — added
+`2026_07_06_000001_add_is_active_to_user_roles_table.php`, alongside a
+data backfill enforcing "exactly one active role per user"), timestamps.
+Unique on `(user_id, role_id)`. `User::roles()` exposes
+`withPivot('is_active')`; `User::activeRoles()` filters on it — a user
+may hold multiple `user_roles` rows, but only the active one counts for
+authorization purposes.
+
+**user_teams** (pivot) — `id`, `user_id` (foreignId), `team_id`
+(foreignId), timestamps. Unique on `(user_id, team_id)`. **No
+`is_active` or equivalent column exists on `user_teams`** — unlike
+`user_roles`, team membership has no active/inactive distinction at the
+pivot level.
 
 ---
 
@@ -140,9 +205,24 @@ lives on the terminal stage a request reached — never combined with
 
 `id`, `workflow_version_id` (foreignId), `from_stage_id` (foreignId),
 `action_id` (foreignId), `to_stage_id` (foreignId), `requires_comment`,
-`confirmation_message` (nullable), `version`. Unique on `(from_stage_id,
-action_id)` — a stage can only wire a given action to one destination
-stage.
+`confirmation_message` (nullable), **`is_default_submit`** (boolean,
+default false), **`is_self_loop`** (boolean, default false — backfilled
+`true` where `from_stage_id = to_stage_id`), **`transition_type`**
+(string(20), default `FORWARD`, cast to `WorkflowTransitionType`;
+backfilled from the joined action's `kind` — `REJECT`→`REJECT`,
+`CLOSE`→`CLOSE`, else `FORWARD`), **`is_destructive`** (boolean, default
+false), `version`. The four bolded columns were all added by
+`2026_07_06_000004_wp3_designer_validation_columns.php`, after the base
+create migration. Unique on `(from_stage_id, action_id)` — a stage can
+only wire a given action to one destination stage.
+
+`is_default_submit` is what the frontend draft wizard uses to pick the
+submit transition when a stage has multiple outgoing edges (see
+[`api-reference.md`](../api-reference.md)'s Execute a Workflow Action
+section). `is_self_loop` is the flag `WorkflowPublishRulePack::validateSelfLoops()`
+requires be explicitly set on any transition whose `from_stage_id` and
+`to_stage_id` match — see
+[`../engine/dynamic-vs-fixed.md`](../engine/dynamic-vs-fixed.md).
 
 ### stage_permissions
 
@@ -155,15 +235,52 @@ resolve as an identity-set match, not a single foreign key.
 (all foreignId, nullable), `access_level` (`VIEW`\|`EXECUTE`),
 `display_label`, `version`.
 
+### field_groups
+
+Groups related `field_definitions` under one `WorkflowVersion`, for
+rendering the dynamic form in sections. Not documented in the prior
+version of this file.
+
+`id`, `workflow_version_id` (foreignId), `name`, `label`, `sort_order`
+(unsigned int, default 0), `version` (unsigned int, default 1),
+timestamps. Index on `(workflow_version_id, sort_order)`.
+
+### stage_field_rules
+
+Per-stage visibility/editability/requiredness override for a
+`field_definitions` row.
+
+`id`, `stage_id` (foreignId), `field_id` (foreignId →
+`field_definitions`), `is_visible` (boolean, default true), `is_editable`
+(boolean, default true), `is_required` (boolean, default false),
+`version` (unsigned int, default 1), timestamps. Unique on `(stage_id,
+field_id)`.
+
 ### field_definitions
 
-Carries the dynamic per-workflow-version field catalog. Includes a
-**`semantic_tag`** column (string(50), nullable, added alongside
-`workflow_stages.semantic_role` by the same migration) — the
-field-level counterpart to a stage's `semantic_role`, resolved by
-`SemanticResolver::fieldForTag()`. See
-[`engine/extension-guide.md`](../engine/extension-guide.md) for adding a
-new field.
+Carries the dynamic per-workflow-version field catalog. Full column
+list, reconstructed from the create migration plus later additions —
+this table has substantially more columns than form-field basics:
+
+`id`, `workflow_version_id` (foreignId), **`field_group_id`** (foreignId
+→ `field_groups`), `key`, **`semantic_tag`** (string(50), nullable,
+indexed with `workflow_version_id` — added alongside
+`workflow_stages.semantic_role` by the same migration; resolved by
+`SemanticResolver::fieldForTag()`), `label`, `type` (cast to `FieldType`
+— `TEXT`\|`NUMBER`\|`DATE`\|`SELECT`\|`DYNAMIC_SELECT`\|`TEXTAREA`\|`FILE`\|`CURRENCY`\|`CHECKBOX`),
+`placeholder` (nullable), `help_text` (nullable), `default_value`
+(nullable), `min_value`/`max_value` (decimal(20,4), nullable),
+`min_length`/`max_length` (unsigned int, nullable), `regex_pattern`
+(nullable), `options` (json, nullable), `reference_table_id` (foreignId,
+nullable), `dynamic_source` (nullable, cast to `DynamicFieldSource` —
+`MERCHANTS`\|`MERCHANT_COMPANIES`\|`REFERENCE_DATA`), `allowed_file_types`
+(json, nullable), `max_file_size` (unsigned int, nullable), `multiple`
+(boolean, default false), `is_required`, `is_system`, `sort_order`
+(unsigned int, default 0), `version`, timestamps. Unique on
+`(workflow_version_id, key)`.
+
+See [`engine/extension-guide.md`](../engine/extension-guide.md) for
+adding a new field.
 
 ---
 
@@ -250,30 +367,38 @@ Stores uploaded request files (replaces the legacy `request_documents`
 table, dropped — see below).
 
 Supported: invoices, financial documents, SWIFT documents, external FX
-confirmation PDFs. PDF only; immutable uploads (SWIFT documents cannot be
-replaced).
+confirmation PDFs. PDF only. **Uploads support controlled versioned
+replacement, not blanket immutability** — see
+[`api-reference.md`](../api-reference.md)'s "Replace Request Document"
+section for the endpoint and
+`App\Services\Documents\EngineRequestDocumentReplacementService` for the
+mechanism. Deletion (not replacement) is what's stage-gated — see
+`status` below.
 
-| Field         | Type                    |
-| ------------- | ----------------------- |
-| id            | bigint                  |
-| request_id    | foreignId               |
-| field_id      | foreignId, nullable     |
-| uploaded_by   | foreignId               |
-| stage_id      | foreignId               |
-| original_name | string                  |
-| path          | string, **nullable**    |
-| mime          | string(50)              |
-| size          | bigint                  |
-| checksum      | string(64), nullable    |
-| scan_status   | (added later)           |
-| superseded_by | (added later)           |
-| version       | unsignedInteger         |
-| deleted_at    | timestamp (soft delete) |
-| created_at    | timestamp               |
+| Field         | Type                                                   |
+| ------------- | ------------------------------------------------------ |
+| id            | bigint                                                 |
+| request_id    | foreignId                                              |
+| field_id      | foreignId, nullable                                    |
+| uploaded_by   | foreignId                                              |
+| stage_id      | foreignId                                              |
+| original_name | string                                                 |
+| path          | string, **nullable**                                   |
+| mime          | string(50)                                             |
+| size          | bigint                                                 |
+| checksum      | string(64), nullable                                   |
+| scan_status   | (added later)                                          |
+| status        | string, cast `DocumentStatus` (`active`\|`superseded`) |
+| superseded_by | foreignId, nullable, self-referential (added later)    |
+| version       | unsignedInteger                                        |
+| deleted_at    | timestamp (soft delete)                                |
+| created_at    | timestamp                                              |
 
-`path` was made nullable by a later migration; `scan_status` and
-`superseded_by` were added by later migrations not present in the base
-create.
+`path` was made nullable by a later migration; `scan_status`, `status`,
+and `superseded_by` were added by later migrations not present in the
+base create. On replacement, the superseded document's `status` becomes
+`superseded` and its `superseded_by` points at the new row; the new
+document is created with `status: active` and `version` incremented.
 
 ---
 
@@ -416,12 +541,17 @@ rather than from a fixed set of actor columns.
 
 ## Request visibility model
 
-Organization-scoped workflow visibility. Requests belong to the bank
-organization; all users inside the same bank can view all bank requests,
-but actions remain role-scoped (`stage_permissions`), dashboards remain
-operationally scoped (see `04-dashboard-architecture.md` — **planned, not
-yet written**, Step 3B; today's authority is AGENTS.md's "Dashboard
-Architecture" section), and queue visibility remains
-stage-permission-scoped for every role uniformly — see
-[`03-permission-model.md`](03-permission-model.md)
-for the mechanism, not a per-role bespoke rule.
+Requests belong to the bank organization, but **bank membership alone
+does not grant visibility into every request that bank owns.** Two
+independent scopes both apply: `DataScope` (organization/bank, via
+`EngineRequest::scopeForUser()`) restricts which bank's requests a query
+can see at all; a non-`system_admin` user must **additionally** hold
+VIEW stage-permission on a request's current stage
+(`StagePermissionResolver::accessibleStageIds()`) to see that specific
+request — see [`api-reference.md`](../api-reference.md)'s "Request
+Visibility Rules" section for the exact composition and
+[`03-permission-model.md`](03-permission-model.md) for the underlying
+mechanism. Actions remain role/capability-scoped on top of this base
+visibility; dashboards remain operationally scoped (see
+`04-dashboard-architecture.md` — **planned, not yet written**, Step 3B;
+today's authority is AGENTS.md's "Dashboard Architecture" section).
