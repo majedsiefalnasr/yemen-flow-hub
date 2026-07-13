@@ -970,7 +970,22 @@ class EngineRequestTest extends TestCase
             'version' => $request->version,
         ])->assertOk();
 
-        $response = $this->actingAs($this->executor)->getJson("/api/v1/engine-requests/{$request->id}/graph");
+        // This test asserts state annotation (executed/current/possible) across all
+        // three stages, including COMPLETED — which `executor` has no StagePermission
+        // on at all (see test_graph_only_returns_stages_viewer_can_access) and would
+        // now be correctly filtered out of their response. Use SYSTEM_ADMIN, who
+        // bypasses stage-visibility filtering entirely, so this test's original
+        // intent (state annotation) stays independent of the filtering feature.
+        $admin = User::create([
+            'name' => 'System Admin',
+            'email' => 'sysadmin-state@cby.gov',
+            'password' => bcrypt('password'),
+            'organization_id' => Organization::where('code', 'national_committee')->first()->id,
+            'is_active' => true,
+        ]);
+        $admin->roles()->attach(Role::where('code', RoleCodes::SYSTEM_ADMIN)->first());
+
+        $response = $this->actingAs($admin)->getJson("/api/v1/engine-requests/{$request->id}/graph");
         $response->assertOk();
 
         $nodes = collect($response->json('data.nodes'));
@@ -997,6 +1012,65 @@ class EngineRequestTest extends TestCase
         $this->assertContains($this->initialStage->id, $executeStageIds);
         $this->assertNotContains($this->reviewStage->id, $executeStageIds);
         $this->assertNotContains($this->finalStage->id, $executeStageIds);
+    }
+
+    public function test_graph_only_returns_stages_viewer_can_access(): void
+    {
+        $request = $this->createRequest();
+
+        $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
+            'transition_id' => $this->submitTransition->id,
+            'data' => [],
+            'version' => $request->version,
+        ])->assertOk();
+
+        // executor holds EXECUTE on DATA_ENTRY and VIEW on REVIEW (see setUpWorkflow
+        // lines 180-214), but has no StagePermission row at all on COMPLETED.
+        $response = $this->actingAs($this->executor)->getJson("/api/v1/engine-requests/{$request->id}/graph");
+        $response->assertOk();
+
+        $nodeCodes = collect($response->json('data.nodes'))->pluck('code');
+
+        $this->assertTrue($nodeCodes->contains('DATA_ENTRY'));
+        $this->assertTrue($nodeCodes->contains('REVIEW'));
+        $this->assertFalse($nodeCodes->contains('COMPLETED'), 'executor has no StagePermission on COMPLETED, it must not appear');
+    }
+
+    public function test_graph_drops_edges_with_a_filtered_out_endpoint(): void
+    {
+        $request = $this->createRequest();
+
+        $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
+            'transition_id' => $this->submitTransition->id,
+            'data' => [],
+            'version' => $request->version,
+        ])->assertOk();
+
+        // approveTransition goes REVIEW -> COMPLETED. executor cannot see COMPLETED,
+        // so this edge must be dropped even though its from_stage (REVIEW) is visible.
+        $response = $this->actingAs($this->executor)->getJson("/api/v1/engine-requests/{$request->id}/graph");
+        $response->assertOk();
+
+        $edgeActionCodes = collect($response->json('data.edges'))->pluck('action_code');
+
+        $this->assertFalse($edgeActionCodes->contains('APPROVE'), 'edge to the hidden COMPLETED stage must be dropped');
+    }
+
+    public function test_graph_shows_all_stages_for_system_admin(): void
+    {
+        $request = $this->createRequest();
+
+        $admin = User::create([
+            'name' => 'System Admin',
+            'email' => 'sysadmin-graph@cby.gov',
+            'password' => bcrypt('password'),
+            'organization_id' => Organization::where('code', 'national_committee')->first()->id,
+            'is_active' => true,
+        ]);
+        $admin->roles()->attach(Role::where('code', RoleCodes::SYSTEM_ADMIN)->first());
+
+        $response = $this->actingAs($admin)->getJson("/api/v1/engine-requests/{$request->id}/graph");
+        $response->assertOk()->assertJsonCount(3, 'data.nodes')->assertJsonCount(2, 'data.edges');
     }
 
     // ── 18.5.8: Duplicate Invoice ────────────────────────────────────────

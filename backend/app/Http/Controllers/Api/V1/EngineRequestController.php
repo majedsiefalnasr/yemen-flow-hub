@@ -464,6 +464,26 @@ class EngineRequestController extends Controller
         $engineRequest->load(['workflowVersion', 'history']);
         $graphData = $this->graphService->build($engineRequest->workflowVersion);
 
+        $user = $request->user();
+        $versionStageIds = array_column($graphData['nodes'], 'id');
+
+        $viewableStageIds = $user->hasRoleCode(RoleCodes::SYSTEM_ADMIN)
+            ? $versionStageIds
+            : array_values(array_intersect(
+                $this->permissionResolver->accessibleStageIds($user, StageAccessLevel::VIEW),
+                $versionStageIds,
+            ));
+        $viewableIdSet = array_flip($viewableStageIds);
+
+        $graphData['nodes'] = array_values(array_filter(
+            $graphData['nodes'],
+            fn ($node) => isset($viewableIdSet[$node['id']]),
+        ));
+        $graphData['edges'] = array_values(array_filter(
+            $graphData['edges'],
+            fn ($edge) => isset($viewableIdSet[$edge['from_stage_id']]) && isset($viewableIdSet[$edge['to_stage_id']]),
+        ));
+
         $history = $engineRequest->history;
 
         $executedStageIds = $history
@@ -498,10 +518,9 @@ class EngineRequestController extends Controller
 
         // Stages the current user can execute, scoped to this version, so the UI can
         // mark non-current "دورك" (your turn) stages on the process rail.
-        $versionStageIds = array_column($graphData['nodes'], 'id');
         $executeStageIds = array_values(array_intersect(
-            $this->permissionResolver->accessibleStageIds($request->user(), StageAccessLevel::EXECUTE),
-            $versionStageIds,
+            $this->permissionResolver->accessibleStageIds($user, StageAccessLevel::EXECUTE),
+            array_column($graphData['nodes'], 'id'),
         ));
 
         return response()->json([
