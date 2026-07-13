@@ -719,6 +719,15 @@ const table = useVueTable({
   },
 })
 
+// Re-clicking an already-active KPI card clears its filter instead of
+// re-applying it, so the card acts as an on/off toggle rather than a
+// one-way filter switch.
+function toggleColumnFilter(columnId: string, value: unknown): void {
+  const column = table.getColumn(columnId)
+  const isActive = JSON.stringify(column?.getFilterValue()) === JSON.stringify(value)
+  column?.setFilterValue(isActive ? undefined : value)
+}
+
 function handleReset() {
   query.value = ''
   table.resetColumnFilters()
@@ -790,7 +799,7 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
                 f.value.length === 1,
             )
           "
-          @click="table.getColumn('status')?.setFilterValue(['ACTIVE'])"
+          @click="toggleColumnFilter('status', ['ACTIVE'])"
         />
         <MetricCard
           label="موقوف"
@@ -806,7 +815,7 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
                 f.value.length === 1,
             )
           "
-          @click="table.getColumn('status')?.setFilterValue(['SUSPENDED'])"
+          @click="toggleColumnFilter('status', ['SUSPENDED'])"
         />
         <MetricCard
           v-if="isCbyAdmin && riskSummary"
@@ -816,7 +825,7 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
           tone="warning"
           :active="columnFilters.some((f) => f.id === 'cross_bank' && f.value === true)"
           description="يظهر في أكثر من بنك"
-          @click="table.getColumn('cross_bank')?.setFilterValue(true)"
+          @click="toggleColumnFilter('cross_bank', true)"
         />
       </MetricGrid>
     </div>

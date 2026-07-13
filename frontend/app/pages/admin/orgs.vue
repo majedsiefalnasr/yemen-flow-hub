@@ -352,7 +352,8 @@ const columns: ColumnDef<Organization>[] = [
     id: 'classification',
     accessorKey: 'classification',
     header: ({ column }) => h(DataTableColumnHeader as any, { column, title: 'التصنيف' }),
-    cell: ({ row }) => h('span', { class: 'text-sm' }, classificationLabel(row.original.classification)),
+    cell: ({ row }) =>
+      h('span', { class: 'text-sm' }, classificationLabel(row.original.classification)),
   },
   {
     accessorKey: 'is_active',
@@ -401,6 +402,15 @@ const table = useVueTable({
 })
 
 const noOrgs = computed(() => !loading.value && organizations.value.length === 0 && !error.value)
+
+// Re-clicking an already-active KPI card clears its filter instead of
+// re-applying it, so the card acts as an on/off toggle rather than a
+// one-way filter switch.
+function toggleColumnFilter(columnId: string, value: unknown): void {
+  const column = table.getColumn(columnId)
+  const isActive = JSON.stringify(column?.getFilterValue()) === JSON.stringify(value)
+  column?.setFilterValue(isActive ? undefined : value)
+}
 
 function handleReset() {
   query.value = ''
@@ -515,7 +525,7 @@ async function bulkToggleStatus(activate: boolean) {
                   f.value.length === 1,
               )
             "
-            @click="table.getColumn('is_active')?.setFilterValue(['true'])"
+            @click="toggleColumnFilter('is_active', ['true'])"
           />
           <MetricCard
             label="موقوفة"
@@ -531,7 +541,7 @@ async function bulkToggleStatus(activate: boolean) {
                   f.value.length === 1,
               )
             "
-            @click="table.getColumn('is_active')?.setFilterValue(['false'])"
+            @click="toggleColumnFilter('is_active', ['false'])"
           />
         </MetricGrid>
       </div>

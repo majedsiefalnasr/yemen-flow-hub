@@ -400,6 +400,15 @@ const table = useVueTable({
 
 const noTeams = computed(() => !loading.value && teams.value.length === 0 && !error.value)
 
+// Re-clicking an already-active KPI card clears its filter instead of
+// re-applying it, so the card acts as an on/off toggle rather than a
+// one-way filter switch.
+function toggleColumnFilter(columnId: string, value: unknown): void {
+  const column = table.getColumn(columnId)
+  const isActive = JSON.stringify(column?.getFilterValue()) === JSON.stringify(value)
+  column?.setFilterValue(isActive ? undefined : value)
+}
+
 function handleReset() {
   query.value = ''
   table.resetColumnFilters()
@@ -523,7 +532,7 @@ const formOrgId = computed({
                   f.value.length === 1,
               )
             "
-            @click="table.getColumn('is_active')?.setFilterValue(['true'])"
+            @click="toggleColumnFilter('is_active', ['true'])"
           />
           <MetricCard
             label="غير نشط"
@@ -539,7 +548,7 @@ const formOrgId = computed({
                   f.value.length === 1,
               )
             "
-            @click="table.getColumn('is_active')?.setFilterValue(['false'])"
+            @click="toggleColumnFilter('is_active', ['false'])"
           />
         </MetricGrid>
       </div>

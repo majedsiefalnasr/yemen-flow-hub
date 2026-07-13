@@ -525,19 +525,22 @@ function buildExportFilename(): string {
   return `workflow-requests-${view.value}-${new Date().toISOString().slice(0, 10)}`
 }
 
-function setStatusFilter(status: EngineRequest['status']) {
-  pagination.value = { ...pagination.value, pageIndex: 0 }
-  columnFilters.value = [{ id: 'status', value: [status] }]
-}
-
 function isStatusActive(status: EngineRequest['status']): boolean {
   const f = columnFilters.value.find((cf) => cf.id === 'status')
   return Array.isArray(f?.value) && (f!.value as string[]).length === 1 && f!.value[0] === status
 }
 
+// Re-clicking an already-active KPI card clears its filter instead of
+// re-applying it, so the card acts as an on/off toggle rather than a
+// one-way filter switch.
+function setStatusFilter(status: EngineRequest['status']) {
+  pagination.value = { ...pagination.value, pageIndex: 0 }
+  columnFilters.value = isStatusActive(status) ? [] : [{ id: 'status', value: [status] }]
+}
+
 function setColumnFilter(id: string, value: string) {
   pagination.value = { ...pagination.value, pageIndex: 0 }
-  columnFilters.value = [{ id, value: [value] }]
+  columnFilters.value = isColumnFilterActive(id, value) ? [] : [{ id, value: [value] }]
 }
 
 function isColumnFilterActive(id: string, value: string): boolean {
