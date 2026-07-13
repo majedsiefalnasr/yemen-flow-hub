@@ -2178,6 +2178,38 @@ place with a "superseded by docs/production-guide.md" banner for one
 release cycle before removing, in case any external tooling/bookmark
 references their exact path.
 
+**Step 5 wording fix, bundled into Step 7's commit per instruction.**
+`docs/frontend-guide.md`'s operational-posture template overstated the
+four state concepts as determining "which action set is available."
+Corrected: state presentation/classification uses the four concepts;
+action availability is a separate concern driven by `can_execute`,
+Designer-defined outgoing transitions, claim state, and backend
+validation.
+
+**Step 7 — ✅ DONE (2026-07-13).** Outcome: created
+`docs/production-guide.md`, merging `operations/runbook.md` +
+`operations/retention-policy.md` + `21-audit-closure-report.md`'s §13
+(deployment checklist) and §14 (rollback/incident checklist). Source
+files left untouched (no banner added this round — the user's Step 7
+scope explicitly said not to move/delete them and did not ask for a
+banner edit; that remains for the later archival step per §5/§9 of
+this plan). Files: `docs/production-guide.md` (new),
+`docs/README.md` (row → live), `docs/frontend-guide.md` (Step 5
+wording fix, bundled). Material findings from verification against
+`backend/routes/{api,console}.php` and `backend/config/{retention,demo}.php`:
+(1) a 9th scheduled command, `workflow-history:archive-old` at daily
+03:10 with its own `workflow_history_hot_months`/
+`workflow_history_archive_batch_size` config pair, exists in neither
+source file — added; (2) the runbook's `GET /api/v1/admin/health` is
+wrong — `admin/health` is registered unversioned
+(`GET /api/admin/health`) — corrected. All other commands, schedules,
+and config keys in the source files matched current source exactly.
+Verification: Prettier `--check` on touched files, link/anchor check,
+`git status` confirms baseline unchanged, committed blob verified
+immediately post-commit. Deviations: none.
+
+Holding for review before Step 8, per instruction.
+
 **Step 8 — Move `docs/audit-functional/00-discovery.md` through
 `docs/audit-functional/21-audit-closure-report.md`** (every file in the
 directory EXCEPT `22-documentation-consolidation-plan.md`, which stays

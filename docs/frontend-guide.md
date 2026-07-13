@@ -351,13 +351,18 @@ Fill in "State language" by reading the four canonical concepts —
 `runtime_status`, `current_stage`, `current_stage.semantic_role`, and
 `final_outcome` — for the surface in question. A surface may display
 only the subset relevant to its audience (e.g. a simplified label for
-an intake user), but any **request-state decision** (which tab a
-request lands in, which action set is available, whether a request is
+an intake user), but any **state presentation or classification
+decision** (which tab a request lands in, whether a request is
 terminal) must be driven by these four concepts, never a static enum.
-Do not hardcode a per-role simplified-status mapping table sourced from
-the retired 22-value `docs/user-view/` vocabulary (the DATA_ENTRY
-mapping in `data-entry.md` alone lists 22 unique legacy enum values) —
-see "Request state," above.
+**Action availability is a separate concern**, driven by
+server-derived `can_execute`, the Designer-defined outgoing
+transitions from the current stage, claim state (`requires_claim`/
+`claimRequiredButNotHeld`, see "Claim heartbeat," below), and backend
+validation on the actual mutation call — not by the four state
+concepts themselves. Do not hardcode a per-role simplified-status
+mapping table sourced from the retired 22-value `docs/user-view/`
+vocabulary (the DATA_ENTRY mapping in `data-entry.md` alone lists 22
+unique legacy enum values) — see "Request state," above.
 
 ---
 
