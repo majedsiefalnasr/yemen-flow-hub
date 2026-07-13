@@ -197,24 +197,69 @@ export function useReports() {
   const config = useRuntimeConfig()
   const baseURL = config.public.apiBase as string
 
-  function buildQuery(filter: ReportFilter): string {
-    const params = new URLSearchParams()
-    if (filter.fromDate) params.set('from_date', filter.fromDate)
-    if (filter.toDate) params.set('to_date', filter.toDate)
-    const q = params.toString()
-    return q ? `?${q}` : ''
+  // /api/reports/workflow and /api/reports/bank never existed as backend routes
+  // (pre-dynamic-engine legacy — the report system moved to the granular
+  // /api/v1/reports/* endpoints below, which power the export feature and
+  // already work). These two functions compose the real summary + by-bank
+  // endpoints into the WorkflowReport/BankReport shape the reports page reads.
+  // Fields with no real backend source yet (monthly_trend, category_distribution,
+  // amount_by_currency, submission_heatmap, avg_processing_hours, etc.) are left
+  // empty/zero rather than fabricated — the page already renders those as empty
+  // states via `?? []` / `v-if` guards.
+  function engineFilter(filter: ReportFilter): EngineReportFilters {
+    return { from: filter.fromDate, to: filter.toDate }
   }
 
   async function fetchWorkflowReport(filter: ReportFilter = {}): Promise<WorkflowReport> {
-    const response = await get<ApiResponse<WorkflowReport>>(
-      `/api/reports/workflow${buildQuery(filter)}`,
-    )
-    return response.data
+    const [summary, byBank] = await Promise.all([
+      fetchReportSummary(engineFilter(filter)),
+      fetchByBank(engineFilter(filter)),
+    ])
+
+    return {
+      counts_by_status: {
+        ACTIVE: summary.active,
+        CLOSED: summary.closed,
+        REJECTED: summary.rejected,
+      },
+      counts_by_bank: byBank.map((b) => ({
+        bank_id: b.bank_id,
+        bank_name: b.bank_name,
+        total: b.total,
+      })),
+      avg_time_per_stage_hours: {},
+      throughput: {
+        completed: summary.closed,
+        approved: summary.closed,
+        rejected: summary.rejected,
+      },
+      monthly_trend: [],
+      category_distribution: [],
+      amount_by_currency: [],
+      submission_heatmap: [],
+      total_financing_value: summary.totalAmount,
+      duplicate_invoice_count: 0,
+    }
   }
 
   async function fetchBankReport(filter: ReportFilter = {}): Promise<BankReport> {
-    const response = await get<ApiResponse<BankReport>>(`/api/reports/bank${buildQuery(filter)}`)
-    return response.data
+    const summary = await fetchReportSummary(engineFilter(filter))
+    const approvalRate = summary.total > 0 ? Math.round((summary.closed / summary.total) * 100) : 0
+    const rejectionRate =
+      summary.total > 0 ? Math.round((summary.rejected / summary.total) * 100) : 0
+
+    return {
+      total_requests: summary.total,
+      approved_count: summary.closed,
+      rejected_count: summary.rejected,
+      pending_count: summary.active,
+      approval_rate: approvalRate,
+      rejection_rate: rejectionRate,
+      // No backend timing aggregate maps cleanly to a single "avg processing
+      // hours" figure yet (stage-duration returns a per-stage breakdown, not
+      // one overall average) — 0 rather than a fabricated number.
+      avg_processing_hours: 0,
+    }
   }
 
   async function exportReport(
