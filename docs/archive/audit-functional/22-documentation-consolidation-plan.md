@@ -2606,6 +2606,24 @@ mail.md` moved to `docs/auth-and-recovery.md` via `git mv`. Content
 future documentation work is ordinary maintenance, not part of this
 migration.
 
+## 15. Post-close correction — Step 14's formatting-verification record
+
+The monorepo root has no `package.json`/`node_modules/.bin/prettier`.
+Step 14's `npx --no-install prettier --write/--check` calls therefore
+resolved to whatever `prettier` `npx` finds outside the repo (a
+global/bun-linked 3.9.5 binary during that session), not a
+repository-pinned version — every prior "Prettier `--check` passed"
+claim in this document used that same fallback binary consistently,
+so relative comparisons within a step held, but none of them verified
+against `frontend/node_modules/.bin/prettier` (3.8.3), the actual
+repo-local binary. Running the real repo binary against
+`docs/api-reference.md` surfaced the one genuine formatting difference
+normalized below — a JSON example's
+`"data": [/* EngineRequestResource[] */]` array-comment had collapsed
+onto one line instead of the repo's configured multi-line array style.
+No other file or line differed between the two binaries' output on
+this pass.
+
 **Post-close maintenance (2026-07-13).** Normalized the one remaining
 Prettier difference in `docs/api-reference.md`. Removed the obsolete,
 tracked `docs/ui-parity/` screenshot artifacts; the E2E producer now
