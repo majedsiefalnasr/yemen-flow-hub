@@ -16,6 +16,7 @@ import { useMagicKeys, whenever } from '@vueuse/core'
 import { NAV_ITEMS } from '@/constants/workflow'
 import { ICONS } from '@/utils/icon-map'
 import { useAuthStore } from '@/stores/auth.store'
+import { useScreenPermissions } from '@/composables/useScreenPermissions'
 import { UserRole } from '@/types/enums'
 import { Button } from '@/components/ui/button'
 import {
@@ -54,6 +55,7 @@ interface PaletteGroup {
 const open = ref(false)
 const authStore = useAuthStore()
 const router = useRouter()
+const { can } = useScreenPermissions()
 
 // Cmd/Ctrl + K → open
 const { meta_k, ctrl_k } = useMagicKeys()
@@ -227,7 +229,11 @@ const allowedNavActions = computed<PaletteAction[]>(() => {
   const user = authStore.user
   if (!user) return []
 
-  return NAV_ITEMS.filter((item) => item.roles.includes(user.role)).map((item) => ({
+  return NAV_ITEMS.filter(
+    (item) =>
+      item.roles.includes(user.role) &&
+      (!item.screen || can(item.screen, item.capability ?? 'VIEW')),
+  ).map((item) => ({
     id: `nav-${item.route}`,
     title: item.label,
     aliases: aliasesByRoute[item.route] ?? '',

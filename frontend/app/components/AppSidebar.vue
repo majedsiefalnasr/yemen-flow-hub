@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/sidebar'
 import type { SidebarProps } from './ui/sidebar/types'
 import { buildOperationalNavBadges } from '@/composables/useNavBadges'
+import { useScreenPermissions } from '@/composables/useScreenPermissions'
 import { NAV_ITEMS } from '@/constants/workflow'
 import { useAuthStore } from '@/stores/auth.store'
 import { useDashboardWorkStore } from '@/stores/dashboardWork.store'
@@ -67,6 +68,7 @@ const notificationsStore = useNotificationsStore()
 const orgStore = useOrgStore()
 const route = useRoute()
 const { state, setOpen } = useSidebar()
+const { can } = useScreenPermissions()
 const user = computed(() => authStore.user)
 const lastBadgeRole = ref<UserRole | null>(null)
 
@@ -166,16 +168,17 @@ const navGroups = computed<NavGroupDef[]>(() => {
   const role = user.value?.role
   if (!role) return []
 
-  const allowedLinks = NAV_ITEMS.filter((item) => item.roles.includes(role)).map<NavLink>(
-    (item) => ({
-      type: 'link',
-      title: item.label,
-      url: item.route,
-      icon: ICONS[item.icon] ?? Home,
-      roles: item.roles,
-      badge: navBadgesByRoute.value[item.route],
-    }),
-  )
+  const allowedLinks = NAV_ITEMS.filter(
+    (item) =>
+      item.roles.includes(role) && (!item.screen || can(item.screen, item.capability ?? 'VIEW')),
+  ).map<NavLink>((item) => ({
+    type: 'link',
+    title: item.label,
+    url: item.route,
+    icon: ICONS[item.icon] ?? Home,
+    roles: item.roles,
+    badge: navBadgesByRoute.value[item.route],
+  }))
 
   return NAV_GROUP_DEFS.map((group) => {
     const items = allowedLinks.filter((link) => group.routes.includes(link.url)) as NavGroupItem[]

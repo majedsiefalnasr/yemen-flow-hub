@@ -16,6 +16,7 @@ import {
   CalendarDays,
 } from 'lucide-vue-next'
 import { useDashboardStore } from '../../stores/dashboard.store'
+import { useScreenPermissions } from '../../composables/useScreenPermissions'
 import { NOT_ELIGIBLE_LABEL } from '../../constants/workflow'
 import type {
   BankAdminDashboardStats,
@@ -44,6 +45,7 @@ import DashboardToolbar from '../shared/dashboard/DashboardToolbar.vue'
 
 const router = useRouter()
 const store = useDashboardStore()
+const { can } = useScreenPermissions()
 const stats = computed(
   () => store.stats as (BankAdminDashboardStats & BankAdminDashboardStatsExtended) | null,
 )
@@ -324,6 +326,7 @@ onMounted(() => {
           </Card>
 
           <Card
+            v-if="can('merchants', 'VIEW')"
             class="bg-background border-border text-foreground hover:border-primary focus-visible:ring-primary flex cursor-pointer flex-col items-start gap-1 rounded-xl border p-4 transition-all hover:shadow-md focus-visible:ring-2 focus-visible:outline-none"
             role="button"
             tabindex="0"
@@ -338,6 +341,7 @@ onMounted(() => {
           </Card>
 
           <Card
+            v-if="can('staff', 'VIEW')"
             class="bg-background border-border text-foreground hover:border-primary focus-visible:ring-primary flex cursor-pointer flex-col items-start gap-1 rounded-xl border p-4 transition-all hover:shadow-md focus-visible:ring-2 focus-visible:outline-none"
             role="button"
             tabindex="0"
@@ -353,6 +357,7 @@ onMounted(() => {
 
           <!-- Reports = primary blue per spec -->
           <Card
+            v-if="can('reports', 'VIEW')"
             class="bg-primary text-primary-foreground focus-visible:ring-primary flex cursor-pointer flex-col items-start gap-1 rounded-xl p-4 transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:outline-none"
             role="button"
             tabindex="0"

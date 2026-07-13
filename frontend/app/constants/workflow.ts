@@ -9,6 +9,7 @@ import {
   UserRole,
 } from '../types/enums'
 
+import type { ScreenCapability } from '../types/models'
 import type { IconName } from '../utils/icon-map'
 import { NAV_SURFACE_ROUTES, rolesForSurface } from './role-surfaces'
 
@@ -90,6 +91,10 @@ export interface NavItem {
   route: string
   icon: IconName
   roles: UserRole[]
+  /** Screen-permissions matrix key gating this item, if it is delegable. */
+  screen?: string
+  /** Capability required on `screen`. Defaults to VIEW when `screen` is set. */
+  capability?: ScreenCapability
 }
 
 export const NAV_ITEMS: NavItem[] = [
@@ -116,6 +121,7 @@ export const NAV_ITEMS: NavItem[] = [
     route: NAV_SURFACE_ROUTES['nav.merchants'],
     icon: 'building',
     roles: rolesForSurface('nav.merchants'),
+    screen: 'merchants',
   },
 
   {
@@ -123,6 +129,7 @@ export const NAV_ITEMS: NavItem[] = [
     route: NAV_SURFACE_ROUTES['nav.staff'],
     icon: 'user-check',
     roles: rolesForSurface('nav.staff'),
+    screen: 'staff',
   },
   {
     label: 'تأكيد المصارفة الخارجية',
@@ -135,12 +142,14 @@ export const NAV_ITEMS: NavItem[] = [
     route: NAV_SURFACE_ROUTES['nav.reports'],
     icon: 'bar-chart-2',
     roles: rolesForSurface('nav.reports'),
+    screen: 'reports',
   },
   {
     label: 'التدقيق والامتثال',
     route: NAV_SURFACE_ROUTES['nav.audit'],
     icon: 'shield-check',
     roles: rolesForSurface('nav.audit'),
+    screen: 'audit',
   },
   {
     label: 'الإشعارات',
@@ -153,18 +162,21 @@ export const NAV_ITEMS: NavItem[] = [
     route: NAV_SURFACE_ROUTES['nav.admin.staff'],
     icon: 'users',
     roles: rolesForSurface('nav.admin.staff'),
+    screen: 'users',
   },
   {
     label: 'البنوك',
     route: NAV_SURFACE_ROUTES['nav.admin.banks'],
     icon: 'landmark',
     roles: rolesForSurface('nav.admin.banks'),
+    screen: 'banks',
   },
   {
     label: 'الجهات',
     route: NAV_SURFACE_ROUTES['nav.admin.orgs'],
     icon: 'building-2',
     roles: rolesForSurface('nav.admin.orgs'),
+    screen: 'organizations',
   },
   {
     label: 'إعدادات النظام',
@@ -177,30 +189,35 @@ export const NAV_ITEMS: NavItem[] = [
     route: NAV_SURFACE_ROUTES['nav.admin.roles'],
     icon: 'shield-check',
     roles: rolesForSurface('nav.admin.roles'),
+    screen: 'roles',
   },
   {
     label: 'مصمم سير العمل',
     route: NAV_SURFACE_ROUTES['nav.admin.workflow_designer'],
     icon: 'settings',
     roles: rolesForSurface('nav.admin.workflow_designer'),
+    screen: 'workflow_designer',
   },
   {
     label: 'البيانات الأساسية',
     route: NAV_SURFACE_ROUTES['nav.admin.reference_data'],
     icon: 'file-text',
     roles: rolesForSurface('nav.admin.reference_data'),
+    screen: 'reference_data',
   },
   {
     label: 'إدارة الفرق',
     route: NAV_SURFACE_ROUTES['nav.admin.teams'],
     icon: 'users',
     roles: rolesForSurface('nav.admin.teams'),
+    screen: 'teams',
   },
   {
     label: 'صلاحيات الشاشات',
     route: NAV_SURFACE_ROUTES['nav.admin.screen_permissions'],
     icon: 'lock',
     roles: rolesForSurface('nav.admin.screen_permissions'),
+    screen: 'screen_permissions',
   },
   {
     label: 'الإعدادات',

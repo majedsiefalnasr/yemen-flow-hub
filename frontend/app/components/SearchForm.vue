@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { Search } from 'lucide-vue-next'
 import { useMagicKeys, whenever } from '@vueuse/core'
 import { useAuthStore } from '@/stores/auth.store'
+import { useScreenPermissions } from '@/composables/useScreenPermissions'
 import { NAV_ITEMS } from '@/constants/workflow'
 import { ICONS } from '@/utils/icon-map'
 import { Button } from '@/components/ui/button'
@@ -21,6 +22,7 @@ import { Kbd } from '@/components/ui/kbd'
 const open = ref(false)
 const authStore = useAuthStore()
 const router = useRouter()
+const { can } = useScreenPermissions()
 
 const { meta_k, ctrl_k } = useMagicKeys()
 const commandShortcutPressed = computed(() => Boolean(meta_k?.value || ctrl_k?.value))
@@ -52,7 +54,14 @@ const shortcutByRoute: Record<string, string> = {
 const commandGroupByRoute: Array<{ heading: string; routes: string[] }> = [
   {
     heading: 'الطلبات والطوابير',
-    routes: ['/dashboard', '/workflows', '/workflows/instances/new', '/workflows', '/workflows/new', '/customs'],
+    routes: [
+      '/dashboard',
+      '/workflows',
+      '/workflows/instances/new',
+      '/workflows',
+      '/workflows/new',
+      '/customs',
+    ],
   },
   {
     heading: 'الإدارة',
@@ -75,7 +84,11 @@ const allowedActions = computed(() => {
   const user = authStore.user
   if (!user) return []
 
-  return NAV_ITEMS.filter((item) => item.roles.includes(user.role)).map((item) => ({
+  return NAV_ITEMS.filter(
+    (item) =>
+      item.roles.includes(user.role) &&
+      (!item.screen || can(item.screen, item.capability ?? 'VIEW')),
+  ).map((item) => ({
     title: item.label,
     url: item.route,
     icon: ICONS[item.icon] ?? ICONS.search,
