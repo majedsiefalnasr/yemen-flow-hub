@@ -357,6 +357,7 @@ const rowSelection = ref<Record<string, boolean>>({})
 const columnVisibility = ref<VisibilityState>({
   transactions: false,
   bank: false,
+  cross_bank: false,
 })
 
 watch(
@@ -501,6 +502,17 @@ const columns: ColumnDef<Merchant>[] = [
     cell: ({ row }) => activeStatusCell(row.original.status),
   },
   {
+    id: 'cross_bank',
+    // Filter-only column (no cell content) backing the "مستوردون مكررون" KPI
+    // card — lets it filter the table the same way the other cards do. Hidden
+    // by default via columnVisibility; kept toggleable (not enableHiding: false)
+    // so it degrades to a labeled, empty column if a user ever re-enables it
+    // from the view-options picker, rather than being force-rendered inline.
+    header: 'مطابقة عبر البنوك',
+    filterFn: (row) => crossBankNames.value.has(row.original.name.trim().toLowerCase()),
+    cell: () => null,
+  },
+  {
     id: 'owners_count',
     header: 'المالكون',
     cell: ({ row }) =>
@@ -637,6 +649,7 @@ const MERCHANT_COLUMN_LABELS: Record<string, string> = {
   owners_count: 'المالكون',
   companies_count: 'الشركات',
   transactions: 'المعاملات',
+  cross_bank: 'مطابقة عبر البنوك',
 }
 
 const statusFilterOptions = [
@@ -755,7 +768,7 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
 
     <!-- KPI Cards -->
     <div class="mb-6">
-      <MetricGrid :columns="3">
+      <MetricGrid :columns="isCbyAdmin && riskSummary ? 4 : 3">
         <MetricCard
           label="إجمالي"
           :value="stats.total"
@@ -795,23 +808,17 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
           "
           @click="table.getColumn('status')?.setFilterValue(['SUSPENDED'])"
         />
+        <MetricCard
+          v-if="isCbyAdmin && riskSummary"
+          label="مستوردون مكررون"
+          :value="riskSummary.crossBank"
+          :icon="AlertTriangle"
+          tone="warning"
+          :active="columnFilters.some((f) => f.id === 'cross_bank' && f.value === true)"
+          description="يظهر في أكثر من بنك"
+          @click="table.getColumn('cross_bank')?.setFilterValue(true)"
+        />
       </MetricGrid>
-    </div>
-
-    <!-- CBY Admin: Smart summary bar -->
-    <div v-if="isCbyAdmin && riskSummary" class="mb-4 space-y-2">
-      <Card
-        v-if="riskSummary.crossBank > 0"
-        class="border-0 border-[var(--severity-amber)] bg-[var(--severity-amber)]/5 shadow-sm"
-        role="alert"
-      >
-        <div class="flex items-center gap-3 px-4">
-          <AlertTriangle class="h-4 w-4 shrink-0 text-[var(--severity-amber)]" aria-hidden="true" />
-          <span class="flex-1 text-sm font-medium">
-            {{ riskSummary.crossBank }} مستورد يظهر في أكثر من بنك. مراجعة مخاطر التكرار مطلوبة.
-          </span>
-        </div>
-      </Card>
     </div>
 
     <!-- Advanced data table (both CBY Admin and Bank Admin, bank-scoped via `scoped`) -->
