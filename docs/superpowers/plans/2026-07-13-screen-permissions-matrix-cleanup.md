@@ -90,9 +90,31 @@ In `backend/tests/Feature/Permission/ScreenPermissionTest.php`, replace the dash
 'system_dashboard', 'org_analytics',
 ```
 
-- [ ] **Step 2: Rename the pure frontend routing test before production code**
+- [ ] **Step 2: Add a failing source-level frontend contract test, then rename the pure routing expectations**
 
-In `frontend/app/tests/unit/pages/DashboardPage.test.ts`, change the bank branch and its tests to:
+In `frontend/app/tests/unit/pages/DashboardPage.test.ts`, import the source readers and load both production pages:
+
+```ts
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+const dashboardSources = ["dashboard.vue", "index.vue"].map((page) =>
+  readFileSync(resolve(process.cwd(), `app/pages/${page}`), "utf8"),
+);
+```
+
+Add this test before changing production code:
+
+```ts
+it("uses org_analytics in both production dashboard selectors", () => {
+  for (const source of dashboardSources) {
+    expect(source).toContain("can('org_analytics', 'VIEW')");
+    expect(source).not.toContain("can('bank_analytics', 'VIEW')");
+  }
+});
+```
+
+Then change the pure resolver branch and its expectations to:
 
 ```ts
 if (can("system_dashboard", "VIEW")) return "SystemAdminDashboard";
@@ -136,7 +158,7 @@ cd ../frontend
 pnpm exec vitest run app/tests/unit/pages/DashboardPage.test.ts
 ```
 
-Expected: the pure test passes because its local resolver has already been renamed; production source remains unchanged and is checked in Step 6.
+Expected: FAIL in `uses org_analytics in both production dashboard selectors` because both production pages still contain `bank_analytics` and do not contain `org_analytics`.
 
 - [ ] **Step 4: Rename the backend catalog and runtime gate**
 
