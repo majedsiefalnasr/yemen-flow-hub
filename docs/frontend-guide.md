@@ -5,7 +5,7 @@
 `frontend/app/middleware/{role,screen}.ts`,
 `frontend/app/constants/{workflow,role-surfaces}.ts`,
 `frontend/app/composables/{useScreenPermissions,useEngineClaim}.ts`,
-`frontend/app/types/models.ts`,
+`frontend/app/stores/auth.store.ts`, `frontend/app/types/models.ts`,
 `frontend/app/pages/workflows/instances/[id].vue`, and
 `frontend/CLAUDE.md` / `frontend/PRODUCT.md` / `frontend/DESIGN.md` /
 `frontend/SHADCN.md` directly — not carried over from the legacy
@@ -114,12 +114,23 @@ guard different routes, and neither one is a live-capability check
 everywhere:
 
 - **`screen` middleware** (`frontend/app/middleware/screen.ts`) reads
-  `to.meta.requiredScreen` and calls `useScreenPermissions().can(screen,
-capability)`, which reads `auth.screenPermissions` — data hydrated
-  from the backend's `/auth/me` response. This **is** a live capability
-  check. Verified in use on `/workflows`, `/workflows/new`,
-  `/workflows/instances/[id]`, and several governance pages:
-  `/admin/orgs`, `/admin/reference-data`, `/admin/roles`,
+  `to.meta.requiredScreen`, skips enforcement entirely during server
+  execution (`if (import.meta.server) return`), and on the client calls
+  `useScreenPermissions().can(screen, capability)`, which reads
+  `auth.screenPermissions` on the Pinia auth store. That field is
+  populated by `auth.store.ts`'s `fetchUser()`/`extendSession()`
+  actions, which call `$fetch('/api/auth/me', ...)` — confirmed against
+  `backend/routes/api.php`'s `Route::get('me', [AuthController::class,
+'me'])` under the `api/auth/` prefix group — and assign
+  `store.screenPermissions = data.screen_permissions ?? {}` from that
+  response. So the data is **backend-provided, client-hydrated**: the
+  backend's `/api/auth/me` payload is the source, but the store
+  populates client-side, not during SSR — which is exactly why the
+  middleware defers its own check to the client. This **is** a live
+  capability check (reads current session data on every navigation),
+  just not a server-rendered one. Verified in use on `/workflows`,
+  `/workflows/new`, `/workflows/instances/[id]`, and several governance
+  pages: `/admin/orgs`, `/admin/reference-data`, `/admin/roles`,
   `/admin/screen-permissions`, `/admin/staff`, `/admin/teams`,
   `/admin/workflows`, `/bank/users`.
 - **`role` middleware** (`frontend/app/middleware/role.ts`) reads

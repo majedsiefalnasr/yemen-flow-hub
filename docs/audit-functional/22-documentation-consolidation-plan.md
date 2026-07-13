@@ -1543,8 +1543,8 @@ directly against current frontend source before correcting:
    filters the hardcoded `ROLE_SURFACE_MATRIX` — a static compile-time
    table — and never reads `screen_permissions` or calls `can()`. Read
    `app/middleware/screen.ts` directly: it _does_ call
-   `useScreenPermissions().can()` against live, server-hydrated
-   `auth.screenPermissions`, and gates a genuinely separate set of
+   `useScreenPermissions().can()` against live, backend-provided,
+   client-hydrated `auth.screenPermissions`, and gates a genuinely separate set of
    routes (`/workflows*`, several `/admin/*` governance pages,
    `/bank/users`) via `requiredScreen`, not `ROUTE_ROLE_MAP` at all.
    Verified the 4 `ROUTE_ROLE_MAP` literal-array entries
@@ -1619,6 +1619,31 @@ document and confirmed each is confined to an intentional context
 residue section, or the "what this document removes" itemization).
 Confirmed `git status` reports exactly 2 modified tracked files and 12
 untracked files, matching the unchanged, pre-existing baseline.
+
+**Blockers:** none.
+
+**Step 4B follow-up correction (2026-07-13) — endpoint accuracy.** An
+independent review caught one remaining inaccuracy in the
+route-admission section: it cited the screen-permissions hydration
+source as `/auth/me`. Read `frontend/app/stores/auth.store.ts`
+directly: `fetchUser()`/`extendSession()` call
+`$fetch('/api/auth/me', ...)`; confirmed against
+`backend/routes/api.php`'s `Route::get('me', [AuthController::class,
+'me'])` registered under the `api/auth/` prefix group — the real path
+is `/api/auth/me`, not `/auth/me`. Corrected the path in
+`docs/frontend-guide.md` and rewrote the hydration description to be
+phase-precise rather than reusing the imprecise "server-hydrated" term
+from the prior correction round: `screen.ts` explicitly skips
+enforcement during server execution
+(`if (import.meta.server) return`); `auth.screenPermissions` is
+populated client-side, from a backend-provided response
+(`store.screenPermissions = data.screen_permissions ?? {}` inside
+`applyAuthMe()`); `useScreenPermissions().can()` then reads that
+client-hydrated store field. Replaced this same "server-hydrated"
+wording above with "backend-provided, client-hydrated." Re-ran
+Prettier `--check` on both corrected files and all 6 extant Step 4B
+files, re-validated links/anchors (zero broken), and reconfirmed the
+2-modified/12-untracked baseline.
 
 **Blockers:** none.
 
