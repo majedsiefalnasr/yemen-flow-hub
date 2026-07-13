@@ -131,9 +131,14 @@ async function load() {
   // the list load or hide the table, so they run detached via allSettled.
   const listLoad = view.value === 'queue' ? store.loadQueue(params) : store.loadList(params)
 
+  // Stat cards double as filter shortcuts and must show true, filter-independent
+  // totals — clicking one card's filter must never shrink the others. Only scope
+  // (queue/all) applies here; column filters (status/sla/claimed/stage/bank/
+  // workflow) are deliberately excluded so the numbers stay live regardless of
+  // which table filter is currently active.
   const statsLoads = isSupervisor.value
-    ? [store.loadStats({ ...params, scope: 'all' })]
-    : [store.loadStats({ ...params, scope: 'queue' }), store.loadStats({ ...params, scope: 'all' })]
+    ? [store.loadStats({ scope: 'all' })]
+    : [store.loadStats({ scope: 'queue' }), store.loadStats({ scope: 'all' })]
 
   await Promise.allSettled([listLoad, ...statsLoads])
 }
