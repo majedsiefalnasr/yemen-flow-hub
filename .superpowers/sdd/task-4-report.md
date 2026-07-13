@@ -1,71 +1,88 @@
-# Task 4 Report: Wire `UnionStagePaginator` into `index()` (DB-002)
+# Task 4 Report: Frontend type + timeline redaction display
 
 ## Status: DONE
 
-## Summary
+## What I implemented
 
-Implemented per `.superpowers/sdd/task-4-brief.md` Steps 1-7, on branch `perf/db-001-002-sla-union-restructure`. An earlier implementer subagent session (interrupted twice by connection drops — once mid-investigation of an unrelated timestamp bug, once mid-dispatch before doing any work) got as far as writing the failing parity test (Step 1) plus a scratch debug test used to diagnose an odd `created_at` ordering issue. The controller (me) verified both pieces of uncommitted work, resolved the root cause, deleted the scratch file, and completed Steps 3-7 directly.
+1. **`frontend/app/types/models.ts`** — added `restricted: boolean` and `restricted_label: string | null` to the `EngineHistoryEntry` interface (confirmed live at lines 886-894, matching the brief exactly).
+2. **`frontend/app/composables/useEngineTimeline.ts`** — `TimelineItem` gained `restricted: boolean` and `restrictedLabel: string | null`; `buildTimeline()` now maps `entry.restricted` → `restricted` and `entry.restricted_label` → `restrictedLabel`.
+3. **`frontend/app/components/workflow/EngineTimeline.vue`** — imports `Lock` from `lucide-vue-next` alongside the existing `History` icon; each timeline `<li>` now branches on `item.restricted`:
+   - Restricted: lock icon + `restrictedLabel` text (muted-foreground), then actor/timestamp line only — no stage-transition row, no comment row.
+   - Normal (unchanged): from→to/action row, actor/timestamp, optional comment.
+4. **Test file**: `frontend/app/tests/unit/composables/useEngineTimeline.test.ts` already existed (Step 0 found it) — added two new `it()` blocks to it using the file's existing `entry()` helper (extended with `restricted`/`restricted_label` defaults), rather than introducing the brief's separate `makeEntry()` factory, to avoid a duplicate fixture style in the same file.
 
-## Pre-existing repo state (before I resumed)
+## Deviation from brief (and why)
 
-`git status --short` from repo root showed:
+The brief's Step 1 code sample proposed a new `makeEntry()` helper as if the test file didn't exist. Step 0 found it already existed with its own `entry(id, created_at, overrides)` helper and four passing tests. Per Step 0's explicit instruction ("read it fully... add to it... matching existing style rather than creating a duplicate file"), I translated the brief's two test cases into the existing helper's calling convention instead of adding a second, differently-shaped factory to the same file. Assertions and scenarios are identical to the brief's intent; only the fixture-construction style differs.
+
+## Incidental fix required (found during verification, not in brief)
+
+`frontend/app/tests/unit/composables/useEngineStagePath.test.ts` constructs an `EngineHistoryEntry` object literal (used to test `buildStagePath`) that predates the new required fields. Adding `restricted`/`restricted_label` as **required** (non-optional) fields — as the brief's Step 3 code specifies — means this literal would fail typecheck once the type changed. I added `restricted: false, restricted_label: null` to that one fixture. This is the same class of finding the task description told me to watch for (small drift between brief and live files), just discovered via typecheck impact rather than a direct factual claim in the brief. Confirmed via grep that no other file in `frontend/app` constructs an `EngineHistoryEntry` literal, and that `EngineOrgProcessRail.vue`/`EngineStageStepper.vue` only consume the type (no literal construction), so they need no changes.
+
+## What I tested and results
+
+- `pnpm exec vitest run app/tests/unit/composables/useEngineTimeline.test.ts` — 6/6 pass (4 pre-existing + 2 new).
+- `pnpm exec vitest run app/tests/unit/composables/useEngineStagePath.test.ts` — 7/7 pass (confirms the incidental fixture fix didn't break anything).
+- Step 7 (component test for `EngineTimeline.vue`): `find frontend/app/tests/unit/components -iname "*EngineTimeline*"` → no results. No-op, as the brief anticipated as a possibility.
+
+## TDD Evidence
+
+**RED** — command: `pnpm exec vitest run app/tests/unit/composables/useEngineTimeline.test.ts` (run before any type/composable/component changes, only the two new test cases added):
+
 ```
-M .superpowers/sdd/progress.md
-M .superpowers/sdd/task-1-report.md
-M .superpowers/sdd/task-6-report.md
-M .superpowers/sdd/task-7-report.md
-M .superpowers/sdd/task-8-report.md
-?? backend/tests/Feature/Engine/DebugListOrderTest.php
-?? backend/tests/Feature/Engine/ListEndpointUnionParityTest.php
+× buildTimeline > marks a restricted entry with its label and keeps the actor name
+  → expected undefined to be true // Object.is equality
+× buildTimeline > marks a normal entry as not restricted
+  → expected undefined to be false // Object.is equality
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 4 passed (6)
 ```
-`.superpowers/sdd/*` dirty files pre-existed from a prior unrelated plan, out of scope, left untouched. `backend/app/Http/Controllers/Api/V1/EngineRequestController.php` was clean (still at Task 3's `625d5099`), confirming no partial edit to the controller had landed.
 
-Note: `.superpowers/sdd/*` files are tracked (not gitignored) and their committed HEAD content is a stale report from an unrelated WP-14 plan (`bcac5e01`/`f19c5e62`). Working-tree edits to these files (this report, `progress.md`) are session-scratch and do not get committed as part of this plan's backend-only commits — an external reset (observed mid-session) reverted this file's working-tree content back to that stale committed baseline once already; this content is being rewritten to reflect Task 4's actual work.
+Why expected: `EngineHistoryEntry` had no `restricted`/`restricted_label` fields yet and `buildTimeline` didn't populate `TimelineItem.restricted`/`restrictedLabel`, so both new assertions read `undefined`. (Vitest transpiles TS without full type-checking, so this surfaced as a runtime assertion failure rather than a compile error — functionally the same "predicted failure" the brief described.)
 
-## Step 1 (from prior interrupted session, verified correct)
+**GREEN** — command: `pnpm exec vitest run app/tests/unit/composables/useEngineTimeline.test.ts app/tests/unit/composables/useEngineStagePath.test.ts` (after implementing Steps 3, 4, 6, and the incidental fixture fix):
 
-`ListEndpointUnionParityTest.php` was transcribed verbatim from the brief's Step 1 code. Confirmed correct on read — no deviation from the brief.
+```
+✓ app/tests/unit/composables/useEngineStagePath.test.ts (7 tests) 2ms
+✓ app/tests/unit/composables/useEngineTimeline.test.ts (6 tests) 2ms
 
-## Investigation artifact found and resolved: `created_at` not sticking in test fixtures
+ Test Files  2 passed (2)
+      Tests  13 passed (13)
+```
 
-`DebugListOrderTest.php` (untracked scratch file, not part of the plan) showed the prior session was debugging why `makeRequest()`'s explicit `created_at`/`updated_at` values weren't taking effect — every row ended up with the same timestamp regardless of the `subDays()` offset requested, breaking the ordering assertion.
+## Typecheck result
 
-Root-caused directly: `EngineRequest::$fillable` (`app/Models/EngineRequest.php:20-41`) does **not** include `created_at`/`updated_at`. Laravel's `create()` silently discards non-fillable keys, so `EngineRequest::create(['created_at' => $createdAt, ...])` never persists the intended timestamp — Eloquent's own timestamp behavior then stamps every row with the same "now" value. This is the same bug Task 1's implementer independently discovered and fixed in its own test fixtures.
+`pnpm typecheck` is **known-red on this branch** — ~19 pre-existing errors across unrelated files (`CommandPalette.vue`, `SearchForm.vue`, `DynamicFormField.vue`, `admin/health.vue`, `notifications.vue`, `reports/index.vue`, several `WorkflowFields`/`WorkflowStages`/`WorkflowTransitions` test fixtures, `workflowNavigation.ts`). None reference `EngineHistoryEntry`, `EngineTimeline`, `useEngineTimeline`, or `useEngineStagePath`.
 
-**Fix**: updated `ListEndpointUnionParityTest.php`'s `makeRequest()` helper to call `create()` without the timestamp keys, then `forceFill(['created_at' => $createdAt, 'updated_at' => $createdAt])->save()` afterward. Verified: `php artisan test --filter=ListEndpointUnionParityTest` → 3/3 passing (9 assertions) against the pre-Task-4 controller code, confirming Step 2's expectation ("likely PASS already, correctness was never broken pre-change, only p95 at scale").
+Verification method: ran `pnpm typecheck` twice — once with my 5 changed files git-stashed (baseline) and once with them restored (after) — both piped to files and diffed. **The diff was empty**: byte-for-byte identical error output before and after. This confirms my change introduces zero new type errors, satisfying the brief's Step 8 pass criterion ("no new type errors") even though the full command exits non-zero due to the pre-existing baseline.
 
-Deleted `DebugListOrderTest.php` (pure investigation scratch, asserts only `assertTrue(true)`, not part of the plan's deliverables).
+(Note: mid-verification I hit a shell-state hazard — a compound `cd frontend && ... && cd .. && git stash pop` executed with a stale working directory and silently no-op'd in an unrelated repo. Caught immediately via `git stash list` showing the stash still present in the correct repo; popped it correctly with `git -C <repo>` afterward and confirmed `git status --short` showed all 5 files restored with correct diffs before proceeding. No work was lost. Redid the before/after comparison cleanly afterward using `git -C` throughout with no `cd`, scoping the stash to only the 5 touched files.)
 
-## Steps 3-7 (completed by controller)
+## Lint / format
 
-**Step 3** — Replaced `EngineRequestController::index()` with the brief's corrected Step 3 code: `SYSTEM_ADMIN` branch kept byte-identical (plain query, `orderByDesc('created_at')`, no union — that role has no stage filter to union across), non-admin branch now builds a per-stage `$branchFactory` closure (`withStageEntry()` → `forUser($user)` → single-stage `where` → `applyFilters()`) and calls `UnionStagePaginator::paginate()` with a `[['engine_requests.created_at', 'desc'], ['engine_requests.id', 'asc']]` sort spec, then `$page->load([...])` for the same eager-load relations `index()` originally loaded via `->with()` (deliberately NOT copying `myQueue()`'s eager-load list, which additionally includes `claimedBy` — `index()` never loaded that relation). No import changes needed — `App\Support\UnionStagePaginator` and `Illuminate\Database\Eloquent\Builder` were already present from Task 3.
+- `pnpm exec eslint app/types/models.ts app/composables/useEngineTimeline.ts app/components/workflow/EngineTimeline.vue app/tests/unit/composables/useEngineTimeline.test.ts app/tests/unit/composables/useEngineStagePath.test.ts` — clean, no output.
+- `pnpm exec prettier ... --check` — initially flagged `EngineTimeline.vue` and `useEngineTimeline.test.ts` (Tailwind class ordering per `prettier-plugin-tailwindcss`, one line-wrap). Ran `--write` on those two files, re-checked — `All matched files use Prettier code style!`. Re-ran the target Vitest file afterward to confirm the reformat didn't change behavior — still 6/6 pass.
 
-**Step 4** — `php artisan test --filter=ListEndpointUnionParityTest`: 3 passed (9 assertions), 0 failed.
+## Files changed
 
-**Step 5** — `php artisan test --filter=EngineSearchTest`: 7 passed (20 assertions), 0 failed — no regression to bank-scoping, search, or date-range filtering.
+- `frontend/app/types/models.ts` — `EngineHistoryEntry` gains `restricted`/`restricted_label`.
+- `frontend/app/composables/useEngineTimeline.ts` — `TimelineItem` gains `restricted`/`restrictedLabel`; `buildTimeline()` maps them through.
+- `frontend/app/components/workflow/EngineTimeline.vue` — renders a distinct lock-icon row for restricted entries.
+- `frontend/app/tests/unit/composables/useEngineTimeline.test.ts` — two new test cases added to the existing file.
+- `frontend/app/tests/unit/composables/useEngineStagePath.test.ts` — one fixture updated with the two new required fields (incidental, required to keep typecheck at baseline).
 
-**Additional verification (not in the brief)** — Given Task 3's review found real bugs in `UnionStagePaginator` (missing `withStageEntry()` in hydration, bare-array empty-paginator breaking `->load()`) that only surfaced via the full Engine test suite, ran `php artisan test tests/Feature/Engine/` as an extra check since `index()` shares the same `UnionStagePaginator` class and `->load()` call pattern as `myQueue()`: **273 tests, 956 assertions, exit code 0** — no failures (up from Task 3's post-fix baseline of 270/947 by exactly 3 new tests). Confirms Task 3's Collection-type fix already covers `index()`'s empty-result path too.
+## Self-review findings
 
-**Step 6** — `vendor/bin/pint app/Http/Controllers/Api/V1/EngineRequestController.php tests/Feature/Engine/ListEndpointUnionParityTest.php --test` → passed on first pass, no fixes needed.
+- **Completeness**: Restricted-entry rendering omits the entire stage-transition/comment block, replaced by lock icon + label + actor/timestamp — visually distinct from a normal entry with `comment: null` (which still shows the from→to/action row, just no comment paragraph). Design intent from the brief is satisfied.
+- **Quality**: Matches existing RTL/semantic-token/shadcn-vue conventions; no new shadcn-vue component introduced beyond the brief's `Lock` icon addition to the existing `lucide-vue-next` import.
+- **Discipline**: Touched only the brief's 4 files plus the one incidental fixture fix required to avoid a new typecheck error; did not touch `EngineOrgProcessRail.vue`, graph filtering, or anything in Task 5's scope.
+- **Testing**: New tests assert real behavior (restricted flag, label, actor name preserved, comment null) via the public `buildTimeline()` API, not implementation details. Test output is pristine (no console noise, no skipped/todo tests).
 
-**Step 7** — Committed `bdae5f4d` (signed, conventional format, scope `backend`, co-authored by Claude). Files: `backend/app/Http/Controllers/Api/V1/EngineRequestController.php` (modified), `backend/tests/Feature/Engine/ListEndpointUnionParityTest.php` (new).
+## Issues or concerns
 
-## Test results
+None blocking. Two notes for awareness:
 
-| Command | Result |
-|---|---|
-| `ListEndpointUnionParityTest` (pre-change, post fixture-fix) | PASS — 3 tests, 9 assertions |
-| `ListEndpointUnionParityTest` (post-change) | PASS — 3 tests, 9 assertions |
-| `EngineSearchTest` | PASS — 7 tests, 20 assertions |
-| `tests/Feature/Engine/` full | PASS — 273 tests, 956 assertions, exit 0 |
-| Pint | passed, no fixes needed |
-
-## Commit
-
-- Hash: `bdae5f4d`
-- Message: `perf(backend): wire UnionStagePaginator into engine-requests list (DB-002)`
-- Signed and verified.
-
-## Concerns
-
-None regarding the code itself — task review (dispatched separately) confirmed spec compliance on every checkable point: `SYSTEM_ADMIN` branch byte-identical, non-admin branch preserves filter/scope/order semantics, eager-load list correctly matches `index()`'s original (not `myQueue()`'s), test genuinely exercises the union path. The review's one Important finding was that this report file (at review time) still held stale WP-14 content rather than this task's actual report — now corrected. If this file reverts again, treat the git-committed backend code (commit `bdae5f4d` and its ancestors) as the source of truth; this report is regenerable from that history.
+1. The pre-existing frontend `pnpm typecheck` baseline is red (~19 errors, unrelated to this task) — consistent with this project's documented "known-red baseline" pattern; not something this task should or does fix.
+2. Mid-task, a compound shell command briefly created a false alarm (stash appeared "lost" due to a `cd`-induced wrong-directory `git stash pop`) — resolved immediately with no data loss, using `git -C <repo>` for all subsequent git operations to avoid directory-state ambiguity.
+3. `.superpowers/sdd/task-4-report.md` previously held a stale report from an unrelated backend task also numbered "Task 4" on a different branch (`perf/db-001-002-sla-union-restructure`). Read in full before overwriting per this file's own prior instruction to verify content before distributing/replacing it; overwritten with this plan's actual Task 4 content.
