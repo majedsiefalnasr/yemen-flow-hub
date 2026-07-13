@@ -1,8 +1,9 @@
 # Backend Guide
 
 **Verified:** 2026-07-13, against `backend/routes/api.php`,
-`backend/app/Services/{Workflow,Auth,Authorization,Audit,Customs}/`,
-`backend/app/Http/Controllers/Api/`, `backend/app/Providers/AppServiceProvider.php`,
+`backend/app/Services/{Workflow,Auth,Authorization,Audit,Customs,Settings}/`,
+`backend/app/Http/Controllers/Api/{,V1/}`, `backend/app/Http/Controllers/Api/AuthController.php`,
+`backend/app/Providers/AppServiceProvider.php`,
 `backend/config/{auth_security,demo}.php`, `backend/app/Models/EngineRequest.php`,
 and `php artisan route:list --path=api` directly — not carried over
 from the legacy `docs/05-backend-guide.md`, which predates the dynamic
@@ -10,6 +11,12 @@ workflow engine and describes a fixed 18-value status vocabulary, an
 active Voting Service, and a "Suggested API Structure" listing route
 families (`/api/voting`, `/api/customs`, `/api/support-review`,
 `/api/workflow`) that were never built as separate top-level groups.
+Re-checked and corrected 2026-07-13 after an independent review found
+6 issue groups (route topology, authentication mode duality, the scope
+of the transition-enforcement rule, voting-residue reachability
+precision, claim-setting ownership, and the plan record's file
+accounting) — see the Step 4C accuracy-correction record in
+[`audit-functional/22-documentation-consolidation-plan.md`](audit-functional/22-documentation-consolidation-plan.md).
 
 This document covers backend-specific conventions and operational
 rules. It is not the primary authority for topics that already have a
@@ -33,6 +40,30 @@ canonical document — those are linked, not duplicated:
   routes register only when `config('demo.allowed_environments')`
   permits it) — re-run `php artisan route:list --path=api` in the
   target environment rather than trusting any count.
+
+`routes/api.php` registers **three surfaces**, not two — do not
+describe the route topology as "unversioned `auth/` plus versioned
+`v1/`" alone:
+
+- `Route::prefix('auth')` — unversioned, public and Sanctum-protected
+  auth endpoints (login, logout, password/MFA flows, demo-user
+  switching where environment-gated).
+- `Route::prefix('v1')->middleware(['auth:sanctum', 'active',
+'throttle:api-default'])` — the versioned surface most engine/
+  designer/admin-governance endpoints live under.
+- **Additional unversioned route groups outside both prefixes** —
+  verified directly in `routes/api.php`: a public
+  `GET /api/settings/public`, and two `auth:sanctum`-protected groups
+  covering `profile/*`, `settings/*`, `financing/utilization`,
+  `admin/*` (health, settings, notification templates — distinct from
+  the `v1`-prefixed admin/governance endpoints), `search/*`, and
+  `dashboard/*`.
+
+A controller living under the `App\Http\Controllers\Api\V1` PHP
+namespace does not imply its route carries a `/v1` URL prefix, and vice
+versa — namespace and URL prefix are independent; verify the actual
+`Route::prefix()` nesting in `routes/api.php`, not the controller's
+namespace, when determining whether an endpoint is versioned.
 
 ---
 
@@ -100,29 +131,60 @@ publish/archive sequencing, is in
 
 ---
 
-## Runtime transition enforcement — the only path for a stage/status change
+## Ordinary workflow transitions: `execute()` is the mandatory path — but it is not the only sanctioned mutation
 
 There is no `ImportRequest` model in the current codebase — the request
-model is `EngineRequest` (table `engine_requests`). The request's
-`current_stage_id` (and coarse `status`) must only change through
-`EngineTransitionService::execute()`, never by direct attribute
-assignment on the model. This is **not** enforced by a model-level
-`setAttribute()` guard — verified directly: `EngineRequest` does not
-override `setAttribute()`, and `App\Exceptions\DirectStatusMutationException`
-exists in the codebase but is never thrown anywhere. Enforcement today
-is by convention and code review — controllers and services must route
-every status/stage change through `EngineTransitionService::execute()`,
-which itself locks the row (`lockForUpdate()`), re-checks `isActive()`
-and the optimistic `version`, validates the transition, permissions,
-claim ownership, and field rules — see
+model is `EngineRequest` (table `engine_requests`). For an **ordinary
+workflow transition** (moving the request along a `WorkflowTransition`
+in response to a user action), `current_stage_id` and `status` must
+only change through `EngineTransitionService::execute()`, never by ad
+hoc direct attribute assignment in a controller or arbitrary service
+code. This is **not** enforced by a model-level `setAttribute()` guard
+— verified directly: `EngineRequest` does not override `setAttribute()`,
+and `App\Exceptions\DirectStatusMutationException` exists in the
+codebase but is never thrown anywhere. Enforcement for transitions is
+by convention and code review — controllers must route every ordinary
+status/stage change through `execute()`, which itself locks the row
+(`lockForUpdate()`), re-checks `isActive()` and the optimistic
+`version`, validates the transition, permissions, claim ownership, and
+field rules — see
 [`architecture/02-workflow-engine.md`](architecture/02-workflow-engine.md)'s
 full 16-step `execute()` breakdown, not repeated here.
 
+**`execute()` is not the only place in the engine that writes
+`current_stage_id`/`status`, and that is by design, not a gap.** Two
+other services own explicit, narrower lifecycle operations outside
+`execute()`, verified directly:
+
+- `EngineRequestService` sets `current_stage_id`/`status` (`'ACTIVE'`)
+  directly when **creating** a new request — there is no "transition
+  into" the initial stage to execute; creation establishes the starting
+  state.
+- `EngineTransitionService::abandonDraft()` sets `status:
+EngineRequestStatus::ABANDONED` directly, without calling `execute()`
+  — abandoning a draft is not a `WorkflowTransition`-driven move
+  between stages, it is a distinct, gated lifecycle action (see
+  [`architecture/02-workflow-engine.md`](architecture/02-workflow-engine.md)'s
+  `abandonDraft()` subsection for its own `is_initial` gate and audit
+  trail).
+
+The rule this section states is narrower than "only `execute()` may
+ever write these columns": it is "no code outside the engine's own
+service-managed lifecycle operations (`execute()` for transitions,
+`EngineRequestService` for creation, `abandonDraft()` for abandonment)
+may write these columns directly."
+
 ```php
-// ✅ Only path for a stage/status change
+// ✅ Ordinary transition — the mandatory path
 $engineTransitionService->execute($engineRequest, $transitionId, $comment, $data, $version, $user);
 
-// ❌ Never direct assignment — not blocked by a model guard, but forbidden by convention
+// ✅ Also sanctioned — explicit, narrower service-managed lifecycle operations,
+// not ad hoc mutation: EngineRequestService (creation) and
+// EngineTransitionService::abandonDraft() (draft abandonment) each set
+// current_stage_id/status directly, outside execute(), by design.
+
+// ❌ Never ad hoc direct assignment from a controller or arbitrary service code —
+// not blocked by a model guard, but forbidden by convention
 $engineRequest->current_stage_id = $someOtherStageId;
 $engineRequest->save();
 ```
@@ -140,12 +202,28 @@ by filtering an unscoped result set after the fact.
 
 ---
 
-## Authentication
+## Authentication: cookie mode and token mode, selected per request
 
-Laravel Sanctum, secure session authentication with HTTP-only cookies.
-Session fixation protection on login is real, verified directly:
-`AuthController` calls `$request->session()->regenerate()` on
-successful login and `regenerateToken()` on logout-related paths.
+Laravel Sanctum, but **not cookie-only** — `AuthController::issueSession()`
+branches on `$request->hasSession()`, verified directly:
+
+- **Cookie mode** (`hasSession()` true — the typical SPA case): logs
+  the user into the `web` guard (`Auth::guard('web')->login($user)`)
+  and calls `$request->session()->regenerate()` (session-fixation
+  protection). The response payload's `token`/`token_type` are `null`.
+- **Token mode** (`hasSession()` false — e.g. non-cookie API clients):
+  skips the guard/session entirely and issues a Sanctum personal access
+  token via `$user->createToken(...)`, returned as
+  `{token, token_type: 'Bearer'}`.
+
+`logout()` mirrors this asymmetrically, not uniformly: it **always**
+revokes the current personal access token when one is present
+(`$user->currentAccessToken()->delete()`, unconditional), but only
+invalidates the session and regenerates the CSRF token
+(`session()->invalidate()` + `regenerateToken()`) **inside `if
+($request->hasSession())`** — a token-mode request has no session to
+invalidate. Do not describe session invalidation/CSRF regeneration on
+logout as unconditional; it only runs for cookie-mode requests.
 
 ---
 
@@ -191,10 +269,15 @@ successful login and `regenerateToken()` on logout-related paths.
 
 ## Claim lifecycle: admin setting, not a Redis TTL key
 
-`EngineClaimService::ttlMinutes()` reads the admin-configurable
-`support_claim_ttl` setting (`AdminSettingsService`, default 15
-minutes, 5–60 range) — this is the value enforced at runtime, **not**
-a Redis-based TTL key. `config('workflow.support_claim_ttl_minutes')`
+`EngineClaimService::ttlMinutes()` reads the `support_claim_ttl`
+setting **through its injected `SettingResolver`** (constructor
+dependency, verified directly — not `AdminSettingsService`) — this is
+the value enforced at runtime, **not** a Redis-based TTL key.
+`AdminSettingsService` owns the setting's catalog entry (default 15
+minutes, 5–60 minute range) that ends up in the `SystemSetting` row
+`SettingResolver` reads and caches, but it is not the class
+`EngineClaimService` calls at runtime — do not attribute `ttlMinutes()`
+to `AdminSettingsService` directly. `config('workflow.support_claim_ttl_minutes')`
 exists but is not read by the runtime claim service; it is still read
 directly by `backend/database/seeders/Support/EngineRequestScenarioBuilder.php`
 when constructing claimed-request seed scenarios. Full claim-lifecycle
@@ -217,18 +300,25 @@ entry involving a user.
 
 ---
 
-## Executive Voting: out of V1 — some backend residue is live-referenced dead code, verified individually
+## Executive Voting: out of V1 — dead, unwired residue, verified individually
 
 There is no Voting Service, no vote-casting route, and no voting
 session lifecycle in the current backend. A targeted search found real
-residue, verified individually rather than assumed dead or assumed
-zero:
+residue — an isolated cluster of classes with no path into any
+controller or route — verified individually rather than assumed dead
+or assumed zero:
 
-- `app/DTOs/Voting/VotingTally.php` and `app/Http/Resources/VoteResource.php`
-  — confirmed self-referencing only; no controller, route, or other
-  service references either class. Genuinely dead code.
-- `app/Http/Resources/VotingTallyResource.php` — same: no route or
-  controller wiring found.
+- `app/Http/Resources/VotingTallyResource.php` imports and directly
+  references `app/DTOs/Voting/VotingTally.php` (`use
+App\DTOs\Voting\VotingTally;`, typed as its `$resource`, reading its
+  properties in `toArray()`) — the two classes reference each other,
+  they are not each self-referencing in isolation. What makes both
+  dead is that **neither is reachable from any controller or route**:
+  grepped `app/Http/Controllers/` and `routes/` directly for both class
+  names, zero matches.
+- `app/Http/Resources/VoteResource.php` is a separate, standalone class
+  (no dependency on `VotingTally`) — same zero-reachability result from
+  the same grep.
 - `routes/api.php` has zero routes containing "voting" or "vote" in
   their path.
 
@@ -295,9 +385,9 @@ be reintroduced:
 - "Suggested API Structure" listing `/api/workflow`, `/api/support-review`,
   `/api/voting`, `/api/customs` as separate top-level route groups —
   verified against `routes/api.php`: none of these exist as top-level
-  prefix groups. The actual structure is `Route::prefix('auth')`
-  (unversioned) and `Route::prefix('v1')` (everything else,
-  `auth:sanctum` + `active` + `throttle:api-default` gated). See
+  prefix groups. The actual structure is the three-surface topology
+  described above (`auth/` unversioned, `v1/` versioned, and several
+  additional unversioned protected/public groups) — see
   [`api-reference.md`](api-reference.md) for the full route inventory
   rather than a second, manually-duplicated list here.
 - Fixed per-role "Visibility Scope By Role" sections describing static
@@ -306,8 +396,9 @@ be reintroduced:
   [`architecture/03-permission-model.md`](architecture/03-permission-model.md),
   not a hardcoded per-role table.
 - The Redis-based-TTL-key claim lifecycle description — the live TTL
-  source is the `AdminSettingsService`-backed `support_claim_ttl`
-  setting, not a Redis key (see above).
+  source is the `SettingResolver`-backed `support_claim_ttl` setting
+  (its catalog entry owned by `AdminSettingsService`), not a Redis key
+  (see above).
 - The unqualified "10 consecutive failures, 15-minute lockout" figure
   — lockout is admin-configurable; the config defaults are 5 attempts /
   15 minutes (see Security, above).

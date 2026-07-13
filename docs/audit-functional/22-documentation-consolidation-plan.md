@@ -1784,12 +1784,108 @@ touched files — zero broken links.
 
 **Blockers:** none.
 
-**Files changed this step:** `docs/05-backend-guide.md` (deleted),
-`docs/backend-guide.md` (created), plus 4 files with link/content
-corrections: `docs/README.md`, `docs/architecture/README.md`,
-`AGENTS.md`, `backend/CLAUDE.md` — 6 total including the
-created/deleted pair. No production frontend or backend code was
-changed.
+**Files changed this step:** commit `02d7ee2f` changed 7 paths —
+`docs/05-backend-guide.md` (deleted), `docs/backend-guide.md`
+(created), 4 files with link/content corrections (`docs/README.md`,
+`docs/architecture/README.md`, `AGENTS.md`, `backend/CLAUDE.md`), and
+this plan document itself (the prior version of this record omitted
+the plan document from its own accounting — corrected here). After the
+deletion, 6 files touched by this step remain on disk and are eligible
+for formatting/link checks. A separate correction commit, `85963bb0`,
+later fixed a pre-commit-hook formatting-drift bug in `02d7ee2f` and
+changed only `docs/backend-guide.md`. No production frontend or
+backend code was changed.
+
+**Step 4C accuracy correction (2026-07-13).** A focused review caught 6
+inaccuracies in `docs/backend-guide.md`, all re-verified directly
+against current backend source before correcting:
+
+1. **Route topology was understated as two surfaces.** The document
+   described `routes/api.php` as unversioned `auth/` plus versioned
+   `v1/` only. Read `routes/api.php` directly: it also registers a
+   public unversioned `GET /api/settings/public` and two
+   `auth:sanctum`-protected unversioned groups covering `profile/*`,
+   `settings/*`, `financing/utilization`, `admin/*` (health, settings,
+   notification templates — distinct from `v1`-prefixed admin
+   endpoints), `search/*`, and `dashboard/*`. Rewrote the section
+   around three surfaces (`auth/`, `v1/`, additional unversioned
+   groups) and added the explicit note that a controller's `Api\V1`
+   PHP namespace does not imply a `/v1` URL prefix — the two are
+   independent, verify the actual `Route::prefix()` nesting.
+2. **Authentication was described as cookie-only with unconditional
+   session regeneration.** Read `AuthController::issueSession()`
+   directly: it branches on `$request->hasSession()` — cookie mode
+   logs into the `web` guard and regenerates the session; token mode
+   creates a Sanctum personal access token and returns it as a Bearer
+   token, with no guard/session involvement. Read `logout()` directly:
+   it always revokes the current personal access token when present,
+   but only invalidates the session and regenerates the CSRF token
+   inside `if ($request->hasSession())`. Rewrote the Authentication
+   section to describe both modes and the conditional logout behavior.
+3. **The "`execute()` is the only path" rule was stated as absolute.**
+   Read `EngineRequestService` directly: it sets `current_stage_id`/
+   `status` directly during request creation, outside `execute()`.
+   Read `EngineTransitionService::abandonDraft()` directly: it sets
+   `status: ABANDONED` directly, without calling `execute()`. Neither
+   contradicts the prohibition on ad hoc mutation — both are explicit,
+   narrower service-managed lifecycle operations distinct from an
+   ordinary workflow transition. Rewrote the heading, prose, and code
+   comments to state the rule precisely: `execute()` is mandatory for
+   ordinary transitions; ad hoc mutation from a controller or arbitrary
+   service code is still forbidden; `EngineRequestService` (creation)
+   and `abandonDraft()` (abandonment) are sanctioned, narrower
+   exceptions by design, not gaps in the rule.
+4. **Voting-residue description was inaccurate and its heading
+   contradictory.** The document said `VotingTally`/`VoteResource`
+   were "self-referencing only" and used the heading "live-referenced
+   dead code" (contradictory on its face). Read
+   `VotingTallyResource.php` directly: it imports and references
+   `VotingTally` (`use App\DTOs\Voting\VotingTally;`, typed as its
+   `$resource`, reading its properties) — the two classes reference
+   each other, not each in isolation. `VoteResource` is a separate,
+   standalone class with no such dependency. What actually makes all
+   three dead is that none is reachable from any controller or route —
+   re-confirmed via a direct grep of `app/Http/Controllers/` and
+   `routes/` for all three class names, zero matches. Rewrote the
+   section and its heading to describe an isolated, unwired residue
+   cluster rather than "self-referencing," and replaced the
+   contradictory heading with clear dead-residue wording.
+5. **Claim-setting runtime ownership was misattributed.** The document
+   attributed `EngineClaimService::ttlMinutes()`'s runtime lookup to
+   `AdminSettingsService`. Read `EngineClaimService`'s constructor
+   directly: it injects `SettingResolver`, not `AdminSettingsService`.
+   `AdminSettingsService` owns the setting's catalog entry (default,
+   allowed range) that ends up in the `SystemSetting` row
+   `SettingResolver` reads — it is not the runtime dependency
+   `ttlMinutes()` calls. Corrected both mentions (the Claim lifecycle
+   section and the "what this document removes" itemization) to
+   attribute the runtime read to `SettingResolver` and the catalog
+   ownership to `AdminSettingsService` separately.
+6. **This plan's own Step 4C completion record undercounted its file
+   list.** Commit `02d7ee2f` changed 7 paths, including this plan
+   document itself; the prior record's "4 files... 6 total" omitted
+   the plan file from the accounting sentence even though the "6
+   total" figure implicitly included it. Corrected above (Files changed
+   this step) to state the 7/6 split explicitly, matching the pattern
+   used in the Step 4A/4B correction records.
+
+**Verification for this correction pass:** re-checked all 6 claims
+directly against `routes/api.php`, `AuthController.php`
+(`issueSession()`/`logout()`), `EngineRequestService.php`,
+`EngineTransitionService.php` (`abandonDraft()`),
+`VotingTallyResource.php`, `VoteResource.php`, `EngineClaimService.php`'s
+constructor, and `AdminSettingsService.php` before editing. Ran
+`php artisan route:list --path=api` to re-confirm the three-surface
+route topology against the live route table, not just the route
+declarations. Ran Prettier on `docs/backend-guide.md` and this plan
+document, and re-checked all 6 extant Step 4C files; confirmed
+`--check` stability on rerun. Re-ran the link/anchor checker — zero
+broken links. Confirmed `git status` reports exactly 2 modified tracked
+files and 12 untracked files, matching the unchanged, pre-existing
+baseline. Did not touch AGENTS.md's lockout-figure discrepancy, per
+instruction — it remains deferred to Step 9.
+
+**Blockers:** none.
 
 Step 4 (all three sub-steps — 4A, 4B, 4C) is now complete.
 
