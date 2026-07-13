@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { buildTimeline } from '@/composables/useEngineTimeline'
 import type { EngineHistoryEntry } from '@/types/models'
 
-const entry = (id: number, created_at: string | null, over: Partial<EngineHistoryEntry> = {}): EngineHistoryEntry => ({
+const entry = (
+  id: number,
+  created_at: string | null,
+  over: Partial<EngineHistoryEntry> = {},
+): EngineHistoryEntry => ({
   id,
   from_stage: { id: 1, code: 'S1', name: 'الإدخال' },
   to_stage: { id: 2, code: 'S2', name: 'المراجعة' },
@@ -10,6 +14,8 @@ const entry = (id: number, created_at: string | null, over: Partial<EngineHistor
   performed_by: { id: 7, name: 'أحمد' },
   comments: null,
   created_at,
+  restricted: false,
+  restricted_label: null,
   ...over,
 })
 
@@ -39,5 +45,32 @@ describe('buildTimeline', () => {
 
   it('returns [] for no entries', () => {
     expect(buildTimeline([])).toEqual([])
+  })
+
+  it('marks a restricted entry with its label and keeps the actor name', () => {
+    const items = buildTimeline([
+      entry(2, '2026-07-14T10:00:00Z', {
+        from_stage: null,
+        to_stage: null,
+        action_code: null,
+        comments: null,
+        restricted: true,
+        restricted_label: 'إجراء تم في مرحلة مقيدة',
+      }),
+    ])
+
+    expect(items[0]!.restricted).toBe(true)
+    expect(items[0]!.restrictedLabel).toBe('إجراء تم في مرحلة مقيدة')
+    expect(items[0]!.actorName).toBe('أحمد')
+    expect(items[0]!.comment).toBeNull()
+  })
+
+  it('marks a normal entry as not restricted', () => {
+    const items = buildTimeline([entry(1, '2026-06-01T10:00:00Z')])
+
+    expect(items[0]!.restricted).toBe(false)
+    expect(items[0]!.restrictedLabel).toBeNull()
+    expect(items[0]!.fromLabel).toBe('الإدخال')
+    expect(items[0]!.toLabel).toBe('المراجعة')
   })
 })

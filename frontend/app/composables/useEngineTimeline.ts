@@ -9,6 +9,8 @@ export interface TimelineItem {
   timestamp: string
   comment: string | null
   isLast: boolean
+  restricted: boolean
+  restrictedLabel: string | null
 }
 
 const dateFormatter = new Intl.DateTimeFormat('ar-EG', { dateStyle: 'medium', timeStyle: 'short' })
@@ -28,5 +30,7 @@ export function buildTimeline(entries: EngineHistoryEntry[]): TimelineItem[] {
     timestamp: entry.created_at ? dateFormatter.format(new Date(entry.created_at)) : '—',
     comment: entry.comments,
     isLast: index === ordered.length - 1,
+    restricted: entry.restricted,
+    restrictedLabel: entry.restricted_label,
   }))
 }

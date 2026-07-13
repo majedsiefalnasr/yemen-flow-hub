@@ -891,6 +891,8 @@ export interface EngineHistoryEntry {
   performed_by: { id: number; name: string } | null
   comments: string | null
   created_at: string | null
+  restricted: boolean
+  restricted_label: string | null
 }
 
 export interface AvailableWorkflow {

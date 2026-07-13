@@ -36,6 +36,8 @@ const history: EngineHistoryEntry[] = [
     performed_by: null,
     comments: null,
     created_at: '2026-06-01T10:00:00Z',
+    restricted: false,
+    restricted_label: null,
   },
 ]
 
