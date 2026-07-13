@@ -1887,6 +1887,49 @@ instruction — it remains deferred to Step 9.
 
 **Blockers:** none.
 
+**Step 4C accuracy correction, follow-up (2026-07-13).** A further
+review caught 2 residual overstatements in the just-corrected
+`docs/backend-guide.md`, both re-verified directly against current
+backend source:
+
+1. **Voting-residue dependency direction was still stated as
+   symmetric.** The prior correction round said `VotingTallyResource`
+   and `VotingTally` "reference each other." Read `VotingTally.php`
+   directly: it is a plain DTO with zero imports and no reference back
+   to `VotingTallyResource` — the dependency is one-way,
+   `VotingTallyResource` → `VotingTally`. The conclusion that the
+   cluster is unreachable from any controller/route is unaffected and
+   remains correct. Corrected the wording to state the one-way
+   direction explicitly rather than "reference each other."
+2. **The state-mutation rule was still effectively absolute.** The
+   prior correction round scoped the exceptions to
+   `EngineRequestService` (creation) and `abandonDraft()` (abandonment)
+   but still implied no other code anywhere writes
+   `current_stage_id`/`status` directly. Read
+   `backend/app/Console/Commands/PerfLoadScenarioCommand.php` directly:
+   it bulk-inserts both columns via a chunked raw `insert()` (not
+   Eloquent, not `execute()`) to generate synthetic
+   `engine_requests` rows for performance-load testing — a real
+   counterexample to an absolute reading of the rule. Rewrote the
+   section to scope the prohibition explicitly to **production
+   request-handling paths** (controllers, services, jobs, listeners
+   acting on live data), and added synthetic performance/test/seed
+   fixture generation as a distinct, non-production category that is
+   allowed to bypass the engine's mutation paths precisely because it
+   never touches a live request — while explicitly stating this is not
+   a supported production mutation pattern to imitate.
+
+**Verification for this follow-up:** re-checked both claims directly
+against `VotingTally.php` and `PerfLoadScenarioCommand.php` before
+editing. Ran Prettier on `docs/backend-guide.md` and this plan
+document, and re-checked all 6 extant Step 4C files; confirmed
+`--check` stability on rerun. Re-ran the link/anchor checker — zero
+broken links. Confirmed `git status` reports exactly 2 modified tracked
+files and 12 untracked files, matching the unchanged, pre-existing
+baseline. Did not touch AGENTS.md, per instruction.
+
+**Blockers:** none.
+
 Step 4 (all three sub-steps — 4A, 4B, 4C) is now complete.
 
 Holding for review before Step 5, per instruction.

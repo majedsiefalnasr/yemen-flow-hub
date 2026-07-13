@@ -15,7 +15,11 @@ Re-checked and corrected 2026-07-13 after an independent review found
 6 issue groups (route topology, authentication mode duality, the scope
 of the transition-enforcement rule, voting-residue reachability
 precision, claim-setting ownership, and the plan record's file
-accounting) — see the Step 4C accuracy-correction record in
+accounting), then a follow-up review found 2 residual overstatements
+(voting-residue dependency direction; the transition-enforcement rule
+still read as absolute against `PerfLoadScenarioCommand`'s synthetic
+fixture inserts) — see the Step 4C accuracy-correction record and its
+follow-up in
 [`audit-functional/22-documentation-consolidation-plan.md`](audit-functional/22-documentation-consolidation-plan.md).
 
 This document covers backend-specific conventions and operational
@@ -168,11 +172,27 @@ EngineRequestStatus::ABANDONED` directly, without calling `execute()`
   `abandonDraft()` subsection for its own `is_initial` gate and audit
   trail).
 
-The rule this section states is narrower than "only `execute()` may
-ever write these columns": it is "no code outside the engine's own
-service-managed lifecycle operations (`execute()` for transitions,
-`EngineRequestService` for creation, `abandonDraft()` for abandonment)
-may write these columns directly."
+**This rule governs production request-handling paths — controllers,
+services, jobs, and listeners that act on live data — not every line of
+code in the repository.** `backend/app/Console/Commands/PerfLoadScenarioCommand.php`
+is a real counterexample if the rule is read as absolute: it bulk-inserts
+`current_stage_id`/`status` directly into `engine_requests` rows via a
+chunked raw `insert()` (not Eloquent, not `execute()`), to generate
+synthetic fixtures for performance-load testing. This is a **console
+command generating throwaway test data**, not a request-handling code
+path, and it is not evidence that direct mutation is acceptable in
+production code — do not cite it as a supported mutation pattern.
+Synthetic performance/test/seed fixture generation (this command, and
+similarly `backend/database/seeders/`) is the one carved-out category
+allowed to bypass `execute()`/`EngineRequestService`/`abandonDraft()`,
+precisely because it never runs against live requests.
+
+The rule this section states, precisely: in production request-handling
+code, no path outside the engine's own service-managed lifecycle
+operations (`execute()` for transitions, `EngineRequestService` for
+creation, `abandonDraft()` for abandonment) may write these columns
+directly. Synthetic fixture/seed generation is a separate, non-production
+category, not an exception that weakens the production rule.
 
 ```php
 // ✅ Ordinary transition — the mandatory path
@@ -183,8 +203,13 @@ $engineTransitionService->execute($engineRequest, $transitionId, $comment, $data
 // EngineTransitionService::abandonDraft() (draft abandonment) each set
 // current_stage_id/status directly, outside execute(), by design.
 
-// ❌ Never ad hoc direct assignment from a controller or arbitrary service code —
-// not blocked by a model guard, but forbidden by convention
+// ⚠️ Synthetic fixture generation (PerfLoadScenarioCommand, seeders) also
+// writes these columns directly — but only for throwaway test data, never
+// for a live request. Not a production mutation pattern to imitate.
+
+// ❌ Never ad hoc direct assignment from a controller or arbitrary
+// production service code — not blocked by a model guard, but forbidden
+// by convention
 $engineRequest->current_stage_id = $someOtherStageId;
 $engineRequest->save();
 ```
@@ -311,11 +336,13 @@ or assumed zero:
 - `app/Http/Resources/VotingTallyResource.php` imports and directly
   references `app/DTOs/Voting/VotingTally.php` (`use
 App\DTOs\Voting\VotingTally;`, typed as its `$resource`, reading its
-  properties in `toArray()`) — the two classes reference each other,
-  they are not each self-referencing in isolation. What makes both
-  dead is that **neither is reachable from any controller or route**:
-  grepped `app/Http/Controllers/` and `routes/` directly for both class
-  names, zero matches.
+  properties in `toArray()`). The dependency is **one-way**:
+  `VotingTallyResource` depends on `VotingTally`; `VotingTally` itself
+  is a plain DTO with zero imports and no reference back to the
+  resource (verified by reading `VotingTally.php` directly). What makes
+  both dead is that **neither is reachable from any controller or
+  route**: grepped `app/Http/Controllers/` and `routes/` directly for
+  both class names, zero matches.
 - `app/Http/Resources/VoteResource.php` is a separate, standalone class
   (no dependency on `VotingTally`) — same zero-reachability result from
   the same grep.
