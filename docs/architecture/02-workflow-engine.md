@@ -297,13 +297,19 @@ enforceRequired: true, ...)` — required-field enforcement is **on**
 A failure at any of steps 1–15 rolls back the entire transition
 atomically — request mutation, projection sync, claim release,
 `workflow_history`, and the audit write are all undone together. Step 16
-is different: `afterTransition()` only resolves recipients and registers
-a `DB::afterCommit()` callback while still inside the transaction; the
-actual `DispatchNotification::dispatch()` call happens **only after the
-transaction successfully commits**. A notification dispatch failure
-after commit cannot roll back an already-committed transition — the
-stage change, history, and audit rows stay committed regardless of
-whether the notification job later fails to dispatch or send.
+splits into two phases with different rollback behavior:
+
+- **Synchronous, still inside the transaction:** `afterTransition()`
+  resolves recipients (`StagePermissionAudience::executeHolderIds()`,
+  `scopeRecipientsForRequest()`) and registers a `DB::afterCommit()`
+  callback. Both run synchronously before the transaction commits — an
+  exception thrown during recipient resolution or callback registration
+  rolls back the entire transition exactly like a failure in steps 1–15.
+- **Deferred, after a successful commit:** the callback body,
+  `DispatchNotification::dispatch()`, does not run until the transaction
+  has already committed. A failure here — the job failing to dispatch or
+  send — cannot roll back an already-committed transition; the stage
+  change, history, and audit rows stay committed regardless.
 
 ### `saveDraft()` — not gated by a fixed "editable states" list
 

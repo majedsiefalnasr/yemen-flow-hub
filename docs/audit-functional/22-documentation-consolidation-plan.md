@@ -1318,16 +1318,22 @@ backend source before correcting:
    Split the "compatibility fallback" section into two explicit
    bullets, one per resolution kind, rather than describing a single
    shared map.
-6. **Notification transaction semantics overstated what rolls back.**
-   The doc's blanket claim ("a failure at any step rolls back the
-   entire transition atomically") was inaccurate for step 16.
-   `EngineNotificationDispatcher::afterTransition()` (verified by
-   reading it directly) only resolves recipients and registers a
-   `DB::afterCommit()` callback inside the transaction;
-   `DispatchNotification::dispatch()` runs only after a successful
-   commit, so a post-commit notification failure cannot roll back an
-   already-committed transition. Narrowed the rollback claim to steps
-   1–15 and added the after-commit distinction explicitly. Also
+6. **Notification transaction semantics overstated what rolls back —
+   corrected twice.** The doc's original blanket claim ("a failure at
+   any step rolls back the entire transition atomically") was
+   inaccurate for step 16, so a first pass narrowed the rollback claim
+   to steps 1–15. That narrowing itself overstated the gap: reading
+   `EngineNotificationDispatcher::afterTransition()` directly shows
+   recipient resolution (`executeHolderIds()`,
+   `scopeRecipientsForRequest()`) and the `DB::afterCommit()`
+   registration call both run **synchronously, still inside the
+   transaction** — a failure there rolls back exactly like steps 1–15.
+   Only the callback body, `DispatchNotification::dispatch()`, runs
+   after a successful commit and cannot roll back an already-committed
+   transition. The canonical doc now describes step 16 as two phases
+   (synchronous recipient-resolution/registration vs. deferred dispatch)
+   rather than treating "step 16" as one uniformly non-rolling-back
+   unit. Also
    corrected `saveDraft()`'s claim description: it requires a held claim
    only when the current stage has `requires_claim: true`
    (`EngineClaimService::ensureClaimHeld()` no-ops otherwise, read
