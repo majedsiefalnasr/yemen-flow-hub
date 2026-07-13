@@ -69,8 +69,9 @@ import {
 } from '@/components/ui/data-table'
 
 definePageMeta({
-  middleware: ['auth', 'role'],
-  requiredRoles: [UserRole.BANK_ADMIN],
+  middleware: ['auth', 'screen'],
+  requiredScreen: 'staff',
+  requiredCapability: 'VIEW',
 })
 
 const { fetchUsers, createUser, updateUser, getUser } = useUsers()
