@@ -165,7 +165,7 @@ successful login and `regenerateToken()` on logout-related paths.
   given environment, the same pattern as the claim TTL below.
 - **API rate limit:** `RateLimiter::for('api-default', ...)` in
   `AppServiceProvider` — `config('auth_security.api_throttle_per_minute',
-  120)` requests/minute, keyed by authenticated user ID when present,
+120)` requests/minute, keyed by authenticated user ID when present,
   by IP otherwise.
 - **CSRF / session:** Sanctum SPA-mode CSRF cookie flow; session
   regeneration on login (see above).
