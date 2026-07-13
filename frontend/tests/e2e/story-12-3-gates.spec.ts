@@ -258,7 +258,7 @@ test.describe('Story 12-3 gate verification', () => {
     await expect(page).toHaveURL(/\/dashboard/)
   }
 
-  test('Committee Director role surfaces and gating', async ({ page }) => {
+  test('Committee Director role surfaces and gating', async ({ page }, testInfo) => {
     await mockApi(page, 'COMMITTEE_DIRECTOR')
     await loginAs(page, 'director@cby.gov.ye')
     await expect(page.getByText(/جلسات تصويت اكتملت وتنتظر الإغلاق/)).toBeVisible()
@@ -266,7 +266,7 @@ test.describe('Story 12-3 gate verification', () => {
     await expect(page.getByText('قائمة انتظار تأكيد المصارفة الخارجية')).toBeVisible()
     await expect(page.getByText('طابور السويفت')).toHaveCount(0)
     await page.screenshot({
-      path: '../docs/ui-parity/screenshots/12-3/after/director-dashboard.png',
+      path: testInfo.outputPath('director-dashboard.png'),
       fullPage: true,
     })
 
@@ -274,13 +274,13 @@ test.describe('Story 12-3 gate verification', () => {
       .getByRole('link', { name: /طلبات التمويل/ })
       .first()
       .click()
-    await expect(page).toHaveURL(/\/workflows/instances/)
+    await expect(page).toHaveURL(/\/workflows\/instances/)
     await expect(page.getByRole('tab', { name: 'جاهزة للإغلاق' })).toBeVisible()
     await expect(page.getByRole('tab', { name: 'جاهزة للإصدار النهائي' })).toBeVisible()
     await expect(page.getByRole('tab', { name: 'تعادل — يحتاج حسماً' })).toBeVisible()
     await expect(page.getByRole('tab', { name: 'بانتظار تأكيد المصارفة' })).toBeVisible()
     await page.screenshot({
-      path: '../docs/ui-parity/screenshots/12-3/after/director-requests.png',
+      path: testInfo.outputPath('director-requests.png'),
       fullPage: true,
     })
 
@@ -290,18 +290,18 @@ test.describe('Story 12-3 gate verification', () => {
     await expect(page.getByText('بانتظار تأكيد المصارفة')).toBeVisible()
     await expect(page.getByText('رفع وثائق السويفت')).toHaveCount(0)
     await page.screenshot({
-      path: '../docs/ui-parity/screenshots/12-3/after/director-request-detail-fx.png',
+      path: testInfo.outputPath('director-request-detail-fx.png'),
       fullPage: true,
     })
   })
 
-  test('SWIFT Officer role surfaces, submit gate, and denied state', async ({ page }) => {
+  test('SWIFT Officer role surfaces, submit gate, and denied state', async ({ page }, testInfo) => {
     await mockApi(page, 'SWIFT_OFFICER')
     await loginAs(page, 'swift@ybrd.com.ye')
     await expect(page.getByText(/طلبات بانتظار رفع وثائق السويفت/)).toBeVisible()
     await expect(page.getByText('طلب تأكيد المصارفة').first()).toBeVisible()
     await page.screenshot({
-      path: '../docs/ui-parity/screenshots/12-3/after/swift-dashboard.png',
+      path: testInfo.outputPath('swift-dashboard.png'),
       fullPage: true,
     })
 
@@ -309,12 +309,12 @@ test.describe('Story 12-3 gate verification', () => {
       .getByRole('link', { name: /طلبات التمويل/ })
       .first()
       .click()
-    await expect(page).toHaveURL(/\/workflows/instances/)
+    await expect(page).toHaveURL(/\/workflows\/instances/)
     await expect(page.getByRole('tab', { name: 'بانتظار رفع السويفت' })).toBeVisible()
     await expect(page.getByRole('tab', { name: 'تم رفع السويفت' })).toBeVisible()
     await expect(page.getByRole('tab', { name: 'مكتمل' })).toBeVisible()
     await page.screenshot({
-      path: '../docs/ui-parity/screenshots/12-3/after/swift-requests.png',
+      path: testInfo.outputPath('swift-requests.png'),
       fullPage: true,
     })
 
@@ -326,7 +326,7 @@ test.describe('Story 12-3 gate verification', () => {
     await expect(page.getByRole('button', { name: 'تسليم وثائق السويفت' })).toBeDisabled()
     await expect(page.getByText('أدخل رقم مرجع السويفت أولاً')).toBeVisible()
     await page.screenshot({
-      path: '../docs/ui-parity/screenshots/12-3/after/swift-upload-gate.png',
+      path: testInfo.outputPath('swift-upload-gate.png'),
       fullPage: true,
     })
 
@@ -344,7 +344,7 @@ test.describe('Story 12-3 gate verification', () => {
       ),
     ).toBeVisible()
     await page.screenshot({
-      path: '../docs/ui-parity/screenshots/12-3/after/swift-upload-denied.png',
+      path: testInfo.outputPath('swift-upload-denied.png'),
       fullPage: true,
     })
   })

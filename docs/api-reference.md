@@ -169,7 +169,9 @@ Non-admin users are scoped to stages they may VIEW (via `stage_permissions`); `s
 
 ```json
 {
-  "data": [/* EngineRequestResource[] */],
+  "data": [
+    /* EngineRequestResource[] */
+  ],
   "meta": { "current_page": 1, "last_page": 3, "per_page": 25, "total": 62 }
 }
 ```

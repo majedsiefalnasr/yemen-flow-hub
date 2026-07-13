@@ -2563,11 +2563,8 @@ planned move:
    `AdminSettingsService` — corrected to `SettingResolver`, with
    `AdminSettingsService` described only as the setting's catalog
    owner (default, valid range, admin-console exposure), consistent
-   with the same finding already fixed in `docs/architecture/
-03-permission-model.md` and `AGENTS.md`. The reported Prettier
-   failure on `docs/api-reference.md`'s committed blob did not
-   reproduce — `git stash` + `prettier --check` against the clean
-   `HEAD` tree passed; no formatting fix was needed there.
+   with the same finding already fixed in
+   `docs/architecture/03-permission-model.md` and `AGENTS.md`.
 2. **Omitted planned move completed:** `docs/07-account-recovery-and-
 mail.md` moved to `docs/auth-and-recovery.md` via `git mv`. Content
    re-verified against current source before the move (not just
@@ -2608,3 +2605,11 @@ mail.md` moved to `docs/auth-and-recovery.md` via `git mv`. Content
 **Consolidation status: COMPLETE.** No further steps are planned. Any
 future documentation work is ordinary maintenance, not part of this
 migration.
+
+**Post-close maintenance (2026-07-13).** Normalized the one remaining
+Prettier difference in `docs/api-reference.md`. Removed the obsolete,
+tracked `docs/ui-parity/` screenshot artifacts; the E2E producer now
+writes those seven captures to Playwright's per-test output directory
+through `testInfo.outputPath()`, so the deleted documentation directory
+will not be recreated by later test runs. This is routine cleanup, not a
+new consolidation step.
