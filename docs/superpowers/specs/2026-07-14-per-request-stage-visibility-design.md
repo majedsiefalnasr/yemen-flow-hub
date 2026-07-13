@@ -1,6 +1,6 @@
 # Per-Request Stage & History Visibility — Design
 
-Status: draft, pending user review
+Status: implemented (all 5 plan tasks complete, final whole-branch review approved, ready to merge)
 Owner request: filter the "سير العملية التنظيمية" process rail (and every other per-request stage/history surface) to the viewing user's own `StagePermission` grants, instead of always showing every designer-defined stage.
 
 ## 1. Problem
@@ -195,8 +195,8 @@ No change needed — `buildStagePath()` only reads `entry.to_stage?.id` for visi
 - Frontend: `useEngineStagePath`/`useEngineTimeline` unit tests for the `restricted` branch; existing `WorkflowProcessGraph.test.ts` should be checked to confirm it doesn't regress (that component is unaffected — different endpoint).
 - No full suite run required per project default; run the specific new/touched test files only.
 
-## 7. Open items for user review
+## 7. Open items — resolved during implementation
 
-1. `action_code` fully nulled vs. replaced with a generic `outcome` (e.g. `advanced`/`returned`/`closed`) in sanitized entries — pick one (see §4.3 note).
-2. Should the `restricted_label` string live in the backend (single source of truth, as drafted) or be a frontend-only i18n string keyed off `restricted: true`? Drafted as backend-supplied for now since it's simpler and avoids drift, but frontend may already have an i18n convention this should follow instead.
-3. Confirm `WorkflowHistoryArchive` (the separate archived-history table) is genuinely unreachable by any current user-facing endpoint (research found no controller reads it) — if a future feature ever surfaces archived history, this same visibility rule must apply there too; noting it now so it isn't forgotten later.
+1. **Resolved**: `action_code` is fully nulled (not replaced with a generic `outcome`) in sanitized entries. Implemented as drafted in `EngineRequestController::history()`.
+2. **Resolved**: `restricted_label` is backend-supplied (single source of truth), not a frontend-only i18n string. Implemented as drafted — the frontend simply displays the string it receives.
+3. **Still open, not a blocker**: `WorkflowHistoryArchive` (the separate archived-history table) remains genuinely unreachable by any current user-facing endpoint — confirmed unchanged during implementation. If a future feature ever surfaces archived history, this same visibility rule must apply there too; noting it here so it isn't forgotten later.
