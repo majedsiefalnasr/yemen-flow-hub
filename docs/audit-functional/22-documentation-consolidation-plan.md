@@ -2208,6 +2208,20 @@ Verification: Prettier `--check` on touched files, link/anchor check,
 `git status` confirms baseline unchanged, committed blob verified
 immediately post-commit. Deviations: none.
 
+**Follow-up correction (2026-07-13).** The scheduled-jobs table's
+`workflow:expire-engine-claims` row listed `workflow.support_claim_ttl_minutes`
+as a config key for that command. Verified via `grep` against
+`ExpireEngineClaimsCommand.php`: the command reads no config/setting key at
+all — it filters purely on the already-persisted `claim_expires_at` column.
+The TTL is baked into that column earlier, at claim/heartbeat time, by
+`EngineClaimService::ttlMinutes()` reading the admin `support_claim_ttl`
+setting via `SettingResolver`. `workflow.support_claim_ttl_minutes` is a
+legacy config key read only by the `EngineRequestScenarioBuilder` seeder.
+Corrected the table's Config keys cell in `docs/production-guide.md`
+accordingly; the file's separate "Stuck support claim" prevention note
+already attributed the TTL correctly and needed no change. Committed
+separately from Step 8 per instruction.
+
 Holding for review before Step 8, per instruction.
 
 **Step 8 — Move `docs/audit-functional/00-discovery.md` through
