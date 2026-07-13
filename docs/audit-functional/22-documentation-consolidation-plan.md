@@ -1940,6 +1940,123 @@ cross-role handoffs pattern) as generic templates — this happens before
 archiving so the extraction has the source material still in its original
 location for reference during the extraction, not after.
 
+**Step 5 — ✅ DONE (2026-07-13).** Scope: extract and genericize the 3
+UX patterns named above; `docs/user-view/` itself is read-only source
+material for this step — not archived, not modified.
+
+Pre-flight `git status` confirmed the baseline (2 modified tracked
+files, 12 untracked files) before touching anything; confirmed
+unchanged post-flight.
+
+**Source read.** Read `docs/user-view/data-entry.md` (665 lines) and
+`docs/user-view/support-committee.md` (448 lines) in full — one
+operational/task-oriented role and one claim-based CBY-global role, the
+two most structurally distinct posture types in the set — to confirm
+the pattern shape is consistent before genericizing. Spot-read
+`docs/user-view/bank-admin.md`'s "Operational Posture" table (a
+governance/administrative posture, the third tier) to confirm the
+`Aspect | Tone` table shape holds across all three density tiers.
+Confirmed via `grep` that all 8 role files under `docs/user-view/`
+contain all three named patterns (density/posture table, "Forbidden
+Actions Reference" section, "Cross-Role Handoffs" section), so the two
+full reads plus one spot-read were representative of the pattern shape
+across the set, not just one role's idiosyncrasy.
+
+**Extraction, not preservation.** All three patterns were rewritten as
+generic authoring templates, not copied role/status content:
+
+1. **Per-surface operational-posture template** — a new subsection
+   under `docs/frontend-guide.md`'s existing "Operational density
+   composition" (added in Step 4B), since a role-posture-tier mapping
+   table already lived there; the new content is a fill-in-the-blank
+   `Aspect | What to fill in` template (Work mode, Primary/Secondary/
+   Tertiary surface, State language, Visual density, Decision/feedback
+   tone) rather than a second, redundant density-tier table. The "State
+   language" row explicitly directs authors to the four-field canonical
+   model (`runtime_status`/`current_stage`/`final_outcome`) instead of
+   a per-role simplified-status mapping sourced from the retired
+   18-value vocabulary — the opposite of what the source material did
+   (`data-entry.md`'s "Status Presentation" table mapped 18 raw enum
+   values to 6 simplified Arabic labels).
+2. **Forbidden-actions template** — a new "Forbidden-actions template"
+   section: a numbered authoring checklist (enumerate the real
+   authority boundary from `stage_permissions`/screen capabilities, not
+   a hardcoded per-role table; state as non-rendering, not disabled
+   controls; cross-reference backend enforcement; do not enumerate
+   voting actions as a forbidden category, since Executive Voting is
+   out of V1 and there is no vote-casting action to forbid in the first
+   place) — not a copy of any role's specific forbidden-actions list
+   (which named concrete removed/retired actions like "Cast or modify
+   an executive vote").
+3. **Cross-role handoff template** — a new "Cross-role handoff
+   template" section: a numbered authoring checklist keyed on stage
+   transitions and semantic roles ("stage A → stage B via transition
+   T"), explicitly rejecting the source material's fixed-status-jump
+   framing (`data-entry.md`'s handoffs were phrased as
+   `SUBMITTED`→`BANK_REVIEW`-style status jumps) and its
+   fixed-handoff-count framing (`support-committee.md` enumerated
+   "three handoff directions" as if that count were a property of the
+   role rather than of one specific published workflow version's stage
+   graph).
+
+**Removed/rejected during extraction (verified against current
+architecture, not carried forward):** the 18-value status vocabulary
+used throughout the source density/status-language rows; the
+"CorrectionBanner"/"ActiveReviewBanner" naming as if these are the only
+possible banner components (kept generic: "a banner on the
+request-detail page"); fixed per-role dashboard framing (the source
+material predates the two-family capability-led dashboard model from
+[`../architecture/04-dashboard-architecture.md`](../architecture/04-dashboard-architecture.md));
+customs-facing terminology (none was present in the specific
+density/forbidden-actions/handoff sections read, so none needed
+removal, but the templates themselves direct new authors toward
+external FX confirmation terminology per
+[`AGENTS.md`](../../AGENTS.md)'s canonical rule); static per-role
+workflow-path framing (`support-committee.md`'s handoff list assumed a
+single fixed pipeline `BANK_REVIEWER → SUPPORT_COMMITTEE →
+EXECUTIVE_MEMBER`, which the template replaces with Designer-defined,
+workflow-version-specific stage transitions).
+
+**`docs/user-view/` disposition: unchanged, per instruction.** No file
+under `docs/user-view/` was modified, moved, or archived during this
+step — it remains exactly as it was, still governed by the existing
+"deprecated historical material" framing in `AGENTS.md` and
+`docs/frontend-guide.md`'s "Per-Role UX Authority" section (unchanged
+from Step 4B). Its eventual archival disposition (per §5/§10 of this
+plan) is out of scope for Step 5.
+
+**Checks performed.** Self-reviewed the new template sections via
+targeted `grep` for the 5 forbidden-content categories named in the
+instructions (22-value status vocabulary, active Executive Voting
+claims, fixed per-role dashboards, customs-facing terminology, static
+workflow paths) — zero live-content matches; the one "vote-casting"
+match found is inside an explicit negative statement inside the
+forbidden-actions template itself ("there is no vote-casting... action
+to list"), correctly stating Voting is out of V1, not reintroducing it.
+Confirmed via `git status` that `docs/user-view/` has zero pending
+changes. Caught and fixed one cross-reference inaccuracy during
+self-review: a template point cited "Never Trust Frontend Permissions"
+as an existing heading/bullet in this document — the actual bullet
+text is "Frontend permissions are UX only" under "Architecture rules,"
+and that section appears **below**, not above, the new template
+sections in document order; corrected both the quoted text and the
+"above"/"below" direction. Ran Prettier on `docs/frontend-guide.md` and
+this plan document; confirmed `--check` stability on rerun. Read the
+formatted files back for line-leading `+`/`-` artifacts — none found.
+Ran the link/anchor checker across both touched files — zero broken
+links.
+
+**Deviations:** none.
+
+**Blockers:** none.
+
+**Files changed this step:** `docs/frontend-guide.md` (extended with 3
+new template sections) and this plan document — 2 files. No file under
+`docs/user-view/` was touched. No production frontend or backend code
+was changed.
+
+Holding for review before Step 6, per instruction.
+
 **Step 6 — Merge `docs/00-project-brief.md`'s framing into
 `docs/README.md`**, then move the rest of `docs/00` to
 `docs/archive/project-brief-2026-05.md`.

@@ -18,6 +18,11 @@ version, route inventory completeness, the route-admission mechanism,
 request-state type drift, claim-heartbeat behavior, and the plan
 record) — see the Step 4B accuracy-correction record in
 [`audit-functional/22-documentation-consolidation-plan.md`](audit-functional/22-documentation-consolidation-plan.md).
+Extended 2026-07-13 (Step 5) with three generic authoring templates
+(per-surface operational posture, forbidden-actions, cross-role
+handoff) extracted from `docs/user-view/*.md` and genericized against
+the current architecture — `docs/user-view/` itself is unmodified and
+remains deprecated historical material, not a live source.
 
 This document covers frontend-specific conventions that sit above the
 four mandatory context files, which remain the primary authority for
@@ -319,6 +324,97 @@ differently by operational posture, not by forking components:
 Density is a property of the role's spec, not the component library —
 the same `KpiCard`/`ActionRequiredStrip`/workflow-progress components
 serve all three postures by composition.
+
+### Per-surface operational-posture template
+
+Beyond the density-tier table above, use this template when writing or
+reviewing the UX spec for a new role, screen, or capability-gated
+surface — it is extracted and generalized from the density/posture
+tables that recur across `docs/user-view/*.md` (deprecated historical
+material; the shape below is a reusable authoring pattern, not
+preserved role-specific content):
+
+| Aspect                     | What to fill in                                                                                                                                                          |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Work mode                  | Operational / claim-based / administrative / governance — pick the closest fit, don't invent a new category per role                                                     |
+| Primary surface            | The one screen this role/capability opens most often                                                                                                                     |
+| Secondary/tertiary surface | Any other screens the role touches regularly, in priority order                                                                                                          |
+| State language             | Which of `runtime_status`/`current_stage`/`final_outcome` the surface exposes, and at what level of detail — never a business-status label list built from a static enum |
+| Visual density             | Which tier from the table above (Low/Medium/High), and why                                                                                                               |
+| Decision/feedback tone     | What kind of action this surface drives — informational tracking, claim-gated decision, destructive confirmation, administrative CRUD                                    |
+
+Fill in "State language" by reading `runtime_status`/`current_stage`/
+`final_outcome` for the surface in question — do not hardcode a
+per-role simplified-status mapping table sourced from the retired
+18-value vocabulary (see "Request state," above).
+
+---
+
+## Forbidden-actions template
+
+Every role-scoped or capability-gated surface should be reviewable
+against an explicit forbidden-actions list, not just a positive list of
+what it can do. This template generalizes the "Forbidden Actions
+Reference" pattern found across `docs/user-view/*.md` into an
+architecture-current form:
+
+1. **Enumerate the surface's real authority boundary** — not "what this
+   role can't do in general," but specifically what the current
+   surface must never render or allow, derived from the actual
+   `stage_permissions`/screen-capability grants for that
+   role/capability (see
+   [`architecture/03-permission-model.md`](architecture/03-permission-model.md)),
+   not from a fixed per-role table hardcoded in the frontend.
+2. **State it as UI non-rendering, not disabled controls.** A forbidden
+   action must not be rendered at all — a visible-but-disabled control
+   implies "you could do this if X," which is the wrong signal when the
+   real answer is "this surface never grants this."
+3. **Cross-reference the backend enforcement**, don't just assert the
+   UI hides it — frontend hiding is UX only; the backend is the
+   authorization source of truth (see "Frontend permissions are UX
+   only" under Architecture rules, below). If a backend response
+   ever offers a forbidden action anyway, the frontend must drop it
+   rather than render it.
+4. **Do not enumerate voting actions as a forbidden category tied to a
+   specific stage-based role split.** Executive Voting is out of V1 —
+   there is no vote-casting, voting-session, or voting-queue action to
+   list as forbidden-per-role in the first place (see "Executive
+   Voting," above). A forbidden-actions list for a current role must
+   not imply a voting feature exists to be forbidden from.
+
+---
+
+## Cross-role handoff template
+
+The workflow engine's transitions are Designer-defined (see
+[`architecture/02-workflow-engine.md`](architecture/02-workflow-engine.md))
+— there is no fixed set of "the 3 handoffs a role participates in" the
+way `docs/user-view/*.md` enumerated for a fixed 18-value status
+pipeline. Use this template to document a handoff for the workflow
+version actually in use, rather than inheriting a fixed list:
+
+1. **Identify the handoff by stage transition, not by status name.**
+   State it as "stage A (semantic role X) → stage B (semantic role Y)
+   via transition T," not as a jump between two members of a static
+   status enum — stage codes and transition availability are
+   Designer-defined and can differ between workflow versions.
+2. **State what UI surface makes the handoff visible to the receiving
+   party** — a dashboard action-required strip, a claim-queue entry, a
+   notification, a banner on the request-detail page. Every handoff
+   this template documents should point at a concrete rendered surface,
+   not just describe the backend transition.
+3. **State what UI surface makes the handoff visible to the sending
+   party** — e.g. a locked/read-only banner confirming the request left
+   their editable set, or a "returned for correction" banner if the
+   handoff is a return rather than a forward move.
+4. **Note claim/permission implications**, if the destination stage has
+   `requires_claim: true` — the receiving party may need to claim the
+   request before decision controls appear (see "Claim heartbeat,"
+   below).
+5. **Do not hardcode a specific number of handoffs per role** ("this
+   role participates in exactly N handoffs") — the number and shape of
+   handoffs for a given role are a function of the published workflow
+   version's stage graph, not a fixed property of the role itself.
 
 ---
 
