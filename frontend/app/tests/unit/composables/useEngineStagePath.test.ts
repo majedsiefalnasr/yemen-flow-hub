@@ -89,4 +89,75 @@ describe('buildStagePath', () => {
     expect(path.find((s) => s.id === 3)?.isYours).toBe(true)
     expect(path.find((s) => s.id === 2)?.isYours).toBe(false)
   })
+
+  it('omits a step for a stage the graph no longer includes (filtered by backend access control)', () => {
+    // Simulates the backend (Task 3) filtering out a stage the viewer has no
+    // access to — e.g. only DATA_ENTRY and REVIEW nodes come back, COMPLETED is
+    // absent entirely rather than present-but-hidden.
+    const g: WorkflowGraph = {
+      nodes: [
+        {
+          id: 1,
+          code: 'DATA_ENTRY',
+          name: 'Data Entry',
+          display_label: 'Data Entry',
+          sort_order: 1,
+          is_initial: true,
+          is_final: false,
+        },
+        {
+          id: 2,
+          code: 'REVIEW',
+          name: 'Review',
+          display_label: 'Review',
+          sort_order: 2,
+          is_initial: false,
+          is_final: false,
+        },
+      ],
+      edges: [],
+      execute_stage_ids: [1],
+    }
+
+    const steps = buildStagePath(g, 2, [])
+
+    expect(steps).toHaveLength(2)
+    expect(steps.map((s) => s.id)).toEqual([1, 2])
+  })
+
+  it('does not throw when a history entry references a stage absent from the filtered graph', () => {
+    // A sanitized history entry (Task 2) has to_stage: null — buildStagePath must
+    // not throw when scanning history for visited-stage ids.
+    const g: WorkflowGraph = {
+      nodes: [
+        {
+          id: 1,
+          code: 'DATA_ENTRY',
+          name: 'Data Entry',
+          display_label: 'Data Entry',
+          sort_order: 1,
+          is_initial: true,
+          is_final: false,
+        },
+      ],
+      edges: [],
+      execute_stage_ids: [],
+    }
+
+    const sanitizedHistory: EngineHistoryEntry[] = [
+      {
+        id: 1,
+        from_stage: null,
+        to_stage: null,
+        action_code: null,
+        performed_by: { id: 1, name: 'Someone' },
+        comments: null,
+        created_at: '2026-07-14T10:00:00Z',
+        restricted: true,
+        restricted_label: 'إجراء تم في مرحلة مقيدة',
+      },
+    ]
+
+    expect(() => buildStagePath(g, 1, sanitizedHistory)).not.toThrow()
+  })
 })
