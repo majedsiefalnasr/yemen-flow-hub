@@ -178,7 +178,7 @@ GET /api/v1/engine-requests
 - `stage_id` — filter by `current_stage_id`
 - `bank_id` — bank filter
 - `merchant_id` — merchant filter
-- `status` — `ACTIVE` | `CLOSED` | `REJECTED` (the coarse lifecycle flag, not a business status)
+- `status` — `ACTIVE` | `CLOSED` | `REJECTED` | `CANCELLED` | `ABANDONED` (`EngineRequestListQuery::ALLOWED_STATUSES`; the coarse lifecycle flag, not a business status)
 - `search` — matches `reference` or `invoice_number`
 - `created_from`, `created_to` — created-at date range filters
 - `sla_status` — `ok` | `nearing` | `breached`

@@ -309,9 +309,12 @@ corrections applied to the new docs rather than inherited from stale
 assumptions: (1) the live Support claim TTL is read from
 `AdminSettingsService`'s `support_claim_ttl` setting via
 `EngineClaimService::ttlMinutes()`, not from
-`config('workflow.support_claim_ttl_minutes')` — the config key exists but
-is unused at runtime; both default to 15 minutes today, so this had not
-surfaced as a behavioral bug, only a documentation-accuracy one; (2)
+`config('workflow.support_claim_ttl_minutes')` — the config key is not
+read by the runtime claim service (it is still read directly by
+`backend/database/seeders/Support/EngineRequestScenarioBuilder.php` when
+seeding claimed scenarios); both default to 15 minutes today, so this
+had not surfaced as a behavioral bug, only a documentation-accuracy one;
+(2)
 AGENTS.md's "CBY_ADMIN must never act as a workflow super-actor" rule is
 enforced in code only for the single `merchants:MANAGE` screen capability
 (`PermissionService::userHasCapability()`) — the broader claim about
@@ -797,9 +800,10 @@ section stating the verification date/method, listing every undocumented
 route family by name, and directing readers to `route:list` and the
 controllers as the temporary authority for anything not yet covered.
 Corrected two real inaccuracies while moving: the claim-TTL reference
-(`config('workflow.support_claim_ttl_minutes')` is unused; the live value
-is `AdminSettingsService`'s `support_claim_ttl`, same finding as the
-Step 2 corrections), and removed the entire "Voting"/"Allowed
+(`config('workflow.support_claim_ttl_minutes')` is not read by the
+runtime claim service, though the seeding path still reads it directly;
+the live value is `AdminSettingsService`'s `support_claim_ttl`, same
+finding as the Step 2 corrections), and removed the entire "Voting"/"Allowed
 Votes"/"Voting Rules" sections plus scattered voting mentions
 ("Voting statistics" dashboard claim, "Executive queues are
 voting-scoped," two "voting open/close" transition examples) — confirmed
@@ -1096,9 +1100,12 @@ not as a batch.
 started.
 
 Pre-flight `git status` confirmed the baseline (2 pre-existing modified
-files — `.codex/config.toml`, `docs/audit-functional/12-phase-b-checkpoint.md`
-— plus 11 pre-existing untracked `docs/audit-functional/*` files) before
-touching anything; the same baseline was confirmed unchanged post-flight.
+tracked files — `.codex/config.toml`,
+`docs/audit-functional/12-phase-b-checkpoint.md` — plus 12 pre-existing
+untracked files: 11 under `docs/audit-functional/` plus
+`backend/app/Console/Commands/RecreateActiveRequestsUnderV2Command.php`)
+before touching anything; the same baseline was confirmed unchanged
+post-flight.
 Used `graphify query` for initial orientation and SocratiCode
 symbol/impact/search/flow analysis before documenting
 `EngineTransitionService`, `WorkflowDesignerService`,
@@ -1230,16 +1237,141 @@ deviations.
 
 **Blockers:** none.
 
-**Files changed this step:** `docs/01-workflow-and-business-rules.md`
-(deleted), `docs/architecture/02-workflow-engine.md` (created), plus 10
-files with link/content corrections: `docs/README.md`,
-`docs/api-reference.md`, `docs/architecture/03-permission-model.md`,
+**Files changed this step:** commit `4fba9d2e` changed 14 paths —
+`docs/01-workflow-and-business-rules.md` (deleted),
+`docs/architecture/02-workflow-engine.md` (created), 11 files with
+link/content corrections (`docs/README.md`, `docs/api-reference.md`,
+`docs/architecture/03-permission-model.md`,
 `docs/architecture/06-database-and-models.md`,
 `docs/architecture/README.md`, `docs/engine/README.md`,
 `docs/engine/extension-guide.md`, `AGENTS.md`, `frontend/CLAUDE.md`,
-`backend/CLAUDE.md`, `backend/README.md` — 11 files in that list (12
-total including the created/deleted pair). Pre-existing dirty/untracked
-baseline (2 modified, 11 untracked) confirmed untouched throughout.
+`backend/CLAUDE.md`, `backend/README.md`), and this plan document
+itself. After the deletion, 13 files touched by this step remain on
+disk and are eligible for formatting/link checks (the deleted file is
+not). A separate correction commit, `609a5ff9`, later fixed a
+pre-commit-hook formatting-drift bug in `4fba9d2e` and changed only
+`docs/architecture/02-workflow-engine.md` (see the Step 4A accuracy
+correction record below for what it fixed). Pre-existing dirty/untracked
+baseline (2 modified tracked files, 12 untracked files) confirmed
+untouched throughout.
+
+**Step 4A accuracy correction (2026-07-13).** A focused review caught 8
+inaccuracies in the newly-created `docs/architecture/02-workflow-engine.md`
+and 2 in files it touched, all re-verified directly against current
+backend source before correcting:
+
+1. **Designer-managed entities conflated version-scoped and global
+   gating.** The doc said everything (including actions) is "gated to
+   `DRAFT`-state versions." `WorkflowAction` has no
+   `workflow_version_id` and is never gated by any `WorkflowVersion`
+   state — `WorkflowActionService`/`WorkflowActionController` manage it
+   globally. Split into a version-scoped/`DRAFT`-gated list (stages,
+   transitions, stage permissions, field groups/definitions/stage field
+   rules) and a global/never-gated list (actions). Also documented,
+   verified directly against `UpdateWorkflowActionRequest` and
+   `WorkflowActionController`/`WorkflowActionService`: `code` is
+   immutable (enforced by the request's `after()` validator, which
+   audits change attempts); `name` **and `kind`** are both editable
+   (the doc previously implied only `name`); `is_active` changes only
+   through `activate`/`deactivate`; in-use actions cannot be deactivated
+   or deleted; `isProtected()` blocks deletion only — nothing in source
+   restricts renaming or re-kinding a protected action, so the doc no
+   longer generalizes that. Flagged `WorkflowActionService`'s own class
+   doc comment ("`code` is immutable; `name` and `is_active` are
+   editable") as stale — it omits `kind`.
+2. **DRAFT editability wrongly attributed entirely to
+   `WorkflowDesignerService`.** `WorkflowDesignerService` has no
+   field-group/field-definition/stage-field-rule methods at all — those
+   live in `FieldDesignerService`, which independently checks
+   `WorkflowVersion.isEditable()` at its own gate. Corrected both the
+   "Designer-managed entities" section and the "DRAFT editability"
+   section to attribute stage/transition/permission gating to
+   `WorkflowDesignerService` and field-entity gating to
+   `FieldDesignerService` separately.
+3. **Publish-validation inventory was incomplete.** Missing from the
+   inline `WorkflowVersionValidator` checks: an initial stage cannot
+   grant EXECUTE to a non-banking organization
+   (`INITIAL_STAGE_NON_BANKING_EXECUTOR`, checked against
+   `Organization.classification`). Missing from the
+   `WorkflowPublishRulePack` list: `validateInitialSubmitAmbiguity()`
+   (`INITIAL_SUBMIT_AMBIGUOUS` when an initial stage has multiple
+   outgoing transitions without exactly one flagged
+   `is_default_submit`) and `validateInactiveReferenceTables()`
+   (`INACTIVE_REFERENCE_TABLE`). Both read directly from
+   `WorkflowVersionValidator.php` and `WorkflowPublishRulePack.php`
+   before being added.
+4. **Semantic publish-gate section understated the blocking errors and
+   the `SEMANTIC_MAPPING_MISSING` condition.** The doc named only
+   `SEMANTIC_MAPPING_MISSING` as blocking; `SemanticResolver::publishErrors()`
+   also fires `SEMANTIC_MAPPING_AMBIGUOUS` (more than one field declares
+   the same explicit `semantic_tag`) as a second blocking error. And
+   `SEMANTIC_MAPPING_MISSING` doesn't fire merely because "no field
+   declares" a tag — `fieldForTag()` (read directly) tries the explicit
+   `semantic_tag` first, then falls back to
+   `SemanticRegistry::fieldKeyAliases()`; the error only fires when
+   _both_ resolution paths fail. Corrected to state the exact condition,
+   not the simplified one.
+5. **The two semantic fallback maps were collapsed into one "code-alias
+   map."** `SemanticResolver::stageForRole()` falls back through
+   `SemanticRegistry::stageCodeAliases()`; `fieldForTag()` falls back
+   through a **different** map, `SemanticRegistry::fieldKeyAliases()`.
+   Split the "compatibility fallback" section into two explicit
+   bullets, one per resolution kind, rather than describing a single
+   shared map.
+6. **Notification transaction semantics overstated what rolls back.**
+   The doc's blanket claim ("a failure at any step rolls back the
+   entire transition atomically") was inaccurate for step 16.
+   `EngineNotificationDispatcher::afterTransition()` (verified by
+   reading it directly) only resolves recipients and registers a
+   `DB::afterCommit()` callback inside the transaction;
+   `DispatchNotification::dispatch()` runs only after a successful
+   commit, so a post-commit notification failure cannot roll back an
+   already-committed transition. Narrowed the rollback claim to steps
+   1–15 and added the after-commit distinction explicitly. Also
+   corrected `saveDraft()`'s claim description: it requires a held claim
+   only when the current stage has `requires_claim: true`
+   (`EngineClaimService::ensureClaimHeld()` no-ops otherwise, read
+   directly) — the doc previously implied an unconditional claim-held
+   check.
+7. **Claim-TTL config key described as globally unused.** True for the
+   runtime claim service, but
+   `backend/database/seeders/Support/EngineRequestScenarioBuilder.php`
+   reads `config('workflow.support_claim_ttl_minutes', 15)` directly
+   when constructing claimed-request seed scenarios. Corrected the
+   canonical doc and the two other places in this plan that described
+   the same finding with the same "unused" overstatement (the Step 2
+   correction record above and the Step 3A `docs/06-api-reference.md`
+   migration note) — `03-permission-model.md` and `api-reference.md`'s
+   existing "not read by the claim service" wording was already
+   accurate and needed no change.
+8. **`docs/api-reference.md`'s `status` filter listed only 3 of 5
+   allowed values.** `EngineRequestListQuery::ALLOWED_STATUSES` (read
+   directly) is `ACTIVE`, `CLOSED`, `REJECTED`, `CANCELLED`,
+   `ABANDONED`. The doc listed only the first three. Corrected.
+
+**Baseline and file-accounting corrections.** The original Step 4A
+record undercounted the untracked baseline by one (11 instead of 12 —
+omitted `backend/app/Console/Commands/RecreateActiveRequestsUnderV2Command.php`,
+which predates this step and is unrelated to it) and gave internally
+contradictory file totals ("plus 10 files," "11 files in that list,"
+"12 total"). Both corrected above, in place, rather than left standing
+next to the accurate numbers.
+
+**Verification for this correction pass:** re-checked all 8 claims
+directly against current backend source before editing (not against the
+user's restated claims alone). Ran Prettier on all 13 extant Step 4A
+files individually from the correct working directory (frontend-scoped
+files from `frontend/`, everything else from repo root); confirmed
+`--check` stability on rerun. Read every formatted file back for
+line-leading `+`/`-` artifacts — none found. Re-ran the link/anchor
+checker across the same 13 files — zero broken links. Searched the
+canonical document for the corrected wording (action editability,
+publish-validation rule names, notification/after-commit language,
+claim-TTL seeder reference, the two fallback-map names) to confirm each
+landed. Confirmed `git status` reports exactly 2 modified tracked files
+and 12 untracked files, matching the corrected, pre-existing baseline.
+
+**Blockers:** none.
 
 Holding for review before Step 4B (`docs/04-frontend-guide.md` →
 `docs/frontend-guide.md`) and Step 4C

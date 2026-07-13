@@ -72,10 +72,12 @@ never be re-edited; it must be cloned into a new `DRAFT` instead.
 ### DRAFT editability, PUBLISHED/ARCHIVED immutability
 
 `WorkflowVersionState::isEditable()` is true only for `DRAFT`, enforced
-before every stage/transition/permission/field mutation
-(`WorkflowDesignerService`'s `createStage`/`updateStage`/`createTransition`/
-etc.). A `PUBLISHED` or `ARCHIVED` version's topology cannot be edited —
-attempting to do so throws `WorkflowVersionImmutableException`.
+independently by two services before their respective mutations:
+`WorkflowDesignerService` (`createStage`/`updateStage`/`createTransition`/
+etc.) for stages, transitions, and stage permissions; `FieldDesignerService`
+for field groups, field definitions, and stage field rules. A `PUBLISHED`
+or `ARCHIVED` version's topology cannot be edited through either
+service — attempting to do so throws `WorkflowVersionImmutableException`.
 
 ### Cloning
 
@@ -109,38 +111,63 @@ failure, `state` is untouched — the exception is thrown before the
 
 ## Designer-managed entities
 
-All Designer-configurable via the Workflow Designer API, gated to
-`DRAFT`-state versions:
+Two different gating rules apply here — do not collapse them into one
+"everything is DRAFT-gated" statement.
+
+**Version-scoped, `DRAFT`-gated** (belong to one `WorkflowVersion`; can
+only be mutated while that version is `DRAFT`):
 
 - **Stages** — code, name, description, sort_order, is_initial, is_final,
   semantic_role, attached_effects, final_outcome, sla_duration_minutes,
-  requires_claim, status.
-- **Actions** — a global, version-independent catalog
-  (`WorkflowActionService`), doc-commented "code is immutable; name and
-  is_active are editable. System defaults and in-use actions are
-  protected." `WorkflowTransition.action_id` references this catalog;
-  `WorkflowActionService` is design-time only, never called from
-  `EngineTransitionService`. `setActive()`/`delete()` block on protected
-  or in-use actions (`isInUse()` checks `workflow_transitions.action_id`).
+  requires_claim, status. Gated by `WorkflowDesignerService`.
 - **Transitions** — from-stage, action, to-stage, requires_comment,
   confirmation_message, is_default_submit, is_self_loop, transition_type,
-  is_destructive.
-- **Field groups and field definitions** — `FieldGroupController`/
-  `FieldDefinitionController`/`StageFieldRuleController` (all inject
-  `FieldDesignerService`).
-- **Stage field rules** — per-stage visible/editable/required override
-  on a field.
+  is_destructive. Gated by `WorkflowDesignerService`.
 - **Stage permissions** — who can VIEW/EXECUTE a stage; see
-  [`03-permission-model.md`](03-permission-model.md).
-- **Semantic metadata** — `semantic_role` on stages, `semantic_tag` on
-  fields, `attached_effects` on stages — see below.
-- **Hooks/effects** — attachment only (which effect code a stage fires);
-  the effect catalog itself is fixed, see below.
+  [`03-permission-model.md`](03-permission-model.md). Gated by
+  `WorkflowDesignerService`.
+- **Field groups, field definitions, and stage field rules** — gated
+  independently by **`FieldDesignerService`**, not
+  `WorkflowDesignerService`; it has its own `WorkflowVersion.isEditable()`
+  check (`FieldGroupController`/`FieldDefinitionController`/
+  `StageFieldRuleController` all inject it, not the designer service).
+
+**Global, version-independent, never `DRAFT`-gated:**
+
+- **Actions** — a global catalog (`WorkflowAction` model, no
+  `workflow_version_id`), managed by `WorkflowActionService` and
+  `WorkflowActionController`, referenced by
+  `WorkflowTransition.action_id` from any version. Not gated by any
+  `WorkflowVersion` state. `code` is immutable — enforced by
+  `UpdateWorkflowActionRequest`'s `after()` validator, which rejects any
+  `code` change attempt and audits it as
+  `workflow_action_code_change_attempt`. **`name` and `kind` are both
+  currently editable** through `update()`. `is_active` changes only
+  through the `activate`/`deactivate` endpoints
+  (`WorkflowActionService::setActive()`), which block deactivating an
+  in-use action (`WORKFLOW_ACTION_IN_USE`). `delete()` blocks on
+  `$action->isProtected()` (system defaults) or on being referenced by
+  any `workflow_transitions.action_id` row
+  (`WORKFLOW_ACTION_PROTECTED`) — `isProtected()` blocks **deletion
+  only**; nothing in source restricts renaming or re-kinding a protected
+  action. `WorkflowActionService`'s own class doc comment is stale here —
+  it currently reads "`code` is immutable; `name` and `is_active` are
+  editable," omitting `kind`, which the request validation rules
+  (`'kind' => ['sometimes', Rule::enum(WorkflowActionKind::class)]`) and
+  the update flow both allow.
 
 For the exact schema of every table above, see
 [`06-database-and-models.md`](06-database-and-models.md). For which of
 these are Designer-configurable versus fixed PHP vocabulary, see
 [`engine/dynamic-vs-fixed.md`](../engine/dynamic-vs-fixed.md).
+
+## Semantic metadata and hooks/effects
+
+- **Semantic metadata** — `semantic_role` on stages, `semantic_tag` on
+  fields, `attached_effects` on stages — version-scoped, `DRAFT`-gated
+  through the same stage/field mutation paths above; see below.
+- **Hooks/effects** — attachment only (which effect code a stage fires);
+  the effect catalog itself is fixed, see below.
 
 ---
 
@@ -161,12 +188,19 @@ if ($errors !== []) {
 (exactly one initial stage, at least one final stage, final-outcome
 consistency per stage, no duplicate stage codes/keys, transition
 integrity, every non-final stage has an outgoing transition,
-`DYNAMIC_SELECT` field source validity), then merges in
-`WorkflowPublishRulePack::validate()`'s results as its final step, which
-itself calls `SemanticResolver::publishErrors()`.
+`DYNAMIC_SELECT` field source validity, **and an initial stage cannot
+grant EXECUTE to a non-banking organization** —
+`INITIAL_STAGE_NON_BANKING_EXECUTOR`, checked against
+`Organization.classification !== BANKING_SECTOR` for any
+`StageAccessLevel::EXECUTE` permission on the initial stage), then
+merges in `WorkflowPublishRulePack::validate()`'s results as its final
+step, which itself calls `SemanticResolver::publishErrors()`.
 
-### `WorkflowPublishRulePack` rules (V-1..V-9)
+### `WorkflowPublishRulePack` rules
 
+- `validateInitialSubmitAmbiguity()` — if the initial stage has more
+  than one outgoing transition, exactly one must be flagged
+  `is_default_submit`, or publish fails with `INITIAL_SUBMIT_AMBIGUOUS`.
 - `validateReachability()` — BFS from the initial stage; flags **any**
   unreachable stage (`STAGE_UNREACHABLE`), regardless of its `status` —
   there is no exemption for unreachable `INACTIVE` stages specifically.
@@ -182,19 +216,32 @@ itself calls `SemanticResolver::publishErrors()`.
 - `validateStageActivity()` — blocks publish if: the initial stage is
   `INACTIVE`; any final stage is `INACTIVE`; any transition references an
   inactive stage; or any _reachable_ non-final stage is `INACTIVE`.
+- `validateInactiveReferenceTables()` — any field whose
+  `reference_table_id` points at an inactive `ReferenceTable` blocks
+  publish (`INACTIVE_REFERENCE_TABLE`).
 
-### Semantic-mapping publish gate: `SEMANTIC_MAPPING_MISSING` blocks, `SEMANTIC_DASHBOARD_ROLE_GAP` does not
+### Semantic-mapping publish gate: `SEMANTIC_MAPPING_AMBIGUOUS`/`SEMANTIC_MAPPING_MISSING` block, `SEMANTIC_DASHBOARD_ROLE_GAP` does not
 
-`SemanticResolver::publishErrors()` (merged into the rule pack, above) is
-**publish-blocking**: it fires `SEMANTIC_MAPPING_MISSING` when a stage's
-`attached_effects` requires a semantic tag that no field on the version
-declares. `SemanticResolver::publishWarnings()` is a **separate,
-non-throwing entry point**, reachable only via
-`WorkflowVersionValidator::warnings()` → `WorkflowDesignerService::validationWarnings()`
-— never called from `publishVersion()`. It fires
-`SEMANTIC_DASHBOARD_ROLE_GAP` when no stage declares a semantic role a
-dashboard bucket expects; this is a warning surfaced to the designer, not
-a publish blocker.
+`SemanticResolver::publishErrors()` (called from inside
+`WorkflowPublishRulePack::validate()`, not a separate top-level step)
+fires two **publish-blocking** errors:
+
+- `SEMANTIC_MAPPING_AMBIGUOUS` — more than one field on the version
+  declares the same explicit `semantic_tag`.
+- `SEMANTIC_MAPPING_MISSING` — a stage's `attached_effects` requires a
+  semantic tag that **cannot be resolved for that version through either
+  path**: no field declares the tag explicitly via `semantic_tag`, _and_
+  none of the tag's legacy field-key aliases
+  (`SemanticRegistry::fieldKeyAliases()`) match a field's `key` either.
+  Both resolution paths have to fail before this fires — it is not
+  simply "no field declares the tag."
+
+`SemanticResolver::publishWarnings()` is a **separate, non-throwing
+entry point**, reachable only via `WorkflowVersionValidator::warnings()`
+→ `WorkflowDesignerService::validationWarnings()` — never called from
+`publishVersion()`. It fires `SEMANTIC_DASHBOARD_ROLE_GAP` when no stage
+declares a semantic role a dashboard bucket expects; this is a warning
+surfaced to the designer, not a publish blocker.
 
 ---
 
@@ -243,22 +290,34 @@ enforceRequired: true, ...)` — required-field enforcement is **on**
     with their own error envelope; any other `\Throwable` is wrapped as
     `EngineException('...', 'STAGE_HOOK_FAILED', 422)` and logged via
     `OperationalAlertLogger::failure()`.
-16. **Notification dispatch** — `NotificationDispatcher::afterTransition()`,
-    still inside the transaction.
+16. **Notification dispatch** — `EngineNotificationDispatcher::afterTransition()`
+    is _called_ here, still inside the transaction, but its actual job
+    dispatch is not — see below.
 
-A failure at any step rolls back the entire transition atomically —
-nothing above step 10 is partially applied.
+A failure at any of steps 1–15 rolls back the entire transition
+atomically — request mutation, projection sync, claim release,
+`workflow_history`, and the audit write are all undone together. Step 16
+is different: `afterTransition()` only resolves recipients and registers
+a `DB::afterCommit()` callback while still inside the transaction; the
+actual `DispatchNotification::dispatch()` call happens **only after the
+transaction successfully commits**. A notification dispatch failure
+after commit cannot roll back an already-committed transition — the
+stage change, history, and audit rows stay committed regardless of
+whether the notification job later fails to dispatch or send.
 
 ### `saveDraft()` — not gated by a fixed "editable states" list
 
 `saveDraft()` (`PATCH /api/v1/engine-requests/{id}/draft`) uses the
-**same** `isActive()` + EXECUTE-permission + claim-held gate as
-`execute()` — **not** a hardcoded whitelist of stage names. Any stage the
-caller holds EXECUTE and claim on is "editable" via `saveDraft()`; there
-is no separate `editable_states` concept in code. It calls
-`StageFieldRuleValidator::validateStage(..., enforceRequired: false,
-...)` — deliberately lenient on required fields, since a draft save is
-not a transition.
+**same** `isActive()` + EXECUTE-permission gate as `execute()` — **not**
+a hardcoded whitelist of stage names. A claim is required only when the
+current stage has `requires_claim: true`
+(`EngineClaimService::ensureClaimHeld()` no-ops immediately if the stage
+doesn't require one); it is not an unconditional claim-held check. Any
+stage the caller holds EXECUTE (and claim, where required) on is
+"editable" via `saveDraft()`; there is no separate `editable_states`
+concept in code. It calls `StageFieldRuleValidator::validateStage(...,
+enforceRequired: false, ...)` — deliberately lenient on required fields,
+since a draft save is not a transition.
 
 ### `abandonDraft()` — gated specifically by `is_initial`, not "any non-final stage"
 
@@ -324,10 +383,16 @@ the admin-configurable `support_claim_ttl` setting
 (`AdminSettingsService`, default 15 minutes, 5–60 range), read via
 `EngineClaimService::ttlMinutes()`.
 `config('workflow.support_claim_ttl_minutes')` (`backend/config/workflow.php`)
-exists but is **not** read by the claim service — both default to 15
-minutes today, but they are two different settings; the config key is
-unused. See [`03-permission-model.md`](03-permission-model.md) §4 for the
-full claim-permission interplay (claim check runs only after the EXECUTE
+is **not read by the runtime claim service** — both default to 15
+minutes today, but they are two different settings, and the
+`AdminSettingsService`-backed value is authoritative for live claim
+behavior. The config key is not globally unused, though:
+`backend/database/seeders/Support/EngineRequestScenarioBuilder.php`
+reads `config('workflow.support_claim_ttl_minutes', 15)` directly when
+constructing claimed-request seed scenarios, bypassing
+`EngineClaimService` entirely. See
+[`03-permission-model.md`](03-permission-model.md) §4 for the full
+claim-permission interplay (claim check runs only after the EXECUTE
 permission check passes, never before).
 
 ---
@@ -337,13 +402,20 @@ permission check passes, never before).
 `App\Enums\StageSemanticRole` (8 fixed cases: `INITIAL_ENTRY`,
 `BANK_REVIEW`, `SUPPORT_REVIEW`, `SWIFT`, `EXECUTIVE_REVIEW`,
 `FINANCE_RESERVE`, `FX_CONFIRMATION`, `FINAL`) and field-level
-`semantic_tag` are the explicit, first-choice resolution path.
-`SemanticRegistry::stageCodeAliases()` is a pure-code map (no DB table)
-of legacy stage codes to semantic roles, used only as a fallback.
-`SemanticResolver::stageForRole()`/`fieldForTag()` resolve by
-semantic_role/semantic_tag first, falling back to the code-alias map when
-null. `EngineRequestReadModel::bucket()` implements the same idea as an
-OR condition (`whereIn('semantic_role', $roles) OR whereIn('code',
+`semantic_tag` are the explicit, first-choice resolution path. There are
+**two separate fallback maps**, both pure-code (no DB table), one per
+resolution kind — do not treat them as a single "code-alias map":
+
+- `SemanticResolver::stageForRole()` resolves stages by `semantic_role`
+  first, falling back to `SemanticRegistry::stageCodeAliases()` (legacy
+  stage codes → semantic roles) when no stage declares the role
+  explicitly.
+- `SemanticResolver::fieldForTag()` resolves fields by `semantic_tag`
+  first, falling back to `SemanticRegistry::fieldKeyAliases()` (legacy
+  field keys → semantic tags) when no field declares the tag explicitly.
+
+`EngineRequestReadModel::bucket()` implements the same stage-side idea as
+an OR condition (`whereIn('semantic_role', $roles) OR whereIn('code',
 $codes)`).
 
 `StageHookRegistry::fireEntry()` follows the same priority: if a stage's
