@@ -49,7 +49,7 @@ composable — a real duplication, not a documentation gap):
 ```ts
 const dashboardFamily = computed<"system" | "bank" | "work">(() => {
   if (can("system_dashboard", "VIEW")) return "system";
-  if (can("bank_analytics", "VIEW")) return "bank";
+  if (can("org_analytics", "VIEW")) return "bank";
   return "work";
 });
 ```
@@ -61,7 +61,7 @@ const dashboardFamily = computed<"system" | "bank" | "work">(() => {
 ```
 
 Order confirmed: `system_dashboard` VIEW capability checked first, then
-`bank_analytics` VIEW, then fallthrough to `MyWorkDashboard`. `can()`
+`org_analytics` VIEW, then fallthrough to `MyWorkDashboard`. `can()`
 comes from `useScreenPermissions()`, reading a client-side capability map
 (`auth.screenPermissions`) populated at login — not a live per-check API
 call. **This is the only part of dashboard selection that is genuinely
@@ -104,7 +104,7 @@ $analyticsGate = fn (string $roleCode, string $screen): bool => $user->hasRoleCo
 
 return match (true) {
     $analyticsGate(RoleCodes::SYSTEM_ADMIN, 'system_dashboard') => $this->cbyadminStats($user, $scope),
-    $analyticsGate(RoleCodes::BANK_ADMIN, 'bank_analytics') => $this->bankAdminStats($user, $scope),
+    $analyticsGate(RoleCodes::BANK_ADMIN, 'org_analytics') => $this->bankAdminStats($user, $scope),
     // ...legacy workflow-role branches, see the "Legacy DashboardStatsService branches" note below
 };
 ```
@@ -247,7 +247,7 @@ above, it still contains 6 legacy workflow-role branches
 unreached under default seeded capability assignments, which is a
 weaker guarantee.** Under the default seeding, `EXECUTIVE_MEMBER`/
 `COMMITTEE_DIRECTOR` and the other workflow-executor roles hold neither
-`system_dashboard` nor `bank_analytics` capability, so
+`system_dashboard` nor `org_analytics` capability, so
 `dashboard.vue`/`index.vue` route them to `MyWorkDashboard`, which calls
 only `GET /api/dashboard/work` — nothing in `frontend/app` calls
 `GET /api/dashboard/stats` for these roles under that default
@@ -258,7 +258,7 @@ configuration.
 analytics gate is fixed to specific role codes (`SYSTEM_ADMIN`,
 `BANK_ADMIN` — see above), not derived from the capability grant. This
 creates a real possible mismatch: if an administrator grants the
-`system_dashboard` or `bank_analytics` capability to a role other than
+`system_dashboard` or `org_analytics` capability to a role other than
 `SYSTEM_ADMIN`/`BANK_ADMIN` (e.g. to `COMMITTEE_DIRECTOR`), the
 **frontend** would route that user's component selection to an analytics
 dashboard (`can()` only checks the capability), while the **backend**
@@ -337,7 +337,7 @@ verified against source:
   disagree with each other and with `/my-queue`).
 - **No new per-role dashboard component-selection branch.** The
   _component-selection_ block (`dashboardFamily` computed in both routing
-  pages) is capability-based — `can('system_dashboard'|'bank_analytics', 'VIEW')`
+  pages) is capability-based — `can('system_dashboard'|'org_analytics', 'VIEW')`
   exclusively, no `role === 'X'` conditional. **This does not mean the
   entire routing path is role-free.** Fixed-role route _admission_
   already exists (`requiredRoles: ROUTE_ROLE_MAP['/dashboard']`, checked

@@ -154,7 +154,7 @@ anything else operational (claimed, tracking, SLA) is added to
 service's current state carefully before touching it**: its `match(true)`
 dispatch is not analytics-only. Alongside the two analytics branches
 (`cbyadminStats()` gated on the `system_dashboard` capability,
-`bankAdminStats()` gated on `bank_analytics`), it still contains six
+`bankAdminStats()` gated on `org_analytics`), it still contains six
 **legacy workflow-role branches** — `dataEntryStats()`,
 `bankReviewerStats()`, `supportCommitteeStats()`, `swiftOfficerStats()`,
 `executiveMemberStats()`, `committeeDirectorStats()` — hand-computing

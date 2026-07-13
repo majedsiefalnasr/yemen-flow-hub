@@ -70,6 +70,8 @@ for the full record.
 ## Release notes
 
 - [`release-notes/wp14-legacy-cleanup.md`](release-notes/wp14-legacy-cleanup.md)
+- [`release-notes/screen-permissions-matrix-cleanup.md`](release-notes/screen-permissions-matrix-cleanup.md)
+  — `org_analytics`, `staff:VIEW`, non-delegable `system_dashboard`, and live-database upgrade steps.
 
 ## Historical record
 

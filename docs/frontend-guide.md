@@ -205,7 +205,7 @@ requiredRoles: ROUTE_ROLE_MAP['/dashboard'] })`.
    ```ts
    const dashboardFamily = computed<"system" | "bank" | "work">(() => {
      if (can("system_dashboard", "VIEW")) return "system";
-     if (can("bank_analytics", "VIEW")) return "bank";
+     if (can("org_analytics", "VIEW")) return "bank";
      return "work";
    });
    ```

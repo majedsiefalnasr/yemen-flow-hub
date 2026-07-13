@@ -110,7 +110,7 @@ separate claim gate — a test must not conflate them:
 
 1. **Screen capabilities** (`PermissionService::userHasCapability()`) —
    role-based, gates admin-console/analytics screens
-   (`system_dashboard`, `bank_analytics`, `merchants`, …). Test that a
+   (`system_dashboard`, `org_analytics`, `merchants`, …). Test that a
    user without a capability cannot view the gated screen or its data,
    and that granting/revoking the capability via
    `PUT /api/v1/roles/{role}/screen-permissions` changes access

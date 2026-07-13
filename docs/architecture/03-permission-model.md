@@ -6,7 +6,7 @@ different dimensions — both must be understood to reason about "can this
 user do X."
 
 1. **Screen-capability system** — gates admin-console and analytics
-   screens (`system_dashboard`, `bank_analytics`, `merchants`, …). Grants
+   screens (`system_dashboard`, `org_analytics`, `merchants`, …). Grants
    are **role-based**: a `screen_permissions` row is keyed by `role_id`.
 2. **Workflow stage-permission system** — gates VIEW/EXECUTE on
    `EngineRequest` workflow stages. Grants match on an **identity set**:
@@ -68,14 +68,14 @@ two governance codes — `committee_manager` and `fx_confirm` — both map to
 Gates access to admin-console and analytics **screens** — not workflow
 requests.
 
-| Concept    | Model / Enum                  | Fields                                                     |
-| ---------- | ----------------------------- | ---------------------------------------------------------- |
-| Screen     | `App\Models\Screen`           | `key` (e.g. `system_dashboard`, `bank_analytics`), `label` |
-| Capability | `App\Enums\ScreenCapability`  | `VIEW`, `MANAGE`, `EXPORT`                                 |
-| Grant      | `App\Models\ScreenPermission` | `role_id`, `screen_id`, `capability`                       |
+| Concept    | Model / Enum                  | Fields                                                    |
+| ---------- | ----------------------------- | --------------------------------------------------------- |
+| Screen     | `App\Models\Screen`           | `key` (e.g. `system_dashboard`, `org_analytics`), `label` |
+| Capability | `App\Enums\ScreenCapability`  | `VIEW`, `MANAGE`, `EXPORT`                                |
+| Grant      | `App\Models\ScreenPermission` | `role_id`, `screen_id`, `capability`                      |
 
 Seeded in `backend/database/seeders/ScreenPermissionSeeder.php` — this is
-where the literal screen keys (`system_dashboard`, `bank_analytics`, …)
+where the literal screen keys (`system_dashboard`, `org_analytics`, …)
 are defined and granted to roles. **Screens cannot be created at runtime.**
 `ScreenController` exposes only `index()` — adding a new screen requires a
 migration, a seeder update, and a deploy. An admin can only reassign
@@ -96,10 +96,17 @@ App\Services\Authorization\PermissionService::userHasCapability(
 `screenPermissionsForGovernanceRole()` cache results for one hour.
 
 `App\Services\Dashboard\DashboardStatsService` routes on this exact
-`system_dashboard` → `SYSTEM_ADMIN` / `bank_analytics` → `BANK_ADMIN`
+`system_dashboard` → `SYSTEM_ADMIN` / `org_analytics` → `BANK_ADMIN`
 capability check to select which analytics dashboard a user gets — the
 same capability-family routing described in
 [`04-dashboard-architecture.md`](04-dashboard-architecture.md).
+
+`system_dashboard` remains a seeded, revocable runtime capability for
+`system_admin`, but it is classified as admin-only by
+`RoleScreenPermissionController`: it is absent from the delegable matrix and
+rejected by the update endpoint. `staff` is the VIEW-only delegable capability
+for `/staff`; non-system holders are constrained to their own bank by
+`UserPolicy` and `UserController` query/write boundaries.
 
 ### CBY_ADMIN restriction on `merchants:MANAGE`
 
