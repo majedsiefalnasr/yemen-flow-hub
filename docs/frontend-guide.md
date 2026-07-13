@@ -114,11 +114,11 @@ both implement the same **Phase D0 capability-family routing**, verified
 directly:
 
 ```ts
-const dashboardFamily = computed<'system' | 'bank' | 'work'>(() => {
-  if (can('system_dashboard', 'VIEW')) return 'system'
-  if (can('bank_analytics', 'VIEW')) return 'bank'
-  return 'work'
-})
+const dashboardFamily = computed<"system" | "bank" | "work">(() => {
+  if (can("system_dashboard", "VIEW")) return "system";
+  if (can("bank_analytics", "VIEW")) return "bank";
+  return "work";
+});
 ```
 
 `SystemAdminDashboard` (`CbyAdminDashboard.vue`) →
@@ -212,11 +212,11 @@ non-negotiable list (no raw `<button>`/`<table>`/`<select>`, no
 All roles share the same component library; role surfaces compose
 differently by operational posture, not by forking components:
 
-| Posture                        | Roles                                                           | Density |
-| ------------------------------- | ---------------------------------------------------------------- | ------- |
-| Distraction-free / low-density | SWIFT_OFFICER                                                     | Low     |
-| Operational queue density      | DATA_ENTRY, BANK_REVIEWER, SUPPORT_COMMITTEE, EXECUTIVE_MEMBER    | Medium  |
-| Governance / lifecycle density | COMMITTEE_DIRECTOR, CBY_ADMIN, BANK_ADMIN                         | High    |
+| Posture                        | Roles                                                          | Density |
+| ------------------------------ | -------------------------------------------------------------- | ------- |
+| Distraction-free / low-density | SWIFT_OFFICER                                                  | Low     |
+| Operational queue density      | DATA_ENTRY, BANK_REVIEWER, SUPPORT_COMMITTEE, EXECUTIVE_MEMBER | Medium  |
+| Governance / lifecycle density | COMMITTEE_DIRECTOR, CBY_ADMIN, BANK_ADMIN                      | High    |
 
 Density is a property of the role's spec, not the component library —
 the same `KpiCard`/`ActionRequiredStrip`/workflow-progress components
