@@ -1,14 +1,23 @@
 # Frontend Guide
 
-**Verified:** 2026-07-13, against `frontend/app/pages/`,
-`frontend/app/components/dashboard/`, `frontend/app/middleware/`,
-`frontend/app/constants/workflow.ts`, and `frontend/CLAUDE.md` /
-`frontend/PRODUCT.md` / `frontend/DESIGN.md` / `frontend/SHADCN.md`
-directly — not carried over from the legacy `docs/04-frontend-guide.md`,
-which predates the dynamic workflow engine and describes a fixed
-per-role static-status UX model (18-value status vocabulary, dedicated
-`/voting` routes, per-role Pinia stores) that no longer matches the
-shipped application.
+**Verified:** 2026-07-13, against `frontend/package.json`,
+`frontend/app/pages/`, `frontend/app/components/dashboard/`,
+`frontend/app/middleware/{role,screen}.ts`,
+`frontend/app/constants/{workflow,role-surfaces}.ts`,
+`frontend/app/composables/{useScreenPermissions,useEngineClaim}.ts`,
+`frontend/app/types/models.ts`,
+`frontend/app/pages/workflows/instances/[id].vue`, and
+`frontend/CLAUDE.md` / `frontend/PRODUCT.md` / `frontend/DESIGN.md` /
+`frontend/SHADCN.md` directly — not carried over from the legacy
+`docs/04-frontend-guide.md`, which predates the dynamic workflow engine
+and describes a fixed per-role static-status UX model (18-value status
+vocabulary, dedicated `/voting` routes, per-role Pinia stores) that no
+longer matches the shipped application. Re-checked and corrected
+2026-07-13 after an independent review found 6 issue groups (stack
+version, route inventory completeness, the route-admission mechanism,
+request-state type drift, claim-heartbeat behavior, and the plan
+record) — see the Step 4B accuracy-correction record in
+[`audit-functional/22-documentation-consolidation-plan.md`](audit-functional/22-documentation-consolidation-plan.md).
 
 This document covers frontend-specific conventions that sit above the
 four mandatory context files, which remain the primary authority for
@@ -39,17 +48,22 @@ cleanup-debt inventory.
 
 ## Stack
 
-Nuxt 4, Vue 4, TypeScript, Tailwind CSS v4, shadcn-vue, Pinia, VueUse,
-VeeValidate, Zod. RTL-first, Arabic-first (IBM Plex Sans Arabic + Inter).
-Desktop-first with responsive degradation at ≤ 600px.
+Nuxt 4, Vue 3.5 (`frontend/package.json` pins `"vue": "^3.5.13"`),
+TypeScript, Tailwind CSS v4, shadcn-vue, Pinia, VueUse, VeeValidate, Zod.
+RTL-first, Arabic-first (IBM Plex Sans Arabic + Inter). Desktop-first
+with responsive degradation at ≤ 600px.
 
 ---
 
 ## Actual routes (verified against `frontend/app/pages/`)
 
-The shipped route tree is substantially larger than a short "main
-pages" list can convey. As of this verification, `frontend/app/pages/`
-contains:
+`frontend/app/pages/` contains **35 `.vue` source files**, resolving to
+**34 distinct URL paths** — one path, `/settings`, is served by two
+files: `settings.vue` (the parent route, a layout/tab shell) and
+`settings/index.vue` (its default child). This is a normal Nuxt
+nested-route pattern, not a duplicate page; `settings/bank.vue`,
+`settings/system.vue`, and `settings/user.vue` are the other tab
+children under the same `settings.vue` parent.
 
 ```
 /login
@@ -62,14 +76,20 @@ contains:
 /audit
 /notifications
 /reports
-/settings, /settings/user, /settings/bank, /settings/system
+/settings (settings.vue + settings/index.vue), /settings/user, /settings/bank, /settings/system
 /staff, /bank/users
 /admin/staff, /admin/banks, /admin/orgs, /admin/settings, /admin/health,
 /admin/roles, /admin/workflows, /admin/teams, /admin/reference-data,
-/admin/screen-permissions
+/admin/screen-permissions, /admin/email-templates, /admin/email-templates/[type]
 /mfa-setup, /reset-password, /change-temporary-password
 /forbidden, /unauthorized
 ```
+
+This list is the full route inventory as verified against
+`frontend/app/pages/` at the date above — re-run `find frontend/app/pages
+-name "*.vue"` before trusting it as current if this document is read
+much later, since new pages are added without a corresponding doc
+update by default.
 
 The legacy `/requests`, `/requests/new`, `/requests/[id]`, `/voting`,
 `/voting/[id]`, top-level `/users`, and top-level `/banks` routes do not
@@ -87,58 +107,101 @@ this flow; align new copy to "FX confirmation," matching
 
 ---
 
-## Route admission: capability-derived, with a small number of hardcoded exceptions
+## Route admission: a mixed model — live capability checks on some routes, static role arrays on most
 
-Route access is gated by the `role` middleware
-(`frontend/app/middleware/role.ts`), which reads
-`ROUTE_ROLE_MAP[path]` (`frontend/app/constants/workflow.ts`) and
-redirects to `/forbidden` if the current user's role isn't in the list.
-**Most entries in `ROUTE_ROLE_MAP` are derived from a screen/capability
-surface** via `rolesForSurface('nav.xxx')` — e.g. `/workflows`,
-`/merchants`, `/customs`, `/reports`, `/audit`, `/notifications`, and
-every `/admin/*` route except two. **A small number of routes are
-hardcoded to a fixed role array instead:** `/admin` and `/admin/health`
-(`[UserRole.CBY_ADMIN]`), `/settings/system` (`[UserRole.CBY_ADMIN]`),
-and `/settings/bank` (`[UserRole.BANK_ADMIN]`). Do not describe route
-admission as "capability-only end to end" — it is capability-derived for
-most routes, with these specific fixed-role exceptions, matching the
-pattern [`AGENTS.md`](../AGENTS.md) documents for the dashboard route
-itself (see below).
+Route admission is **not** one mechanism. Two separate middlewares
+guard different routes, and neither one is a live-capability check
+everywhere:
+
+- **`screen` middleware** (`frontend/app/middleware/screen.ts`) reads
+  `to.meta.requiredScreen` and calls `useScreenPermissions().can(screen,
+capability)`, which reads `auth.screenPermissions` — data hydrated
+  from the backend's `/auth/me` response. This **is** a live capability
+  check. Verified in use on `/workflows`, `/workflows/new`,
+  `/workflows/instances/[id]`, and several governance pages:
+  `/admin/orgs`, `/admin/reference-data`, `/admin/roles`,
+  `/admin/screen-permissions`, `/admin/staff`, `/admin/teams`,
+  `/admin/workflows`, `/bank/users`.
+- **`role` middleware** (`frontend/app/middleware/role.ts`) reads
+  `to.meta.requiredRoles` (falling back to
+  `resolveRouteRoles(path)` → `ROUTE_ROLE_MAP[path]` from
+  `frontend/app/constants/workflow.ts`) and redirects to `/forbidden`
+  if the signed-in user's role isn't in that array. **This is a static
+  role check, not a live capability check**, regardless of how the
+  array was produced.
+
+Within `ROUTE_ROLE_MAP`, the arrays come from two different sources,
+and **neither is a live capability read**:
+
+- Most entries call `rolesForSurface('nav.xxx')`
+  (`frontend/app/constants/role-surfaces.ts`), which filters the
+  hardcoded `ROLE_SURFACE_MATRIX` — a static, compile-time
+  `Record<UserRole, …>` — by which roles list that surface in their
+  `allowed` array. **This does not read `screen_permissions` and does
+  not call `can()`.** It is a static role-to-surface lookup table, not
+  live capability data — do not call it "capability-derived."
+- Exactly **4 entries are direct literal role arrays**, with no surface
+  indirection at all: `/admin` and `/admin/health`
+  (`[UserRole.CBY_ADMIN]`), `/settings/system`
+  (`[UserRole.CBY_ADMIN]`), `/settings/bank` (`[UserRole.BANK_ADMIN]`).
+
+Some pages skip both `screen` and `role` and use only `auth` (or
+`guest` for unauthenticated pages). And several pages hardcode a role
+array directly in `definePageMeta` rather than going through
+`ROUTE_ROLE_MAP` at all — verified: `/admin/email-templates` and
+`/admin/email-templates/[type]` (`[UserRole.CBY_ADMIN]`), `/staff`
+(`[UserRole.BANK_ADMIN]`), and `/reports` (a local `REPORTING_ROLES`
+array literal defined in the page itself).
+
+In short: a handful of routes (mostly workflow and governance pages) are
+gated by a live capability check; most other routes are gated by a
+static role whitelist, whether that whitelist comes from
+`ROUTE_ROLE_MAP`'s `rolesForSurface()` calls, `ROUTE_ROLE_MAP`'s literal
+arrays, or a page-local literal array outside `ROUTE_ROLE_MAP`
+entirely. Do not describe route admission as "capability-derived" as a
+general rule — that only holds for the routes on `screen` middleware.
 
 ---
 
-## Dashboard selection: capability-led component choice, on top of a fixed-role route gate
+## Dashboard: a static role gate at the route, then capability-led component choice
 
-`frontend/app/pages/dashboard.vue` and `frontend/app/pages/index.vue`
-both implement the same **Phase D0 capability-family routing**, verified
-directly:
+The shipped dashboard is **not** capability-gated end to end. It is a
+static role whitelist at route admission, followed by a live capability
+check that only chooses which component renders once the route has
+already been granted:
 
-```ts
-const dashboardFamily = computed<"system" | "bank" | "work">(() => {
-  if (can("system_dashboard", "VIEW")) return "system";
-  if (can("bank_analytics", "VIEW")) return "bank";
-  return "work";
-});
-```
+1. **Route admission — static role whitelist.** Both `dashboard.vue`
+   and `index.vue` carry `definePageMeta({ middleware: ['auth', 'role'],
+requiredRoles: ROUTE_ROLE_MAP['/dashboard'] })`.
+   `ROUTE_ROLE_MAP['/dashboard']` is `rolesForSurface('nav.dashboard')`
+   — per the section above, this filters the hardcoded
+   `ROLE_SURFACE_MATRIX`, not live `screen_permissions`. A user whose
+   role isn't listed in the matrix for `nav.dashboard` never reaches the
+   page at all, regardless of what capabilities they hold.
+2. **Component selection — live capability check**, verified directly,
+   only runs for users who already passed step 1:
 
-`SystemAdminDashboard` (`CbyAdminDashboard.vue`) →
-`BankAdminDashboard.vue` → `MyWorkDashboard.vue` (fallthrough) — three
-components selected purely by the `can()` capability check, never by
-`role === X`. Any future dynamic executor role that holds neither
-analytics capability automatically falls through to `MyWorkDashboard`
-with no frontend code change.
+   ```ts
+   const dashboardFamily = computed<"system" | "bank" | "work">(() => {
+     if (can("system_dashboard", "VIEW")) return "system";
+     if (can("bank_analytics", "VIEW")) return "bank";
+     return "work";
+   });
+   ```
 
-This capability-led **component selection** sits on top of a still
-fixed-role **route admission** gate: both `dashboard.vue` and
-`index.vue` carry `definePageMeta({ middleware: ['auth', 'role'],
-requiredRoles: ROUTE_ROLE_MAP['/dashboard'] })`, and `/dashboard`
-resolves through the same `rolesForSurface('nav.dashboard')` capability
-mapping described above — so reaching the dashboard page at all is
-still capability-derived, but through the route layer, not the
-component layer. Do not describe dashboard selection as "capability
-end-to-end and nothing else" — it is two capability-gated layers
-(route admission, then component choice within the page), not a single
-unguarded capability check with no route-level gate at all.
+   `SystemAdminDashboard` (`CbyAdminDashboard.vue`) →
+   `BankAdminDashboard.vue` → `MyWorkDashboard.vue` (fallthrough) —
+   these three components are selected purely by the `can()` capability
+   check, never by `role === X`. Any future dynamic executor role that
+   already passes the route's static role whitelist and holds neither
+   analytics capability falls through to `MyWorkDashboard` with no
+   frontend code change to the component-selection logic itself — but a
+   wholly new role still needs a `ROLE_SURFACE_MATRIX` entry for
+   `nav.dashboard` before it can reach the route in the first place.
+
+Do not describe this as "two capability-gated layers" or
+"capability end-to-end" — it is a static role gate at the route,
+then a capability-led choice inside it.
 
 For the full two-family model (why `BankAdminDashboard` has no
 actionable queue, the shared actionable-work invariant across
@@ -148,18 +211,42 @@ actionable queue, the shared actionable-work invariant across
 
 ---
 
-## Request state: read the four fields, never a static enum
+## Request state: the canonical rule is the required direction — the shipped frontend type has not fully caught up
 
 There is no frontend `RequestStatus` enum in the current codebase
-(confirmed: `frontend/app/types/enums.ts` has no such type). Status
-badges, timelines, filters, and dashboards must read `runtime_status`,
-`current_stage` (including `current_stage.semantic_role`), and
-`final_outcome` from the API and build presentation inline —
-`BankAdminDashboard.vue`'s `RUNTIME_STATUS_BADGE` map (verified
-directly) is the reference pattern cited by
-[`frontend/DESIGN.md`](../frontend/DESIGN.md) §7. There is no shared
-`StatusBadge` component; every consumer builds its own badge from the
-same three fields and the semantic token map.
+(confirmed: `frontend/app/types/enums.ts` has no such type) — the
+18-value static enum is genuinely gone. But do not read that as "every
+consumer already reads the four canonical fields." The frontend
+`EngineRequest` type (`frontend/app/types/models.ts`) has real drift
+against the canonical model documented in
+[`architecture/05-request-state-model.md`](architecture/05-request-state-model.md),
+verified directly:
+
+- `export type EngineRequestStatus = 'ACTIVE' | 'CLOSED' | 'REJECTED'`
+  — 3 cases, not the backend's 5 (`ACTIVE`/`CLOSED`/`REJECTED`/
+  `CANCELLED`/`ABANDONED`).
+- `EngineRequest.status: EngineRequestStatus` — the field is still
+  named `status`, not `runtime_status`.
+- `EngineRequest` has **no `final_outcome` field at all.**
+- `EngineRequest.current_stage` has no `semantic_role` field — its type
+  only carries `id`, `code`, `name`, `is_initial`, `is_final`,
+  `sla_duration_minutes`, `requires_claim`.
+
+Existing consumers read `.status` directly, matching the type as it
+stands today — e.g. `BankAdminDashboard.vue`:
+`RUNTIME_STATUS_BADGE[row.original.status]`. **`BankAdminDashboard.vue`
+is a reference only for how to map a runtime-status value to a
+severity color token** (the `RUNTIME_STATUS_BADGE` map pattern cited by
+[`frontend/DESIGN.md`](../frontend/DESIGN.md) §7); it is not evidence
+that the frontend already consumes the complete four-field model — it
+consumes the one field (`status`) the current type exposes.
+
+**The canonical rule remains the required direction for new and
+changed code:** do not reintroduce a static frontend status enum, and
+prefer reading `runtime_status`/`current_stage.semantic_role`/
+`final_outcome` once the type/API surface supports it. But state this
+as a direction, not as already-true behavior — the type gap above is
+real, current, unaddressed drift, not a hypothetical risk.
 
 ---
 
@@ -224,12 +311,38 @@ serve all three postures by composition.
 
 ---
 
-## Support claim heartbeat
+## Claim heartbeat: generic to any claim-required stage, no automatic redirect on loss
 
-When a Support Committee user is on the active review page: send
-`POST /api/v1/engine-requests/{id}/claim/heartbeat` every 60 seconds;
-stop on page leave / component unmount; on claim loss (`403
-CLAIM_NOT_HELD`), redirect back to queue with a notification. See
+`useEngineClaim()` (`frontend/app/composables/useEngineClaim.ts`) is
+**generic to any claim-required stage** — it takes only `requestId` and
+`currentUserId`, with no role check anywhere in the composable. It is
+not restricted to Support Committee users; any executor on a stage with
+`requires_claim: true` uses the same composable. Verified behavior,
+directly from source:
+
+- While the current user holds the claim (`isHeldByMe`), a `watch()`
+  starts a 60-second `setInterval` that calls
+  `POST /api/v1/engine-requests/{id}/claim/heartbeat`.
+- The heartbeat stops automatically on release, component unmount
+  (`onUnmounted`), or claim loss.
+- **On `CLAIM_NOT_HELD`,** `handleClaimError()` calls `markClaimLost()`,
+  which sets `claimLost.value = true`, clears `claimedBy`, and stops the
+  heartbeat. **It does not call `navigateTo()` or trigger any
+  notification** — there is no automatic redirect anywhere in
+  `useEngineClaim.ts`.
+- The request-detail page
+  (`frontend/app/pages/workflows/instances/[id].vue`) reacts to
+  `claimLost` by rendering an inline `Alert variant="destructive"`
+  ("فُقدت مطالبة الطلب") with two manual buttons: "العودة إلى الطابور"
+  (return to queue, calls `returnToQueue()`) and, if the stage still
+  requires a claim and no one else holds it, "محاولة المتابعة مجدداً"
+  (retry). The user must click to leave — nothing navigates them away
+  automatically.
+
+Do not claim an automatic redirect or a push notification on claim loss
+unless a future change to `useEngineClaim.ts` or the request-detail page
+actually adds one — the current behavior is inline, manual recovery.
+See
 [`architecture/02-workflow-engine.md`](architecture/02-workflow-engine.md)'s
 Claim lifecycle section for the backend TTL source.
 
@@ -293,9 +406,8 @@ reintroduced:
   section above for what residue actually still exists.
 - Fixed per-role navigation lists and per-role middleware files
   (`bank-reviewer.ts`, `executive.ts`) as the access-control model —
-  route admission today runs through the single `role` middleware
-  reading `ROUTE_ROLE_MAP`, itself mostly capability-derived (see
-  above).
+  route admission today runs through the shared `role`/`screen`
+  middleware pair described above, not a middleware file per role.
 - Customs-declaration terminology for the Director/FX-confirmation
   workflow — `/customs` is a legacy URL alias only; its content is
   external FX confirmation.

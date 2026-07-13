@@ -1490,24 +1490,137 @@ reference to the old path; nothing to fix there.
 **Checks performed.** Self-reviewed the new document against the 4
 forbidden-content categories (voting-session behavior, retired status
 values, fixed per-role workflow paths, customs-facing terminology) via
-targeted `grep` — zero matches, nothing to itemize as an exception this
-time (unlike Step 4A, which had removed-content citations inside its
-own "what this document removes" section). Ran Prettier on every
-touched Markdown file individually from the correct working directory
-(frontend-scoped files from `frontend/`) and confirmed `--check`
-stability on rerun. Read every formatted file back for line-leading
-`+`/`-` artifacts — none found. Ran the link/anchor checker across all
-touched files — zero broken links.
+targeted `grep`. **Correction (see the accuracy-correction record
+below):** the original record here claimed "zero matches, nothing to
+itemize as an exception" — that was inaccurate. The document does
+contain voting, retired-status, and customs terms, all confined to
+intentional contexts (the verification-banner citation of the legacy
+file, route-removal statements, the Executive Voting cleanup-debt
+section, and the "what this document removes" itemization) — every
+match was reviewed individually and none reintroduces the removed
+functionality as active, but the original "zero matches" framing was
+wrong and has been corrected. Ran Prettier on every touched Markdown
+file individually from the correct working directory (frontend-scoped
+files from `frontend/`) and confirmed `--check` stability on rerun.
+Read every formatted file back for line-leading `+`/`-` artifacts —
+none found. Ran the link/anchor checker across all touched files —
+zero broken links.
 
 **Deviations:** none.
 
 **Blockers:** none.
 
-**Files changed this step:** `docs/04-frontend-guide.md` (deleted),
-`docs/frontend-guide.md` (created), plus 4 files with link/content
-corrections: `docs/README.md`, `docs/architecture/README.md`,
-`AGENTS.md`, `frontend/CLAUDE.md` — 6 total. No production frontend or
-backend code was changed.
+**Files changed this step:** commit `7f808d98` changed 7 paths —
+`docs/04-frontend-guide.md` (deleted), `docs/frontend-guide.md`
+(created), 4 files with link/content corrections (`docs/README.md`,
+`docs/architecture/README.md`, `AGENTS.md`, `frontend/CLAUDE.md`), and
+this plan document itself. After the deletion, 6 files touched by this
+step remain on disk and are eligible for formatting/link checks. A
+separate correction commit, `21cb1893`, later fixed a pre-commit-hook
+formatting-drift bug in `7f808d98` and changed only
+`docs/frontend-guide.md`. No production frontend or backend code was
+changed.
+
+**Step 4B accuracy correction (2026-07-13).** An independent review
+found 6 issue groups in `docs/frontend-guide.md`, all re-verified
+directly against current frontend source before correcting:
+
+1. **Stack version.** The doc said "Vue 4." `frontend/package.json`
+   declares `"vue": "^3.5.13"`. Corrected to Vue 3.5; Nuxt 4 was already
+   correct and unchanged.
+2. **Route inventory undercount and gap.** `frontend/app/pages/`
+   contains 35 `.vue` files, not 34 — the doc's route list also omitted
+   `/admin/email-templates` and `/admin/email-templates/[type]`.
+   Corrected the count and added the missing routes; explicitly
+   distinguished 35 source files from 34 distinct URL paths (the
+   `settings.vue` parent + `settings/index.vue` child both resolve to
+   `/settings`, a normal Nuxt nested-route pattern, not a duplicate);
+   removed the word "full" from the route-list framing and added a
+   re-verify note instead.
+3. **Route-admission mechanism was wrong.** The doc claimed most
+   `ROUTE_ROLE_MAP` entries are "capability-derived." Read
+   `rolesForSurface()` (`app/constants/role-surfaces.ts`) directly: it
+   filters the hardcoded `ROLE_SURFACE_MATRIX` — a static compile-time
+   table — and never reads `screen_permissions` or calls `can()`. Read
+   `app/middleware/screen.ts` directly: it _does_ call
+   `useScreenPermissions().can()` against live, server-hydrated
+   `auth.screenPermissions`, and gates a genuinely separate set of
+   routes (`/workflows*`, several `/admin/*` governance pages,
+   `/bank/users`) via `requiredScreen`, not `ROUTE_ROLE_MAP` at all.
+   Verified the 4 `ROUTE_ROLE_MAP` literal-array entries
+   (`/admin`, `/admin/health`, `/settings/system`, `/settings/bank`)
+   and additionally found (not in the original document) 4 more pages
+   with page-local literal role arrays entirely outside
+   `ROUTE_ROLE_MAP`: `/admin/email-templates`,
+   `/admin/email-templates/[type]`, `/staff`, and `/reports`
+   (`REPORTING_ROLES`, a local array literal). Rewrote the section to
+   describe the actual mixed model: `screen` middleware = live
+   capability check on a specific route subset; `role` middleware
+   (whether via `ROUTE_ROLE_MAP`'s `rolesForSurface()` calls,
+   `ROUTE_ROLE_MAP`'s literals, or page-local literals) = static role
+   whitelist everywhere else.
+4. **Dashboard explanation overstated capability-only behavior.**
+   Corrected per the same source facts: dashboard route admission
+   (`requiredRoles: ROUTE_ROLE_MAP['/dashboard']` →
+   `rolesForSurface('nav.dashboard')`) is a static role whitelist, not
+   a capability check; only the _component_ selection inside the page
+   (`can('system_dashboard', 'VIEW')` → `can('bank_analytics', 'VIEW')`
+   → fallthrough) is capability-led. Removed the "two capability-gated
+   layers" framing; the document now describes it as a static role gate
+   at the route, then a capability-led choice inside it.
+5. **Request-state claim overstated shipped consumer behavior.** The
+   doc said every consumer already reads the four canonical fields and
+   builds presentation from them. Read `frontend/app/types/models.ts`
+   directly: `EngineRequestStatus` is `'ACTIVE' | 'CLOSED' | 'REJECTED'`
+   (3 cases, not the backend's 5); `EngineRequest.status` still uses
+   that truncated type (the field is not named `runtime_status`);
+   `EngineRequest` has no `final_outcome` field at all; its
+   `current_stage` sub-type has no `semantic_role`. Confirmed
+   `BankAdminDashboard.vue` reads `row.original.status` directly,
+   matching the type as it stands. Rewrote the section to keep the
+   canonical model as the required direction while stating the type
+   drift as current, real, unaddressed fact — and narrowed
+   `BankAdminDashboard.vue`'s citation to "reference for runtime-status
+   severity-token mapping," not "reference for the complete state
+   model."
+6. **Claim-heartbeat section invented behavior not in source.** The doc
+   said heartbeat applies to Support Committee users and that claim loss
+   redirects to the queue with a notification. Read
+   `useEngineClaim.ts` directly: no role check anywhere in the
+   composable — it is generic to `requestId`/`currentUserId`, usable by
+   any executor on any claim-required stage. Read `markClaimLost()`
+   directly: it sets `claimLost`, clears `claimedBy`, and stops the
+   heartbeat — no `navigateTo()` call, no notification dispatch
+   anywhere in the file. Read the request-detail page
+   (`app/pages/workflows/instances/[id].vue`) directly: on `claimLost`
+   it renders an inline destructive `Alert` with a manual "return to
+   queue" button and, conditionally, a manual retry button — nothing
+   navigates the user automatically. Rewrote the section to state the
+   composable is claim-generic (not Support-Committee-specific) and
+   that recovery is manual/inline, not an automatic redirect.
+
+Also corrected the Step 4B completion record's own "zero matches,
+nothing to itemize" self-review claim (see Checks performed, above) and
+its file-accounting wording (see Files changed this step, above).
+
+**Verification for this correction pass:** re-checked all 6 claims
+directly against `frontend/package.json`, `frontend/app/pages/`,
+`app/middleware/role.ts`, `app/middleware/screen.ts`,
+`app/constants/workflow.ts`, `app/constants/role-surfaces.ts`,
+`app/composables/useScreenPermissions.ts`,
+`app/composables/useEngineClaim.ts`, `app/types/models.ts`, and
+`app/pages/workflows/instances/[id].vue` before editing. Ran Prettier
+`--check` on `docs/frontend-guide.md` (the only Markdown file this
+correction pass touched besides this plan document) and confirmed
+stability on rerun. Re-ran the link/anchor checker — zero broken links.
+Re-reviewed every voting/retired-status/customs match in the corrected
+document and confirmed each is confined to an intentional context
+(verification banner, route-removal statement, the Executive Voting
+residue section, or the "what this document removes" itemization).
+Confirmed `git status` reports exactly 2 modified tracked files and 12
+untracked files, matching the unchanged, pre-existing baseline.
+
+**Blockers:** none.
 
 Holding for review before Step 4C
 (`docs/05-backend-guide.md` → `docs/backend-guide.md`), per instruction.
