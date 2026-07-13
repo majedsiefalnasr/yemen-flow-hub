@@ -47,8 +47,8 @@ export function useBanks() {
   // mutated a bank never sees a stale dropdown on next fetch.
   async function fetchBanks(): Promise<Bank[]> {
     return referenceCache.remember(BANKS_CACHE_KEY, async () => {
-      const response = await get<ApiResponse<PaginatedResponse<Bank>>>('/api/v1/banks?per_page=200')
-      return response.data.data ?? []
+      const response = await get<PaginatedResponse<Bank>>('/api/v1/banks?per_page=200')
+      return response.data ?? []
     })
   }
 
@@ -60,10 +60,7 @@ export function useBanks() {
     if (params.page) qs.set('page', String(params.page))
     if (params.per_page) qs.set('per_page', String(params.per_page))
     if (params.search) qs.set('search', params.search)
-    const response = await get<ApiResponse<PaginatedResponse<Bank>>>(
-      `/api/v1/banks?${qs.toString()}`,
-    )
-    return response.data
+    return get<PaginatedResponse<Bank>>(`/api/v1/banks?${qs.toString()}`)
   }
 
   async function createBank(payload: CreateBankPayload): Promise<Bank> {
