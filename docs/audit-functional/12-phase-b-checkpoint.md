@@ -122,3 +122,26 @@ been identified.
 - Deletion of the pre-existing stale local artifacts noted earlier (`DBGWF`, `CLAIM_WF_*` versions) is out of Phase B scope and not proposed here.
 
 **Phase B stops here for review.** No V1 request data has been altered.
+
+---
+
+## 7. Data step EXECUTED (2026-07-11, approved)
+
+The approved recreation ran successfully. The 48 active synthetic V1 requests were
+recreated under the published V2 (id=39); the 8 terminal V1 records were preserved.
+
+**7-step controlled sequence performed:**
+
+1. **Snapshot** — restore manifest (56 request rows, references, stages, pinned version, 58 documents, 248 history) captured to a scratchpad file **outside** any cleanup path before touching the DB.
+2. **Dry-run** — `workflow:recreate-active-under-v2` (no flag) confirmed env=local, V1=1, published V2=39, active-to-recreate=48, terminal-to-preserve=8; mutated nothing.
+3. **Counts confirmed** — 48 active + 8 terminal, all synthetic (`ENG-2026-YBRD`/`ENG-2026-TIIB` prefixes; single seed timestamp), V2 published.
+4. **Safety review** — FK cascade footprint mapped from migrations + live DB: `engine_request_documents`/`workflow_history` `cascadeOnDelete` (also deleted explicitly, redundant-not-harmful); `audit_logs.workflow_instance_id` `nullOnDelete` (audit rows preserved, 0 linked to the active set anyway); `customs_declarations.engine_request_id` `cascadeOnDelete` (0 linked on the active set); `request_votes` targets the legacy `import_requests` table (empty, voting out of V1); `engine_notifications` is polymorphic (no FK, no block). No blocking FK, no unexpected cascade.
+5. **Execute** — `--execute`. The **first** attempt failed closed on the anchor invariant validator (`workflow version must be 1, got 2`) and the transaction **rolled back cleanly** (state fully restored: 48 active + 8 terminal, 58 docs, 248 hist), proving atomicity. Root cause: `EngineRequestAnchorInvariantValidator` hard-pinned the expected version to 1. Fix: parameterize `validate($request, int $expectedVersionNumber = 1)` (default preserves the seeder's V1 contract) and have the builder forward its bound `workflowVersion->version_number`. Re-run then completed.
+6. **Command verify** — all 6 built-in checks green: active-on-V1=0, terminal-on-V1=8, active-on-V2=48, requests-at-V2-FINAL=6, orphan-docs=0, orphan-history=0.
+7. **Independent verify + regression** — V2 active stage spread matches the original V1 distribution exactly (CREATE 4 / INTERNAL 12 / SUPPORT 8 / EXEC 6 / FX 6 / FX_CONFIRM 6 / FINAL 6 = 48); footprint conserved (V2: 50 docs + 196 hist; V1 terminal retains 8 docs + 52 hist; totals 58/248 match snapshot); 0 global orphans. Regression: 19 seeder-invariant + anchor-history tests green, 11 Phase B command tests green; Pint clean.
+
+**Committed code:** the version-parameterized `EngineRequestAnchorInvariantValidator`
+and the builder's forwarding call (real seeder-path improvements, default behavior
+unchanged). The recreation command itself remains **local-only / uncommitted** per
+the approved data-step contract (execution tooling stays local; only outcomes are
+documented). The pre-step snapshot is retained locally as the restore manifest.
