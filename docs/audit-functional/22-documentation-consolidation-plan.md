@@ -2350,23 +2350,6 @@ evidence template; the exit-criteria shape, rewritten against current
 architecture. Did not reuse its fixed workflow path, retired status
 vocabulary, or Executive Voting steps.
 
-**Finding during verification (not corrected — no production-code
-change and out of this step's listed file set):**
-`docs/architecture/03-permission-model.md`'s Claim ownership section
-states `EngineClaimService` reads
-`AdminSettingsService::get('support_claim_ttl', 15)`. Verified against
-`backend/app/Services/Workflow/EngineClaimService.php`: it injects and
-calls `SettingResolver::get('support_claim_ttl', 15)` —
-`SettingResolver` queries `SystemSetting` directly and has no
-dependency on `AdminSettingsService` at all. This is the same
-claim-TTL misattribution class found and fixed earlier in
-`production-guide.md` and `AGENTS.md`, now found a third time in a
-canonical architecture doc. The new testing guide's §5 documents the
-verified `SettingResolver` chain, not the doc's `AdminSettingsService`
-claim. Flagged for a future correction pass on
-`03-permission-model.md` itself; not fixed here since Step 12's scope
-is `docs/testing-guide.md` and its four listed reference files.
-
 Bundled per instruction: the remaining four standalone
 `docs/user-view/*.md` provenance mentions in `docs/frontend-guide.md`
 (density/posture template, forbidden-actions template, cross-role
@@ -2381,53 +2364,109 @@ points at the live guide instead of the planned path).
 
 No production code changed. Verification: link/anchor check, Prettier
 `--check`, baseline confirmed unchanged before staging, blob verified
-post-commit. Deviations: none beyond the flagged (not fixed)
-`03-permission-model.md` finding above.
+post-commit.
+
+**Step 12 follow-up corrections (2026-07-13, bundled into Step 13's
+commit per instruction):**
+
+1. The `docs/architecture/03-permission-model.md` finding flagged at
+   Step 12 time (`EngineClaimService` misattributed to
+   `AdminSettingsService::get()`) is now fixed: the Claim ownership
+   section attributes the runtime read to
+   `SettingResolver::get('support_claim_ttl', 15)`, and describes
+   `AdminSettingsService` only as the setting's catalog owner (default,
+   valid range, admin-console exposure) — not a runtime dependency of
+   `EngineClaimService`.
+2. `docs/frontend-guide.md`'s introduction still had one
+   `docs/user-view/*.md` mention (the Step 5 extraction-template intro
+   sentence) that Step 12's bundle missed — corrected to
+   `docs/archive/user-view/*.md`.
+3. `docs/testing-guide.md` §1's focused-command example
+   `--filter=RequestStateModel` did not correspond to a real test
+   filter — replaced with the actual file,
+   `tests/Feature/Engine/EngineRequestResourceStateContractTest.php`
+   (confirmed present at that path).
+4. `docs/testing-guide.md`'s "What this guide covers" intro overstated
+   automated tests as "the primary authority" — corrected to "primary
+   regression evidence," with runtime source, Designer configuration,
+   and the canonical architecture documents stated explicitly as
+   remaining authoritative.
 
 Holding for review before Step 13.
 
-**Step 13 — Complete API Reference Coverage (assigned 2026-07-12).**
-`docs/api-reference.md`'s Coverage status section (added in Step 3A) documents
-only the primary `EngineRequest` lifecycle, authentication basics,
-document/FX-confirmation endpoints, settings, notifications, and report
-exports. This step closes the gap by documenting every remaining
-registered route family, so `docs/api-reference.md` can drop its "not yet
-complete" caveat. Acceptance scope — the exact families already
-enumerated in `docs/api-reference.md`'s Coverage status section:
+**Step 12 follow-up (2026-07-13, bundled into Step 13's commit).**
+Applied all four corrections you specified: (1)
+`docs/architecture/03-permission-model.md`'s Claim ownership section
+now attributes the runtime TTL read to `SettingResolver`, describing
+`AdminSettingsService` only as the catalog owner; (2)
+`docs/frontend-guide.md`'s introduction sentence (the one remaining
+`docs/user-view/*.md` mention Step 12's bundle missed) now reads
+`docs/archive/user-view/*.md`; (3)
+`docs/testing-guide.md` §1's nonexistent `--filter=RequestStateModel`
+example replaced with the real
+`tests/Feature/Engine/EngineRequestResourceStateContractTest.php`
+(confirmed present); (4) the same file's "primary authority" framing
+corrected to "primary regression evidence," with runtime source,
+Designer configuration, and the canonical architecture documents
+stated as remaining authoritative.
 
-- The full Workflow Designer admin API (`workflow-definitions`,
-  `workflow-versions` + `clone`/`validate`/`publish`/`archive`/`graph`,
-  `workflow-versions/{v}/stages`, `workflow-actions`,
-  `workflow-versions/{v}/transitions`, `workflow-stages/{s}/permissions`,
-  `workflow-stages/{s}/field-rules`, `field-groups`, `fields` + `options`).
-- Reference data admin (`reference-tables`, `reference-values` +
-  activate/deactivate lifecycle).
-- Org-structure admin (`organizations`, `teams`, `roles` +
-  activate/deactivate, `screens`, `screen-permissions/matrix`).
-- `merchants` (full CRUD).
-- Governance/compliance (`governance/impact`,
-  `banks/{bank}/lifecycle-impact`, `compliance/duplicate-invoices`,
-  `compliance/expired-documents`, `compliance/sla-breaches`).
-- `ReportController`'s analytics endpoints (`reports/by-bank`,
-  `by-currency`, `by-merchant`, `by-sector`, `by-workflow-stage`,
-  `requests-over-time`, `sla`, `stage-duration`, `summary`,
-  `team-performance`).
-- `Profile`/MFA/session management (`api/profile/*`) and `Search`
-  (`api/search`, `api/search/recent`).
-- Remaining `AuthController` routes (PIN login, password
-  forgot/reset/verify, OTP verification, demo-user/demo-role switching).
-- The smaller documented gaps: `GET
-/api/v1/engine-requests/available-workflows`, `POST
-/api/v1/engine-requests/{id}/abandon`, the audit-log async export
-  routes.
+**Step 13 — ✅ DONE (2026-07-13).** Re-ran
+`php artisan route:list --path=api` (233 total routes, environment-
+dependent per the doc's existing caveat). Verified every family named
+in the original gap list, plus 4 routes discovered during the re-run
+that weren't in that list (`api/admin/health`,
+`api/admin/notification-templates/*`, `api/financing/utilization`,
+`api/dashboard/work`). Verification was done by reading each
+controller, its Form Request classes, and (where relevant) the
+underlying service directly — methods, paths, middleware/Policy
+gates, validation fields, and response shapes are sourced from that
+reading, not invented. Two research subagents dispatched for parallel
+verification (Workflow Designer family; org-structure/reference-data/
+governance/compliance/reports/profile/search) both stalled after 600s
+with no progress and were abandoned; verification was completed
+directly instead of retried, which is why the family list below is
+large but the process was linear, not parallel.
 
-Re-run `php artisan route:list --path=api` at execution time rather than
-trusting this list as final — new routes may exist by then. On
-completion, update `docs/api-reference.md`'s Coverage status section to
-state full coverage (or a narrowed remaining gap, if new routes were
-added in the interim) rather than deleting the section outright — the
-verification-method framing (date, command, environment caveat) stays
-useful even once coverage is complete.
+Added to `docs/api-reference.md`: AuthController's remaining 8 routes
+(PIN login, OTP verification, password recovery, demo switching); the
+Workflow Designer admin API (9 controllers, universal optimistic-
+locking + DRAFT-only-mutation pattern documented once rather than
+repeated per endpoint); org-structure admin (organizations/teams/
+roles/screens/screen-permissions, including the screen-permission
+self-escalation guard); reference data admin; merchants; governance/
+compliance (5 routes); the 10-route analytics `ReportController`
+family (capability gate, DataScope, 90-day default window on 3
+endpoints, result caching); profile/MFA/session management (17
+routes); search (2 routes, per-group role gates); the 4 newly
+discovered routes; and the smaller gaps (`available-workflows`,
+`abandon`, full audit-log export lifecycle — `documents/{document}/replace`
+was found already documented, contrary to the old gap list). A
+"Route Families Intentionally Not Documented" section explains the
+`horizon/api/*` (21 routes) and Swagger UI route exclusion (third-
+party package infrastructure, not application routes — this is why
+"every registered route accounted for" does not mean "every route
+literally has its own subsection").
+
+Two narrow scope reductions, disclosed inline in the Coverage status
+section rather than silently omitted: Merchants' `owners`/`companies`
+array sub-field validation and Field Definitions' type-conditional
+fields were verified for their top-level Store/Update shape but not
+exhaustively for every nested branch; `WorkflowVersionController@graph`'s
+exact node/edge schema and `ProfileController`'s exact "revoke all
+except current" semantics were confirmed to exist and route correctly
+but their precise internal shape was not independently re-derived from
+the service layer.
+
+Updated the Coverage status section to state coverage is complete for
+the registered application route surface (not deleted — the
+verification-method framing stays useful going forward). Updated the
+two other places that referenced "partial coverage":
+`docs/README.md`'s API reference row and `AGENTS.md`'s Documentation
+Map row.
+
+Verification: link/anchor check, Prettier `--check`, baseline
+confirmed unchanged before staging, blob verified post-commit. No
+production code changed.
 
 Each step above should land as its own commit, following the existing
 `docs(scope): description` convention this session already used

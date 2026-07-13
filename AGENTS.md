@@ -123,7 +123,7 @@ Start at **[`docs/README.md`](docs/README.md)** — the canonical index of every
 | Database and models            | [`docs/architecture/06-database-and-models.md`](docs/architecture/06-database-and-models.md)                                       |
 | Backend architecture, security | [`docs/backend-guide.md`](docs/backend-guide.md)                                                                                   |
 | Frontend architecture, UI      | [`docs/frontend-guide.md`](docs/frontend-guide.md)                                                                                 |
-| API contracts                  | [`docs/api-reference.md`](docs/api-reference.md) (partial coverage — see its Coverage status)                                      |
+| API contracts                  | [`docs/api-reference.md`](docs/api-reference.md)                                                                                   |
 | Production / deployment / ops  | [`docs/production-guide.md`](docs/production-guide.md)                                                                             |
 | Development setup              | [`docs/development-guide.md`](docs/development-guide.md)                                                                           |
 | Testing                        | [`docs/testing-guide.md`](docs/testing-guide.md)                                                                                   |

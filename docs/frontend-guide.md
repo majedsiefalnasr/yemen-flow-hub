@@ -20,8 +20,8 @@ record) — see the Step 4B accuracy-correction record in
 [`audit-functional/22-documentation-consolidation-plan.md`](audit-functional/22-documentation-consolidation-plan.md).
 Extended 2026-07-13 (Step 5) with three generic authoring templates
 (per-surface operational posture, forbidden-actions, cross-role
-handoff) extracted from `docs/user-view/*.md` and genericized against
-the current architecture — that source material now lives at
+handoff) extracted from `docs/archive/user-view/*.md` and genericized
+against the current architecture — that source material now lives at
 `docs/archive/user-view/` (Step 10), preserved verbatim and still not
 a live source. Corrected
 2026-07-13 after a further review of the Step 5 additions (source

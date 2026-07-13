@@ -21,12 +21,15 @@ For the concepts this guide tests, see:
 
 ## What this guide covers
 
-Automated tests are the primary authority — this guide describes what
-must be true and points at the automated coverage that proves it, plus
-a manual-verification checklist for anything not yet covered by a
-focused automated test. It is not a fixed script of statuses to walk
-through; the workflow itself is Designer-defined and varies by
-published `WorkflowVersion`.
+Automated tests are the primary regression evidence — this guide
+describes what must be true and points at the automated coverage that
+proves it, plus a manual-verification checklist for anything not yet
+covered by a focused automated test. Runtime source, Designer
+configuration, and the canonical architecture documents remain
+authoritative; tests exist to catch regressions against that
+authority, not to define it. This guide is not a fixed script of
+statuses to walk through; the workflow itself is Designer-defined and
+varies by published `WorkflowVersion`.
 
 ---
 
@@ -56,7 +59,7 @@ speaks.
 **Focused commands:**
 
 ```bash
-php artisan test --filter=RequestStateModel
+php artisan test tests/Feature/Engine/EngineRequestResourceStateContractTest.php
 php artisan test tests/Feature/EngineRequest
 ```
 

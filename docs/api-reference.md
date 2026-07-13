@@ -4,7 +4,8 @@
 
 **Verification method:** `php artisan route:list --path=api`, run
 directly on this repository's `backend/` in the local development
-environment on 2026-07-12. Route totals are **not** recorded here as a
+environment, most recently on 2026-07-13 (originally 2026-07-12).
+Route totals are **not** recorded here as a
 fixed number — demo/switch-role routes (`api/auth/demo-users`,
 `api/auth/switch-demo-user`, `api/auth/switch-demo-role`) register
 conditionally on `config('demo.allowed_environments')`, so the total
@@ -13,62 +14,40 @@ routes disabled will show fewer routes than local). Re-run the command
 above in the target environment to get an accurate count rather than
 trusting any number recorded here.
 
-Every endpoint documented below was checked against a real registered
-route at verification time, and the accompanying claims (settings keys,
-error codes, permission matrices, row limits) were checked against the
-implementing source files — not carried over unverified from the prior
-version of this document. Where verification found this document was
-stale, this move corrected it (see the claim-TTL note under Support
-Review Claiming, and the removal of the Voting section below — Executive
-Voting has no live V1 route, service, or session model, though some
-legacy compatibility symbols remain in the codebase; see that section for
-the precise scope of what still exists).
+**Re-verified 2026-07-13** (Step 13): every route returned by
+`php artisan route:list --path=api` at that date is accounted for
+below, either documented directly or explicitly excluded with a
+reason (see "Route Families Intentionally Not Documented"). Every
+endpoint documented was checked against a real registered route at
+verification time, and the accompanying claims (settings keys, error
+codes, permission matrices, request-validation fields, row limits)
+were checked against the implementing source files — not carried over
+unverified or invented where the implementation doesn't guarantee a
+shape. Two families' Form Requests were verified for Store/Update
+field lists but not for every nested/type-conditional validation
+branch (Merchants' `owners`/`companies` array sub-fields; Field
+Definitions' type-specific fields) — the controller/Form Request
+source remains authoritative for exhaustive edge cases on those two.
+`WorkflowVersionController@graph`'s exact node/edge response schema
+and `ProfileController`'s exact "revoke all except current" semantics
+were verified to exist and route correctly but their precise internal
+shape was not independently re-derived from the service layer in this
+pass — flagged inline at each occurrence above rather than asserted.
 
-**This document is not yet a complete API reference.** It accurately
-covers the primary `EngineRequest` lifecycle, authentication basics,
-document/FX-confirmation endpoints, settings, notifications, and report
-exports — but the following registered route families exist in
-`backend/routes/api.php` and are **not yet documented here**:
-
-- The full Workflow Designer admin API — `workflow-definitions`,
-  `workflow-versions` (+ `clone`/`validate`/`publish`/`archive`/`graph`),
-  `workflow-versions/{v}/stages`, `workflow-actions`,
-  `workflow-versions/{v}/transitions`, `workflow-stages/{s}/permissions`,
-  `workflow-stages/{s}/field-rules`, `field-groups`, `fields` (+
-  `options`).
-- Reference data admin — `reference-tables`, `reference-values` (+
-  activate/deactivate lifecycle on both).
-- Org-structure admin — `organizations`, `teams`, `roles` (+
-  activate/deactivate), `screens`, `screen-permissions/matrix`.
-- `merchants` (full CRUD).
-- Governance/compliance — `governance/impact`,
-  `banks/{bank}/lifecycle-impact`, `compliance/duplicate-invoices`,
-  `compliance/expired-documents`, `compliance/sla-breaches`.
-- Analytics report endpoints on `ReportController` — `reports/by-bank`,
-  `by-currency`, `by-merchant`, `by-sector`, `by-workflow-stage`,
-  `requests-over-time`, `sla`, `stage-duration`, `summary`,
-  `team-performance` (distinct from the `reports/exports` async-export
-  family, which **is** documented below).
-- `Profile`/MFA/session management (`api/profile/*`) and `Search`
-  (`api/search`, `api/search/recent`).
-- Several `AuthController` routes beyond login/logout/me: PIN login,
-  password forgot/reset/verify, OTP verification, demo-user/demo-role
-  switching.
-- Smaller gaps on already-documented families:
-  `GET /api/v1/engine-requests/available-workflows`,
-  `POST /api/v1/engine-requests/{id}/abandon`,
-  `POST /api/v1/engine-requests/{id}/documents/{document}/replace`,
-  `POST /api/v1/audit-logs/export`,
-  `GET /api/v1/audit-logs/export/{reportExport}`,
-  `GET /api/v1/audit-logs/export/{reportExport}/download`.
-
-**Documenting these families is Step 13 of the consolidation plan**
-(`docs/audit-functional/22-documentation-consolidation-plan.md`, "Complete
-API Reference Coverage") — it has an assigned step, not an open-ended
-"someday"; this document should not be treated as the complete canonical
-API reference until that step lands. Until then, for any route not
-covered above, `php artisan route:list` and the registered controller in
-`backend/app/Http/Controllers/Api/` are the authoritative source.
+**Coverage is complete** for the registered application route surface.
+The prior gap list (Workflow Designer admin, reference data admin,
+org-structure admin, merchants, governance/compliance, analytics
+reports, profile/MFA/session management, search, remaining
+`AuthController` routes, and the smaller per-family gaps) is now fully
+documented below, plus four routes found during this pass's route-list
+re-run that weren't named in the original gap enumeration
+(`api/admin/health`, `api/admin/notification-templates/*`,
+`api/financing/utilization`, `api/dashboard/work` — the last of which
+is documented by reference to
+[`architecture/04-dashboard-architecture.md`](architecture/04-dashboard-architecture.md)
+rather than restated here). `horizon/api/*` and the Swagger UI routes
+(`api/documentation`, `api/oauth2-callback`) are intentionally excluded
+as third-party package infrastructure, not application routes.
 
 ---
 
@@ -190,9 +169,7 @@ Non-admin users are scoped to stages they may VIEW (via `stage_permissions`); `s
 
 ```json
 {
-  "data": [
-    /* EngineRequestResource[] */
-  ],
+  "data": [/* EngineRequestResource[] */],
   "meta": { "current_page": 1, "last_page": 3, "per_page": 25, "total": 62 }
 }
 ```
@@ -1195,6 +1172,1033 @@ Data Entry users:
 Frontend filtering alone is NOT sufficient.
 
 All visibility rules must be enforced at API level.
+
+---
+
+# AuthController — Remaining Routes
+
+**Verified:** 2026-07-13, against
+`backend/app/Http/Controllers/Api/AuthController.php` directly. Beyond
+the already-documented login/logout/me, these routes exist:
+
+```http
+POST /api/auth/login-pin
+POST /api/auth/verify-otp
+POST /api/auth/password/forgot
+POST /api/auth/password/verify
+POST /api/auth/password/reset
+GET  /api/auth/demo-users
+POST /api/auth/switch-demo-user
+POST /api/auth/switch-demo-role
+```
+
+## PIN Login
+
+```http
+POST /api/auth/login-pin
+```
+
+Body: `email` (required), `pin` (required, exactly 6 digits). Subject
+to the same account-lockout mechanism as password login
+(`login_pin_fail` throttle key, independent counter from
+`login_lockout_attempts`/`login_lockout_duration` used by password
+login). Returns 403 if the account is inactive; a validation error
+(not a generic auth failure) if the account has no PIN configured
+(`pin_enabled` false or no `pin_code_hash`) — the Arabic message
+explicitly tells the user to set a PIN from their profile first.
+
+## MFA OTP Verification (Login Step 2)
+
+```http
+POST /api/auth/verify-otp
+```
+
+Body: `email` (required), `otp` (required, 6–16 chars), `challenge_id`
+(required UUID), `trust_device` (optional bool). Completes a login that
+was gated on MFA — verifies via `MfaService::verify()`, then issues the
+session. If `trust_device` is true, sets a trusted-device cookie so
+future logins from the same browser can skip the OTP step.
+
+## Password Recovery
+
+```http
+POST /api/auth/password/forgot
+POST /api/auth/password/verify
+POST /api/auth/password/reset
+```
+
+**`forgot`**: `email` (required). Always returns the same generic
+success message regardless of whether the email exists
+(`PasswordRecoveryService::genericMessage()`) — does not leak account
+existence.
+
+**`verify`**: `email` (required), `otp` (required, exactly 6 digits).
+Verifies the recovery OTP without resetting the password yet.
+
+**`reset`**: `email`, `otp` (exactly 6 digits), `password` (required,
+`PasswordPolicy::rules()` + `confirmed`). Re-validates the new password
+against `PasswordPolicy::validate()` for the specific user (e.g.
+password-reuse or user-attribute-based checks) in addition to the
+generic policy rules, before calling
+`PasswordRecoveryService::reset()`.
+
+## Demo Session Switching
+
+Registered only when `config('demo.allowed_environments')` includes
+the current environment — absent entirely from `route:list` output in
+environments where it isn't (e.g. typically disabled in
+staging/production).
+
+```http
+GET  /api/auth/demo-users
+POST /api/auth/switch-demo-user
+POST /api/auth/switch-demo-role
+```
+
+**`demo-users`**: lists active demo accounts available for quick
+switching.
+
+**`switch-demo-user`**: body `user_id` (required int) — switches the
+current session directly to that user.
+
+**`switch-demo-role`**: body `role` (required, must be a valid
+`UserRole` enum value) — switches to the first active user holding
+that role (`orderBy('id')->first()`), 404 if none exists. Both switch
+endpoints audit `AuditAction::DEMO_USER_SWITCH` with the target user id
+and switch type, and both are separately throttled
+(`throttle:20,1`) from the general auth rate limits.
+
+---
+
+# Small Gaps on Already-Documented Families
+
+## Available Workflows
+
+```http
+GET /api/v1/engine-requests/available-workflows
+```
+
+`EngineRequestController::availableWorkflows()`. Returns `PUBLISHED`
+workflow versions whose initial stage the requesting user can `EXECUTE`
+(via `StagePermissionResolver`) — the set of workflows the user is
+actually allowed to start a new request under. A user who cannot create
+requests (`RequestCreationGate::userCanCreateRequests()` returns
+`false`) gets `{"data": []}` rather than a 403.
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "code": "IMPORT_FINANCING",
+      "name": "Import Financing",
+      "version_id": 39,
+      "version_number": 2
+    }
+  ]
+}
+```
+
+## Abandon Draft
+
+```http
+POST /api/v1/engine-requests/{engineRequest}/abandon
+```
+
+Authorized via the `abandon` Policy ability on `EngineRequest`.
+
+**Request body:**
+
+```json
+{ "version": 3 }
+```
+
+`version` is required (optimistic lock). Delegates to
+`EngineTransitionService::abandonDraft()`.
+
+```json
+{
+  "success": true,
+  "message": "Draft abandoned successfully.",
+  "data": { "...": "EngineRequestResource" }
+}
+```
+
+## Audit Log Export — Full Lifecycle
+
+The existing "Related" block under Audit Logs documents only
+`GET /api/v1/audit-logs/export` (list) and `GET /api/v1/audit-logs/{id}`
+(show a log entry). The export **creation, status, and download** steps
+were not yet documented:
+
+```http
+POST /api/v1/audit-logs/export
+GET  /api/v1/audit-logs/export/{reportExport}
+GET  /api/v1/audit-logs/export/{reportExport}/download
+```
+
+All three authorize via `viewAny` on `AuditLog`, plus
+`guardAuditExportOwnership()` on show/download (a requester may only
+view/download their own export, or a `SYSTEM_ADMIN` may access any).
+
+`POST .../export` accepts filters via `$request->only(['user', 'role',
+'event', 'entity', 'request', 'from', 'to', 'ip', 'correlation_id'])`
+and creates a `ReportExport` row (`report_type: 'audit-logs'`, `format:
+'csv'`, `status: 'PENDING'`) processed asynchronously — same
+`ReportExport` model as the `reports/exports` family documented above.
+
+`GET .../download` returns:
+
+| Condition                               | Response                                          |
+| --------------------------------------- | ------------------------------------------------- |
+| `status: FAILED`                        | 422, `{"error":{"code":"EXPORT_FAILED", ...}}`    |
+| `status` not `COMPLETED` or no file yet | 422, `{"error":{"code":"EXPORT_NOT_READY", ...}}` |
+| Otherwise                               | the file stream                                   |
+
+---
+
+# Workflow Designer Admin API
+
+**Verified:** 2026-07-13, against
+`backend/app/Http/Controllers/Api/V1/{WorkflowDefinition,WorkflowVersion,WorkflowAction,WorkflowStage,WorkflowTransition,StagePermission,StageFieldRule,FieldGroup,FieldDefinition}Controller.php`
+and their Form Request classes directly.
+
+Every Store/Update endpoint below is Policy-gated
+(`$this->authorize('create'|'update'|'delete'|'view'|'viewAny', ...)`)
+— consult the relevant `App\Policies\*Policy` class for the exact grant
+logic; this section documents routes, validation, and response
+behavior, not the policy internals themselves.
+
+**Optimistic locking is universal across this family.** Every mutating
+endpoint below except `store` requires an integer `version` field
+matching the row's current `version` column; a mismatch returns
+`STALE_RESOURCE` (409). Every endpoint that mutates a stage, transition,
+field, field group, or stage permission additionally requires the
+parent `WorkflowVersion` to be in `DRAFT` state — attempting a mutation
+against a `PUBLISHED`/`ARCHIVED` version returns
+`WorkflowVersionImmutableException`'s error code (409). Structural
+delete conflicts (e.g. deleting a workflow definition that has
+published versions) return a `WorkflowDesignProtectionException`
+error code (422) instead.
+
+## Workflow Definitions
+
+```http
+GET    /api/v1/workflow-definitions
+POST   /api/v1/workflow-definitions
+GET    /api/v1/workflow-definitions/{workflowDefinition}
+PUT    /api/v1/workflow-definitions/{workflowDefinition}
+DELETE /api/v1/workflow-definitions/{workflowDefinition}
+```
+
+`index` accepts `search`, `sort` (`code`\|`name`\|`is_active`\|`created_at`),
+`direction` (`asc`\|`desc`), `per_page` (max 100) — paginated, each
+item includes `versions` with `stages`/`transitions`/`fields` counts.
+
+**Store** (`StoreWorkflowDefinitionRequest`): `code` (required, `alpha_dash`,
+max 100, unique), `name` (required, max 255), `description` (optional,
+max 1000).
+
+**Update** (`UpdateWorkflowDefinitionRequest`): `code` is **prohibited**
+(immutable after creation — attempting to change it adds a validation
+error even though the field itself isn't required); `name` (sometimes
+required), `description` (optional), `version` (required).
+
+`DELETE` returns 204 on success, or 422 with the
+`WorkflowDesignProtectionException` code if the definition has
+versions that block deletion.
+
+## Workflow Versions
+
+```http
+GET    /api/v1/workflow-versions/{workflowVersion}
+PUT    /api/v1/workflow-versions/{workflowVersion}
+DELETE /api/v1/workflow-versions/{workflowVersion}
+POST   /api/v1/workflow-versions/{workflowVersion}/clone
+POST   /api/v1/workflow-versions/{workflowVersion}/publish
+POST   /api/v1/workflow-versions/{workflowVersion}/validate
+POST   /api/v1/workflow-versions/{workflowVersion}/archive
+GET    /api/v1/workflow-versions/{workflowVersion}/graph
+```
+
+There is no `POST /api/v1/workflow-versions` (index/create) route —
+new versions are created only via `clone`.
+
+**Update** (`UpdateWorkflowVersionRequest`): only `version` (required,
+optimistic lock) — the version resource itself has no other directly
+editable scalar field today; stages/actions/transitions/fields carry
+the actual editable payload.
+
+**`clone`**: creates a new `DRAFT` version from the source (any state),
+audited as `AuditAction::WORKFLOW_CLONED`. Returns 201.
+
+**`publish`**: requires `version` (int, min 1). On success, audits
+`AuditAction::WORKFLOW_PUBLISHED`, notifies all active `SYSTEM_ADMIN`
+users, and clears all screen-permission caches
+(`PermissionService::clearAllScreenPermissionCaches()`). Failure modes:
+
+| Condition                          | Response                                                              |
+| ---------------------------------- | --------------------------------------------------------------------- |
+| Stale `version`                    | 409 `STALE_RESOURCE`                                                  |
+| Version not editable/already final | 409, `WorkflowVersionImmutableException` code                         |
+| Validation errors present          | 422, `{"error":{"code":"WORKFLOW_VALIDATION_FAILED","errors":[...]}}` |
+
+**`validate`**: read-only — runs the same validation the publish path
+enforces without side effects. Returns `{"data":{"errors":[...],
+"warnings":[...]}}`; an empty `errors` array means the version is
+publishable.
+
+**`archive`**: requires `version`; optional `reason` (max 500).
+Clears screen-permission caches. If archiving removes the definition's
+**last** `PUBLISHED` version, the response includes a
+`meta.warnings[].code: "LAST_PUBLISHED_ARCHIVED"` entry warning that
+new request creation stops for that definition until another version
+publishes.
+
+**`graph`**: read-only process graph derived from the version's stages
+and transitions (`WorkflowGraphService::build()`) — response shape is
+`{"data": {...}}` with the service's node/edge structure; this
+documentation does not restate that service's internal schema, since
+verifying its exact shape was out of this pass's scope — treat the
+service source as authoritative for the graph's node/edge fields.
+
+## Workflow Stages
+
+```http
+GET    /api/v1/workflow-versions/{workflowVersion}/stages
+POST   /api/v1/workflow-versions/{workflowVersion}/stages
+GET    /api/v1/workflow-versions/{workflowVersion}/stages/{workflowStage}
+PUT    /api/v1/workflow-versions/{workflowVersion}/stages/{workflowStage}
+DELETE /api/v1/workflow-versions/{workflowVersion}/stages/{workflowStage}
+GET    /api/v1/workflow-stages/{workflowStage}/effective-executors
+```
+
+**Store** (`StoreWorkflowStageRequest`): `code` (required, `alpha_dash`,
+unique within the version), `name` (required), `description` (optional),
+`sort_order` (optional int), `is_initial`/`is_final`/`requires_claim`
+(optional bool), `final_outcome` (required and validated as a
+`FinalOutcome` enum value **only if** `is_final` is true; **prohibited**
+otherwise), `sla_duration_minutes` (optional int, min 1), `status`
+(`ACTIVE`\|`INACTIVE`).
+
+**Update** (`UpdateWorkflowStageRequest`): same fields as Store, all
+`sometimes`, plus `version`. `final_outcome`'s required/prohibited
+rule is re-evaluated against the submitted (or existing, if omitted)
+`is_final` value.
+
+**`effective-executors`**: read-only. Returns, per stage, the total
+count of users who could `EXECUTE` at that stage
+(`StagePermissionAudience::executeHolderIds()`) and a breakdown by
+`stage_permissions` row (`access_level`, `matched_users` count per
+row):
+
+```json
+{
+  "data": {
+    "total_executors": 4,
+    "permissions": [{ "id": 12, "access_level": "EXECUTE", "matched_users": 2 }]
+  }
+}
+```
+
+## Workflow Actions
+
+```http
+GET    /api/v1/workflow-actions
+POST   /api/v1/workflow-actions
+GET    /api/v1/workflow-actions/{workflowAction}
+PUT    /api/v1/workflow-actions/{workflowAction}
+DELETE /api/v1/workflow-actions/{workflowAction}
+POST   /api/v1/workflow-actions/{workflowAction}/activate
+POST   /api/v1/workflow-actions/{workflowAction}/deactivate
+```
+
+Actions are not scoped to a single `WorkflowVersion` — they are a
+shared catalog referenced by transitions across versions.
+
+**Store** (`StoreWorkflowActionRequest`): `code` (required, `alpha_dash`,
+unique), `name` (required), `kind` (required, `WorkflowActionKind` enum).
+
+**Update** (`UpdateWorkflowActionRequest`): `code` (`sometimes`, but see
+below), `name` (required), `kind` (`sometimes`), `version` (required).
+Changing `code` on update is logged as an
+`AuditAction::AUTHORIZATION_FAILURE` audit entry (the Form Request's
+`after()` hook flags a code-change attempt specifically — the intent
+being to make definition-identity changes visible in the audit trail
+even though `Rule::` does not outright reject it the way stage/definition
+code changes do).
+
+`index`/`show` each attach a computed, non-persisted `is_in_use` flag
+(`true` if any `workflow_transitions` row references the action).
+
+`activate`/`deactivate` each require `version` and return the updated
+resource.
+
+## Workflow Transitions
+
+```http
+GET    /api/v1/workflow-versions/{workflowVersion}/transitions
+POST   /api/v1/workflow-versions/{workflowVersion}/transitions
+GET    /api/v1/workflow-versions/{workflowVersion}/transitions/{workflowTransition}
+PUT    /api/v1/workflow-versions/{workflowVersion}/transitions/{workflowTransition}
+DELETE /api/v1/workflow-versions/{workflowVersion}/transitions/{workflowTransition}
+```
+
+**Store** (`StoreWorkflowTransitionRequest`): `from_stage_id` (required,
+must belong to the version, unique per `action_id` — a stage cannot
+have two transitions for the same action), `to_stage_id` (required,
+must belong to the version), `action_id` (required, must reference an
+active `WorkflowAction`), `requires_comment`/`is_default_submit`/
+`is_self_loop`/`is_destructive` (optional bool), `confirmation_message`
+(optional, max 500), `transition_type` (optional, `WorkflowTransitionType`
+enum).
+
+**Update**: same optional fields (no `from_stage_id`/`action_id` —
+those are immutable once created), plus `version`. A duplicate
+`(from_stage_id, action_id)` pair on either store or update throws a
+`ValidationException` on the `action_id` field, not a raw DB
+constraint error.
+
+## Stage Permissions
+
+```http
+GET    /api/v1/workflow-stages/{workflowStage}/permissions
+POST   /api/v1/workflow-stages/{workflowStage}/permissions
+GET    /api/v1/workflow-stages/{workflowStage}/permissions/{stagePermission}
+PUT    /api/v1/workflow-stages/{workflowStage}/permissions/{stagePermission}
+DELETE /api/v1/workflow-stages/{workflowStage}/permissions/{stagePermission}
+```
+
+**Store** (`StoreStagePermissionRequest`): `organization_id` (required),
+`team_id`/`role_id` (nullable, optional scoping refinements), `user_id`
+(**prohibited** — see `03-permission-model.md`; individual-user grants
+are not supported through this endpoint), `access_level` (required,
+`StageAccessLevel` enum), `display_label` (required, max 255). Runs
+`StagePermissionConsistency::check()` in an `after()` hook — validates
+that any set `team_id`/`role_id` actually belongs to the submitted
+`organization_id` (data-integrity check, not a role-exclusion rule —
+see `03-permission-model.md`).
+
+**Update** (`UpdateStagePermissionRequest`): same fields, all
+`sometimes` except `user_id` (still prohibited), plus `version`.
+
+Store/update/destroy all call
+`PermissionService::clearAllScreenPermissionCaches()` after the
+mutation, since stage-permission changes can affect derived capability
+resolution.
+
+## Stage Field Rules
+
+```http
+GET    /api/v1/workflow-stages/{workflowStage}/field-rules
+POST   /api/v1/workflow-stages/{workflowStage}/field-rules
+DELETE /api/v1/workflow-stages/{workflowStage}/field-rules/{stageFieldRule}
+```
+
+No `show`/`update` route — a field rule is set (created or replaced)
+via `store` only. **Store** (`SetStageFieldRuleRequest`): `field_id`
+(required, must belong to the same workflow version as the stage),
+`is_visible`/`is_editable`/`is_required` (optional bool, default
+presumably false/unset when omitted — this document does not assert a
+specific default without reading `FieldDesignerService::setStageFieldRule()`
+directly; treat omitted booleans as service-determined, not
+documented-here-as-guaranteed-false).
+
+## Field Groups
+
+```http
+GET    /api/v1/workflow-versions/{workflowVersion}/field-groups
+POST   /api/v1/workflow-versions/{workflowVersion}/field-groups
+PUT    /api/v1/workflow-versions/{workflowVersion}/field-groups/{fieldGroup}
+DELETE /api/v1/workflow-versions/{workflowVersion}/field-groups/{fieldGroup}
+```
+
+**Store** (`StoreFieldGroupRequest`): `name` (required, `alpha_dash`,
+max 100), `label` (required, max 255), `sort_order` (optional int).
+
+**Update** (`UpdateFieldGroupRequest`): `label`, `sort_order`
+(`sometimes`), `version` (required) — `name` is not updatable.
+
+`index` eager-loads each group's `fields`, ordered by `sort_order`.
+
+## Field Definitions
+
+```http
+GET    /api/v1/workflow-versions/{workflowVersion}/fields
+POST   /api/v1/workflow-versions/{workflowVersion}/fields
+PUT    /api/v1/workflow-versions/{workflowVersion}/fields/{fieldDefinition}
+DELETE /api/v1/workflow-versions/{workflowVersion}/fields/{fieldDefinition}
+GET    /api/v1/workflow-versions/{workflowVersion}/fields/{fieldDefinition}/options
+```
+
+**Store** (`StoreFieldDefinitionRequest`): `field_group_id` (required,
+must belong to the version), `key` (required, `alpha_dash`, unique
+within the version), `semantic_tag` (optional, `FieldSemanticTag`
+enum), `label` (required), `type` (required, `FieldType` enum),
+`placeholder`/`help_text`/`default_value`/`regex_pattern` (optional
+strings), `min_value`/`max_value` (optional numeric),
+`min_length`/`max_length` (optional int), plus type-specific fields
+(`options`, `allowed_file_types`, `max_file_size`, `multiple`,
+`is_required`, `sort_order`) — see the Form Request class for the full
+list; `key` and `type` are immutable after creation (both prohibited
+on update rather than merely `sometimes`).
+
+**`options`**: read-only. Resolves the selectable options for a
+`DYNAMIC_SELECT`-type field (`DynamicFieldOptionsResolver::resolve()`),
+scoped to the requesting user.
+
+---
+
+# Org-Structure Admin API
+
+**Verified:** 2026-07-13, against
+`backend/app/Http/Controllers/Api/V1/{Organization,Team,Role,Screen,RoleScreenPermission}Controller.php`.
+
+Organizations, Teams, and Roles share one consistent shape: Policy-gated
+CRUD + `activate`/`deactivate`, optimistic locking (`version`) on
+mutations, and a shared governance-deletion/deactivation guard
+(`assertCanDeactivateGovernanceEntity()` / `assertCanDeleteGovernanceEntity()`)
+that checks whether the entity is referenced by a **published** workflow
+version before allowing the change — see `GovernanceImpactController`
+below for the read-only version of that same check.
+
+## Organizations
+
+```http
+GET    /api/v1/organizations
+POST   /api/v1/organizations
+GET    /api/v1/organizations/{organization}
+PUT    /api/v1/organizations/{organization}
+DELETE /api/v1/organizations/{organization}
+POST   /api/v1/organizations/{organization}/activate
+POST   /api/v1/organizations/{organization}/deactivate
+```
+
+**Store** (`StoreOrganizationRequest`): `code` (required, `alpha_dash`,
+unique), `name` (required), `classification` (required,
+`OrganizationClassification` enum — this is the field `DataScope`
+resolves system-wide vs. own-bank vs. deny-by-default access from, see
+`03-permission-model.md`).
+
+**Update**: `code` prohibited if changed, `name` required, `classification`
+optional, `version` required.
+
+**`deactivate`** is blocked (422, `ORGANIZATION_IN_USE`) if the
+organization has any active teams, roles, users, or banks.
+**`destroy`** is blocked (422, `ORGANIZATION_PROTECTED`) if the
+organization `isProtected()` or has any teams/roles/users/banks at
+all (active or not). Both additionally run the governance
+published-workflow-reference guard before their own checks.
+
+## Teams
+
+```http
+GET    /api/v1/teams
+POST   /api/v1/teams
+GET    /api/v1/teams/{team}
+PUT    /api/v1/teams/{team}
+DELETE /api/v1/teams/{team}
+POST   /api/v1/teams/{team}/activate
+POST   /api/v1/teams/{team}/deactivate
+```
+
+**Store** (`StoreTeamRequest`): `organization_id` (required),
+`code` (required, `alpha_dash`, unique within the organization), `name`
+(required), `role_code` (**prohibited** — teams do not carry a role
+code directly through this endpoint).
+
+**Update**: `organization_id`/`code` prohibited if changed from the
+existing value, `name` required, `version` required.
+
+## Roles
+
+```http
+GET    /api/v1/roles
+POST   /api/v1/roles
+GET    /api/v1/roles/{role}
+PUT    /api/v1/roles/{role}
+DELETE /api/v1/roles/{role}
+POST   /api/v1/roles/{role}/activate
+POST   /api/v1/roles/{role}/deactivate
+GET    /api/v1/roles/{role}/screen-permissions
+PUT    /api/v1/roles/{role}/screen-permissions
+GET    /api/v1/screen-permissions/matrix
+```
+
+**Store** (`StoreRoleRequest`): `organization_id` (required), `code`
+(required, `alpha_dash`, unique within the organization), `name`
+(required).
+
+**Update**: `organization_id`/`code` prohibited if changed, `name`
+required, `version` required.
+
+### Screen permissions per role
+
+`show`/`update` gate on the `screen_permissions` screen capability
+(`VIEW`/`MANAGE` respectively via `PermissionService`), not a Policy
+class. `matrix` returns the full role × screen × capability grid in
+one call.
+
+**`update`** — `grants` (required object, keyed by screen key, each
+value an array of `ScreenCapability` values). Server-side validation
+rejects three categories of screen key even though the request shape
+otherwise allows them: `requests` (access is derived from Designer
+stage assignments, not manually granted), `UNIVERSAL_SCREENS`
+(always-on), and `ADMIN_ONLY_SCREENS` (system-admin-only, not
+delegable) — rejecting these here (not just hiding them in the UI)
+closes a self-escalation path. The full replace runs inside a
+transaction with a lock guarding against removing the last
+`system_admin`-capable role concurrently (`guardLastAdmin()`).
+
+## Screens
+
+```http
+GET /api/v1/screens
+```
+
+Read-only catalog (`id`, `key`, `label`), gated on `screen_permissions`
+`VIEW` capability. No create/update/delete route — screens are
+seeder-defined (`ScreenPermissionSeeder`), not runtime-creatable.
+
+---
+
+# Reference Data Admin API
+
+**Verified:** 2026-07-13, against
+`backend/app/Http/Controllers/Api/V1/{ReferenceTable,ReferenceValue}Controller.php`.
+
+Same Policy-gated CRUD + activate/deactivate + optimistic-locking shape
+as the org-structure family above.
+
+## Reference Tables
+
+```http
+GET    /api/v1/reference-tables
+POST   /api/v1/reference-tables
+GET    /api/v1/reference-tables/{reference_table}
+PUT    /api/v1/reference-tables/{reference_table}
+DELETE /api/v1/reference-tables/{reference_table}
+POST   /api/v1/reference-tables/{reference_table}/activate
+POST   /api/v1/reference-tables/{reference_table}/deactivate
+```
+
+## Reference Values
+
+```http
+GET    /api/v1/reference-values
+POST   /api/v1/reference-values
+GET    /api/v1/reference-values/{reference_value}
+PUT    /api/v1/reference-values/{reference_value}
+DELETE /api/v1/reference-values/{reference_value}
+POST   /api/v1/reference-values/{reference_value}/activate
+POST   /api/v1/reference-values/{reference_value}/deactivate
+```
+
+Both resources route through `ReferenceDataService` for their
+mutations.
+
+**Reference Table Store** (`StoreReferenceTableRequest`): `key`
+(required, `alpha_dash`, max 100, unique), `label` (required, max 255),
+`sort_order` (optional int). **Update**: `key` prohibited if changed,
+`label` required, `sort_order` optional, `version` required.
+
+**Reference Value Store** (`StoreReferenceValueRequest`):
+`reference_table_id` (required, must exist), `key` (required,
+`alpha_dash`, unique **within the parent table**, not globally),
+`label` (required), `sort_order` (optional). **Update**:
+`reference_table_id`/`key` both prohibited if changed, `label`
+required, `version` required — a value cannot be moved to a different
+table via update.
+
+---
+
+# Merchants API
+
+**Verified:** 2026-07-13, against
+`backend/app/Http/Controllers/Api/V1/MerchantController.php` and its
+Form Requests.
+
+```http
+GET    /api/v1/merchants
+POST   /api/v1/merchants
+GET    /api/v1/merchants/{merchant}
+PUT|PATCH /api/v1/merchants/{merchant}
+DELETE /api/v1/merchants/{merchant}
+```
+
+Policy-gated (`viewAny`/`view`/`create`/`update`/`delete` on
+`Merchant`).
+
+**Store** (`StoreMerchantRequest`): `bank_id` (nullable, must exist),
+`name` (required), `tax_number` (required), `tax_card_expiry`
+(nullable date), `address`/`phone` (nullable strings), `status`
+(`ACTIVE`\|`SUSPENDED`, default presumably `ACTIVE`), `owners` (array,
+each with required `name` + `ownership_percentage` 0–100), `companies`
+(array, each with required `name` + `commercial_registration_number`).
+
+**Update** (`UpdateMerchantRequest`): same shape, all `sometimes`
+except `version` (required, optimistic lock).
+
+---
+
+# Governance & Compliance API
+
+**Verified:** 2026-07-13, against
+`backend/app/Http/Controllers/Api/V1/{GovernanceImpactController,ComplianceController}.php`.
+
+## Governance Impact
+
+```http
+GET /api/v1/governance/impact
+GET /api/v1/banks/{bank}/lifecycle-impact
+```
+
+**`governance/impact`** — query params: `entity_type` (required,
+`GovernanceReferenceEntityType` enum: organization/team/role/
+reference-table/reference-value/user), `entity_id` (required),
+`action` (optional, `delete`\|`deactivate`). Authorizes `view` on the
+resolved entity, then delegates to
+`PublishedWorkflowReferenceGuard::impact()` — the same guard the
+org-structure/reference-data deactivate/delete endpoints call
+internally, exposed here read-only so a UI can preview the impact
+before attempting the mutation. Reference-table entities always get
+`bank_context: null`; an organization `deactivate` impact check adds
+`draft_only_warning`.
+
+**`banks/{bank}/lifecycle-impact`** — a separate, non-workflow-
+permission-based usage report for a specific bank (Policy `view` on
+`Bank`): counts of users, merchants (including soft-deleted), total/
+in-flight/closed engine requests, plus `can_suspend` (always `true`)
+and `can_delete` (`false` if the bank has any users, merchants, or
+engine requests at all).
+
+```json
+{
+  "data": {
+    "entity_type": "bank",
+    "entity_id": 3,
+    "usage": {
+      "users": 4,
+      "merchants": 12,
+      "engine_requests_total": 56,
+      "engine_requests_in_flight": 8,
+      "engine_requests_closed": 48
+    },
+    "warnings": [
+      "Bank has 8 in-flight request(s); suspension is allowed but new activity will be blocked."
+    ],
+    "can_suspend": true,
+    "can_delete": false
+  }
+}
+```
+
+## Compliance
+
+```http
+GET /api/v1/compliance/duplicate-invoices
+GET /api/v1/compliance/expired-documents
+GET /api/v1/compliance/sla-breaches
+```
+
+All three gate on the `audit` screen `VIEW` capability
+(`PermissionService::userHasCapability()`, not a Policy), apply
+`DataScope::applyTo()`, and accept `bank_id`/`per_page` (max 100) query
+params where applicable — paginated responses with the standard
+`current_page`/`last_page`/`per_page`/`total` meta shape.
+
+- **`duplicate-invoices`** — groups `engine_requests` by
+  `invoice_number` having `COUNT(*) > 1`, returns each group's request
+  list (id, reference, bank, merchant, amount, currency, status, stage,
+  created_at).
+- **`expired-documents`** — merchants whose `tax_card_expiry` is in the
+  past; each row's `expired_documents` array currently contains only
+  the tax-card entry (`type: "tax_card"`).
+- **`sla-breaches`** — active requests whose current stage has an SLA
+  and whose deadline (`EngineRequest::slaDeadlineEpochSql()`) has
+  passed, ordered soonest-breached first, including `sla_status` and
+  `stage_entered_at`.
+
+---
+
+# Analytics Reports API
+
+**Verified:** 2026-07-13, against
+`backend/app/Http/Controllers/Api/V1/ReportController.php`. Distinct
+from the async `reports/exports` family documented above — these
+endpoints return computed aggregates synchronously.
+
+```http
+GET /api/v1/reports/summary
+GET /api/v1/reports/requests-over-time
+GET /api/v1/reports/by-workflow-stage
+GET /api/v1/reports/by-bank
+GET /api/v1/reports/by-merchant
+GET /api/v1/reports/by-sector
+GET /api/v1/reports/by-currency
+GET /api/v1/reports/stage-duration
+GET /api/v1/reports/sla
+GET /api/v1/reports/team-performance
+```
+
+All ten gate on the `reports` screen `VIEW` capability and apply
+`DataScope::applyTo(..., 'engine_requests.bank_id')`. Every endpoint's
+result is cached per (`endpoint`, resolved `DataScope`, raw query
+string) via an aggregate-result cache
+(`$this->aggregateCache->remember(...)`) — repeat calls with identical
+scope+params do not re-scan the database.
+
+**Filtering:** endpoints accept `from`/`to` date-range query params.
+`stage-duration`, `sla`, and `team-performance` additionally default to
+a **90-day window** when no explicit range is given and `?all=true` is
+not passed — pass `?all=true` for an explicit unbounded pull (e.g. a
+compliance review). `summary` and the `by-*` dashboard-widget endpoints
+remain all-time-by-default; they are not subject to the 90-day default.
+
+`summary` returns one grouped query's worth of per-`runtime_status`
+counts plus a total amount sum — not seven separate full-table scans
+(a documented performance fix, not incidental).
+
+---
+
+# Profile, MFA, and Session Management API
+
+**Verified:** 2026-07-13, against
+`backend/app/Http/Controllers/Api/ProfileController.php`. All routes
+under `api/profile/*` operate on the authenticated user only (no
+`{user}` route parameter) — there is no admin-on-behalf-of-user profile
+endpoint in this family; admin-initiated resets go through
+`POST /api/v1/users/{user}/reset-*` instead (already documented above).
+
+```http
+GET    /api/profile
+PUT    /api/profile
+PUT    /api/profile/avatar
+POST   /api/profile/change-password
+POST   /api/profile/change-temporary-password
+GET    /api/profile/sessions
+POST   /api/profile/sessions/revoke-all
+DELETE /api/profile/sessions/{tokenId}
+POST   /api/profile/mfa/toggle
+POST   /api/profile/mfa/setup
+POST   /api/profile/mfa/setup/verify
+POST   /api/profile/mfa/disable
+POST   /api/profile/mfa/recovery-codes/regenerate
+POST   /api/profile/mfa/step-up/initiate
+POST   /api/profile/mfa/step-up/verify
+POST   /api/profile/pin
+DELETE /api/profile/pin
+```
+
+## PIN login setup (`POST`/`DELETE /api/profile/pin`)
+
+Both require a fresh step-up verification first
+(`ensureStepUp($request)` — returns a 403-equivalent response if the
+user hasn't completed a recent step-up challenge; see `mfa/step-up/*`
+below).
+
+**Set/change PIN** (`POST`): `new_pin` (required, exactly 6 digits),
+`current_pin` (required only if the user already has a PIN enabled —
+verified via `Hash::check` against `pin_code_hash`; wrong current PIN
+returns 422 and logs `AuditAction::AUTHORIZATION_FAILURE`). Audits
+`PIN_SET` on first set, `PIN_CHANGED` on change.
+
+**Disable PIN** (`DELETE`): `current_pin` required, same verification.
+Audits `PIN_DISABLED`.
+
+## MFA (`mfa/*`)
+
+**`toggle`**: flips `mfa_enabled`. Blocked (403) if
+`AuthSecuritySettings::mfaRequired()` — MFA cannot be disabled when
+system-enforced.
+
+**`setup`**/**`setup/verify`**: TOTP enrollment — `setup` issues a new
+TOTP secret/QR payload; `setup/verify` requires `code` (exactly 6
+chars) to confirm enrollment before it takes effect.
+
+**`disable`**: requires `code` (exactly 6 chars, current TOTP code) to
+turn TOTP off.
+
+**`recovery-codes/regenerate`**: issues a fresh set of MFA recovery
+codes, invalidating the previous set.
+
+**`step-up/initiate`**: sends a fresh email-based step-up challenge
+(`StepUpService::initiateEmailChallenge()`) — this is the mechanism
+`setPin`/`disablePin` require before allowing the PIN mutation.
+
+**`step-up/verify`**: `code` (required, 6–16 chars,
+alphanumeric-with-hyphen), `challenge_id` (optional UUID). Wrong/expired
+code returns 422 with an Arabic message
+(`"رمز التحقق غير صحيح أو منتهي الصلاحية."`).
+
+## Sessions
+
+`GET /api/profile/sessions` lists active Sanctum tokens for the user.
+`POST .../revoke-all` revokes every token except (implementation-
+dependent — verify `revokeAllSessions()` directly if "except current"
+behavior matters for a specific integration) the mechanism used;
+`DELETE .../{tokenId}` revokes one specific token by ID.
+
+---
+
+# Search API
+
+**Verified:** 2026-07-13, against
+`backend/app/Http/Controllers/Api/SearchController.php`.
+
+```http
+GET /api/search
+GET /api/search/recent
+```
+
+**`search`** — query param `q`. Below `MIN_QUERY_LENGTH` (2 characters)
+returns all-empty result groups rather than an error. Searches four
+groups in parallel, each independently role-gated and `DataScope`-scoped:
+
+| Group      | Gate                                                                      | Notes                                                                                                                                    |
+| ---------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `requests` | Any authenticated user                                                    | Via `EngineRequestReadModel::queryFor($user)` — same scoping as the main request list                                                    |
+| `users`    | `SYSTEM_ADMIN` or `BANK_ADMIN` only                                       | `BANK_ADMIN` further restricted to `RoleCodes::BANK_ADMIN_MANAGED` role codes                                                            |
+| `banks`    | `SYSTEM_ADMIN` only                                                       | —                                                                                                                                        |
+| `customs`  | Any authenticated user, `DataScope`-scoped via the linked `EngineRequest` | Response keys `request_id`/`reference_number` are a fixed public API contract (frontend `GlobalSearch.vue` depends on these exact names) |
+
+Each group is capped at 10 results (`MAX_RESULTS_PER_GROUP`). A
+successful search persists the query into the user's
+`recent_searches` preference (deduped, most-recent-first, capped at 10) via `saveQuietly()` — failures here are swallowed (fire-and-forget)
+so a preferences-write error never fails the search response itself.
+
+**`recent`** — returns the caller's own `recent_searches` list from
+`user_preferences`. No query params.
+
+---
+
+# Additional Discovered Endpoints (Outside the Original Gap List)
+
+These routes exist in `backend/routes/api.php` but were not named in
+the Coverage status section's original gap enumeration — found during
+this pass's `route:list` re-run and documented for completeness.
+
+## System Health
+
+```http
+GET /api/admin/health
+```
+
+`AdminHealthController::index()`. Gated via `Gate::authorize('cbyAdmin', ...)`.
+Returns scheduler staleness per retention command
+(`config('retention.scheduler_stale_minutes')`), the 10 most recent
+`failed_jobs` rows, `failed_jobs` total count, last-run timestamps for
+5 retention commands, and the active mail driver:
+
+```json
+{
+  "data": {
+    "scheduler": [
+      {
+        "command": "...",
+        "last_ran_at": "...",
+        "status": "...",
+        "stale": false
+      }
+    ],
+    "queue": { "failed_jobs_count": 0, "recent_failures": [] },
+    "retention": {
+      "last_runs": {
+        "notifications:purge-old": "...",
+        "reports:purge-old-exports": "...",
+        "documents:purge-orphans": "...",
+        "documents:archive-superseded": "...",
+        "audit:archive-old": "..."
+      }
+    },
+    "mail": { "driver": "smtp" }
+  }
+}
+```
+
+This is the endpoint referenced by `docs/production-guide.md`'s Quick
+health check — confirmed unversioned (`/api/admin/health`, not
+`/api/v1/...`).
+
+## Notification Templates (Admin)
+
+```http
+GET  /api/admin/notification-templates
+GET  /api/admin/notification-templates/{type}
+PUT  /api/admin/notification-templates/{type}
+POST /api/admin/notification-templates/{type}/preview
+```
+
+All four gate on `Gate::authorize('cbyAdmin', ...)`. `{type}` is a
+`NotificationType` enum value that must also be flagged
+`admin_editable` in the `NotificationRegistry` catalog — a non-editable
+or unknown type 404s on every method.
+
+`update`: `subject` (required, max 255), `body` (required, max 65535)
+— sanitized via `TemplateValidator::validateForSave()`. Writes a new
+`NotificationTemplate` version and an `AuditAction::EMAIL_TEMPLATE_UPDATED`
+audit entry inside one transaction (atomic: a failed audit write must
+not leave an un-audited template change committed).
+
+`preview`: same request body shape as `update`, but does not persist —
+renders the submitted subject/body against a fixed set of sample
+template variables (`reference_number`, `bank_name`, `importer_name`,
+`amount`, `currency`, `status`, `action_url`, `user_name`) and returns
+both the raw source and the rendered output.
+
+## Financing Utilization
+
+```http
+GET /api/financing/utilization
+```
+
+`FinancingController::utilization()`. Gated on `requests` `CREATE` or
+`audit` `VIEW` capability. Query params: `tax_number` (required),
+`invoice_number` (required), `exclude_request_id` (optional, excludes
+one request from the calculation — used when re-checking utilization
+while editing an existing draft).
+
+**Cross-bank probe denial (S-7):** for a non-system-wide `DataScope`,
+if the resolved merchant (by `tax_number`) belongs to a different bank
+than the caller's own, the endpoint returns 403 ("Cross-bank probe
+denied") rather than silently returning a zero/empty utilization figure
+— this specifically prevents a bank user from learning whether a given
+tax number belongs to another bank's merchant by observing response
+differences.
+
+```json
+{
+  "data": {
+    "used_percent": 42.5,
+    "remaining_percent": 57.5,
+    "blocked": false
+  }
+}
+```
+
+## Dashboard Work
+
+```http
+GET /api/dashboard/work
+```
+
+Already fully documented in
+[`architecture/04-dashboard-architecture.md`](architecture/04-dashboard-architecture.md)'s
+"The `GET /api/dashboard/work` contract" section — not restated here;
+that document is the authoritative source for this endpoint's exact
+response shape (`actionable`/`claimed`/`tracking`/`sla`/
+`recent_activity`/`metrics`).
+
+---
+
+# Route Families Intentionally Not Documented
+
+`horizon/api/*` (21 routes) and `api/documentation`, `api/oauth2-callback`
+are third-party package infrastructure (Laravel Horizon's queue
+dashboard API, L5-Swagger's UI backend) — not part of Yemen Flow Hub's
+own application API surface. Consult the respective package's own
+documentation if these need to be understood; they are excluded from
+this reference by design, not by omission.
 
 ---
 

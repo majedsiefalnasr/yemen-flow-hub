@@ -218,14 +218,19 @@ Claim fields live on `engine_requests`: `claimed_by`, `claimed_at`,
 documented in AGENTS.md's Support Claim Behavior section.
 
 **The live claim TTL is admin-configurable, not the static config value.**
-`App\Services\Workflow\EngineClaimService` reads
-`AdminSettingsService::get('support_claim_ttl', 15)` (admin-editable,
+`App\Services\Workflow\EngineClaimService` injects `SettingResolver` and
+reads `SettingResolver::get('support_claim_ttl', 15)` (admin-editable,
 5–60 minutes) — this is the value actually enforced at runtime.
+`AdminSettingsService` owns the setting's catalog entry (default, valid
+range, admin-console exposure) but is not itself in the runtime read
+path — `EngineClaimService` does not depend on it.
 `config('workflow.support_claim_ttl_minutes')` (`backend/config/workflow.php`,
 env `SUPPORT_CLAIM_TTL_MINUTES`, default 15) exists but is **not** read by
-`EngineClaimService`. Both default to 15 minutes today, but they are two
-different settings — treat the `AdminSettingsService`-backed value as
-authoritative for claim TTL behavior.
+`EngineClaimService` either — it is read only by a database seeder
+(`EngineRequestScenarioBuilder`) for synthetic test scenarios. Both the
+config key and the `SettingResolver`-backed setting default to 15
+minutes today, but they are two different values — treat the
+`SettingResolver`-backed value as authoritative for claim TTL behavior.
 
 Force-release of another user's claim (`EngineClaimService::release()`)
 requires `RoleCodes::SYSTEM_ADMIN`; otherwise `CLAIM_NOT_HELD`.
