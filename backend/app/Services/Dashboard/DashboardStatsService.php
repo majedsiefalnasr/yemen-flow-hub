@@ -33,7 +33,7 @@ class DashboardStatsService
 
         return match (true) {
             $analyticsGate(RoleCodes::SYSTEM_ADMIN, 'system_dashboard') => $this->cbyadminStats($user, $scope),
-            $analyticsGate(RoleCodes::BANK_ADMIN, 'bank_analytics') => $this->bankAdminStats($user, $scope),
+            $analyticsGate(RoleCodes::BANK_ADMIN, 'org_analytics') => $this->bankAdminStats($user, $scope),
             $user->hasRoleCode(RoleCodes::INTAKE) => $this->dataEntryStats($user, $scope),
             $user->hasRoleCode(RoleCodes::INTERNAL_REVIEWER) => $this->bankReviewerStats($user, $scope),
             $user->hasRoleCode(RoleCodes::SUPPORT) => $this->supportCommitteeStats($user, $scope),

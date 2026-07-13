@@ -71,7 +71,7 @@ class ScreenPermissionTest extends TestCase
             'merchants', 'workflow_designer', 'requests', 'reports',
             'audit', 'reference_data', 'screen_permissions', 'notifications', 'settings',
             // D0 dashboard-family capabilities.
-            'system_dashboard', 'bank_analytics',
+            'system_dashboard', 'org_analytics',
         ];
 
         foreach ($expected as $key) {

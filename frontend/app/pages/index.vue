@@ -25,10 +25,10 @@ const role = computed(() => auth.user?.role)
 const userName = computed(() => auth.user?.name ?? '')
 
 // Phase D0 capability-family routing (mirrors dashboard.vue; backend enforces the
-// same capabilities). system governance → bank analytics → operational work.
+// same capabilities). system governance → organization analytics → operational work.
 const dashboardFamily = computed<'system' | 'bank' | 'work'>(() => {
   if (can('system_dashboard', 'VIEW')) return 'system'
-  if (can('bank_analytics', 'VIEW')) return 'bank'
+  if (can('org_analytics', 'VIEW')) return 'bank'
   return 'work'
 })
 

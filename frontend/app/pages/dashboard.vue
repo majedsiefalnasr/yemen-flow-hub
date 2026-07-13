@@ -26,13 +26,13 @@ const role = computed(() => auth.user?.role)
 const userName = computed(() => auth.user?.name ?? '')
 
 // Phase D0 capability-family routing (backend enforces the same capabilities on
-// its endpoints). Order: system governance → bank analytics → operational work.
+// its endpoints). Order: system governance → organization analytics → operational work.
 // Workflow-executor roles hold neither analytics capability and fall through to
 // the shared MyWorkDashboard, so a new dynamic executor role is served with no
 // change here.
 const dashboardFamily = computed<'system' | 'bank' | 'work'>(() => {
   if (can('system_dashboard', 'VIEW')) return 'system'
-  if (can('bank_analytics', 'VIEW')) return 'bank'
+  if (can('org_analytics', 'VIEW')) return 'bank'
   return 'work'
 })
 

@@ -26,7 +26,7 @@ trait AssignsGovernanceIdentity
     {
         $this->seed(GovernanceSeeder::class);
         // D0: the dashboard families are gated on screen capabilities
-        // (bank_analytics / system_dashboard), which are part of the governance
+        // (org_analytics / system_dashboard), which are part of the governance
         // capability model — seed them alongside the governance identities so
         // capability-gated behavior is exercised, not silently disabled.
         $this->seed(ScreenPermissionSeeder::class);

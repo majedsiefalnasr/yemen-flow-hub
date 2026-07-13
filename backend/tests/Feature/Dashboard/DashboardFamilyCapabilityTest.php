@@ -8,6 +8,7 @@ use App\Enums\UserRole;
 use App\Models\Role;
 use App\Models\Screen;
 use App\Models\User;
+use App\Services\Authorization\PermissionService;
 use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -50,26 +51,24 @@ class DashboardFamilyCapabilityTest extends TestCase
         $screenId = Screen::query()->where('key', $screenKey)->value('id');
         DB::table('screen_permissions')
             ->where('role_id', $roleId)->where('screen_id', $screenId)->delete();
+        app(PermissionService::class)->clearScreenPermissionCache((int) $roleId);
     }
 
-    public function test_bank_admin_with_capability_gets_bank_analytics(): void
+    public function test_bank_admin_with_capability_gets_org_analytics(): void
     {
         $admin = $this->makeUser(UserRole::BANK_ADMIN);
 
-        // The bank analytics response carries bank-scoped KPI keys.
         $this->actingAs($admin)
             ->getJson('/api/dashboard/stats')
             ->assertOk()
             ->assertJsonStructure(['data' => ['total', 'pending', 'approved', 'rejected', 'monthly_requests']]);
     }
 
-    public function test_revoking_bank_analytics_capability_removes_analytics_access(): void
+    public function test_revoking_org_analytics_capability_removes_analytics_access(): void
     {
         $admin = $this->makeUser(UserRole::BANK_ADMIN);
-        $this->revokeCapability('bank_admin', 'bank_analytics');
+        $this->revokeCapability('bank_admin', 'org_analytics');
 
-        // Without the capability the analytics family is not served; the endpoint
-        // returns the empty default payload rather than bank analytics.
         $data = $this->actingAs($admin)->getJson('/api/dashboard/stats')->assertOk()->json('data');
 
         $this->assertArrayNotHasKey('monthly_requests', $data);

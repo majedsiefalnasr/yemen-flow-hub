@@ -37,7 +37,7 @@ class DashboardStatsTest extends TestCase
         Cache::flush();
         $this->seedGovernance();
         // D0: the analytics dashboard families are gated on screen capabilities
-        // (bank_analytics / system_dashboard), so the analytics-role tests need the
+        // (org_analytics / system_dashboard), so the analytics-role tests need the
         // capability grants seeded alongside the governance identities.
         $this->seed(ScreenPermissionSeeder::class);
 
