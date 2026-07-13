@@ -32,10 +32,8 @@ Moved contents:
   status enum, voting UI). Gate approved per the Phase F closure report
   ([`audit-functional/19-phase-f-inventory.md`](audit-functional/19-phase-f-inventory.md)
   §11); archived (Step 10).
-
-Planned contents (not yet moved):
-
-- `testing-manual/` — the 9-file manual QA test suite that predates the
-  dynamic workflow engine, approved for archival
-  ([`audit-functional/22-documentation-consolidation-plan.md`](../audit-functional/22-documentation-consolidation-plan.md)
-  §10), replaced going forward by `docs/testing-guide.md`.
+- [`testing-manual/`](testing-manual/) — the 9-file manual QA test suite
+  (root-level `testing-manual/` before this move) that predates the
+  dynamic workflow engine — fixed status pipeline, executive voting flow.
+  Retained for structural scaffolding only, not current test authority;
+  replaced going forward by `docs/testing-guide.md` (planned, Step 12).

@@ -2309,10 +2309,24 @@ post-commit. Deviations: none.
 
 Holding for review before Step 11 (`testing-manual/` archival).
 
-**Step 11 — Move `testing-manual/*` to `docs/archive/testing-manual/`**
-verbatim, add a banner file explaining the archival reason (predates the
-dynamic engine, replaced by `docs/testing-guide.md`), same pure-`git mv`
-treatment as Step 8. Decided, per §10 — proceed without further gating.
+**Step 11 — ✅ DONE (2026-07-13).** Moved root-level `testing-manual/`
+(9 files: `README.md` + 8 per-role manuals — not under `docs/`, found
+at repo root) to `docs/archive/testing-manual/` via `git mv`,
+verbatim. Added an archival banner to the moved `README.md` stating
+the suite predates the dynamic workflow engine (fixed status
+pipeline, executive voting flow, e.g. `EXECUTIVE_VOTING_OPEN`,
+`CUSTOMS_DECLARATION_ISSUED`) and is retained only for structural
+scaffolding, not current workflow/status/permission authority, with
+links to the current request-state doc and `AGENTS.md`. Updated
+`AGENTS.md`'s Documentation Map row (previously pointed at a
+nonexistent `docs/testing-manual/` path — corrected to the real
+archived location) and `docs/README.md`'s Testing guide row
+(no current live authority, archived suite linked). `docs/testing-guide.md`
+remains planned, unblocked for Step 12. Verification: link/anchor
+check, Prettier `--check`, baseline confirmed unchanged, blob verified
+post-commit. Deviations: none.
+
+Holding for review before Step 12 (`docs/testing-guide.md` authoring).
 
 **Step 12 — Write `docs/testing-guide.md`** (the new, actively-maintained
 testing document, §7) after Steps 2–4 have produced the architecture docs

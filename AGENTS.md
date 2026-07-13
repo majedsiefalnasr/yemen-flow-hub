@@ -113,22 +113,22 @@ Frontend lint must pass with zero warnings. Do not disable rules broadly to hide
 
 Start at **[`docs/README.md`](docs/README.md)** — the canonical index of every live document, with status (live vs. planned). The most relevant entries for agent work:
 
-| Concern                        | Document                                                                                                                           |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Request state model            | [`docs/architecture/05-request-state-model.md`](docs/architecture/05-request-state-model.md)                                       |
-| Workflow engine / behavior     | [`docs/architecture/02-workflow-engine.md`](docs/architecture/02-workflow-engine.md)                                               |
-| Permission model               | [`docs/architecture/03-permission-model.md`](docs/architecture/03-permission-model.md)                                             |
-| Dashboard architecture         | [`docs/architecture/04-dashboard-architecture.md`](docs/architecture/04-dashboard-architecture.md)                                 |
-| System architecture            | [`docs/architecture/01-system-architecture.md`](docs/architecture/01-system-architecture.md)                                       |
-| Database and models            | [`docs/architecture/06-database-and-models.md`](docs/architecture/06-database-and-models.md)                                       |
-| Backend architecture, security | [`docs/backend-guide.md`](docs/backend-guide.md)                                                                                   |
-| Frontend architecture, UI      | [`docs/frontend-guide.md`](docs/frontend-guide.md)                                                                                 |
-| API contracts                  | [`docs/api-reference.md`](docs/api-reference.md) (partial coverage — see its Coverage status)                                      |
-| Production / deployment / ops  | [`docs/production-guide.md`](docs/production-guide.md)                                                                             |
-| Development setup              | [`docs/development-guide.md`](docs/development-guide.md)                                                                           |
-| Testing                        | `docs/testing-guide.md` (planned) — current authority is `docs/testing-manual/`                                                    |
-| Root visual design system      | [`DESIGN.md`](DESIGN.md)                                                                                                           |
-| Historical / audit material    | [`docs/archive/`](docs/archive/README.md) — pre-dynamic-engine and closed-audit records, preserved verbatim, not current authority |
+| Concern                        | Document                                                                                                                             |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Request state model            | [`docs/architecture/05-request-state-model.md`](docs/architecture/05-request-state-model.md)                                         |
+| Workflow engine / behavior     | [`docs/architecture/02-workflow-engine.md`](docs/architecture/02-workflow-engine.md)                                                 |
+| Permission model               | [`docs/architecture/03-permission-model.md`](docs/architecture/03-permission-model.md)                                               |
+| Dashboard architecture         | [`docs/architecture/04-dashboard-architecture.md`](docs/architecture/04-dashboard-architecture.md)                                   |
+| System architecture            | [`docs/architecture/01-system-architecture.md`](docs/architecture/01-system-architecture.md)                                         |
+| Database and models            | [`docs/architecture/06-database-and-models.md`](docs/architecture/06-database-and-models.md)                                         |
+| Backend architecture, security | [`docs/backend-guide.md`](docs/backend-guide.md)                                                                                     |
+| Frontend architecture, UI      | [`docs/frontend-guide.md`](docs/frontend-guide.md)                                                                                   |
+| API contracts                  | [`docs/api-reference.md`](docs/api-reference.md) (partial coverage — see its Coverage status)                                        |
+| Production / deployment / ops  | [`docs/production-guide.md`](docs/production-guide.md)                                                                               |
+| Development setup              | [`docs/development-guide.md`](docs/development-guide.md)                                                                             |
+| Testing                        | `docs/testing-guide.md` (planned) — no current live authority; superseded manual suite is archived at `docs/archive/testing-manual/` |
+| Root visual design system      | [`DESIGN.md`](DESIGN.md)                                                                                                             |
+| Historical / audit material    | [`docs/archive/`](docs/archive/README.md) — pre-dynamic-engine and closed-audit records, preserved verbatim, not current authority   |
 
 **The Workflow Designer and runtime engine are authoritative** for stages, transitions, permissions, and semantic metadata — never a static doc. `docs/archive/user-view/*.md` is deprecated historical material (predates the dynamic workflow engine, describes fixed-role dashboards, the removed 22-value status enum, and voting UI) — do not treat it as current UX authority.
 
