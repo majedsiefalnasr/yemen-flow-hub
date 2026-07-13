@@ -2224,22 +2224,70 @@ separately from Step 8 per instruction.
 
 Holding for review before Step 8, per instruction.
 
-**Step 8 — Move `docs/audit-functional/00-discovery.md` through
-`docs/audit-functional/21-audit-closure-report.md`** (every file in the
-directory EXCEPT `22-documentation-consolidation-plan.md`, which stays
-live — do not use `docs/audit-functional/*`, since that glob would also
-sweep up this plan) **and all of `docs/audit/*` to `docs/archive/`**
-verbatim, add the archive-index README explaining what each subdirectory is
-and why it's archived rather than deleted. This is a pure `git mv`, zero
-content change, fully reversible, and should be its own dedicated commit
-per your general "one topic per commit" discipline.
+**Step 8 — ✅ DONE (2026-07-13).** Moved `docs/audit-functional/00-`
+through `21-audit-closure-report.md` (files 00–10 were untracked;
+11–21, including 12, were tracked — file 22 excluded by explicit
+enumeration, no wildcard) and all of `docs/audit/` (including
+`evidence/` and `evidence/explain/`) to `docs/archive/`, verbatim.
+Updated `docs/archive/README.md`'s "Planned contents" to describe both
+trees as moved. File 12 (`12-phase-b-checkpoint.md`) carried a
+pre-existing uncommitted content addition (Phase B V1→V2 data
+recreation execution record) — committed that alone, at its original
+path, before moving the now-clean file, so the archival commit stayed
+pure. One process error during this: an initial bare `git commit`
+for the file-12 content swept in the already-staged archival moves;
+caught immediately via the mandatory post-commit check, corrected
+with `git reset --soft HEAD~1` (safe — branch unpushed) and a
+re-commit scoped by explicit pathspec. Final state: two commits, file
+12's content isolated from the pure `git mv` archival commit, exactly
+as instructed. Verification: link/anchor check, Prettier, `git
+status` baseline confirmed unchanged (`.codex/config.toml` +
+untracked backend command only), both commits' blobs verified
+immediately post-commit. Files 00–10 moving from untracked to
+tracked-at-destination is an intentional, pre-authorized baseline
+change.
 
-**Step 9 — Rewrite `AGENTS.md`** to point at the new `docs/` tree instead
-of duplicating the canonical-state-model/dashboard-architecture content it
-currently holds directly. This is the highest-blast-radius single edit
-(every AI tool loads this file) — do it last, after every doc it will point
-to actually exists at its final path, and re-verify every internal link
-resolves before committing.
+**Step 9 — ✅ DONE (2026-07-13).** Rewrote `AGENTS.md` from a
+self-contained architecture reference into a concise pointer file:
+repository identity, Git/commit rules, focused quality gates,
+mandatory frontend context files, and AI-tool workflows stay in
+place; the duplicated canonical-request-state-model and
+dashboard-architecture sections are replaced with a Documentation Map
+table linking to `docs/architecture/05-request-state-model.md`,
+`02-workflow-engine.md`, `03-permission-model.md`,
+`04-dashboard-architecture.md`, and the live backend/frontend/
+production/testing guides, plus a pointer to `docs/archive/` for
+historical material. A short "High-Risk Invariants" section keeps
+only the facts an agent must see before opening deeper docs (request
+state is 4 fields, transition service is the only mutation path,
+dashboard capability-family model, claim-TTL source). Corrected six
+drift points found during the rewrite: (1) Vue is 3.5, not Vue 4 —
+old file said 4 in two places; (2) claim TTL comes from the admin
+`support_claim_ttl` setting via `SettingResolver`, not
+`workflow.support_claim_ttl_minutes` (same finding as the earlier
+production-guide correction); (3) account lockout is
+admin-configurable via `SettingResolver`
+(`AuthSecuritySettings::lockoutAttempts()`/`lockoutDuration()`),
+config default 5 attempts/15 minutes, not a hardcoded 10 — verified
+against `backend/config/auth_security.php` and
+`AuthSecuritySettings.php`; (4) dashboard component selection is
+capability-led, but route admission and some backend analytics
+dispatch still contain fixed-role constraints — not capability-only
+end to end; (5) `semantic_role` is nullable and the
+`semantic_role`/`final_outcome` split is documented as architectural
+convention, not a code- or database-enforced guard — verified against
+`docs/architecture/05-request-state-model.md` §on `final_outcome`,
+which states no cross-field validation exists; (6)
+`docs/user-view/*.md` stays unmoved pending its own separately gated
+archival (Phase F closure report gate), not silently implied as
+already archived. No security, organization-scope,
+transition-service, audit, or frontend-component rule was weakened.
+Verification: every link in the new file checked against its target
+file's existence, link/anchor script, Prettier `--check`. Deviations:
+none.
+
+Holding for review before Step 10 (`docs/user-view/` archival — separately
+gated, not started).
 
 **Step 10 (gated, separate approval required per your own Phase F
 instruction) — decide and execute `docs/user-view/`'s final disposition**
