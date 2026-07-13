@@ -376,10 +376,19 @@ architecture-current form:
    role/capability (see
    [`architecture/03-permission-model.md`](architecture/03-permission-model.md)),
    not from a fixed per-role table hardcoded in the frontend.
-2. **State it as UI non-rendering, not disabled controls.** A forbidden
-   action must not be rendered at all — a visible-but-disabled control
-   implies "you could do this if X," which is the wrong signal when the
-   real answer is "this surface never grants this."
+2. **Distinguish "no permission" from "permission held, action
+   temporarily unavailable."** These are different backend states with
+   different UI treatments, not one blanket "hide everything" rule:
+   - **No permission at all** (no matching `stage_permissions` grant —
+     the backend's `STAGE_EXECUTION_FORBIDDEN`) is genuinely forbidden:
+     the control must not be rendered.
+   - **Permission held, but the stage requires an unheld claim** (the
+     backend's `CLAIM_NOT_HELD`) is not the same as forbidden — the
+     shipped request-detail page (`canExecute` true,
+     `claimRequiredButNotHeld` true) renders a visible prompt (a card
+     with a "claim to continue" action), not a hidden control. Model
+     this as its own state, not as either "always shown" or "always
+     hidden."
 3. **Cross-reference the backend enforcement**, don't just assert the
    UI hides it — frontend hiding is UX only; the backend is the
    authorization source of truth (see "Frontend permissions are UX

@@ -2127,7 +2127,27 @@ new template sections) and this plan document — 2 files. No file under
 `docs/user-view/` was touched. No production frontend or backend code
 was changed.
 
-Holding for review before Step 6, per instruction.
+**Step 5 action-availability correction (2026-07-13).** Outcome: the
+forbidden-actions template's "never disabled, always non-rendered"
+rule collapsed two distinct backend states into one. Files:
+`docs/frontend-guide.md` only. Finding: `STAGE_EXECUTION_FORBIDDEN`
+(no `stage_permissions` grant) is genuinely non-rendered, but
+`CLAIM_NOT_HELD` (permission held, stage requires an unheld claim) is
+not the same — verified against the shipped request-detail page
+(`frontend/app/pages/workflows/instances/[id].vue`), whose
+`claimRequiredButNotHeld` computed state renders a visible "claim to
+continue" prompt, not a hidden control. Rewrote template point 2 to
+distinguish the two states explicitly. Verification: Prettier
+`--check` on the touched file, link/anchor check, `git status`
+confirms baseline unchanged.
+
+From this step forward, plan records for this document follow a
+lighter format (outcome, files, material findings, verification,
+deviations) per updated process — full narrative detail is no longer
+required for routine steps.
+
+Holding for review before Step 7, per instruction (proceeding directly
+into Step 6 without a review checkpoint).
 
 **Step 6 — Merge `docs/00-project-brief.md`'s framing into
 `docs/README.md`**, then move the rest of `docs/00` to
