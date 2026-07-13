@@ -162,7 +162,7 @@ All other implementation decisions follow these docs in order of authority:
 2. `docs/architecture/06-database-and-models.md` — Table schemas, verified against migrations 2026-07-12
 3. `docs/api-reference.md` — API contracts, endpoint conventions (partial coverage — see its Coverage status section)
 4. `docs/05-backend-guide.md` — Backend architecture, security rules
-5. `docs/04-frontend-guide.md` — Frontend architecture, UI rules
+5. `docs/frontend-guide.md` — Frontend architecture, UI rules
 6. `docs/architecture/01-system-architecture.md` — Overall architecture, verified against source 2026-07-12
 7. `DESIGN.md` — Root visual design system (colors, typography, spacing, elevation)
 

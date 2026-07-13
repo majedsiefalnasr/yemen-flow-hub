@@ -215,6 +215,6 @@ For UI validation and browser interactions, use `playwright-cli`. Keep the `play
 Full rules in `../docs/` and `../AGENTS.md`. Key files:
 
 - `../docs/architecture/02-workflow-engine.md` — workflow engine: Designer lifecycle, topology, publishing, runtime transitions
-- `../docs/04-frontend-guide.md` — frontend architecture
+- `../docs/frontend-guide.md` — frontend architecture
 - `../docs/api-reference.md` — API contracts (endpoints, response shapes)
 - `../DESIGN.md` — visual design system

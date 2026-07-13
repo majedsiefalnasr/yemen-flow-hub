@@ -1379,8 +1379,137 @@ and 12 untracked files, matching the corrected, pre-existing baseline.
 
 **Blockers:** none.
 
-Holding for review before Step 4B (`docs/04-frontend-guide.md` →
-`docs/frontend-guide.md`) and Step 4C
+**Step 4A — ✅ APPROVED.** Independent verification of commit
+`919c951c` confirmed: notification rollback phases match source,
+Prettier passes across all 13 files, internal links resolve, the commit
+is signed with the required co-author, the working tree matches the
+2-modified/12-untracked baseline, and the three committed files have no
+post-commit diff.
+
+**Step 4B — ✅ DONE (2026-07-13).** Scope: only
+`docs/04-frontend-guide.md` → `docs/frontend-guide.md`.
+`docs/05-backend-guide.md` → `docs/backend-guide.md` (Step 4C) was not
+started.
+
+Pre-flight `git status` confirmed the baseline (2 modified tracked
+files, 12 untracked files) before touching anything; confirmed unchanged
+post-flight.
+
+**Source verification performed.** Read `docs/04-frontend-guide.md` in
+full (896 lines) before deletion. Read all four mandatory frontend
+context files (`frontend/PRODUCT.md`, `frontend/DESIGN.md`,
+`frontend/SHADCN.md`, `frontend/CLAUDE.md`) before drafting. Verified
+directly against `frontend/app/`: the full `app/pages/` tree (34 page
+files — substantially more than any prior route list documented);
+`dashboard.vue`/`index.vue`'s capability-family routing
+(`can('system_dashboard', 'VIEW')` → `can('bank_analytics', 'VIEW')` →
+`MyWorkDashboard` fallthrough); `app/middleware/role.ts` and
+`ROUTE_ROLE_MAP` in `app/constants/workflow.ts` (most entries derived
+via `rolesForSurface()`, but `/admin`, `/admin/health`,
+`/settings/system`, `/settings/bank` are hardcoded fixed-role arrays);
+`app/pages/customs/index.vue` (legacy URL alias, content entirely
+external FX confirmation terminology); `BankAdminDashboard.vue`'s
+`RUNTIME_STATUS_BADGE` map (matches `frontend/DESIGN.md` §7's citation);
+confirmed no `RequestStatus` enum exists in `app/types/enums.ts`.
+
+**Voting-residue check (a real risk given the file's legacy voting
+content).** Grepped the entire `frontend/app/` tree for "voting" and
+individually verified every match rather than trusting a blanket
+zero-result: `--voting` is a reused generic "indigo" design token
+(`ActionRequiredStrip.vue`, `ActiveReviewBanner.vue`,
+`DashboardKpiCard.vue`, `MetricCard.vue`), not feature UI;
+`audit.vue`'s `ACTION_LABELS` map has dead
+`VOTE_SUBMITTED`/`VOTING_SESSION_OPENED`/`VOTING_SESSION_CLOSED` label
+strings for historical audit-log display; `useReports.ts` declares an
+unrendered optional `voting_analytics?` field (confirmed zero renders
+anywhere in `app/pages`/`app/components`); `useAdminSettings.ts`
+declares unused `voting_session_timeout`/`secret_voting` setting
+fields. None of this is active voting UI — no `/voting` route, no
+voting store, no voting composable exist. The new document states this
+precisely rather than either claiming zero related code (false) or
+describing the residue as live functionality (also false), and links to
+`api-reference.md`'s Executive Voting section for the full cleanup-debt
+inventory rather than re-inventorying it.
+
+**Dashboard/route admission — corrected to avoid overstating
+capability-only behavior, per your explicit instruction.** The new
+document documents dashboard _component_ selection as purely
+capability-led (verified: the `can()` check chain has no role-name
+branch), but also documents that both `dashboard.vue` and `index.vue`
+still carry `requiredRoles: ROUTE_ROLE_MAP['/dashboard']` via the `role`
+middleware — a still-present route-admission gate underneath the
+capability-led component choice. Also documented the small set of
+routes in `ROUTE_ROLE_MAP` that are hardcoded fixed-role arrays rather
+than capability-derived (`/admin`, `/admin/health`,
+`/settings/system`, `/settings/bank`), matching this plan's and
+`AGENTS.md`'s existing "a small number of explicit fixed-role guards
+still exist alongside [capabilities]" framing rather than contradicting
+it.
+
+**Preserved:** the two-family dashboard model (with the corrected
+route/component split above); the Design Consistency Requirement and
+operational density composition table (Distraction-free/Operational
+queue/Governance tiers); the support-claim-heartbeat spec; the
+corrected routes already fixed in the legacy file during Phase F
+(`/workflows/*` replacing `/requests/*`, no `/voting/*` routes); the
+four-field request-state model pointer (not duplicated, linked to
+`architecture/05-request-state-model.md`).
+
+**Removed:** the fixed 18-value status vocabulary and "Internal →
+Simplified Status Mapping" section; the full "Voting UI" section (Vote
+Types, Voting Session UX, Voting Interface Requirements) and "Suggested
+Navigation by Role" voting nav items (Waiting For Voting Open, Voting
+Session Management, etc.) as if still live; fixed per-role navigation
+lists as the access-control model, and the suggested-but-never-built
+per-role middleware files (`bank-reviewer.ts`, `executive.ts`,
+`admin.ts`) presented as shipped; customs-declaration framing for the
+Director/FX-confirmation workflow (the new document instead documents
+`/customs` as a legacy URL alias whose content is FX confirmation);
+the stale citation to a status enum sourced from
+`docs/03-database-and-models.md` (that path no longer exists).
+
+**Migration.** Tested rename detection the same way as Step 4A —
+`git diff --cached --stat -M50%` after `git rm` + `git add` did not
+detect a rename (896 deletions / 308 insertions, too dissimilar), so
+delete+add is the correct representation.
+
+**Link updates** — every live reference to the old path repointed:
+`docs/README.md` (Frontend guide row: planned → **live**),
+`docs/architecture/README.md` (added the new doc to the live list,
+outside the `architecture/` tree; changed the "not yet migrated" note
+from Step 4B to Step 4C, since only the backend guide remains),
+`AGENTS.md` (minimal path-only correction on the doc-authority list),
+`frontend/CLAUDE.md` (Docs Reference entry repointed). The two
+`docs/audit-functional/19-phase-f-inventory.md` /
+`20-phase-f-checkpoint.md` matches and the `docs/superpowers/` match are
+historical audit/planning records describing a fix made to the
+old file at that time — correctly left untouched, same treatment as
+Step 4A's historical references. `docs/00-project-brief.md` has no
+reference to the old path; nothing to fix there.
+
+**Checks performed.** Self-reviewed the new document against the 4
+forbidden-content categories (voting-session behavior, retired status
+values, fixed per-role workflow paths, customs-facing terminology) via
+targeted `grep` — zero matches, nothing to itemize as an exception this
+time (unlike Step 4A, which had removed-content citations inside its
+own "what this document removes" section). Ran Prettier on every
+touched Markdown file individually from the correct working directory
+(frontend-scoped files from `frontend/`) and confirmed `--check`
+stability on rerun. Read every formatted file back for line-leading
+`+`/`-` artifacts — none found. Ran the link/anchor checker across all
+touched files — zero broken links.
+
+**Deviations:** none.
+
+**Blockers:** none.
+
+**Files changed this step:** `docs/04-frontend-guide.md` (deleted),
+`docs/frontend-guide.md` (created), plus 4 files with link/content
+corrections: `docs/README.md`, `docs/architecture/README.md`,
+`AGENTS.md`, `frontend/CLAUDE.md` — 6 total. No production frontend or
+backend code was changed.
+
+Holding for review before Step 4C
 (`docs/05-backend-guide.md` → `docs/backend-guide.md`), per instruction.
 
 **Step 5 — Extract the 3 UX patterns from `docs/user-view/` into
