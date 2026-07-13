@@ -2289,13 +2289,25 @@ none.
 Holding for review before Step 10 (`docs/user-view/` archival — separately
 gated, not started).
 
-**Step 10 (gated, separate approval required per your own Phase F
-instruction) — decide and execute `docs/user-view/`'s final disposition**
-(archive vs. delete) once: no repository links depend on its current path
-(verify via `grep -rln "docs/user-view"` returns only archive-pointer
-references), the archival destination is confirmed, and the move happens
-in its own dedicated commit. This plan proposes `docs/archive/user-view/`
-as the destination per §5, but does not execute it.
+**Step 10 — ✅ DONE (2026-07-13), gate approved.** Moved all 8
+`docs/user-view/*.md` files (per-role UX specs) to
+`docs/archive/user-view/` via `git mv`, verbatim. Updated live
+references: `AGENTS.md`'s "stays in place, unmoved, pending
+archival" wording replaced with the new archive path;
+`docs/frontend-guide.md`'s one claim that the source "is unmodified"
+corrected to point at the new location (its other four mentions are
+historical/provenance prose, not navigation, left as-is per
+instruction); `docs/archive/README.md` moved the entry from "Planned"
+to the moved-contents list. No other live file referenced
+`docs/user-view/` as a navigation target — remaining hits were inside
+already-archived `audit-functional/` files (historical, left
+verbatim) and `docs/superpowers/` planning notes (not part of the
+live nav tree). Verification: link/anchor check (two known
+directory-link false positives, confirmed valid), Prettier
+`--check`, baseline confirmed unchanged before staging, blob verified
+post-commit. Deviations: none.
+
+Holding for review before Step 11 (`testing-manual/` archival).
 
 **Step 11 — Move `testing-manual/*` to `docs/archive/testing-manual/`**
 verbatim, add a banner file explaining the archival reason (predates the

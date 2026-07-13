@@ -27,14 +27,14 @@ Moved contents:
 - `project-brief-2026-05.md` — the original project brief, moved once its
   still-current framing language was extracted into `docs/README.md`
   (Step 6).
+- [`user-view/`](user-view/) — the 8 per-role UX specs that predate the
+  dynamic workflow engine (fixed-role dashboards, the removed 22-value
+  status enum, voting UI). Gate approved per the Phase F closure report
+  ([`audit-functional/19-phase-f-inventory.md`](audit-functional/19-phase-f-inventory.md)
+  §11); archived (Step 10).
 
 Planned contents (not yet moved):
 
-- `user-view/` — the 8 per-role UX specs that predate the dynamic workflow
-  engine. **Archival of this directory remains gated** per the Phase F
-  closure report
-  ([`audit-functional/19-phase-f-inventory.md`](audit-functional/19-phase-f-inventory.md)
-  §11) and will not proceed without its own separate approval.
 - `testing-manual/` — the 9-file manual QA test suite that predates the
   dynamic workflow engine, approved for archival
   ([`audit-functional/22-documentation-consolidation-plan.md`](../audit-functional/22-documentation-consolidation-plan.md)

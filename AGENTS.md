@@ -130,7 +130,7 @@ Start at **[`docs/README.md`](docs/README.md)** — the canonical index of every
 | Root visual design system      | [`DESIGN.md`](DESIGN.md)                                                                                                           |
 | Historical / audit material    | [`docs/archive/`](docs/archive/README.md) — pre-dynamic-engine and closed-audit records, preserved verbatim, not current authority |
 
-**The Workflow Designer and runtime engine are authoritative** for stages, transitions, permissions, and semantic metadata — never a static doc. `docs/user-view/*.md` is deprecated historical material (predates the dynamic workflow engine, describes fixed-role dashboards, the removed 22-value status enum, and voting UI) and stays in place, unmoved, pending its own separately gated archival step — do not treat it as current UX authority.
+**The Workflow Designer and runtime engine are authoritative** for stages, transitions, permissions, and semantic metadata — never a static doc. `docs/archive/user-view/*.md` is deprecated historical material (predates the dynamic workflow engine, describes fixed-role dashboards, the removed 22-value status enum, and voting UI) — do not treat it as current UX authority.
 
 ### Frontend-specific context (mandatory before writing any Vue/Nuxt/Tailwind code)
 

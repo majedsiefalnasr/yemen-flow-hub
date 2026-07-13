@@ -21,8 +21,9 @@ record) — see the Step 4B accuracy-correction record in
 Extended 2026-07-13 (Step 5) with three generic authoring templates
 (per-surface operational posture, forbidden-actions, cross-role
 handoff) extracted from `docs/user-view/*.md` and genericized against
-the current architecture — `docs/user-view/` itself is unmodified and
-remains deprecated historical material, not a live source. Corrected
+the current architecture — that source material now lives at
+`docs/archive/user-view/` (Step 10), preserved verbatim and still not
+a live source. Corrected
 2026-07-13 after a further review of the Step 5 additions (source
 enum count, the four-concept model listing, and `semantic_role`
 nullability) — see the Step 5 accuracy-correction record in
