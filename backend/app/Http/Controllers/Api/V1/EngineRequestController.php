@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\StageAccessLevel;
+use App\Enums\StageHistoryVisibility;
 use App\Http\Controllers\Api\Controller;
 use App\Http\Requests\StoreEngineRequestRequest;
 use App\Http\Resources\EngineRequestResource;
@@ -18,6 +19,7 @@ use App\Services\Workflow\EngineRequestService;
 use App\Services\Workflow\EngineRequestStatsService;
 use App\Services\Workflow\EngineTransitionService;
 use App\Services\Workflow\StageFieldOutputFilter;
+use App\Services\Workflow\StageHistoryVisibilityResolver;
 use App\Services\Workflow\StagePermissionResolver;
 use App\Services\Workflow\UserActionableRequestQuery;
 use App\Services\Workflow\WorkflowGraphService;
@@ -42,6 +44,7 @@ class EngineRequestController extends Controller
         private EngineRequestListQuery $listQuery,
         private StageFieldOutputFilter $outputFilter,
         private UserActionableRequestQuery $actionableQuery,
+        private StageHistoryVisibilityResolver $historyVisibilityResolver,
     ) {}
 
     // ── 18.5.1: Create ──────────────────────────────────────────────────
@@ -403,9 +406,11 @@ class EngineRequestController extends Controller
 
     // ── 18.5.7: History & Graph ──────────────────────────────────────────
 
-    public function history(EngineRequest $engineRequest): JsonResponse
+    public function history(Request $request, EngineRequest $engineRequest): JsonResponse
     {
         $this->authorize('view', $engineRequest);
+
+        $user = $request->user();
 
         $entries = $engineRequest->history()
             ->with(['fromStage:id,code,name', 'toStage:id,code,name', 'performer:id,name'])
@@ -413,17 +418,42 @@ class EngineRequestController extends Controller
             ->orderBy('id')
             ->get();
 
+        $data = $entries
+            ->map(function ($e) use ($user) {
+                $visibility = $this->historyVisibilityResolver->visibilityFor($user, $e);
+
+                return match ($visibility) {
+                    StageHistoryVisibility::HIDDEN => null,
+                    StageHistoryVisibility::SANITIZED => [
+                        'id' => $e->id,
+                        'from_stage' => null,
+                        'to_stage' => null,
+                        'action_code' => null,
+                        'performed_by' => $e->performer ? ['id' => $e->performer->id, 'name' => $e->performer->name] : null,
+                        'comments' => null,
+                        'created_at' => $e->created_at?->toISOString(),
+                        'restricted' => true,
+                        'restricted_label' => 'إجراء تم في مرحلة مقيدة',
+                    ],
+                    StageHistoryVisibility::FULL => [
+                        'id' => $e->id,
+                        'from_stage' => $e->fromStage ? ['id' => $e->fromStage->id, 'code' => $e->fromStage->code, 'name' => $e->fromStage->name] : null,
+                        'to_stage' => $e->toStage ? ['id' => $e->toStage->id, 'code' => $e->toStage->code, 'name' => $e->toStage->name] : null,
+                        'action_code' => $e->action_code,
+                        'performed_by' => $e->performer ? ['id' => $e->performer->id, 'name' => $e->performer->name] : null,
+                        'comments' => $e->comments,
+                        'created_at' => $e->created_at?->toISOString(),
+                        'restricted' => false,
+                        'restricted_label' => null,
+                    ],
+                };
+            })
+            ->filter()
+            ->values();
+
         return response()->json([
             'success' => true,
-            'data' => $entries->map(fn ($e) => [
-                'id' => $e->id,
-                'from_stage' => $e->fromStage ? ['id' => $e->fromStage->id, 'code' => $e->fromStage->code, 'name' => $e->fromStage->name] : null,
-                'to_stage' => $e->toStage ? ['id' => $e->toStage->id, 'code' => $e->toStage->code, 'name' => $e->toStage->name] : null,
-                'action_code' => $e->action_code,
-                'performed_by' => $e->performer ? ['id' => $e->performer->id, 'name' => $e->performer->name] : null,
-                'comments' => $e->comments,
-                'created_at' => $e->created_at?->toISOString(),
-            ]),
+            'data' => $data,
         ]);
     }
 

@@ -4,7 +4,6 @@ namespace Tests\Feature\Engine;
 
 use App\Enums\FieldSemanticTag;
 use App\Enums\StageAccessLevel;
-use App\Enums\UserRole;
 use App\Enums\WorkflowVersionState;
 use App\Models\Bank;
 use App\Models\EngineRequest;
@@ -23,6 +22,7 @@ use App\Models\WorkflowStage;
 use App\Models\WorkflowTransition;
 use App\Models\WorkflowVersion;
 use App\Services\Workflow\StageHookRegistry;
+use App\Support\RoleCodes;
 use Database\Seeders\GovernanceSeeder;
 use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -796,6 +796,168 @@ class EngineRequestTest extends TestCase
         $history = $response->json('data');
         $this->assertEquals('CREATE', $history[0]['action_code']);
         $this->assertEquals('SUBMIT', $history[1]['action_code']);
+    }
+
+    public function test_history_hides_entry_for_user_without_stage_access_and_not_actor(): void
+    {
+        $request = $this->createRequest();
+
+        $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
+            'transition_id' => $this->submitTransition->id,
+            'data' => [],
+            'version' => $request->version,
+        ])->assertOk();
+
+        // A same-bank-org user with a user-scoped VIEW grant on the CURRENT stage
+        // only (reviewStage) — this satisfies EngineRequestPolicy::view()'s
+        // top-level gate (current_stage access) without granting any access to the
+        // earlier DATA_ENTRY stage. The CREATE entry (on DATA_ENTRY) was performed
+        // by `executor`, not this user, and this user has no access to DATA_ENTRY —
+        // it must be hidden. The SUBMIT entry (into REVIEW) stays FULL since this
+        // user does hold access to REVIEW.
+        $bankOrg = Organization::where('code', 'commercial_banks')->first();
+        $noAccessUser = User::create([
+            'name' => 'No Stage Access',
+            'email' => 'no-stage-access@test.bank',
+            'password' => bcrypt('password'),
+            'bank_id' => $this->bank->id,
+            'organization_id' => $bankOrg->id,
+            'is_active' => true,
+        ]);
+        StagePermission::create([
+            'stage_id' => $this->reviewStage->id,
+            'user_id' => $noAccessUser->id,
+            'access_level' => StageAccessLevel::VIEW,
+            'display_label' => 'Review (user-scoped, no DATA_ENTRY access)',
+            'version' => 1,
+        ]);
+
+        $response = $this->actingAs($noAccessUser)->getJson("/api/v1/engine-requests/{$request->id}/history");
+        $response->assertOk();
+
+        $history = collect($response->json('data'));
+        // CREATE (DATA_ENTRY) was performed by `executor`, not `$noAccessUser`, and
+        // this user has no StagePermission on DATA_ENTRY at all — it must be hidden.
+        // SUBMIT (into REVIEW) is visible to this user via the row above, so it must
+        // stay FULL. Net: exactly one entry survives.
+        $this->assertCount(1, $history);
+        $this->assertSame('SUBMIT', $history->first()['action_code']);
+    }
+
+    public function test_history_sanitizes_own_entry_when_actor_lacks_stage_access(): void
+    {
+        $request = $this->createRequest();
+
+        // executor performs SUBMIT (DATA_ENTRY -> REVIEW, to_stage = REVIEW).
+        $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
+            'transition_id' => $this->submitTransition->id,
+            'data' => [],
+            'version' => $request->version,
+        ])->assertOk();
+
+        $request->refresh();
+
+        // viewer (support role, cby org, EXECUTE on REVIEW per setUpWorkflow lines
+        // 189-196) approves REVIEW -> COMPLETED, closing the request. Current stage
+        // is now COMPLETED.
+        $this->actingAs($this->viewer)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
+            'transition_id' => $this->approveTransition->id,
+            'comment' => 'Approved',
+            'data' => [],
+            'version' => $request->version,
+        ])->assertOk();
+
+        // Revoke executor's only route to REVIEW (their role-scoped VIEW row,
+        // setUpWorkflow lines 207-214) — executor is SUBMIT's actor, and SUBMIT's
+        // to_stage is REVIEW, so this is the specific access the redaction check
+        // must fall back from. Grant executor a fresh, narrow, user-scoped VIEW on
+        // COMPLETED (the request's new current stage) so executor still passes
+        // EngineRequestPolicy::view() and can open the request at all.
+        $entryRole = Role::where('code', 'intake')->first();
+        StagePermission::where('stage_id', $this->reviewStage->id)
+            ->where('role_id', $entryRole->id)
+            ->delete();
+        StagePermission::create([
+            'stage_id' => $this->finalStage->id,
+            'user_id' => $this->executor->id,
+            'access_level' => StageAccessLevel::VIEW,
+            'display_label' => 'Completed (user-scoped)',
+            'version' => 1,
+        ]);
+
+        $response = $this->actingAs($this->executor)->getJson("/api/v1/engine-requests/{$request->id}/history");
+        $response->assertOk()->assertJsonCount(3, 'data');
+
+        $history = $response->json('data');
+        // CREATE (to_stage DATA_ENTRY, executor's own action, EXECUTE grant intact)
+        // -> FULL. SUBMIT (to_stage REVIEW, executor's own action, VIEW row just
+        // removed) -> SANITIZED, the case under test. APPROVE (to_stage COMPLETED,
+        // viewer's action, but executor now has the user-scoped VIEW row on
+        // COMPLETED) -> FULL, since stage access alone grants FULL regardless of
+        // actor identity.
+        $submitEntry = collect($history)->firstWhere('action_code', null);
+
+        $this->assertNotNull($submitEntry, 'the SUBMIT entry should be present but sanitized (action_code nulled)');
+        $this->assertTrue($submitEntry['restricted']);
+        $this->assertNotNull($submitEntry['restricted_label']);
+        $this->assertNull($submitEntry['comments']);
+        $this->assertNull($submitEntry['from_stage']);
+        $this->assertNull($submitEntry['to_stage']);
+        $this->assertSame($this->executor->id, $submitEntry['performed_by']['id']);
+    }
+
+    public function test_history_shows_full_entry_when_viewer_has_stage_access(): void
+    {
+        $request = $this->createRequest();
+
+        $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
+            'transition_id' => $this->submitTransition->id,
+            'data' => [],
+            'version' => $request->version,
+        ])->assertOk();
+
+        // viewer holds EXECUTE on REVIEW (support role, cby org) per setUpWorkflow
+        // lines 189-196 — full stage access on the SUBMIT entry's to_stage (REVIEW),
+        // so that entry must be FULL regardless of viewer's lack of access to
+        // DATA_ENTRY (the CREATE entry's stage, not under test here).
+        $response = $this->actingAs($this->viewer)->getJson("/api/v1/engine-requests/{$request->id}/history");
+        $response->assertOk();
+
+        $history = collect($response->json('data'));
+        $submitEntry = $history->firstWhere('action_code', 'SUBMIT');
+
+        $this->assertNotNull($submitEntry);
+        $this->assertFalse($submitEntry['restricted']);
+        $this->assertNull($submitEntry['restricted_label']);
+        $this->assertNull($submitEntry['comments']);
+        $this->assertSame($this->reviewStage->id, $submitEntry['to_stage']['id']);
+    }
+
+    public function test_system_admin_sees_full_unredacted_history(): void
+    {
+        $request = $this->createRequest();
+
+        $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
+            'transition_id' => $this->submitTransition->id,
+            'data' => [],
+            'version' => $request->version,
+        ])->assertOk();
+
+        $admin = User::create([
+            'name' => 'System Admin',
+            'email' => 'sysadmin@cby.gov',
+            'password' => bcrypt('password'),
+            'organization_id' => Organization::where('code', 'national_committee')->first()->id,
+            'is_active' => true,
+        ]);
+        $admin->roles()->attach(Role::where('code', RoleCodes::SYSTEM_ADMIN)->first());
+
+        $response = $this->actingAs($admin)->getJson("/api/v1/engine-requests/{$request->id}/history");
+        $response->assertOk()->assertJsonCount(2, 'data');
+
+        foreach ($response->json('data') as $entry) {
+            $this->assertFalse($entry['restricted']);
+        }
     }
 
     public function test_graph_marks_executed_current_possible(): void
