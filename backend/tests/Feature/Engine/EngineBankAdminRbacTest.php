@@ -6,8 +6,12 @@ use App\Enums\UserRole;
 use App\Models\Bank;
 use App\Models\Organization;
 use App\Models\Role;
+use App\Models\Screen;
+use App\Models\ScreenPermission;
 use App\Models\Team;
 use App\Models\User;
+use App\Policies\UserPolicy;
+use App\Services\Authorization\PermissionService;
 use Database\Seeders\GovernanceSeeder;
 use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -91,6 +95,31 @@ class EngineBankAdminRbacTest extends TestCase
         return $user;
     }
 
+    private function grantStaffViewToIntake(): void
+    {
+        ScreenPermission::query()->create([
+            'role_id' => $this->intakeRole->id,
+            'screen_id' => Screen::query()->where('key', 'staff')->value('id'),
+            'capability' => 'VIEW',
+        ]);
+
+        app(PermissionService::class)->clearScreenPermissionCache($this->intakeRole->id);
+    }
+
+    private function createUserPayload(Bank $bank, string $email): array
+    {
+        return [
+            'organization_id' => $this->bankOrg->id,
+            'team_id' => $this->entryTeam->id,
+            'role_id' => $this->intakeRole->id,
+            'bank_id' => $bank->id,
+            'name' => 'Delegated staff target',
+            'email' => $email,
+            'password' => 'ValidPassword123!',
+            'is_active' => true,
+        ];
+    }
+
     public function test_bank_admin_can_list_users_in_their_bank(): void
     {
         $response = $this->actingAs($this->bankAdmin)->getJson('/api/v1/users');
@@ -159,6 +188,73 @@ class EngineBankAdminRbacTest extends TestCase
 
         $this->actingAs($this->dataEntry)
             ->postJson("/api/v1/users/{$target->id}/deactivate")
+            ->assertForbidden();
+    }
+
+    public function test_staff_capability_holder_lists_only_own_bank_users(): void
+    {
+        $this->grantStaffViewToIntake();
+
+        $response = $this->actingAs($this->dataEntry)->getJson('/api/v1/users')->assertOk();
+        $userIds = collect($response->json('data'))->pluck('id')->all();
+
+        $this->assertContains($this->dataEntry->id, $userIds);
+        $this->assertContains($this->bankAdmin->id, $userIds);
+        $this->assertNotContains($this->dataEntryB->id, $userIds);
+        $this->assertNotContains($this->bankAdminB->id, $userIds);
+    }
+
+    public function test_staff_capability_holder_can_manage_eligible_own_bank_user_only(): void
+    {
+        $this->grantStaffViewToIntake();
+
+        $target = $this->makeUser(
+            'eligible-target@rbac.test',
+            UserRole::DATA_ENTRY,
+            $this->bankA,
+            $this->intakeRole,
+            $this->entryTeam
+        );
+
+        $policy = app(UserPolicy::class);
+
+        $this->assertTrue($policy->viewAny($this->dataEntry));
+        $this->assertTrue($policy->create($this->dataEntry));
+        $this->assertTrue($policy->view($this->dataEntry, $target));
+        $this->assertTrue($policy->update($this->dataEntry, $target));
+        $this->assertTrue($policy->delete($this->dataEntry, $target));
+        $this->assertTrue($policy->resetPassword($this->dataEntry, $target));
+        $this->assertTrue($policy->resetMfa($this->dataEntry, $target));
+        $this->assertTrue($policy->resetPin($this->dataEntry, $target));
+
+        $this->assertFalse($policy->view($this->dataEntry, $this->dataEntryB));
+        $this->assertFalse($policy->update($this->dataEntry, $this->dataEntryB));
+        $this->assertFalse($policy->delete($this->dataEntry, $this->dataEntryB));
+    }
+
+    public function test_revoking_staff_view_removes_bank_admin_users_api_access(): void
+    {
+        $staffScreenId = Screen::query()->where('key', 'staff')->value('id');
+        ScreenPermission::query()
+            ->where('role_id', $this->bankAdminRole->id)
+            ->where('screen_id', $staffScreenId)
+            ->delete();
+        app(PermissionService::class)->clearScreenPermissionCache($this->bankAdminRole->id);
+
+        $this->actingAs($this->bankAdmin)->getJson('/api/v1/users')->assertForbidden();
+    }
+
+    public function test_staff_capability_holder_can_create_only_in_own_bank(): void
+    {
+        $this->grantStaffViewToIntake();
+
+        $this->actingAs($this->dataEntry)
+            ->postJson('/api/v1/users', $this->createUserPayload($this->bankA, 'own-bank@rbac.test'))
+            ->assertCreated()
+            ->assertJsonPath('data.bank.id', $this->bankA->id);
+
+        $this->actingAs($this->dataEntry)
+            ->postJson('/api/v1/users', $this->createUserPayload($this->bankB, 'other-bank@rbac.test'))
             ->assertForbidden();
     }
 }

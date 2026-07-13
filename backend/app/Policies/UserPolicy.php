@@ -3,14 +3,17 @@
 namespace App\Policies;
 
 use App\Models\User;
+use App\Services\Authorization\PermissionService;
 use App\Support\RoleCodes;
 
 class UserPolicy
 {
+    public function __construct(private readonly PermissionService $permissions) {}
+
     public function viewAny(User $user): bool
     {
         return $user->hasRoleCode(RoleCodes::SYSTEM_ADMIN)
-            || ($user->hasRoleCode(RoleCodes::BANK_ADMIN) && $user->bank_id !== null);
+            || $this->canManageBankStaff($user);
     }
 
     public function view(User $user, User $model): bool
@@ -22,7 +25,7 @@ class UserPolicy
     public function create(User $user): bool
     {
         return $user->hasRoleCode(RoleCodes::SYSTEM_ADMIN)
-            || ($user->hasRoleCode(RoleCodes::BANK_ADMIN) && $user->bank_id !== null);
+            || $this->canManageBankStaff($user);
     }
 
     public function update(User $user, User $model): bool
@@ -67,10 +70,15 @@ class UserPolicy
             && ($user->hasRoleCode(RoleCodes::SYSTEM_ADMIN) || $this->canManageOwnBankUser($user, $model));
     }
 
+    private function canManageBankStaff(User $actor): bool
+    {
+        return $actor->bank_id !== null
+            && $this->permissions->userHasCapability($actor, 'staff', 'VIEW');
+    }
+
     private function canManageOwnBankUser(User $actor, User $target): bool
     {
-        return $actor->hasRoleCode(RoleCodes::BANK_ADMIN)
-            && $actor->bank_id !== null
+        return $this->canManageBankStaff($actor)
             && $target->bank_id === $actor->bank_id
             && $target->hasAnyRoleCode(RoleCodes::BANK_ADMIN_MANAGED);
     }

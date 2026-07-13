@@ -40,7 +40,10 @@ class UserController extends Controller
         $this->authorize('viewAny', User::class);
         $actor = $request->user();
         $page = User::query()->with(['organization', 'teams.organization', 'roles.organization', 'bank.organization'])
-            ->when($actor->hasRoleCode(RoleCodes::BANK_ADMIN), fn ($q) => $q->where('bank_id', $actor->bank_id))
+            ->when(
+                ! $actor->hasRoleCode(RoleCodes::SYSTEM_ADMIN),
+                fn ($q) => $q->where('bank_id', $actor->bank_id)
+            )
             ->when($request->filled('organization_id'), fn ($q) => $q->where('organization_id', $request->integer('organization_id')))
             ->when($request->filled('team_id'), fn ($q) => $q->whereHas('teams', fn ($t) => $t->whereKey($request->integer('team_id'))))
             ->when($request->filled('role_id'), fn ($q) => $q->whereHas('roles', fn ($r) => $r->whereKey($request->integer('role_id'))))
@@ -213,6 +216,19 @@ class UserController extends Controller
             }
         } else {
             $data['bank_id'] = null;
+        }
+
+        $actor = $request->user();
+        if (! $actor->hasRoleCode(RoleCodes::SYSTEM_ADMIN)) {
+            $targetRoleCode = Role::query()->whereKey($data['role_id'])->value('code');
+
+            abort_unless(
+                $actor->bank_id !== null
+                    && (int) $data['bank_id'] === (int) $actor->bank_id
+                    && (int) $data['organization_id'] === (int) $actor->organization_id
+                    && in_array($targetRoleCode, RoleCodes::BANK_ADMIN_MANAGED, true),
+                403
+            );
         }
 
         return $data;
