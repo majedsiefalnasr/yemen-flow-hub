@@ -17,7 +17,7 @@ longer matches the shipped application. Re-checked and corrected
 version, route inventory completeness, the route-admission mechanism,
 request-state type drift, claim-heartbeat behavior, and the plan
 record) — see the Step 4B accuracy-correction record in
-[`audit-functional/22-documentation-consolidation-plan.md`](audit-functional/22-documentation-consolidation-plan.md).
+[`archive/audit-functional/22-documentation-consolidation-plan.md`](archive/audit-functional/22-documentation-consolidation-plan.md).
 Extended 2026-07-13 (Step 5) with three generic authoring templates
 (per-surface operational posture, forbidden-actions, cross-role
 handoff) extracted from `docs/archive/user-view/*.md` and genericized
@@ -27,7 +27,7 @@ a live source. Corrected
 2026-07-13 after a further review of the Step 5 additions (source
 enum count, the four-concept model listing, and `semantic_role`
 nullability) — see the Step 5 accuracy-correction record in
-[`audit-functional/22-documentation-consolidation-plan.md`](audit-functional/22-documentation-consolidation-plan.md).
+[`archive/audit-functional/22-documentation-consolidation-plan.md`](archive/audit-functional/22-documentation-consolidation-plan.md).
 
 This document covers frontend-specific conventions that sit above the
 four mandatory context files, which remain the primary authority for

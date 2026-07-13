@@ -37,29 +37,28 @@ and the canonical facts below, not a fixed per-stage narrative.
 
 ## Start here
 
-| Topic                        | Document                                                                                 | Status                                                                                                             |
-| ---------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| System architecture          | [`architecture/01-system-architecture.md`](architecture/01-system-architecture.md)       | **live**                                                                                                           |
-| Workflow engine              | [`architecture/02-workflow-engine.md`](architecture/02-workflow-engine.md)               | **live**                                                                                                           |
-| Permission model             | [`architecture/03-permission-model.md`](architecture/03-permission-model.md)             | **live**                                                                                                           |
-| Dashboard architecture       | [`architecture/04-dashboard-architecture.md`](architecture/04-dashboard-architecture.md) | **live**                                                                                                           |
-| Request state model          | [`architecture/05-request-state-model.md`](architecture/05-request-state-model.md)       | **live**                                                                                                           |
-| Database and models          | [`architecture/06-database-and-models.md`](architecture/06-database-and-models.md)       | **live**                                                                                                           |
-| Extension guide              | [`engine/extension-guide.md`](engine/extension-guide.md)                                 | **live**                                                                                                           |
-| Dynamic vs. fixed philosophy | [`engine/dynamic-vs-fixed.md`](engine/dynamic-vs-fixed.md)                               | **live**                                                                                                           |
-| Frontend guide               | [`frontend-guide.md`](frontend-guide.md)                                                 | **live**                                                                                                           |
-| Backend guide                | [`backend-guide.md`](backend-guide.md)                                                   | **live**                                                                                                           |
-| API reference                | [`api-reference.md`](api-reference.md)                                                   | **live**                                                                                                           |
-| Auth and account recovery    | `auth-and-recovery.md`                                                                   | planned — not yet moved; current authority is [`07-account-recovery-and-mail.md`](07-account-recovery-and-mail.md) |
-| Development guide            | [`development-guide.md`](development-guide.md)                                           | **live**                                                                                                           |
-| Production guide             | [`production-guide.md`](production-guide.md)                                             | **live**                                                                                                           |
-| Testing guide                | [`testing-guide.md`](testing-guide.md)                                                   | **live**                                                                                                           |
+| Topic                        | Document                                                                                 | Status   |
+| ---------------------------- | ---------------------------------------------------------------------------------------- | -------- |
+| System architecture          | [`architecture/01-system-architecture.md`](architecture/01-system-architecture.md)       | **live** |
+| Workflow engine              | [`architecture/02-workflow-engine.md`](architecture/02-workflow-engine.md)               | **live** |
+| Permission model             | [`architecture/03-permission-model.md`](architecture/03-permission-model.md)             | **live** |
+| Dashboard architecture       | [`architecture/04-dashboard-architecture.md`](architecture/04-dashboard-architecture.md) | **live** |
+| Request state model          | [`architecture/05-request-state-model.md`](architecture/05-request-state-model.md)       | **live** |
+| Database and models          | [`architecture/06-database-and-models.md`](architecture/06-database-and-models.md)       | **live** |
+| Extension guide              | [`engine/extension-guide.md`](engine/extension-guide.md)                                 | **live** |
+| Dynamic vs. fixed philosophy | [`engine/dynamic-vs-fixed.md`](engine/dynamic-vs-fixed.md)                               | **live** |
+| Frontend guide               | [`frontend-guide.md`](frontend-guide.md)                                                 | **live** |
+| Backend guide                | [`backend-guide.md`](backend-guide.md)                                                   | **live** |
+| API reference                | [`api-reference.md`](api-reference.md)                                                   | **live** |
+| Auth and account recovery    | [`auth-and-recovery.md`](auth-and-recovery.md)                                           | **live** |
+| Development guide            | [`development-guide.md`](development-guide.md)                                           | **live** |
+| Production guide             | [`production-guide.md`](production-guide.md)                                             | **live** |
+| Testing guide                | [`testing-guide.md`](testing-guide.md)                                                   | **live** |
 
-Rows marked **live** exist today and are authoritative now. Rows marked
-_planned_ point at today's real authority in the meantime — do not treat a
-_planned_ path as broken; it simply hasn't been created yet by the
-documentation consolidation migration (tracked in
-[`audit-functional/22-documentation-consolidation-plan.md`](audit-functional/22-documentation-consolidation-plan.md)).
+Every row above is **live**. The documentation consolidation migration
+that produced this tree is complete — see
+[`archive/audit-functional/22-documentation-consolidation-plan.md`](archive/audit-functional/22-documentation-consolidation-plan.md)
+for the full record.
 
 ---
 

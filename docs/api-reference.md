@@ -425,7 +425,7 @@ DELETE /api/v1/engine-requests/{id}/claim
 
 - Only stages with `requires_claim = true` (e.g. support review) use this lifecycle
 - Only one reviewer can hold an active claim at a time (`STAGE_CLAIMED`, 409, on conflicting claim attempts)
-- Claims expire after a TTL — the live value is the admin-configurable `support_claim_ttl` setting (`AdminSettingsService`, default 15 minutes, 5–60 range; see Admin Operational Settings below), not the `config('workflow.support_claim_ttl_minutes')` key, which exists but is not read by the claim service — unless extended by a heartbeat
+- Claims expire after a TTL — the live value is the admin-configurable `support_claim_ttl` setting, read by `EngineClaimService` via `SettingResolver::get()` (default 15 minutes, 5–60 range; `AdminSettingsService` owns the setting's catalog entry — default, valid range, admin-console exposure — but is not itself in the runtime read path; see Admin Operational Settings below), not the `config('workflow.support_claim_ttl_minutes')` key, which exists but is not read by the claim service — unless extended by a heartbeat
 - The heartbeat endpoint must be called every 60 seconds by the frontend while the reviewer is on the request page, or the claim expires
 - Only the current claim holder may heartbeat/release their own claim (`CLAIM_NOT_HELD`, 403, otherwise); `system_admin` may force-release any claim
 - Claiming/heartbeat/release responses return the updated `EngineRequestResource` (`{ "success": true, "data": {...} }`)
@@ -848,7 +848,7 @@ Settings are split into three surfaces:
 - `PUT /api/admin/settings/smtp` (removed)
 - `POST /api/admin/settings/email/test` (removed)
 
-Configure production SMTP via environment variables — see `docs/07-account-recovery-and-mail.md`.
+Configure production SMTP via environment variables — see [`auth-and-recovery.md`](auth-and-recovery.md).
 
 ---
 

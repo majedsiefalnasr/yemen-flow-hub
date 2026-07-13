@@ -20,7 +20,7 @@ accounting), then a follow-up review found 2 residual overstatements
 still read as absolute against `PerfLoadScenarioCommand`'s synthetic
 fixture inserts) — see the Step 4C accuracy-correction record and its
 follow-up in
-[`audit-functional/22-documentation-consolidation-plan.md`](audit-functional/22-documentation-consolidation-plan.md).
+[`archive/audit-functional/22-documentation-consolidation-plan.md`](archive/audit-functional/22-documentation-consolidation-plan.md).
 
 This document covers backend-specific conventions and operational
 rules. It is not the primary authority for topics that already have a

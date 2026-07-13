@@ -12,4 +12,4 @@
 this `architecture/` tree). `docs/00-project-brief.md` is archived at
 [`../archive/project-brief-2026-05.md`](../archive/project-brief-2026-05.md)
 (Step 6 — see
-[`../audit-functional/22-documentation-consolidation-plan.md`](../audit-functional/22-documentation-consolidation-plan.md)).
+[`../archive/audit-functional/22-documentation-consolidation-plan.md`](../archive/audit-functional/22-documentation-consolidation-plan.md)).

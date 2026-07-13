@@ -1,11 +1,10 @@
-# Documentation Consolidation Plan — Approved Direction (not yet executed)
+# Documentation Consolidation Plan — Completed
 
-**Evidence date:** 2026-07-12 · **Status:** Overall direction **APPROVED**.
-`testing-manual/` disposition decided (archive, §10). `docs/user-view/`
-archival remains gated per the Phase F closure report, unchanged. No file
-has been moved, merged, archived, or deleted as part of this document —
-execution still requires proceeding through the migration steps in §9,
-which remain independently reviewable per step.
+**Evidence date:** 2026-07-12 · **Status:** **COMPLETE** (2026-07-13,
+Step 14). All 14 steps executed and approved. This document is now
+historical record, archived per its own §9 migration sequence — see
+the Step 14 completion note near the end of this file for the closing
+summary.
 
 **Scope:** ~35 project-knowledge documents (root config docs, `docs/0X-*.md`,
 `docs/audit-functional/`, `docs/audit/`, `docs/user-view/`,
@@ -2021,12 +2020,12 @@ density/status-language rows; the
 possible banner components (kept generic: "a banner on the
 request-detail page"); fixed per-role dashboard framing (the source
 material predates the two-family capability-led dashboard model from
-[`../architecture/04-dashboard-architecture.md`](../architecture/04-dashboard-architecture.md));
+[`../../architecture/04-dashboard-architecture.md`](../../architecture/04-dashboard-architecture.md));
 customs-facing terminology (none was present in the specific
 density/forbidden-actions/handoff sections read, so none needed
 removal, but the templates themselves direct new authors toward
 external FX confirmation terminology per
-[`AGENTS.md`](../../AGENTS.md)'s canonical rule); static per-role
+[`AGENTS.md`](../../../AGENTS.md)'s canonical rule); static per-role
 workflow-path framing (`support-committee.md`'s handoff list assumed a
 single fixed pipeline `BANK_REVIEWER → SUPPORT_COMMITTEE →
 EXECUTIVE_MEMBER`, which the template replaces with Designer-defined,
@@ -2551,3 +2550,61 @@ anywhere in the numbered docs tree, confirmed during the research pass:
 
 **Execution has not begun.** This revision is submitted for final review
 before Step 1 of §9 starts.
+
+## 14. Step 14 — ✅ DONE (2026-07-13) — Consolidation Closure
+
+All 14 steps of §9 executed and approved across this session. Final
+step closed three residues from Step 13 and completed the last
+planned move:
+
+1. **Step 13 residues fixed:** `docs/api-reference.md`'s claim-TTL
+   rule (§ Support Review Claiming) and `docs/development-guide.md`'s
+   claim-validity note both attributed the runtime TTL read to
+   `AdminSettingsService` — corrected to `SettingResolver`, with
+   `AdminSettingsService` described only as the setting's catalog
+   owner (default, valid range, admin-console exposure), consistent
+   with the same finding already fixed in `docs/architecture/
+03-permission-model.md` and `AGENTS.md`. The reported Prettier
+   failure on `docs/api-reference.md`'s committed blob did not
+   reproduce — `git stash` + `prettier --check` against the clean
+   `HEAD` tree passed; no formatting fix was needed there.
+2. **Omitted planned move completed:** `docs/07-account-recovery-and-
+mail.md` moved to `docs/auth-and-recovery.md` via `git mv`. Content
+   re-verified against current source before the move (not just
+   copied): `PASSWORD_RESET_OTP_TTL_SECONDS` default confirmed 600s =
+   10 minutes (`config/account_recovery.php`); backup-code count
+   confirmed 10 (`MfaService::RECOVERY_CODE_COUNT`); `BANK_ADMIN`'s
+   manageable roles confirmed as `INTAKE`/`INTERNAL_REVIEWER`
+   (`RoleCodes::BANK_ADMIN_MANAGED`) — the `DATA_ENTRY`/`BANK_REVIEWER`
+   mapping the doc already stated; the production mail fail-fast
+   check confirmed exactly as documented
+   (`AppServiceProvider::boot()`: throws unless mailer is `smtp` and
+   host is not `mailpit`/`localhost`/`127.0.0.1`). No content changes
+   were needed — the file was already accurate. Updated
+   `docs/api-reference.md`'s SMTP pointer and `docs/README.md`'s row
+   (planned → **live**); since this was the last planned row in the
+   table, removed the "planned migration" explanation sentence
+   entirely.
+3. **This plan document closed and archived:** title/status changed
+   from "Approved Direction (not yet executed)" to "Completed"; this
+   §14 record added; moved via `git mv` to
+   `docs/archive/audit-functional/22-documentation-consolidation-plan.md`
+   (breaking the Step 8 precedent of excluding file 22 from that
+   archival — the migration this file describes is now finished, so
+   the reason for keeping it live no longer applies). Its two relative
+   links (to `architecture/04-dashboard-architecture.md` and
+   `AGENTS.md`) repaired for the one-level-deeper post-move path.
+   Every live reference to the old `docs/audit-functional/
+22-documentation-consolidation-plan.md` path — in
+   `docs/backend-guide.md`, `docs/frontend-guide.md`,
+   `docs/architecture/README.md`, and `docs/README.md` — updated to
+   the new archive path or removed where the reference was only
+   pointing at "the plan" for migration-tracking purposes no longer
+   needed. `docs/archive/README.md`'s entry for `audit-functional/`
+   updated to describe the tree as now fully archived (file 22
+   included), superseding its Step 8 "stays live until the migration
+   completes" framing.
+
+**Consolidation status: COMPLETE.** No further steps are planned. Any
+future documentation work is ordinary maintenance, not part of this
+migration.

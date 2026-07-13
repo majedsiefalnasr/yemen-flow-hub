@@ -1,4 +1,4 @@
-# Documentation Archive — Migration In Progress
+# Documentation Archive
 
 This directory holds documents that are historically valuable but no
 longer serve as the live, "read this to understand the system today"
@@ -6,20 +6,18 @@ reference — audit trails, closed audit reports, and pre-dynamic-engine
 design/UX/test material. Nothing here is deleted; everything is preserved
 in full, moved verbatim, with a banner explaining why it was archived.
 
-Content migration is in progress; see
-[`docs/audit-functional/22-documentation-consolidation-plan.md`](../audit-functional/22-documentation-consolidation-plan.md)
-for the full plan, including which directories will land here and in what
-order (§5 "Files to archive", §9 the step-by-step migration sequence).
+The documentation consolidation migration that produced this tree is
+complete; see
+[`audit-functional/22-documentation-consolidation-plan.md`](audit-functional/22-documentation-consolidation-plan.md)
+for the full plan and its closing record (§14).
 
 Moved contents:
 
-- [`audit-functional/`](audit-functional/) — the 22-file record of this
-  project's 6-phase RBAC/workflow audit (Phases A–F, files `00`–`21`).
-  This consolidation plan itself
-  (`22-documentation-consolidation-plan.md`) is a 23rd file in the
-  original directory but is not part of that audit trail — it stays live
-  in `docs/audit-functional/` until the migration it describes completes,
-  rather than moving here with the rest.
+- [`audit-functional/`](audit-functional/) — the full 23-file record of
+  this project's 6-phase RBAC/workflow audit (Phases A–F, files `00`–`21`)
+  plus the consolidation plan itself
+  (`22-documentation-consolidation-plan.md`), archived here on completion
+  (Step 14) after driving the migration from a live location.
 - [`audit/`](audit/) — the earlier, separate performance/scalability audit
   (scope, architecture, database/API/frontend/security findings, load-test
   plan, roadmap, and its `evidence/` subtree of per-finding verification

@@ -36,7 +36,10 @@ Package manager: **pnpm** for all JavaScript tooling. Do not introduce Bun.
 Claim validity is **not** a Redis TTL — it's stored directly on
 `engine_requests.claim_expires_at` (MySQL), read and enforced by
 `App\Services\Workflow\EngineClaimService` against the live
-`AdminSettingsService`-backed `support_claim_ttl` setting. See
+`SettingResolver`-backed `support_claim_ttl` setting
+(`AdminSettingsService` owns the setting's catalog entry — default,
+valid range, admin-console exposure — but is not itself the runtime
+dependency). See
 [`architecture/03-permission-model.md`](architecture/03-permission-model.md)
 §4 for the claim mechanism and the TTL-source detail.
 
