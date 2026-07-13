@@ -22,7 +22,11 @@ Extended 2026-07-13 (Step 5) with three generic authoring templates
 (per-surface operational posture, forbidden-actions, cross-role
 handoff) extracted from `docs/user-view/*.md` and genericized against
 the current architecture — `docs/user-view/` itself is unmodified and
-remains deprecated historical material, not a live source.
+remains deprecated historical material, not a live source. Corrected
+2026-07-13 after a further review of the Step 5 additions (source
+enum count, the four-concept model listing, and `semantic_role`
+nullability) — see the Step 5 accuracy-correction record in
+[`audit-functional/22-documentation-consolidation-plan.md`](audit-functional/22-documentation-consolidation-plan.md).
 
 This document covers frontend-specific conventions that sit above the
 four mandatory context files, which remain the primary authority for
@@ -334,19 +338,26 @@ tables that recur across `docs/user-view/*.md` (deprecated historical
 material; the shape below is a reusable authoring pattern, not
 preserved role-specific content):
 
-| Aspect                     | What to fill in                                                                                                                                                          |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Work mode                  | Operational / claim-based / administrative / governance — pick the closest fit, don't invent a new category per role                                                     |
-| Primary surface            | The one screen this role/capability opens most often                                                                                                                     |
-| Secondary/tertiary surface | Any other screens the role touches regularly, in priority order                                                                                                          |
-| State language             | Which of `runtime_status`/`current_stage`/`final_outcome` the surface exposes, and at what level of detail — never a business-status label list built from a static enum |
-| Visual density             | Which tier from the table above (Low/Medium/High), and why                                                                                                               |
-| Decision/feedback tone     | What kind of action this surface drives — informational tracking, claim-gated decision, destructive confirmation, administrative CRUD                                    |
+| Aspect                     | What to fill in                                                                                                                                                                                                                         |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Work mode                  | Operational / claim-based / administrative / governance — pick the closest fit, don't invent a new category per role                                                                                                                    |
+| Primary surface            | The one screen this role/capability opens most often                                                                                                                                                                                    |
+| Secondary/tertiary surface | Any other screens the role touches regularly, in priority order                                                                                                                                                                         |
+| State language             | Which of the four canonical concepts (`runtime_status`, `current_stage`, `current_stage.semantic_role`, `final_outcome`) the surface exposes, and at what level of detail — never a business-status label list built from a static enum |
+| Visual density             | Which tier from the table above (Low/Medium/High), and why                                                                                                                                                                              |
+| Decision/feedback tone     | What kind of action this surface drives — informational tracking, claim-gated decision, destructive confirmation, administrative CRUD                                                                                                   |
 
-Fill in "State language" by reading `runtime_status`/`current_stage`/
-`final_outcome` for the surface in question — do not hardcode a
-per-role simplified-status mapping table sourced from the retired
-18-value vocabulary (see "Request state," above).
+Fill in "State language" by reading the four canonical concepts —
+`runtime_status`, `current_stage`, `current_stage.semantic_role`, and
+`final_outcome` — for the surface in question. A surface may display
+only the subset relevant to its audience (e.g. a simplified label for
+an intake user), but any **request-state decision** (which tab a
+request lands in, which action set is available, whether a request is
+terminal) must be driven by these four concepts, never a static enum.
+Do not hardcode a per-role simplified-status mapping table sourced from
+the retired 22-value `docs/user-view/` vocabulary (the DATA_ENTRY
+mapping in `data-entry.md` alone lists 22 unique legacy enum values) —
+see "Request state," above.
 
 ---
 
@@ -389,15 +400,25 @@ architecture-current form:
 The workflow engine's transitions are Designer-defined (see
 [`architecture/02-workflow-engine.md`](architecture/02-workflow-engine.md))
 — there is no fixed set of "the 3 handoffs a role participates in" the
-way `docs/user-view/*.md` enumerated for a fixed 18-value status
-pipeline. Use this template to document a handoff for the workflow
-version actually in use, rather than inheriting a fixed list:
+way `docs/user-view/*.md` enumerated for a fixed status pipeline. Use
+this template to document a handoff for the workflow version actually
+in use, rather than inheriting a fixed list:
 
 1. **Identify the handoff by stage transition, not by status name.**
-   State it as "stage A (semantic role X) → stage B (semantic role Y)
-   via transition T," not as a jump between two members of a static
-   status enum — stage codes and transition availability are
-   Designer-defined and can differ between workflow versions.
+   State it as "stage A → stage B via transition T," keyed on the
+   stages' code/name and the transition's code — not as a jump between
+   two members of a static status enum. Stage codes, transition codes,
+   and transition availability are Designer-defined and can differ
+   between workflow versions. Where a stage has a `semantic_role` set
+   (or one resolvable through the `SemanticRegistry` code-alias
+   fallback — see
+   [`architecture/02-workflow-engine.md`](architecture/02-workflow-engine.md)),
+   include it as supporting context ("stage A, semantic role
+   `SUPPORT_REVIEW`"). `workflow_stages.semantic_role` is **nullable**
+   and the compatibility fallback is still active, so treat semantic
+   role as optional metadata: if it is present or resolvable, cite it;
+   if it is absent, say so or document the fallback in use — **never
+   invent a semantic role from a stage's display label.**
 2. **State what UI surface makes the handoff visible to the receiving
    party** — a dashboard action-required strip, a claim-queue entry, a
    notification, a banner on the request-detail page. Every handoff

@@ -1956,11 +1956,22 @@ the pattern shape is consistent before genericizing. Spot-read
 `docs/user-view/bank-admin.md`'s "Operational Posture" table (a
 governance/administrative posture, the third tier) to confirm the
 `Aspect | Tone` table shape holds across all three density tiers.
-Confirmed via `grep` that all 8 role files under `docs/user-view/`
-contain all three named patterns (density/posture table, "Forbidden
-Actions Reference" section, "Cross-Role Handoffs" section), so the two
-full reads plus one spot-read were representative of the pattern shape
-across the set, not just one role's idiosyncrasy.
+**Correction (2026-07-13, from an independent review):** this record
+originally claimed all 8 role files under `docs/user-view/` contain all
+three named sections. Direct heading counts
+(`grep -c "^## <heading>$"` per file) show that is not quite right: 7
+of the 8 files (`bank-admin`, `bank-reviewer`, `committee-director`,
+`data-entry`, `executive-member`, `support-committee`,
+`swift-officer`) contain all three exact section headings
+("Operational Posture," "Forbidden Actions Reference," "Cross-Role
+Handoffs"). `cby-admin.md` contains only "Forbidden Actions
+Reference" — it has no exact "Operational Posture" or "Cross-Role
+Handoffs" heading. This does not weaken the extraction rationale: the
+patterns still recur broadly across the set (7 of 8 files have all
+three; the two full reads plus one spot-read remain representative of
+that broad recurrence), but the original "all 8 files, all three
+patterns" claim was imprecise and is corrected here rather than left
+standing.
 
 **Extraction, not preservation.** All three patterns were rewritten as
 generic authoring templates, not copied role/status content:
@@ -1972,12 +1983,13 @@ generic authoring templates, not copied role/status content:
    `Aspect | What to fill in` template (Work mode, Primary/Secondary/
    Tertiary surface, State language, Visual density, Decision/feedback
    tone) rather than a second, redundant density-tier table. The "State
-   language" row explicitly directs authors to the four-field canonical
-   model (`runtime_status`/`current_stage`/`final_outcome`) instead of
-   a per-role simplified-status mapping sourced from the retired
-   18-value vocabulary — the opposite of what the source material did
-   (`data-entry.md`'s "Status Presentation" table mapped 18 raw enum
-   values to 6 simplified Arabic labels).
+   language" row explicitly directs authors to the four canonical
+   concepts (`runtime_status`/`current_stage`/
+   `current_stage.semantic_role`/`final_outcome`) instead of a
+   per-role simplified-status mapping sourced from the retired
+   `docs/user-view/` vocabulary — the opposite of what the source
+   material did (`data-entry.md`'s "Status Presentation" table alone
+   maps 22 unique legacy enum values to 6 simplified Arabic labels).
 2. **Forbidden-actions template** — a new "Forbidden-actions template"
    section: a numbered authoring checklist (enumerate the real
    authority boundary from `stage_permissions`/screen capabilities, not
@@ -2000,8 +2012,11 @@ generic authoring templates, not copied role/status content:
    graph).
 
 **Removed/rejected during extraction (verified against current
-architecture, not carried forward):** the 18-value status vocabulary
-used throughout the source density/status-language rows; the
+architecture, not carried forward):** the `docs/user-view/` status
+vocabulary (22 unique legacy enum values in `data-entry.md`'s mapping
+alone — distinct from the genuinely-separate 18-value vocabulary of
+the older legacy core documents) used throughout the source
+density/status-language rows; the
 "CorrectionBanner"/"ActiveReviewBanner" naming as if these are the only
 possible banner components (kept generic: "a banner on the
 request-detail page"); fixed per-role dashboard framing (the source
@@ -2047,6 +2062,63 @@ Ran the link/anchor checker across both touched files — zero broken
 links.
 
 **Deviations:** none.
+
+**Blockers:** none.
+
+**Step 5 accuracy correction (2026-07-13).** An independent review
+caught 4 inaccuracy groups in the Step 5 additions, all re-verified
+directly before correcting:
+
+1. **Pattern prevalence overstated** — corrected above (see the
+   inserted correction note): 7 of 8 `docs/user-view/` files contain
+   all three named sections; `cby-admin.md` has only "Forbidden
+   Actions Reference." The extraction rationale is unaffected — the
+   patterns still recur broadly.
+2. **Wrong enum count for the DATA_ENTRY mapping** — the Step 5
+   prose and the new `docs/frontend-guide.md` template text both said
+   `data-entry.md`'s "Status Presentation" table maps "18 raw enum
+   values." Direct extraction of every backtick-quoted enum value from
+   that table (`grep -oE` for the pattern, deduplicated) counts **22
+   unique values**, not 18. Corrected both files. Per instruction, this
+   correction is scoped narrowly to statements specifically describing
+   `docs/user-view/`/the DATA_ENTRY mapping — the many other "18-value"
+   references throughout this plan describing the separate, older
+   legacy core documents (`docs/01-workflow-and-business-rules.md`,
+   `docs/03-database-and-models.md`) are untouched, since those
+   documents genuinely used an 18-value vocabulary distinct from
+   `docs/user-view/`'s 22-value one.
+3. **Four-concept model stated incompletely** — the operational-posture
+   template's "State language" row and prose named only
+   `runtime_status`/`current_stage`/`final_outcome`, omitting
+   `current_stage.semantic_role`. Added it explicitly in both the table
+   row and the prose in `docs/frontend-guide.md`, while preserving the
+   distinction that a surface may display only a relevant subset for
+   its audience — it is state-language **decisions** that must use all
+   four concepts, not that every surface must render all four.
+4. **Handoff template required a non-nullable semantic role** — the
+   template said to state a handoff as "stage A (semantic role X) →
+   stage B (semantic role Y)," implying every stage always has one.
+   Read `database/migrations/2026_07_06_000006_wp4_semantic_columns.php`
+   directly: `semantic_role` is declared
+   `->string('semantic_role', 50)->nullable()`. Rewrote the template to
+   key handoff identity on stage code/name and transition code first,
+   treat `semantic_role` as optional supporting context (present,
+   resolvable through the `SemanticRegistry` code-alias fallback, or
+   explicitly absent), and added an explicit instruction never to
+   invent a semantic role from a stage's display label.
+
+**Verification for this correction pass:** re-checked all 4 claims
+directly — heading counts via `grep -c` per `docs/user-view/*.md` file,
+the enum count via a deduplicated `grep -oE` extraction from
+`data-entry.md`'s Status Presentation table, and the nullable
+`semantic_role` column via the migration file — before editing. Ran
+Prettier on `docs/frontend-guide.md` and this plan document; confirmed
+`--check` stability on rerun. Re-ran the link/anchor checker across
+both files — zero broken links. Re-reviewed the corrected template
+sections for the same 5 forbidden-content categories as the original
+Step 5 self-review — zero live-content leaks. Confirmed via `git
+status` that `docs/user-view/` remains untouched and the pre-existing
+2-modified/12-untracked baseline is unchanged.
 
 **Blockers:** none.
 
