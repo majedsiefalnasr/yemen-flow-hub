@@ -335,9 +335,9 @@ serve all three postures by composition.
 Beyond the density-tier table above, use this template when writing or
 reviewing the UX spec for a new role, screen, or capability-gated
 surface — it is extracted and generalized from the density/posture
-tables that recur across `docs/user-view/*.md` (deprecated historical
-material; the shape below is a reusable authoring pattern, not
-preserved role-specific content):
+tables that recur across `docs/archive/user-view/*.md` (deprecated
+historical material; the shape below is a reusable authoring pattern,
+not preserved role-specific content):
 
 | Aspect                     | What to fill in                                                                                                                                                                                                                         |
 | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -361,7 +361,7 @@ transitions from the current stage, claim state (`requires_claim`/
 `claimRequiredButNotHeld`, see "Claim heartbeat," below), and backend
 validation on the actual mutation call — not by the four state
 concepts themselves. Do not hardcode a per-role simplified-status
-mapping table sourced from the retired 22-value `docs/user-view/`
+mapping table sourced from the retired 22-value `docs/archive/user-view/`
 vocabulary (the DATA_ENTRY mapping in `data-entry.md` alone lists 22
 unique legacy enum values) — see "Request state," above.
 
@@ -372,7 +372,7 @@ unique legacy enum values) — see "Request state," above.
 Every role-scoped or capability-gated surface should be reviewable
 against an explicit forbidden-actions list, not just a positive list of
 what it can do. This template generalizes the "Forbidden Actions
-Reference" pattern found across `docs/user-view/*.md` into an
+Reference" pattern found across `docs/archive/user-view/*.md` into an
 architecture-current form:
 
 1. **Enumerate the surface's real authority boundary** — not "what this
@@ -415,9 +415,9 @@ architecture-current form:
 The workflow engine's transitions are Designer-defined (see
 [`architecture/02-workflow-engine.md`](architecture/02-workflow-engine.md))
 — there is no fixed set of "the 3 handoffs a role participates in" the
-way `docs/user-view/*.md` enumerated for a fixed status pipeline. Use
-this template to document a handoff for the workflow version actually
-in use, rather than inheriting a fixed list:
+way `docs/archive/user-view/*.md` enumerated for a fixed status
+pipeline. Use this template to document a handoff for the workflow
+version actually in use, rather than inheriting a fixed list:
 
 1. **Identify the handoff by stage transition, not by status name.**
    State it as "stage A → stage B via transition T," keyed on the

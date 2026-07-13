@@ -36,4 +36,5 @@ Moved contents:
   (root-level `testing-manual/` before this move) that predates the
   dynamic workflow engine — fixed status pipeline, executive voting flow.
   Retained for structural scaffolding only, not current test authority;
-  replaced going forward by `docs/testing-guide.md` (planned, Step 12).
+  replaced by the live [`docs/testing-guide.md`](../testing-guide.md)
+  (Step 12).

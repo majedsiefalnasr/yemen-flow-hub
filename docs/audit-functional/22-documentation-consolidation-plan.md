@@ -2328,16 +2328,63 @@ post-commit. Deviations: none.
 
 Holding for review before Step 12 (`docs/testing-guide.md` authoring).
 
-**Step 12 — Write `docs/testing-guide.md`** (the new, actively-maintained
-testing document, §7) after Steps 2–4 have produced the architecture docs
-it needs to reference (`architecture/02-workflow-engine.md`,
-`architecture/03-permission-model.md`,
-`architecture/05-request-state-model.md`) — sequenced last among the
-content-creation steps so it can link into a tree that already exists
-rather than being written against docs that don't exist yet. Reuse
-`testing-manual/`'s structural scaffolding (test-user-alias table, evidence
-template, exit criteria) from its archived location; do not reuse its
-state/workflow/permission content.
+**Step 12 — ✅ DONE (2026-07-13).** Wrote `docs/testing-guide.md` as
+the live testing authority, verified against `backend/app/`,
+`backend/tests/`, `frontend/app/`, and the canonical architecture docs
+directly — not copied from the archived manual. Covers: the four
+request-state fields (nullable `semantic_role`, conditionally-absent
+`final_outcome`); Designer-defined dynamic workflow paths and
+`EngineTransitionService::execute()`'s enforcement order; the three
+distinct checks (screen capabilities, stage permissions, `can_execute`)
+plus claim ownership; `DataScope` enforcement including a required
+direct cross-organization ID-access denial test (not just list
+filtering); claim lifecycle (claim/heartbeat/release/expiration/
+claim-loss) with the verified TTL source; and the
+`UserActionableRequestQuery` record-ID invariant. Each section links
+real existing test files (`tests/Feature/Engine/EngineClaimServiceTest.php`,
+`tests/Unit/Services/Authorization/DataScopeTest.php`,
+`tests/Feature/Engine/UserActionableRequestQueryTest.php`, etc.) as
+focused-command examples, not invented paths. Reused verbatim from the
+archived manual per instruction: the test-user-alias table and the
+evidence template; the exit-criteria shape, rewritten against current
+architecture. Did not reuse its fixed workflow path, retired status
+vocabulary, or Executive Voting steps.
+
+**Finding during verification (not corrected — no production-code
+change and out of this step's listed file set):**
+`docs/architecture/03-permission-model.md`'s Claim ownership section
+states `EngineClaimService` reads
+`AdminSettingsService::get('support_claim_ttl', 15)`. Verified against
+`backend/app/Services/Workflow/EngineClaimService.php`: it injects and
+calls `SettingResolver::get('support_claim_ttl', 15)` —
+`SettingResolver` queries `SystemSetting` directly and has no
+dependency on `AdminSettingsService` at all. This is the same
+claim-TTL misattribution class found and fixed earlier in
+`production-guide.md` and `AGENTS.md`, now found a third time in a
+canonical architecture doc. The new testing guide's §5 documents the
+verified `SettingResolver` chain, not the doc's `AdminSettingsService`
+claim. Flagged for a future correction pass on
+`03-permission-model.md` itself; not fixed here since Step 12's scope
+is `docs/testing-guide.md` and its four listed reference files.
+
+Bundled per instruction: the remaining four standalone
+`docs/user-view/*.md` provenance mentions in `docs/frontend-guide.md`
+(density/posture template, forbidden-actions template, cross-role
+handoff template, and the retired-vocabulary warning) corrected to
+`docs/archive/user-view/*.md`. One mention (the Step 5 extraction note)
+already pointed at the archived path from Step 10 and was left as-is.
+
+Updated live references: `docs/README.md`'s Testing guide row (planned
+→ **live**), `AGENTS.md`'s Documentation Map testing row (now links
+the live guide), `docs/archive/README.md`'s testing-manual entry (now
+points at the live guide instead of the planned path).
+
+No production code changed. Verification: link/anchor check, Prettier
+`--check`, baseline confirmed unchanged before staging, blob verified
+post-commit. Deviations: none beyond the flagged (not fixed)
+`03-permission-model.md` finding above.
+
+Holding for review before Step 13.
 
 **Step 13 — Complete API Reference Coverage (assigned 2026-07-12).**
 `docs/api-reference.md`'s Coverage status section (added in Step 3A) documents
