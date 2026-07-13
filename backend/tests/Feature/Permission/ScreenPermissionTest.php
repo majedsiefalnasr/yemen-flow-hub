@@ -59,9 +59,9 @@ class ScreenPermissionTest extends TestCase
 
     // ── AC 1: Catalog seeded ──────────────────────────────────────────────
 
-    public function test_catalog_has_16_screens(): void
+    public function test_catalog_has_17_screens(): void
     {
-        $this->assertSame(16, Screen::count());
+        $this->assertSame(17, Screen::count());
     }
 
     public function test_all_required_screens_exist(): void
@@ -69,7 +69,7 @@ class ScreenPermissionTest extends TestCase
         $expected = [
             'organizations', 'teams', 'roles', 'banks', 'users',
             'merchants', 'workflow_designer', 'requests', 'reports',
-            'audit', 'reference_data', 'screen_permissions', 'notifications', 'settings',
+            'audit', 'reference_data', 'screen_permissions', 'staff', 'notifications', 'settings',
             // D0 dashboard-family capabilities.
             'system_dashboard', 'org_analytics',
         ];
@@ -84,7 +84,7 @@ class ScreenPermissionTest extends TestCase
         $this->actingAs($this->admin)
             ->getJson('/api/v1/screens')
             ->assertOk()
-            ->assertJsonCount(16, 'data');
+            ->assertJsonCount(17, 'data');
     }
 
     // ── AC 2: PUT grants persist unique ───────────────────────────────────
@@ -243,6 +243,43 @@ class ScreenPermissionTest extends TestCase
         foreach ($response->json('data.roles') as $role) {
             $this->assertArrayNotHasKey('requests', $role);
         }
+    }
+
+    // ── staff screen: delegable, VIEW-only, default bank_admin grant ─────
+
+    public function test_bank_admin_receives_staff_view_by_default(): void
+    {
+        $bankAdminRole = Role::query()->where('code', 'bank_admin')->firstOrFail();
+        $staffScreen = Screen::query()->where('key', 'staff')->firstOrFail();
+
+        $this->assertDatabaseHas('screen_permissions', [
+            'role_id' => $bankAdminRole->id,
+            'screen_id' => $staffScreen->id,
+            'capability' => 'VIEW',
+        ]);
+    }
+
+    public function test_matrix_excludes_system_dashboard_but_includes_view_only_staff(): void
+    {
+        $screens = collect(
+            $this->actingAs($this->admin)
+                ->getJson('/api/v1/screen-permissions/matrix')
+                ->assertOk()
+                ->json('data.screens')
+        )->keyBy('key');
+
+        $this->assertFalse($screens->has('system_dashboard'));
+        $this->assertTrue($screens->has('staff'));
+        $this->assertSame(['VIEW'], $screens->get('staff')['capabilities']);
+    }
+
+    public function test_update_rejects_system_dashboard_grant(): void
+    {
+        $this->actingAs($this->admin)
+            ->putJson("/api/v1/roles/{$this->intakeRole->id}/screen-permissions", [
+                'grants' => ['system_dashboard' => ['VIEW']],
+            ])
+            ->assertStatus(422);
     }
 
     // ── Merchants MANAGE carve-out: system_admin is always denied ────────

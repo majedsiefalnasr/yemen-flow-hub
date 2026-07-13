@@ -77,6 +77,7 @@ class RoleScreenPermissionController extends Controller
         'reference_data',
         'organizations',
         'banks',
+        'system_dashboard',
     ];
 
     /**

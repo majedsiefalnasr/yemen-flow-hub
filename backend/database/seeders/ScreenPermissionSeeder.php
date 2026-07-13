@@ -17,6 +17,7 @@ class ScreenPermissionSeeder extends Seeder
             'roles' => 'الأدوار والصلاحيات',
             'banks' => 'البنوك',
             'users' => 'المستخدمون',
+            'staff' => 'الموظفون',
             'merchants' => 'المستوردون',
             'workflow_designer' => 'مصمم سير العمل',
             'requests' => 'الطلبات',
@@ -54,6 +55,7 @@ class ScreenPermissionSeeder extends Seeder
             'bank_admin' => [
                 'merchants' => ['VIEW', 'MANAGE'],
                 'users' => ['VIEW', 'MANAGE'],
+                'staff' => ['VIEW'],
                 'reports' => ['VIEW'],
                 // SEC-002: bank-scoped audit visibility, gated by audit_logs.bank_id.
                 'audit' => ['VIEW'],

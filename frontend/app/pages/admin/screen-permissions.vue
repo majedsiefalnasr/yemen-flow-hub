@@ -18,11 +18,9 @@ definePageMeta({
   requiredCapability: 'VIEW',
 })
 
-// `requests` is a real Screen row (seeded for backward-compatible lookups),
-// but it is not manually grantable: its access is now derived from
-// stage_permissions in the workflow designer, and the update() endpoint
-// rejects grants targeting it. Exclude it from the manual/grantable columns.
-const REQUESTS_KEY = 'requests'
+// `requests` is workflow-derived. `system_dashboard` is reserved for the fixed
+// system_admin dashboard family. Neither key is manually grantable.
+const NON_GRANTABLE_SCREEN_KEYS = new Set(['requests', 'system_dashboard'])
 
 const CAP_LABELS: Record<string, string> = {
   VIEW: 'عرض',
@@ -35,7 +33,7 @@ const { can } = useScreenPermissions()
 const canEdit = computed(() => can('screen_permissions', 'MANAGE'))
 
 const manualScreens = computed(
-  () => matrix.value?.screens.filter((s) => s.key !== REQUESTS_KEY) ?? [],
+  () => matrix.value?.screens.filter((s) => !NON_GRANTABLE_SCREEN_KEYS.has(s.key)) ?? [],
 )
 
 /**

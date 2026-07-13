@@ -28,10 +28,10 @@ describe('admin screen-permissions page', () => {
     expect(source).toContain('صلاحيات شاشات النظام حسب الدور')
   })
 
-  it('still excludes the synthetic requests screen key from manual/grantable columns', () => {
-    // requests is a real Screen row but is not manually grantable (its access is
-    // workflow-derived), so the manualScreens filter must still exclude it.
-    expect(source).toContain("REQUESTS_KEY = 'requests'")
-    expect(source).toContain('s.key !== REQUESTS_KEY')
+  it('excludes requests and system_dashboard from manual grantable columns', () => {
+    expect(source).toContain(
+      "NON_GRANTABLE_SCREEN_KEYS = new Set(['requests', 'system_dashboard'])",
+    )
+    expect(source).toContain('!NON_GRANTABLE_SCREEN_KEYS.has(s.key)')
   })
 })
