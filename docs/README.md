@@ -16,6 +16,25 @@ documentation authority.
 
 ---
 
+## Project purpose
+
+The platform replaces manual, paper/email-based import-financing
+approval with a controlled digital workflow: commercial banks submit
+requests, CBY committees review and decide, and a final external FX
+confirmation closes the request. Two organization types participate —
+**commercial banks** (create and internally review requests, manage
+bank staff) and **the Central Bank of Yemen** (CBY-side review,
+governance, and FX-confirmation completion) — each with several roles
+under it. For the current role list, each role's daily task, and
+operational posture, see
+[`../frontend/PRODUCT.md`](../frontend/PRODUCT.md) — not duplicated
+here. For the actual workflow stages, transitions, and voting status
+(Executive Voting is out of V1), see
+[`architecture/02-workflow-engine.md`](architecture/02-workflow-engine.md)
+and the canonical facts below, not a fixed per-stage narrative.
+
+---
+
 ## Start here
 
 | Topic                        | Document                                                                                 | Status                                                                                                                                                                         |

@@ -1,3 +1,14 @@
+> **Archived 2026-07-13.** This is the original project brief (circa
+> 2026-05), preserved verbatim for historical record. It predates the
+> dynamic workflow engine and describes a fixed per-stage status
+> vocabulary and an active Executive Voting feature that no longer
+> match the shipped system. Its still-relevant framing (platform
+> purpose, actor org types) was merged into
+> [`../README.md`](../README.md); current architecture is documented
+> in [`../architecture/`](../architecture/) and
+> [`../frontend/PRODUCT.md`](../../frontend/PRODUCT.md). Do not treat
+> this document as current.
+
 # Yemen Flow Hub — Project Brief
 
 ## Project Overview

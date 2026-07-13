@@ -2153,6 +2153,24 @@ into Step 6 without a review checkpoint).
 `docs/README.md`**, then move the rest of `docs/00` to
 `docs/archive/project-brief-2026-05.md`.
 
+**Step 6 — ✅ DONE (2026-07-13).** Outcome: merged still-relevant
+framing (platform purpose, actor org types) into `docs/README.md`'s
+new "Project purpose" section, pointing to `frontend/PRODUCT.md` for
+the role table rather than duplicating it; archived the rest verbatim
+via `git mv` (detected as a clean rename) to
+`docs/archive/project-brief-2026-05.md` with a banner. Files:
+`docs/README.md` (new section), `docs/architecture/README.md` (link
+repointed), `docs/00-project-brief.md` → `docs/archive/project-brief-2026-05.md`
+(moved + banner). Material findings: the source brief's per-stage
+lifecycle detail, fixed status vocabulary, and Executive Voting framing
+are all superseded by `architecture/02-workflow-engine.md` and were not
+carried into the merge — only the org-level purpose/actor framing was
+still accurate and non-duplicative. Verification: Prettier `--check` on
+touched files, link/anchor check, `git status` confirms baseline
+unchanged. Deviations: none.
+
+Holding for review before Step 7, per instruction.
+
 **Step 7 — Merge `operations/runbook.md`, `operations/retention-policy.md`,
 and `audit-functional/21`'s checklists into `docs/production-guide.md`.**
 Do NOT delete the two operations source files in this step — leave them in
