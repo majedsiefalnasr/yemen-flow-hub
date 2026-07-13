@@ -767,7 +767,7 @@ EOF
 **Files:**
 
 - Modify: `frontend/app/pages/staff.vue`
-- Modify: `frontend/app/tests/unit/pages/StaffPage.test.ts`
+- Create: `frontend/app/tests/unit/pages/staff-route-permissions.test.ts`
 
 **Interfaces:**
 
@@ -775,28 +775,32 @@ EOF
 - Produces: `/staff` page metadata requiring `staff:VIEW` rather than a hardcoded role.
 - Preserves: the page's existing staff-management UI, `UserRole` uses for staff types, and API calls.
 
-- [ ] **Step 1: Add a source-level route contract test**
+- [ ] **Step 1: Add a discoverable source-level route contract test**
 
-In `frontend/app/tests/unit/pages/StaffPage.test.ts`, import `readFileSync` and `resolve`, then add before the render tests:
+Create `frontend/app/tests/unit/pages/staff-route-permissions.test.ts`:
 
 ```ts
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-```
+import { describe, expect, it } from "vitest";
 
-```ts
-it("uses staff VIEW screen middleware instead of a BANK_ADMIN route guard", () => {
+describe("staff route permissions", () => {
   const source = readFileSync(
     resolve(process.cwd(), "app/pages/staff.vue"),
     "utf8",
   );
 
-  expect(source).toContain("middleware: ['auth', 'screen']");
-  expect(source).toContain("requiredScreen: 'staff'");
-  expect(source).toContain("requiredCapability: 'VIEW'");
-  expect(source).not.toContain("requiredRoles: [UserRole.BANK_ADMIN]");
+  it("uses staff VIEW screen middleware instead of a BANK_ADMIN route guard", () => {
+    expect(source).toContain("middleware: ['auth', 'screen']");
+    expect(source).toContain("requiredScreen: 'staff'");
+    expect(source).toContain("requiredCapability: 'VIEW'");
+    expect(source).not.toContain("requiredRoles: [UserRole.BANK_ADMIN]");
+  });
 });
 ```
+
+Do not add this assertion to `StaffPage.test.ts`; that file is excluded by the
+repository's known-red Vitest baseline and cannot serve as focused verification.
 
 - [ ] **Step 2: Run the route contract test and confirm it fails**
 
@@ -804,7 +808,7 @@ Run:
 
 ```bash
 cd frontend
-pnpm exec vitest run app/tests/unit/pages/StaffPage.test.ts -t "uses staff VIEW"
+pnpm exec vitest run app/tests/unit/pages/staff-route-permissions.test.ts
 ```
 
 Expected: failure because `staff.vue` still uses the role middleware.
@@ -829,9 +833,9 @@ Run:
 
 ```bash
 cd frontend
-pnpm exec vitest run app/tests/unit/pages/StaffPage.test.ts
-pnpm exec eslint app/pages/staff.vue app/tests/unit/pages/StaffPage.test.ts
-pnpm exec prettier app/pages/staff.vue app/tests/unit/pages/StaffPage.test.ts --check
+pnpm exec vitest run app/tests/unit/pages/staff-route-permissions.test.ts
+pnpm exec eslint app/pages/staff.vue app/tests/unit/pages/staff-route-permissions.test.ts
+pnpm exec prettier app/pages/staff.vue app/tests/unit/pages/staff-route-permissions.test.ts --check
 ```
 
 Expected: the route contract and existing page behavior tests pass; ESLint has zero warnings; Prettier passes.
@@ -840,7 +844,7 @@ Expected: the route contract and existing page behavior tests pass; ESLint has z
 
 ```bash
 cd /Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code
-git add frontend/app/pages/staff.vue frontend/app/tests/unit/pages/StaffPage.test.ts
+git add frontend/app/pages/staff.vue frontend/app/tests/unit/pages/staff-route-permissions.test.ts
 git commit -m "$(cat <<'EOF'
 feat(frontend): gate staff page by screen permission
 
@@ -1169,9 +1173,9 @@ Expected: all focused tests and backend formatting pass.
 
 ```bash
 cd ../frontend
-pnpm exec vitest run app/tests/unit/pages/screen-permissions.test.ts app/tests/unit/composables/useScreenPermissionsAdmin.test.ts app/tests/unit/pages/DashboardPage.test.ts app/tests/unit/pages/StaffPage.test.ts app/tests/unit/pages/IdentityUsersPages.test.ts app/tests/unit/constants/nav-items.test.ts
-pnpm exec eslint app/pages/admin/screen-permissions.vue app/pages/dashboard.vue app/pages/index.vue app/pages/staff.vue app/tests/unit/pages/screen-permissions.test.ts app/tests/unit/pages/DashboardPage.test.ts app/tests/unit/pages/StaffPage.test.ts app/tests/unit/pages/IdentityUsersPages.test.ts
-pnpm exec prettier app/pages/admin/screen-permissions.vue app/pages/dashboard.vue app/pages/index.vue app/pages/staff.vue app/tests/unit/pages/screen-permissions.test.ts app/tests/unit/pages/DashboardPage.test.ts app/tests/unit/pages/StaffPage.test.ts app/tests/unit/pages/IdentityUsersPages.test.ts --check
+pnpm exec vitest run app/tests/unit/pages/screen-permissions.test.ts app/tests/unit/composables/useScreenPermissionsAdmin.test.ts app/tests/unit/pages/DashboardPage.test.ts app/tests/unit/pages/staff-route-permissions.test.ts app/tests/unit/pages/IdentityUsersPages.test.ts app/tests/unit/constants/nav-items.test.ts
+pnpm exec eslint app/pages/admin/screen-permissions.vue app/pages/dashboard.vue app/pages/index.vue app/pages/staff.vue app/tests/unit/pages/screen-permissions.test.ts app/tests/unit/pages/DashboardPage.test.ts app/tests/unit/pages/staff-route-permissions.test.ts app/tests/unit/pages/IdentityUsersPages.test.ts
+pnpm exec prettier app/pages/admin/screen-permissions.vue app/pages/dashboard.vue app/pages/index.vue app/pages/staff.vue app/tests/unit/pages/screen-permissions.test.ts app/tests/unit/pages/DashboardPage.test.ts app/tests/unit/pages/staff-route-permissions.test.ts app/tests/unit/pages/IdentityUsersPages.test.ts --check
 ```
 
 Expected: focused Vitest, ESLint with zero warnings, and Prettier pass. Typecheck is not required because no shared TypeScript contract changes.
