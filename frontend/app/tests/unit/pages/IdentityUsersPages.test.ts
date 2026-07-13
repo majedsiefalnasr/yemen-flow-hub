@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 describe('identity user management pages', () => {
@@ -19,12 +19,10 @@ describe('identity user management pages', () => {
     expect(source).toContain('MetricGrid')
   })
 
-  it('exposes committee and bank routes', () => {
+  it('keeps the committee route and removes the dead bank wrapper route', () => {
     expect(readFileSync(resolve(process.cwd(), 'app/pages/admin/staff.vue'), 'utf8')).toContain(
       'audience="committee"',
     )
-    expect(readFileSync(resolve(process.cwd(), 'app/pages/bank/users.vue'), 'utf8')).toContain(
-      'audience="bank"',
-    )
+    expect(existsSync(resolve(process.cwd(), 'app/pages/bank/users.vue'))).toBe(false)
   })
 })

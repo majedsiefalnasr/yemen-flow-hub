@@ -150,8 +150,8 @@ Container max: `1600px`. Sidebar: `280px` expanded / `72px` collapsed. Grid: `8p
 /workflows/instances/[id]
 /customs          ← legacy alias, still present
 /admin/banks      ← CBY Admin only
-/bank/users       ← Bank Admin only
-/staff            ← CBY Admin only
+/admin/staff      ← CBY Admin staff management (`users` screen)
+/staff            ← Organization staff management (`staff:VIEW`)
 ```
 
 The legacy `/requests`, `/requests/new`, `/requests/[id]`, `/voting`, `/voting/[id]`, top-level `/users`, and top-level `/banks` routes no longer exist. Executive Voting is not part of V1 — there is no voting UI anywhere, including within `/workflows/instances/[id]`.
