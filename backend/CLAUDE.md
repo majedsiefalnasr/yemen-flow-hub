@@ -158,5 +158,5 @@ Full rules in `../docs/` and `../AGENTS.md`. Key files:
 
 - `../docs/architecture/02-workflow-engine.md` — workflow engine: Designer lifecycle, topology, publishing, runtime transitions
 - `../docs/architecture/06-database-and-models.md` — table schemas and enums
-- `../docs/05-backend-guide.md` — backend architecture
+- `../docs/backend-guide.md` — backend architecture
 - `../docs/api-reference.md` — API contracts

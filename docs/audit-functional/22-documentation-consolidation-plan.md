@@ -1647,8 +1647,153 @@ files, re-validated links/anchors (zero broken), and reconfirmed the
 
 **Blockers:** none.
 
-Holding for review before Step 4C
-(`docs/05-backend-guide.md` → `docs/backend-guide.md`), per instruction.
+**Step 4B — ✅ APPROVED.** Independent verification of commit
+`64e8ba52` confirmed: `/api/auth/me` matches the frontend request and
+backend contract, client-side hydration and the server-skip behavior
+match source, both commits are signed with the required co-author,
+Prettier passes across all 6 extant files, internal links resolve, the
+working tree matches the 2-modified/12-untracked baseline, and the
+corrected files have no post-commit diff.
+
+**Step 4C — ✅ DONE (2026-07-13).** Scope: only
+`docs/05-backend-guide.md` → `docs/backend-guide.md`. This is the last
+sub-step of Step 4 — after this, Step 4 as a whole is complete.
+
+Pre-flight `git status` confirmed the baseline (2 modified tracked
+files, 12 untracked files) before touching anything; confirmed
+unchanged post-flight.
+
+**Source verification performed.** Read `docs/05-backend-guide.md` in
+full (920 lines) before deletion. Verified directly against current
+backend source rather than inheriting any legacy claim: `routes/api.php`
+(confirmed no `/api/voting`, `/api/customs`, `/api/support-review`, or
+`/api/workflow` top-level prefix groups exist — only `Route::prefix('auth')`
+unversioned and `Route::prefix('v1')` versioned; confirmed
+`config('demo.allowed_environments')` gates demo/switch-role routes,
+matching `api-reference.md`'s existing environment-dependent caveat);
+`EngineClaimService::ttlMinutes()` (admin-setting-backed, not Redis);
+`AuthController` (login throttle `5,1`, session `regenerate()` on
+login, `logFailedLogin()`'s `null` actor); `AuthSecuritySettings` +
+`config/auth_security.php` (lockout is admin-configurable via
+`SettingResolver`, config defaults 5 attempts / 15 minutes);
+`AppServiceProvider::registerApiRateLimiter()` (`api-default`, 120/min
+default, user-or-IP keyed); `UploadDocumentRequest`/`UploadSwiftRequest`/
+`FxConfirmationUploadRequest` (PDF-only via `mimetypes:application/pdf`);
+`EngineRequest` (confirmed no `setAttribute()` override) and
+`DirectStatusMutationException` (confirmed exists, never thrown —
+re-verified rather than trusting the legacy file's already-correct
+claim on this point); `DataScope`/`DataScopeContext`
+(`app/Services/Authorization/`); `App\Support\ApiResponse` (the general
+response envelope shape).
+
+**Inaccuracy found and corrected, not inherited:** AGENTS.md's Security
+Baseline states "Account lockout: after 10 consecutive failures
+(15-minute lockout)." Read `AuthSecuritySettings::lockoutAttempts()`/
+`lockoutDurationMinutes()` and `config/auth_security.php` directly:
+lockout is admin-configurable, not a fixed constant, and the **config
+defaults are 5 attempts / 15 minutes**, not 10 attempts. The new
+document states the verified default and the admin-configurable nature
+explicitly, rather than repeating the "10 consecutive failures" figure
+found in AGENTS.md. (This is a documentation-accuracy correction only —
+AGENTS.md itself was out of scope for this step and was not edited;
+flagging it here as a known open discrepancy for whoever next touches
+AGENTS.md's Security Baseline section.)
+
+**Live-code-vs-dead-code distinction (the specific risk this step's
+instructions flagged for `Customs`-named code).** Searched for
+`Voting`-named and `Customs`-named backend surface separately and
+verified each individually rather than applying one blanket
+"legacy naming" treatment:
+
+- `Voting`-named code (`app/DTOs/Voting/VotingTally.php`,
+  `VoteResource.php`, `VotingTallyResource.php`) — confirmed via grep
+  that none of these classes are referenced by any controller, route,
+  or other service; `routes/api.php` has zero routes containing
+  "voting"/"vote". Genuinely dead code.
+- `Customs`-named code (`CustomsDeclaration` model, `CustomsException`,
+  `CustomsDeclarationPolicy`, `EngineCustomsService`,
+  `CustomsDeclarationGenerator`, `CustomsFxPdfEffect`) — confirmed via
+  grep that `EngineCustomsService` and `CustomsFxPdfEffect` are
+  referenced by `EngineFxConfirmationController` and registered in
+  `AppServiceProvider`; the `customs_declarations` table is a live,
+  actively-written table backing the FX confirmation flow; two
+  `EngineFxConfirmationController` endpoints use the URL segment
+  `customs-declaration`. This is **live code under legacy pre-rename
+  naming**, not dead code — the new document says so explicitly and
+  instructs against describing it as removal-eligible, while still
+  directing new copy/code toward "external FX confirmation" language.
+
+**Preserved:** service-boundary framing (no monolithic
+Workflow/Voting Service); `WorkflowVersionState::isEditable()`
+immutability (linked to `architecture/02-workflow-engine.md`, not
+duplicated); the `EngineTransitionService::execute()`-is-the-only-path
+rule with its exact `setAttribute()`/`DirectStatusMutationException`
+findings, carried forward from the legacy file's already-correct
+material rather than silently dropped; `DataScope`-based
+organization/data-scope enforcement (linked to
+`architecture/03-permission-model.md`); authentication protections
+(Sanctum, session regeneration); audit-logging behavior (`AuditService`,
+`workflow_history`, `role`-in-audit-entry rule); PDF-only file
+validation.
+
+**Removed:** the fixed 18-value status vocabulary and "Editable
+States"/"Locked States" framing; `support_claimed_by`/
+`support_claimed_at`/`current_status` as live field names; the "Voting
+Service" section and "Voting Rules"/"Voting Session Rules"/"Voting
+Restrictions" as live functionality; the "Suggested API Structure"
+listing `/api/workflow`/`/api/support-review`/`/api/voting`/`/api/customs`
+as top-level route groups (verified none exist; the document now
+points to `api-reference.md`/`route:list` instead of a second
+manually-duplicated route list); fixed per-role "Visibility Scope By
+Role" sections as the access-control model (now linked to
+`architecture/03-permission-model.md`); the Redis-based-TTL-key claim
+description (the live TTL source is the admin setting); the
+unqualified "10 consecutive failures" lockout figure.
+
+**Migration.** Tested rename detection the same way as Steps 4A/4B —
+`git diff --cached --stat -M50%` after `git rm` + `git add` did not
+detect a rename (920 deletions / 313 insertions, too dissimilar), so
+delete+add is the correct representation.
+
+**Link updates** — every live reference to the old path repointed:
+`docs/README.md` (Backend guide row: planned → **live**),
+`docs/architecture/README.md` (dropped the backend-guide "not yet
+migrated" pointer since it's now live; the note now cites Step 6, not
+Step 4C, since `docs/00-project-brief.md` is the only remaining
+not-yet-migrated file this note was tracking), `AGENTS.md` (minimal
+path-only correction), `backend/CLAUDE.md` (Docs Reference entry
+repointed). The `docs/superpowers/` match is a historical planning
+artifact, correctly left untouched, same treatment as Steps 4A/4B.
+
+**Checks performed.** Self-reviewed the new document against the 5
+forbidden-content categories (active-voting claims, retired status
+vocabulary, stale route families, legacy claim-field names,
+customs-facing business terminology) via targeted `grep` — every match
+found was reviewed individually and confined to an intentional context
+(verification banner, the "what this document removes" itemization, or
+a disclosed live code-identifier, never business-facing prose); zero
+customs-facing business-terminology leaks. Ran Prettier on every
+touched Markdown file individually (root-scoped files from repo root;
+confirmed `backend/CLAUDE.md` has no `backend/`-local Prettier config
+overriding root defaults, unlike `frontend/`) and confirmed `--check`
+stability on rerun. Read the formatted files back for line-leading
+`+`/`-` artifacts — none found. Ran the link/anchor checker across all
+touched files — zero broken links.
+
+**Deviations:** none.
+
+**Blockers:** none.
+
+**Files changed this step:** `docs/05-backend-guide.md` (deleted),
+`docs/backend-guide.md` (created), plus 4 files with link/content
+corrections: `docs/README.md`, `docs/architecture/README.md`,
+`AGENTS.md`, `backend/CLAUDE.md` — 6 total including the
+created/deleted pair. No production frontend or backend code was
+changed.
+
+Step 4 (all three sub-steps — 4A, 4B, 4C) is now complete.
+
+Holding for review before Step 5, per instruction.
 
 **Step 5 — Extract the 3 UX patterns from `docs/user-view/` into
 `docs/frontend-guide.md`** (density tiers, forbidden-actions table,

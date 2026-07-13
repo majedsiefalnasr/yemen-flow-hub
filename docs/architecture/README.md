@@ -7,8 +7,8 @@
 [`05-request-state-model.md`](05-request-state-model.md),
 [`06-database-and-models.md`](06-database-and-models.md).
 
-[`../frontend-guide.md`](../frontend-guide.md) is also live (frontend
-architecture, outside this `architecture/` tree). Files at
-`docs/00-project-brief.md` and `docs/05-backend-guide.md` remain
-authoritative for topics not yet migrated (Step 4C — see
+[`../frontend-guide.md`](../frontend-guide.md) and
+[`../backend-guide.md`](../backend-guide.md) are also live (outside
+this `architecture/` tree). `docs/00-project-brief.md` remains
+authoritative for topics not yet migrated (Step 6 — see
 [`../audit-functional/22-documentation-consolidation-plan.md`](../audit-functional/22-documentation-consolidation-plan.md)).
