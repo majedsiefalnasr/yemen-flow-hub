@@ -91,11 +91,13 @@ const rowSelection = useVModel(props, 'rowSelection', emit, {
   passive: true,
 }) as Ref<RowSelectionState>
 
-// Server-side mode is decided once at init. In server-side mode the server
-// already returns exactly the rows for the current page, so we must NOT register
-// getPaginationRowModel — it would slice the already-paginated data down to
-// pageSize. In client-side mode we register it so TanStack slices locally.
-const isServerSide = props.pageCount !== -1
+// Server-side mode must stay reactive: pageCount starts at -1 (meta not yet
+// loaded) and flips to a real value after the first fetch. If this were a
+// const captured at setup, early mounts would lock into client-side mode,
+// leaving getPaginationRowModel registered permanently — its internal
+// _autoResetPageIndex then double-fires pagination writes on every filter
+// change, doubling the watch-triggered API calls (source of 429 storms).
+const isServerSide = computed(() => props.pageCount !== -1)
 
 const table = useVueTable({
   get data() {
@@ -110,9 +112,15 @@ const table = useVueTable({
   get pageCount() {
     return props.pageCount === -1 ? undefined : props.pageCount
   },
-  manualPagination: isServerSide,
-  manualSorting: isServerSide,
-  manualFiltering: isServerSide,
+  get manualPagination() {
+    return isServerSide.value
+  },
+  get manualSorting() {
+    return isServerSide.value
+  },
+  get manualFiltering() {
+    return isServerSide.value
+  },
   state: {
     get sorting() {
       return sorting.value
@@ -132,8 +140,10 @@ const table = useVueTable({
   },
   getCoreRowModel: getCoreRowModel(),
   getFilteredRowModel: getFilteredRowModel(),
-  // Only slice client-side. Server-side data arrives pre-paginated.
-  ...(isServerSide ? {} : { getPaginationRowModel: getPaginationRowModel() }),
+  // Always register the row-model computer; manualPagination (reactive above)
+  // tells TanStack whether to actually use it for slicing. Registration itself
+  // is cheap and must not be gated by a value captured once at setup time.
+  getPaginationRowModel: getPaginationRowModel(),
   getSortedRowModel: getSortedRowModel(),
   getFacetedRowModel: getFacetedRowModel(),
   getFacetedUniqueValues: getFacetedUniqueValues(),
