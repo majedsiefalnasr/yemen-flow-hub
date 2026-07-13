@@ -1,3 +1,10 @@
 multi_agent = true
+
 [tui]
 notification_condition = "always"
+
+[shell_environment_policy]
+inherit = "core"
+
+[shell_environment_policy.set]
+CLAUDE_AUTOCOMPACT_PCT_OVERRIDE = "80"
