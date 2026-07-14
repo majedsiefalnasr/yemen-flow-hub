@@ -114,6 +114,26 @@ describe('buildDynamicSchema', () => {
     expect(schema.safeParse({ merchant: 7 }).success).toBe(true)
   })
 
+  it('DYNAMIC_SELECT field reports an Arabic message for an invalid value, never raw Zod wording', () => {
+    const schema = buildDynamicSchema(
+      group([
+        baseField({
+          key: 'merchant',
+          type: 'DYNAMIC_SELECT',
+          dynamic_options: [{ value: 7, label: 'تاجر' }],
+          is_required: true,
+        }),
+      ]),
+    )
+    const result = schema.safeParse({ merchant: 9 })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      const message = result.error.issues[0]!.message
+      expect(message).toBe('اختر قيمة صحيحة.')
+      expect(message).not.toMatch(/invalid|literal|expected/i)
+    }
+  })
+
   it('CHECKBOX field accepts boolean', () => {
     const schema = buildDynamicSchema(group([baseField({ key: 'agree', type: 'CHECKBOX' })]))
     expect(schema.safeParse({ agree: true }).success).toBe(true)

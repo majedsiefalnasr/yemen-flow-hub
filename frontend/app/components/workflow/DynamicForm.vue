@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import type { ResolvedFieldGroup, ResolvedFieldDefinition } from '@/types/models'
@@ -23,6 +23,18 @@ const form = useForm({ validationSchema: schema, initialValues: props.modelValue
 
 const { upload } = useEngineRequestDocuments()
 
+// Errors from the Zod schema populate form.errors as soon as the form is
+// built, before the user touches anything. Only surface an error once its
+// field has been edited, or once the user has attempted to validate the
+// step (Next/Review/Submit) — never on initial render.
+const touchedFields = reactive(new Set<string>())
+const attemptedValidate = ref(false)
+
+function fieldError(key: string): string | undefined {
+  if (!touchedFields.has(key) && !attemptedValidate.value) return undefined
+  return form.errors.value[key]
+}
+
 function effectiveField(field: ResolvedFieldDefinition): ResolvedFieldDefinition {
   if (props.mode === 'readonly') {
     return { ...field, is_editable: false }
@@ -34,8 +46,10 @@ function fieldValue(key: string): unknown {
   return form.values[key]
 }
 
-function setFieldValue(key: string, value: unknown) {
+async function setFieldValue(key: string, value: unknown) {
+  touchedFields.add(key)
   form.setFieldValue(key, value)
+  await form.validateField(key)
   emit('update:modelValue', { ...props.modelValue, [key]: value })
 }
 
@@ -47,6 +61,7 @@ async function uploadFile(field: ResolvedFieldDefinition, file: File) {
 }
 
 async function validate(): Promise<{ valid: boolean; values: Record<string, unknown> }> {
+  attemptedValidate.value = true
   const result = await form.validate()
   return { valid: result.valid, values: form.values as Record<string, unknown> }
 }
@@ -63,7 +78,7 @@ defineExpose({ validate })
           v-if="field.is_visible && field.type !== 'FILE'"
           :field="effectiveField(field)"
           :model-value="fieldValue(field.key)"
-          :error="form.errors.value[field.key]"
+          :error="fieldError(field.key)"
           @update:model-value="(value) => setFieldValue(field.key, value)"
         />
         <Field v-else-if="field.is_visible && field.type === 'FILE'">
@@ -83,8 +98,8 @@ defineExpose({ validate })
               }
             "
           />
-          <FieldError v-if="form.errors.value[field.key]">
-            {{ form.errors.value[field.key] }}
+          <FieldError v-if="fieldError(field.key)">
+            {{ fieldError(field.key) }}
           </FieldError>
         </Field>
       </template>

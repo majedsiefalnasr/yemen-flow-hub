@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import DynamicForm from '@/components/workflow/DynamicForm.vue'
 import type { ResolvedFieldGroup } from '@/types/models'
 
@@ -93,5 +93,42 @@ describe('DynamicForm', () => {
       props: { fieldGroups: hiddenGroups, modelValue: {}, mode: 'edit' },
     })
     expect(wrapper.text()).not.toContain('مبلغ الفاتورة')
+  })
+
+  it('does not show a required-field error on initial render', () => {
+    const wrapper = mount(DynamicForm, {
+      props: { fieldGroups: groups, modelValue: {}, mode: 'edit' },
+    })
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+  })
+
+  it('shows the error for a field once it has been edited', async () => {
+    const textGroups: ResolvedFieldGroup[] = [
+      {
+        ...groups[0]!,
+        fields: [{ ...groups[0]!.fields[0]!, key: 'tax_number', type: 'TEXT', is_required: true }],
+      },
+    ]
+    const wrapper = mount(DynamicForm, {
+      props: { fieldGroups: textGroups, modelValue: {}, mode: 'edit' },
+    })
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+    await wrapper.find('input').setValue('123')
+    await wrapper.find('input').setValue('')
+    // vee-validate debounces schema validation by 5ms internally; flushPromises
+    // (microtasks only) never observes it, so this needs a real timer tick.
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    await flushPromises()
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+  })
+
+  it('shows all required-field errors after validate() is called', async () => {
+    const wrapper = mount(DynamicForm, {
+      props: { fieldGroups: groups, modelValue: {}, mode: 'edit' },
+    })
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+    await wrapper.vm.validate()
+    await flushPromises()
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
   })
 })

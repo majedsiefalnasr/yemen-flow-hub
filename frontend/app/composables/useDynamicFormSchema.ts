@@ -31,16 +31,9 @@ function buildFieldSchema(field: ResolvedFieldDefinition): z.ZodTypeAny {
     }
     case 'DYNAMIC_SELECT': {
       const values = (field.dynamic_options ?? []).map((o) => o.value)
-      const u =
-        values.length > 0
-          ? (z.union(
-              values.map((v) => z.literal(v)) as [
-                z.ZodLiteral<string | number>,
-                z.ZodLiteral<string | number>,
-                ...z.ZodLiteral<string | number>[],
-              ],
-            ) as z.ZodTypeAny)
-          : z.union([z.string(), z.number()])
+      const u = z
+        .union([z.string(), z.number()])
+        .refine((v) => values.length === 0 || values.includes(v), { message: 'اختر قيمة صحيحة.' })
       return field.is_required ? u : u.optional()
     }
     case 'CHECKBOX': {
