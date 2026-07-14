@@ -145,13 +145,24 @@ class TemporaryUploadController extends Controller
 
         if ($upload->consumed_at === null) {
             $disk = Storage::disk('private-tmp');
+
+            // Same ordering as the purge command: delete the file BEFORE the
+            // row. On failure, keep the row so the scheduled sweep can retry
+            // it — deleting the row here would leave an untracked orphan.
             if ($disk->exists($upload->path) && ! $disk->delete($upload->path)) {
                 OperationalAlertLogger::failure(
                     'temporary_upload_release',
                     new \RuntimeException("Failed to delete released temporary upload file: {$upload->path}"),
                     ['path' => $upload->path, 'temporary_upload_id' => $upload->id],
                 );
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Could not release the upload. Please try again.',
+                    'error_code' => 'FILE_DELETE_FAILED',
+                ], 500);
             }
+
             $upload->delete();
         }
 

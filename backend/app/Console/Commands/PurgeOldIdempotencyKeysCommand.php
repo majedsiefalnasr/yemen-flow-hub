@@ -7,6 +7,7 @@ use App\Enums\IdempotencyKeyState;
 use App\Models\IdempotencyKey;
 use App\Models\TemporaryUpload;
 use Illuminate\Console\Command;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -52,6 +53,14 @@ class PurgeOldIdempotencyKeysCommand extends Command
                 ->whereNull('engine_request_id')
                 ->pluck('id');
 
+            // Deterministic concurrency seam: fires once, after candidates
+            // are selected but before any per-row lock+recheck runs. In
+            // production this is a no-op; tests use it to interleave a real
+            // reclaim exactly in the window the per-row recheck exists to
+            // guard — proving the recheck (not just the candidate query)
+            // is what keeps a reclaimed row alive.
+            $this->afterCandidateScan($candidates);
+
             $abandonedPurged = 0;
             foreach ($candidates as $id) {
                 if ($this->tryPurgeOneAbandoned($id, $marginMinutes)) {
@@ -61,6 +70,12 @@ class PurgeOldIdempotencyKeysCommand extends Command
 
             return $completedPurged + $abandonedPurged;
         });
+    }
+
+    /** @param  Collection<int, int>  $candidateIds */
+    protected function afterCandidateScan(Collection $candidateIds): void
+    {
+        // No-op in production — overridden by tests only.
     }
 
     private function tryPurgeOneAbandoned(int $id, int $marginMinutes): bool

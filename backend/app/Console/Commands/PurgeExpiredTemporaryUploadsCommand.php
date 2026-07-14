@@ -88,16 +88,23 @@ class PurgeExpiredTemporaryUploadsCommand extends Command
             }
 
             $path = $upload->path;
-            $upload->delete();
-
             $disk = Storage::disk('private-tmp');
+
+            // Delete the physical file BEFORE the row — never delete the row
+            // first, or a delete failure leaves an untracked orphan with no
+            // DB record left to identify it. On failure, keep the row (so
+            // it's retried on the next run) and don't count this as purged.
             if ($disk->exists($path) && ! $disk->delete($path)) {
                 OperationalAlertLogger::failure(
                     'temporary_upload_purge',
                     new \RuntimeException("Failed to delete expired temporary upload file: {$path}"),
                     ['path' => $path, 'temporary_upload_id' => $id],
                 );
+
+                return false;
             }
+
+            $upload->delete();
 
             return true;
         });

@@ -54,5 +54,6 @@ return [
         'workflow-history:archive-old' => 1500,
         'workflow:purge-expired-temporary-uploads' => 1500,
         'workflow:purge-old-idempotency-keys' => 1500,
+        'workflow:purge-orphan-temporary-uploads' => 1500,
     ],
 ];

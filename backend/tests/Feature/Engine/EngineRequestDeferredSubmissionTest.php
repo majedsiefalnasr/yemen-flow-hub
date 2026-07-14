@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Engine;
 
+use App\Console\Commands\PurgeOldIdempotencyKeysCommand;
 use App\Enums\DocumentScanStatus;
 use App\Enums\IdempotencyKeyState;
 use App\Enums\StageAccessLevel;
@@ -34,8 +35,11 @@ use App\Services\Workflow\TemporaryUploadReservationService;
 use App\Services\Workflow\WorkflowVersionValidator;
 use Database\Seeders\GovernanceSeeder;
 use Database\Seeders\ScreenPermissionSeeder;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
@@ -305,6 +309,37 @@ class EngineRequestDeferredSubmissionTest extends TestCase
 
         $this->assertIsInt($docId);
         $this->assertDatabaseHas('engine_request_documents', ['id' => $docId, 'request_id' => $request->id]);
+    }
+
+    public function test_submission_cleanup_callback_logs_when_temp_file_delete_fails(): void
+    {
+        $token = $this->uploadFile();
+        $upload = TemporaryUpload::query()->where('token', $token)->firstOrFail();
+
+        // Wrap the real fake disk so every OTHER path still behaves
+        // normally (promotion reads the file via this same disk during the
+        // request), but the one known temp path fails to delete during the
+        // post-commit cleanup callback — proving that failure is now
+        // checked and logged instead of silently ignored.
+        $realDisk = Storage::disk('private-tmp');
+        $wrapped = \Mockery::mock(FilesystemAdapter::class);
+        $wrapped->shouldReceive('exists')->with($upload->path)->andReturn(true);
+        $wrapped->shouldReceive('delete')->with($upload->path)->andReturn(false);
+        $wrapped->shouldReceive('readStream')->andReturnUsing(fn (...$args) => $realDisk->readStream(...$args));
+        Storage::set('private-tmp', $wrapped);
+
+        Log::shouldReceive('error')
+            ->once()
+            ->with('ops.temporary_upload_submission_cleanup.failed', \Mockery::on(fn ($context) => ($context['temporary_upload_id'] ?? null) === $upload->id));
+
+        $response = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', $this->submitPayload([
+            'data' => ['supporting_doc' => [$token]],
+            'upload_tokens' => [$token],
+        ]), ['Idempotency-Key' => $this->uploadKey()]);
+
+        // The request still succeeds — a post-commit cleanup failure never
+        // affects the already-committed response.
+        $response->assertCreated();
     }
 
     public function test_renewal_loss_after_promotion_compensates_files_and_releases_reservation(): void
@@ -1261,6 +1296,34 @@ class EngineRequestDeferredSubmissionTest extends TestCase
         $this->assertDatabaseMissing('temporary_uploads', ['id' => $upload->id]);
     }
 
+    public function test_purge_command_keeps_the_row_and_does_not_count_it_when_file_delete_fails(): void
+    {
+        $token = $this->uploadFile();
+        $upload = TemporaryUpload::query()->where('token', $token)->firstOrFail();
+        $upload->update(['expires_at' => now()->subDay()]);
+
+        // The row must survive a file-delete failure — deleting it anyway
+        // would leave an untracked orphan file with no DB record left to
+        // find it (documents:purge-orphans only scans the 'private' disk,
+        // not 'private-tmp'). Swaps the resolved disk INSTANCE (not the
+        // FilesystemManager itself, which Storage::partialMock() would mock
+        // and which conflicts with the Storage::fake('private-tmp') already
+        // set up in setUp()).
+        $mockDisk = \Mockery::mock(FilesystemAdapter::class);
+        $mockDisk->shouldReceive('exists')->with($upload->path)->andReturn(true);
+        $mockDisk->shouldReceive('delete')->with($upload->path)->andReturn(false);
+        Storage::set('private-tmp', $mockDisk);
+
+        Log::shouldReceive('error')
+            ->once()
+            ->with('ops.temporary_upload_purge.failed', \Mockery::on(fn ($context) => ($context['temporary_upload_id'] ?? null) === $upload->id));
+
+        $exitCode = Artisan::call('workflow:purge-expired-temporary-uploads');
+
+        $this->assertSame(0, $exitCode);
+        $this->assertDatabaseHas('temporary_uploads', ['id' => $upload->id]);
+    }
+
     public function test_purge_command_leaves_unexpired_upload_alone(): void
     {
         $token = $this->uploadFile();
@@ -1269,6 +1332,42 @@ class EngineRequestDeferredSubmissionTest extends TestCase
         $this->artisan('workflow:purge-expired-temporary-uploads')->assertSuccessful();
 
         $this->assertDatabaseHas('temporary_uploads', ['id' => $upload->id]);
+    }
+
+    public function test_orphan_sweep_deletes_a_private_tmp_file_with_no_db_row(): void
+    {
+        // The exact scenario a failed immediate-compensation delete leaves
+        // behind (store()'s catch block deletes the file when the DB insert
+        // fails; if that delete itself fails, the file survives with
+        // nothing in the DB to identify it). No row is ever created here —
+        // this is a file-only orphan.
+        $disk = Storage::disk('private-tmp');
+        $disk->put('orphaned-file.pdf', 'contents');
+        touch($disk->path('orphaned-file.pdf'), now()->subHours(48)->getTimestamp());
+
+        $this->artisan('workflow:purge-orphan-temporary-uploads')->assertSuccessful();
+
+        $this->assertFalse($disk->exists('orphaned-file.pdf'));
+    }
+
+    public function test_orphan_sweep_leaves_a_referenced_file_alone(): void
+    {
+        $token = $this->uploadFile();
+        $upload = TemporaryUpload::query()->where('token', $token)->firstOrFail();
+
+        $this->artisan('workflow:purge-orphan-temporary-uploads')->assertSuccessful();
+
+        $this->assertTrue(Storage::disk('private-tmp')->exists($upload->path));
+    }
+
+    public function test_orphan_sweep_leaves_a_recent_orphan_within_the_grace_period_alone(): void
+    {
+        $disk = Storage::disk('private-tmp');
+        $disk->put('recent-orphan.pdf', 'contents');
+
+        $this->artisan('workflow:purge-orphan-temporary-uploads')->assertSuccessful();
+
+        $this->assertTrue($disk->exists('recent-orphan.pdf'));
     }
 
     public function test_purge_command_recovers_consumed_upload_with_missed_callback(): void
@@ -1364,7 +1463,7 @@ class EngineRequestDeferredSubmissionTest extends TestCase
         $this->assertDatabaseHas('temporary_uploads', ['id' => $upload->id]);
     }
 
-    public function test_purge_idempotency_keys_skips_a_row_reclaimed_after_the_candidate_scan(): void
+    public function test_purge_idempotency_keys_skips_a_row_reclaimed_between_candidate_scan_and_lock(): void
     {
         $row = IdempotencyKey::create([
             'key' => $this->uploadKey(),
@@ -1377,15 +1476,49 @@ class EngineRequestDeferredSubmissionTest extends TestCase
             'locked_until' => now()->subHours(2),
         ]);
 
-        // Simulate a genuine reclaim happening between the command's
-        // candidate scan and its per-row lock: by the time this test's
-        // "purge" runs, the row already carries a fresh claim_token and an
-        // extended, still-future lease — exactly what IdempotencyCoordinator
-        // ::claim()'s compare-and-set reclaim produces for a live retry.
-        $row->update(['claim_token' => 'reclaimed-token', 'locked_until' => now()->addMinutes(2)]);
+        // A genuinely stale row IS selected as a candidate — this is the
+        // whole point of the test: the candidate scan finds it first...
+        //
+        // ...then, using PurgeOldIdempotencyKeysCommand's own testing seam
+        // (afterCandidateScan(), a no-op in production), a real reclaim is
+        // interleaved between the candidate scan and the per-row
+        // lock+recheck — reproducing IdempotencyCoordinator::claim()'s
+        // compare-and-set reclaim exactly in that window. If the per-row
+        // recheck didn't exist, the candidate list alone would still doom
+        // this row.
+        //
+        // Instantiated and invoked directly (not via Artisan::call()/
+        // $this->artisan()): Laravel's console kernel resolves and caches
+        // each auto-discovered command instance once at boot, so a later
+        // app()->instance() swap has no effect on subsequent Artisan calls
+        // in the same process — this is the actual deterministic seam.
+        $command = new class extends PurgeOldIdempotencyKeysCommand
+        {
+            public int $reclaimedRowId;
 
-        $this->artisan('workflow:purge-old-idempotency-keys')->assertSuccessful();
+            protected function afterCandidateScan(Collection $candidateIds): void
+            {
+                IdempotencyKey::query()
+                    ->whereKey($this->reclaimedRowId)
+                    ->update(['claim_token' => 'reclaimed-token', 'locked_until' => now()->addMinutes(2)]);
+            }
+        };
+        $command->reclaimedRowId = $row->id;
+        $command->setLaravel($this->app);
 
-        $this->assertDatabaseHas('idempotency_keys', ['id' => $row->id]);
+        $candidateIdsBeforeReclaim = IdempotencyKey::query()
+            ->where('state', 'PROCESSING')
+            ->where('locked_until', '<', now()->subMinutes((int) config('retention.abandoned_processing_margin_minutes')))
+            ->whereNull('engine_request_id')
+            ->pluck('id');
+        $this->assertTrue($candidateIdsBeforeReclaim->contains($row->id), 'the row must genuinely be selected as a stale candidate before the reclaim');
+
+        $exitCode = $command->handle();
+
+        $this->assertSame(0, $exitCode);
+        $this->assertDatabaseHas('idempotency_keys', [
+            'id' => $row->id,
+            'claim_token' => 'reclaimed-token',
+        ]);
     }
 }

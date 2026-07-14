@@ -21,6 +21,7 @@ use App\Services\Audit\AuditService;
 use App\Services\Authorization\DataScope;
 use App\Services\Documents\TemporaryUploadPromotionService;
 use App\Services\Notifications\EngineNotificationDispatcher;
+use App\Services\Operations\OperationalAlertLogger;
 use App\Support\RequestCreationGate;
 use App\Support\SubmitTransitionResolver;
 use Illuminate\Support\Facades\DB;
@@ -376,9 +377,25 @@ class EngineRequestSubmissionService
         [$request, $responseBody] = $result;
 
         DB::afterCommit(function () use ($promotedDocuments) {
+            $disk = Storage::disk('private-tmp');
             foreach ($promotedDocuments as $entries) {
                 foreach ($entries as $entry) {
-                    Storage::disk('private-tmp')->delete($entry['upload']->path);
+                    $path = $entry['upload']->path;
+                    // The TemporaryUpload row already has consumed_at set
+                    // (committed above) — a delete failure here leaves a
+                    // ROW-BACKED orphan, not an untracked one, so it's still
+                    // recoverable by the scheduled sweep's consumed-missed-
+                    // callback branch. Still worth logging: this IS the
+                    // normal cleanup path, and a failure here means that
+                    // sweep is the only thing standing between this file and
+                    // permanent leakage.
+                    if ($disk->exists($path) && ! $disk->delete($path)) {
+                        OperationalAlertLogger::failure(
+                            'temporary_upload_submission_cleanup',
+                            new \RuntimeException("Failed to delete promoted temporary upload file after commit: {$path}"),
+                            ['path' => $path, 'temporary_upload_id' => $entry['upload']->id],
+                        );
+                    }
                 }
             }
         });
