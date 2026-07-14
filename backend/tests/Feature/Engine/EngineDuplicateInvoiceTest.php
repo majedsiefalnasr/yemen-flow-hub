@@ -4,7 +4,6 @@ namespace Tests\Feature\Engine;
 
 use App\Enums\FieldType;
 use App\Enums\StageAccessLevel;
-use App\Enums\UserRole;
 use App\Enums\WorkflowVersionState;
 use App\Models\Bank;
 use App\Models\EngineRequest;
@@ -24,6 +23,7 @@ use App\Models\WorkflowVersion;
 use Database\Seeders\GovernanceSeeder;
 use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class EngineDuplicateInvoiceTest extends TestCase
@@ -35,6 +35,10 @@ class EngineDuplicateInvoiceTest extends TestCase
     private WorkflowVersion $version;
 
     private Merchant $merchant;
+
+    private int $submitTransitionId;
+
+    private int $reviewTransitionId;
 
     protected function setUp(): void
     {
@@ -93,24 +97,57 @@ class EngineDuplicateInvoiceTest extends TestCase
             'version' => 1,
         ]);
 
+        // Non-final REVIEW stage between ENTRY and DONE: store() now consumes the
+        // ENTRY -> REVIEW submit transition atomically as part of request creation,
+        // so a SECOND, LATER transition (REVIEW -> DONE, reviewTransitionId) is
+        // needed for tests that re-check the duplicate-invoice warning on an
+        // actions call after the request already exists.
+        $reviewStage = WorkflowStage::create([
+            'workflow_version_id' => $this->version->id,
+            'code' => 'REVIEW',
+            'name' => 'Review',
+            'sort_order' => 2,
+            'is_initial' => false,
+            'is_final' => false,
+            'version' => 1,
+        ]);
+
+        StagePermission::create([
+            'stage_id' => $reviewStage->id,
+            'organization_id' => $bankOrg->id,
+            'role_id' => $entryRole->id,
+            'access_level' => StageAccessLevel::EXECUTE,
+            'display_label' => 'Review',
+            'version' => 1,
+        ]);
+
         $action = WorkflowAction::create(['code' => 'SUBMIT_DUP', 'name' => 'Submit', 'kind' => 'DRAFT', 'is_active' => true, 'version' => 1]);
+        $reviewAction = WorkflowAction::create(['code' => 'REVIEW_DUP', 'name' => 'Review', 'kind' => 'APPROVE', 'is_active' => true, 'version' => 1]);
         $finalStage = WorkflowStage::create([
             'workflow_version_id' => $this->version->id,
             'code' => 'DONE',
             'name' => 'Done',
-            'sort_order' => 2,
+            'sort_order' => 3,
             'is_initial' => false,
             'is_final' => true,
             'version' => 1,
         ]);
-        WorkflowTransition::create([
+        $this->submitTransitionId = WorkflowTransition::create([
             'workflow_version_id' => $this->version->id,
             'from_stage_id' => $stage->id,
-            'to_stage_id' => $finalStage->id,
+            'to_stage_id' => $reviewStage->id,
             'action_id' => $action->id,
             'requires_comment' => false,
             'version' => 1,
-        ]);
+        ])->id;
+        $this->reviewTransitionId = WorkflowTransition::create([
+            'workflow_version_id' => $this->version->id,
+            'from_stage_id' => $reviewStage->id,
+            'to_stage_id' => $finalStage->id,
+            'action_id' => $reviewAction->id,
+            'requires_comment' => false,
+            'version' => 1,
+        ])->id;
 
         // Register invoice_number as a FieldDefinition so RequestProjectionSync syncs
         // data['invoice_number'] → engine_requests.invoice_number (projection column).
@@ -137,18 +174,22 @@ class EngineDuplicateInvoiceTest extends TestCase
     public function test_duplicate_invoice_warning_on_second_submission(): void
     {
         // Create the first request with invoice INV-DUP-001
-        $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $this->version->id,
-            'merchant_id' => $this->merchant->id,
-            'data' => ['amount' => 10000, 'currency' => 'USD', 'invoice_number' => 'INV-DUP-001'],
-        ])->assertCreated();
+        $this->actingAs($this->executor)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $this->merchant->id,
+                'data' => ['amount' => 10000, 'currency' => 'USD', 'invoice_number' => 'INV-DUP-001'],
+            ])->assertCreated();
 
         // Second request with the same invoice triggers a warning, not a hard block
-        $response = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $this->version->id,
-            'merchant_id' => $this->merchant->id,
-            'data' => ['amount' => 10000, 'currency' => 'USD', 'invoice_number' => 'INV-DUP-001'],
-        ]);
+        $response = $this->actingAs($this->executor)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $this->merchant->id,
+                'data' => ['amount' => 10000, 'currency' => 'USD', 'invoice_number' => 'INV-DUP-001'],
+            ]);
 
         $response->assertCreated();
         $this->assertArrayHasKey('warnings', $response->json());
@@ -157,11 +198,13 @@ class EngineDuplicateInvoiceTest extends TestCase
 
     public function test_unique_invoice_has_no_warning(): void
     {
-        $response = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $this->version->id,
-            'merchant_id' => $this->merchant->id,
-            'data' => ['amount' => 10000, 'currency' => 'USD', 'invoice_number' => 'INV-UNIQUE-999'],
-        ]);
+        $response = $this->actingAs($this->executor)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $this->merchant->id,
+                'data' => ['amount' => 10000, 'currency' => 'USD', 'invoice_number' => 'INV-UNIQUE-999'],
+            ]);
 
         $response->assertCreated();
         $this->assertArrayNotHasKey('warnings', $response->json());
@@ -169,24 +212,31 @@ class EngineDuplicateInvoiceTest extends TestCase
 
     public function test_editing_own_request_does_not_self_trigger_duplicate(): void
     {
-        // Create first request
-        $first = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $this->version->id,
-            'merchant_id' => $this->merchant->id,
-            'data' => ['amount' => 10000, 'currency' => 'USD', 'invoice_number' => 'INV-SELF-001'],
-        ]);
+        // Create first request — store() already executes the ENTRY -> REVIEW
+        // submit transition atomically, so the request lands on REVIEW.
+        $first = $this->actingAs($this->executor)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $this->merchant->id,
+                'data' => ['amount' => 10000, 'currency' => 'USD', 'invoice_number' => 'INV-SELF-001'],
+            ]);
         $first->assertCreated();
         $firstId = $first->json('data.id');
         $firstRequest = EngineRequest::find($firstId);
 
-        // Draft-save with same invoice number — exclude_request_id exclusion means
-        // the duplicate checker should not flag it against itself.
-        $response = $this->actingAs($this->executor)->patchJson("/api/v1/engine-requests/{$firstId}/draft", [
-            'data' => ['amount' => 20000, 'currency' => 'USD', 'invoice_number' => 'INV-SELF-001'],
-            'version' => $firstRequest->version,
-        ]);
+        // Run the SECOND, LATER transition (REVIEW -> DONE) with the same invoice
+        // number — the duplicate checker excludes the request's own id, so it
+        // should not flag itself as a duplicate.
+        $response = $this->actingAs($this->executor)->postJson(
+            "/api/v1/engine-requests/{$firstId}/actions",
+            [
+                'transition_id' => $this->reviewTransitionId,
+                'data' => ['amount' => 20000, 'currency' => 'USD', 'invoice_number' => 'INV-SELF-001'],
+                'version' => $firstRequest->version,
+            ],
+        );
 
-        // Draft save should succeed without triggering DUPLICATE_INVOICE warning
         $response->assertOk();
         $this->assertArrayNotHasKey('warnings', $response->json());
     }
@@ -194,19 +244,23 @@ class EngineDuplicateInvoiceTest extends TestCase
     public function test_show_surfaces_duplicate_warning_for_conflicting_request(): void
     {
         // First request holds the invoice number.
-        $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $this->version->id,
-            'merchant_id' => $this->merchant->id,
-            'data' => ['invoice_number' => 'INV-SHOW-001'],
-        ])->assertCreated();
+        $this->actingAs($this->executor)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $this->merchant->id,
+                'data' => ['invoice_number' => 'INV-SHOW-001'],
+            ])->assertCreated();
 
         // Second request re-uses it; viewing its detail must expose the conflict
         // so a reviewer sees it without re-running a transition.
-        $second = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $this->version->id,
-            'merchant_id' => $this->merchant->id,
-            'data' => ['invoice_number' => 'INV-SHOW-001'],
-        ])->assertCreated();
+        $second = $this->actingAs($this->executor)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $this->merchant->id,
+                'data' => ['invoice_number' => 'INV-SHOW-001'],
+            ])->assertCreated();
 
         $this->actingAs($this->executor)
             ->getJson("/api/v1/engine-requests/{$second->json('data.id')}")
@@ -216,11 +270,13 @@ class EngineDuplicateInvoiceTest extends TestCase
 
     public function test_show_has_no_warning_for_unique_invoice(): void
     {
-        $created = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $this->version->id,
-            'merchant_id' => $this->merchant->id,
-            'data' => ['invoice_number' => 'INV-SHOW-UNIQUE'],
-        ])->assertCreated();
+        $created = $this->actingAs($this->executor)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $this->merchant->id,
+                'data' => ['invoice_number' => 'INV-SHOW-UNIQUE'],
+            ])->assertCreated();
 
         $response = $this->actingAs($this->executor)
             ->getJson("/api/v1/engine-requests/{$created->json('data.id')}")
@@ -231,17 +287,21 @@ class EngineDuplicateInvoiceTest extends TestCase
 
     public function test_duplicate_warning_includes_matching_reference_list(): void
     {
-        $first = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $this->version->id,
-            'merchant_id' => $this->merchant->id,
-            'data' => ['invoice_number' => 'INV-MULTI-001'],
-        ])->assertCreated();
+        $this->actingAs($this->executor)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $this->merchant->id,
+                'data' => ['invoice_number' => 'INV-MULTI-001'],
+            ])->assertCreated();
 
-        $response = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $this->version->id,
-            'merchant_id' => $this->merchant->id,
-            'data' => ['invoice_number' => 'INV-MULTI-001'],
-        ])->assertCreated();
+        $response = $this->actingAs($this->executor)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $this->merchant->id,
+                'data' => ['invoice_number' => 'INV-MULTI-001'],
+            ])->assertCreated();
 
         $duplicates = $response->json('warnings.0.duplicates');
         $this->assertIsArray($duplicates);

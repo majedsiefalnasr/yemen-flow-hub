@@ -10,8 +10,10 @@ use App\Models\Organization;
 use App\Models\Role;
 use App\Models\StagePermission;
 use App\Models\User;
+use App\Models\WorkflowAction;
 use App\Models\WorkflowDefinition;
 use App\Models\WorkflowStage;
+use App\Models\WorkflowTransition;
 use App\Models\WorkflowVersion;
 use App\Services\Workflow\StagePermissionResolver;
 use Database\Seeders\BankSeeder;
@@ -19,6 +21,7 @@ use Database\Seeders\GovernanceSeeder;
 use Database\Seeders\ScreenPermissionSeeder;
 use Database\Seeders\UserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\Support\AssignsGovernanceIdentity;
 use Tests\TestCase;
 
@@ -124,10 +127,12 @@ class OrganizationClassificationTest extends TestCase
         $support = $this->firstUserWithRole(UserRole::SUPPORT_COMMITTEE);
         $version = $this->createPublishedWorkflowForBankCreators();
 
-        $this->actingAs($support)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $version->id,
-            'data' => [],
-        ])->assertForbidden()
+        $this->actingAs($support)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $version->id,
+                'data' => [],
+            ])->assertForbidden()
             ->assertJsonPath('error_code', 'CREATION_NOT_ALLOWED_FOR_ORGANIZATION');
 
         $this->actingAs($support)->getJson('/api/v1/engine-requests/available-workflows')
@@ -140,10 +145,12 @@ class OrganizationClassificationTest extends TestCase
         $entry = $this->firstUserWithRole(UserRole::DATA_ENTRY);
         $version = $this->createPublishedWorkflowForBankCreators();
 
-        $this->actingAs($entry)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $version->id,
-            'data' => [],
-        ])->assertCreated();
+        $this->actingAs($entry)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $version->id,
+                'data' => [],
+            ])->assertCreated();
     }
 
     private function createPublishedWorkflowForBankCreators(): WorkflowVersion
@@ -163,7 +170,7 @@ class OrganizationClassificationTest extends TestCase
             'code' => 'create',
             'name' => 'Create',
             'is_initial' => true,
-            'is_final' => true,
+            'is_final' => false,
         ]);
         StagePermission::query()->create([
             'stage_id' => $stage->id,
@@ -171,6 +178,29 @@ class OrganizationClassificationTest extends TestCase
             'role_id' => $entryRole->id,
             'access_level' => StageAccessLevel::EXECUTE,
             'display_label' => 'Create',
+        ]);
+
+        $finalStage = WorkflowStage::query()->create([
+            'workflow_version_id' => $version->id,
+            'code' => 'final',
+            'name' => 'Final',
+            'is_initial' => false,
+            'is_final' => true,
+        ]);
+
+        $submitAction = WorkflowAction::query()->create([
+            'code' => 'SUBMIT',
+            'name' => 'Submit',
+            'kind' => 'DRAFT',
+            'is_active' => true,
+        ]);
+
+        WorkflowTransition::query()->create([
+            'workflow_version_id' => $version->id,
+            'from_stage_id' => $stage->id,
+            'to_stage_id' => $finalStage->id,
+            'action_id' => $submitAction->id,
+            'requires_comment' => false,
         ]);
 
         return $version;

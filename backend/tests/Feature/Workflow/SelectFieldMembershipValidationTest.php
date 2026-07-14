@@ -4,7 +4,6 @@ namespace Tests\Feature\Workflow;
 
 use App\Enums\FieldType;
 use App\Enums\StageAccessLevel;
-use App\Enums\UserRole;
 use App\Enums\WorkflowVersionState;
 use App\Models\Bank;
 use App\Models\EngineRequest;
@@ -24,6 +23,7 @@ use App\Models\WorkflowVersion;
 use Database\Seeders\GovernanceSeeder;
 use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class SelectFieldMembershipValidationTest extends TestCase
@@ -47,6 +47,8 @@ class SelectFieldMembershipValidationTest extends TestCase
     private WorkflowStage $reviewStage;
 
     private WorkflowTransition $submitTransition;
+
+    private WorkflowTransition $reviewTransition;
 
     private FieldDefinition $coverageField;
 
@@ -147,6 +149,29 @@ class SelectFieldMembershipValidationTest extends TestCase
             'version' => 1,
         ]);
 
+        // The executor also needs EXECUTE on REVIEW: store() now consumes the
+        // initial submit transition atomically, so the select-membership
+        // validation checks below run on a SECOND, LATER transition
+        // (REVIEW -> FINAL), not the one store() already executed.
+        $finalStage = WorkflowStage::create([
+            'workflow_version_id' => $this->version->id,
+            'code' => 'FINAL',
+            'name' => 'Final',
+            'sort_order' => 3,
+            'is_initial' => false,
+            'is_final' => true,
+            'version' => 1,
+        ]);
+
+        StagePermission::create([
+            'stage_id' => $this->reviewStage->id,
+            'organization_id' => $bankOrg->id,
+            'role_id' => $entryRole->id,
+            'access_level' => StageAccessLevel::EXECUTE,
+            'display_label' => 'Review',
+            'version' => 1,
+        ]);
+
         $group = FieldGroup::create([
             'workflow_version_id' => $this->version->id,
             'name' => 'main',
@@ -190,6 +215,14 @@ class SelectFieldMembershipValidationTest extends TestCase
             'version' => 1,
         ]);
 
+        $reviewAction = WorkflowAction::create([
+            'code' => 'REVIEW_APPROVE',
+            'name' => 'Review Approve',
+            'kind' => 'APPROVE',
+            'is_active' => true,
+            'version' => 1,
+        ]);
+
         $this->submitTransition = WorkflowTransition::create([
             'workflow_version_id' => $this->version->id,
             'from_stage_id' => $this->initialStage->id,
@@ -198,15 +231,26 @@ class SelectFieldMembershipValidationTest extends TestCase
             'requires_comment' => false,
             'version' => 1,
         ]);
+
+        $this->reviewTransition = WorkflowTransition::create([
+            'workflow_version_id' => $this->version->id,
+            'from_stage_id' => $this->reviewStage->id,
+            'to_stage_id' => $finalStage->id,
+            'action_id' => $reviewAction->id,
+            'requires_comment' => false,
+            'version' => 1,
+        ]);
     }
 
     private function createRequest(array $data = []): EngineRequest
     {
-        $response = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', array_merge([
-            'workflow_version_id' => $this->version->id,
-            'merchant_id' => $this->ownMerchant->id,
-            'data' => ['coverage' => 'full'],
-        ], $data));
+        $response = $this->actingAs($this->executor)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', array_merge([
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $this->ownMerchant->id,
+                'data' => ['coverage' => 'full'],
+            ], $data));
 
         $response->assertCreated();
 
@@ -215,25 +259,13 @@ class SelectFieldMembershipValidationTest extends TestCase
 
     public function test_create_rejects_invalid_static_select_value(): void
     {
-        $response = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $this->version->id,
-            'merchant_id' => $this->ownMerchant->id,
-            'data' => ['coverage' => 'not-a-valid-option'],
-        ]);
-
-        $response->assertStatus(422)
-            ->assertJsonPath('error_code', 'STAGE_FIELDS_INVALID')
-            ->assertJsonPath('errors.coverage', 'The selected value is not a valid option.');
-    }
-
-    public function test_draft_save_rejects_invalid_static_select_value(): void
-    {
-        $request = $this->createRequest();
-
-        $response = $this->actingAs($this->executor)->patchJson("/api/v1/engine-requests/{$request->id}/draft", [
-            'data' => ['coverage' => 'not-a-valid-option'],
-            'version' => $request->version,
-        ]);
+        $response = $this->actingAs($this->executor)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $this->ownMerchant->id,
+                'data' => ['coverage' => 'not-a-valid-option'],
+            ]);
 
         $response->assertStatus(422)
             ->assertJsonPath('error_code', 'STAGE_FIELDS_INVALID')
@@ -242,10 +274,13 @@ class SelectFieldMembershipValidationTest extends TestCase
 
     public function test_transition_rejects_invalid_static_select_value(): void
     {
+        // createRequest() already executes the initial submit transition, landing
+        // the request on reviewStage — this is the SECOND, LATER transition
+        // (reviewStage -> finalStage) under test here.
         $request = $this->createRequest();
 
         $response = $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
-            'transition_id' => $this->submitTransition->id,
+            'transition_id' => $this->reviewTransition->id,
             'data' => ['coverage' => 'not-a-valid-option'],
             'version' => $request->version,
         ]);
@@ -255,11 +290,12 @@ class SelectFieldMembershipValidationTest extends TestCase
             ->assertJsonPath('errors.coverage', 'The selected value is not a valid option.');
     }
 
-    public function test_draft_save_rejects_out_of_scope_dynamic_select_value(): void
+    public function test_transition_rejects_out_of_scope_dynamic_select_value(): void
     {
         $request = $this->createRequest();
 
-        $response = $this->actingAs($this->executor)->patchJson("/api/v1/engine-requests/{$request->id}/draft", [
+        $response = $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
+            'transition_id' => $this->reviewTransition->id,
             'data' => ['merchant_pick' => $this->otherMerchant->id],
             'version' => $request->version,
         ]);
@@ -269,11 +305,12 @@ class SelectFieldMembershipValidationTest extends TestCase
             ->assertJsonPath('errors.merchant_pick', 'The selected value is not a valid option.');
     }
 
-    public function test_draft_save_accepts_valid_select_values(): void
+    public function test_transition_accepts_valid_select_values(): void
     {
         $request = $this->createRequest();
 
-        $response = $this->actingAs($this->executor)->patchJson("/api/v1/engine-requests/{$request->id}/draft", [
+        $response = $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
+            'transition_id' => $this->reviewTransition->id,
             'data' => [
                 'coverage' => 'partial',
                 'merchant_pick' => $this->ownMerchant->id,

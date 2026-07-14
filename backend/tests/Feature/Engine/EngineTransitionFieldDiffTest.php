@@ -4,7 +4,6 @@ namespace Tests\Feature\Engine;
 
 use App\Enums\AuditAction;
 use App\Enums\StageAccessLevel;
-use App\Enums\UserRole;
 use App\Models\AuditLog;
 use App\Models\Bank;
 use App\Models\EngineRequest;
@@ -22,6 +21,7 @@ use App\Support\TransitionFieldDiffBuilder;
 use Database\Seeders\GovernanceSeeder;
 use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class EngineTransitionFieldDiffTest extends TestCase
@@ -33,6 +33,8 @@ class EngineTransitionFieldDiffTest extends TestCase
     private WorkflowVersion $version;
 
     private WorkflowTransition $submitTransition;
+
+    private WorkflowTransition $reviewTransition;
 
     protected function setUp(): void
     {
@@ -99,10 +101,42 @@ class EngineTransitionFieldDiffTest extends TestCase
             'version' => 1,
         ]);
 
+        // The executor also needs EXECUTE on REVIEW: store() now consumes the
+        // initial submit transition atomically, so the field-level audit-diff
+        // check below (which needs a "before" state established prior to the
+        // transition under test) runs on a SECOND, LATER transition
+        // (REVIEW -> FINAL), not the one store() already executed.
+        $finalStage = WorkflowStage::create([
+            'workflow_version_id' => $this->version->id,
+            'code' => 'FINAL',
+            'name' => 'Final',
+            'sort_order' => 3,
+            'is_initial' => false,
+            'is_final' => true,
+            'version' => 1,
+        ]);
+
+        StagePermission::create([
+            'stage_id' => $nextStage->id,
+            'organization_id' => $bankOrg->id,
+            'role_id' => $entryRole->id,
+            'access_level' => StageAccessLevel::EXECUTE,
+            'display_label' => 'Review',
+            'version' => 1,
+        ]);
+
         $action = WorkflowAction::create([
             'code' => 'DIFF_SUBMIT',
             'name' => 'Submit',
             'kind' => 'DRAFT',
+            'is_active' => true,
+            'version' => 1,
+        ]);
+
+        $reviewAction = WorkflowAction::create([
+            'code' => 'DIFF_REVIEW_APPROVE',
+            'name' => 'Review Approve',
+            'kind' => 'APPROVE',
             'is_active' => true,
             'version' => 1,
         ]);
@@ -115,14 +149,25 @@ class EngineTransitionFieldDiffTest extends TestCase
             'requires_comment' => false,
             'version' => 1,
         ]);
+
+        $this->reviewTransition = WorkflowTransition::create([
+            'workflow_version_id' => $this->version->id,
+            'from_stage_id' => $nextStage->id,
+            'to_stage_id' => $finalStage->id,
+            'action_id' => $reviewAction->id,
+            'requires_comment' => false,
+            'version' => 1,
+        ]);
     }
 
     private function makeRequest(): EngineRequest
     {
-        $response = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $this->version->id,
-            'data' => ['amount' => 5000, 'currency' => 'USD'],
-        ]);
+        $response = $this->actingAs($this->executor)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'data' => ['amount' => 5000, 'currency' => 'USD'],
+            ]);
         $response->assertCreated();
 
         return EngineRequest::findOrFail($response->json('data.id'));
@@ -170,13 +215,17 @@ class EngineTransitionFieldDiffTest extends TestCase
 
     public function test_transition_with_data_patch_writes_field_level_audit_diff(): void
     {
+        // makeRequest() already executes the initial submit transition atomically
+        // (ENTRY -> REVIEW), so the "before" state and the transition under test
+        // both need to happen after that — hence the SECOND, LATER transition
+        // (REVIEW -> FINAL, reviewTransition) rather than re-running submitTransition.
         $request = $this->makeRequest();
         $request->update(['data' => array_merge($request->data ?? [], ['notes' => 'before'])]);
 
         $this->actingAs($this->executor)->postJson(
             "/api/v1/engine-requests/{$request->id}/actions",
             [
-                'transition_id' => $this->submitTransition->id,
+                'transition_id' => $this->reviewTransition->id,
                 'data' => ['notes' => 'after'],
                 'version' => $request->version,
             ],
@@ -191,29 +240,5 @@ class EngineTransitionFieldDiffTest extends TestCase
         $this->assertNotNull($log);
         $this->assertSame('before', $log->old_values['notes'] ?? null);
         $this->assertSame('after', $log->new_values['notes'] ?? null);
-    }
-
-    public function test_save_draft_writes_field_level_audit_diff(): void
-    {
-        $request = $this->makeRequest();
-        $request->update(['data' => array_merge($request->data ?? [], ['notes' => 'before'])]);
-
-        $this->actingAs($this->executor)->patchJson(
-            "/api/v1/engine-requests/{$request->id}/draft",
-            [
-                'data' => ['notes' => 'draft-after'],
-                'version' => $request->version,
-            ],
-        )->assertOk();
-
-        $log = AuditLog::query()
-            ->where('workflow_instance_id', $request->id)
-            ->where('action', AuditAction::REQUEST_UPDATED->value)
-            ->latest('id')
-            ->first();
-
-        $this->assertNotNull($log);
-        $this->assertSame('before', $log->old_values['notes'] ?? null);
-        $this->assertSame('draft-after', $log->new_values['notes'] ?? null);
     }
 }

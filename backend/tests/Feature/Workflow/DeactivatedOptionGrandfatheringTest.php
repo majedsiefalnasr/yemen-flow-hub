@@ -4,7 +4,6 @@ namespace Tests\Feature\Workflow;
 
 use App\Enums\FieldType;
 use App\Enums\StageAccessLevel;
-use App\Enums\UserRole;
 use App\Enums\WorkflowVersionState;
 use App\Models\Bank;
 use App\Models\EngineRequest;
@@ -18,13 +17,16 @@ use App\Models\Role;
 use App\Models\StagePermission;
 use App\Models\Team;
 use App\Models\User;
+use App\Models\WorkflowAction;
 use App\Models\WorkflowDefinition;
 use App\Models\WorkflowStage;
+use App\Models\WorkflowTransition;
 use App\Models\WorkflowVersion;
 use App\Services\Workflow\DynamicFieldOptionsResolver;
 use Database\Seeders\GovernanceSeeder;
 use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class DeactivatedOptionGrandfatheringTest extends TestCase
@@ -182,17 +184,61 @@ class DeactivatedOptionGrandfatheringTest extends TestCase
             'sort_order' => 2,
             'version' => 1,
         ]);
+
+        // Minimal second stage + transition: store() now requires exactly one
+        // advancing transition from the initial stage to succeed at all
+        // (SubmitTransitionResolver::resolve()). VIEW on REVIEW keeps executor
+        // able to reach form-schema/show on a request that has already advanced
+        // past DATA_ENTRY (test_form_schema_includes_grandfathered_option_for_
+        // stored_value needs this — form-schema requires policy 'view').
+        $reviewStage = WorkflowStage::create([
+            'workflow_version_id' => $this->version->id,
+            'code' => 'REVIEW',
+            'name' => 'Review',
+            'sort_order' => 2,
+            'is_initial' => false,
+            'is_final' => false,
+            'version' => 1,
+        ]);
+
+        StagePermission::create([
+            'stage_id' => $reviewStage->id,
+            'organization_id' => $bankOrg->id,
+            'role_id' => $entryRole->id,
+            'access_level' => StageAccessLevel::VIEW,
+            'display_label' => 'Review (View)',
+            'version' => 1,
+        ]);
+
+        $submitAction = WorkflowAction::create([
+            'code' => 'SUBMIT',
+            'name' => 'Submit',
+            'kind' => 'DRAFT',
+            'is_active' => true,
+            'version' => 1,
+        ]);
+
+        WorkflowTransition::create([
+            'workflow_version_id' => $this->version->id,
+            'from_stage_id' => $this->initialStage->id,
+            'to_stage_id' => $reviewStage->id,
+            'action_id' => $submitAction->id,
+            'requires_comment' => false,
+            'version' => 1,
+        ]);
     }
 
     private function createRequestWithSuspendedMerchant(): EngineRequest
     {
         $this->suspendedMerchant->update(['status' => 'ACTIVE']);
 
-        $response = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $this->version->id,
-            'merchant_id' => $this->activeMerchant->id,
-            'data' => ['merchant_pick' => $this->suspendedMerchant->id],
-        ]);
+        $response = $this->actingAs($this->executor)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $this->activeMerchant->id,
+                'data' => ['merchant_pick' => $this->suspendedMerchant->id],
+            ]);
 
         $response->assertCreated();
         $this->suspendedMerchant->update(['status' => 'SUSPENDED']);
@@ -262,53 +308,15 @@ class DeactivatedOptionGrandfatheringTest extends TestCase
             ]);
     }
 
-    public function test_draft_save_allows_unchanged_grandfathered_value(): void
-    {
-        $request = $this->createRequestWithSuspendedMerchant();
-
-        $this->actingAs($this->executor)
-            ->patchJson("/api/v1/engine-requests/{$request->id}/draft", [
-                'data' => ['merchant_pick' => $this->suspendedMerchant->id],
-                'version' => $request->version,
-            ])
-            ->assertOk()
-            ->assertJsonPath('data.data.merchant_pick', $this->suspendedMerchant->id);
-    }
-
-    public function test_draft_save_rejects_new_selection_of_deactivated_merchant(): void
-    {
-        $request = $this->createRequestWithSuspendedMerchant();
-
-        $this->actingAs($this->executor)
-            ->patchJson("/api/v1/engine-requests/{$request->id}/draft", [
-                'data' => ['merchant_pick' => $this->activeMerchant->id],
-                'version' => $request->version,
-            ])
-            ->assertOk()
-            ->assertJsonPath('data.data.merchant_pick', $this->activeMerchant->id);
-
-        $this->suspendedMerchant->refresh();
-        $this->assertSame('SUSPENDED', $this->suspendedMerchant->status);
-
-        $updated = EngineRequest::findOrFail($request->id);
-
-        $this->actingAs($this->executor)
-            ->patchJson("/api/v1/engine-requests/{$updated->id}/draft", [
-                'data' => ['merchant_pick' => $this->suspendedMerchant->id],
-                'version' => $updated->version,
-            ])
-            ->assertStatus(422)
-            ->assertJsonPath('error_code', 'STAGE_FIELDS_INVALID')
-            ->assertJsonPath('errors.merchant_pick', 'The selected value is not a valid option.');
-    }
-
     public function test_create_rejects_deactivated_merchant_for_new_request(): void
     {
-        $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $this->version->id,
-            'merchant_id' => $this->activeMerchant->id,
-            'data' => ['merchant_pick' => $this->suspendedMerchant->id],
-        ])
+        $this->actingAs($this->executor)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $this->activeMerchant->id,
+                'data' => ['merchant_pick' => $this->suspendedMerchant->id],
+            ])
             ->assertStatus(422)
             ->assertJsonPath('error_code', 'STAGE_FIELDS_INVALID')
             ->assertJsonPath('errors.merchant_pick', 'The selected value is not a valid option.');

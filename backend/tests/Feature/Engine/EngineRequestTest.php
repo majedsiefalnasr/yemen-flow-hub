@@ -29,6 +29,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class EngineRequestTest extends TestCase
@@ -291,11 +292,13 @@ class EngineRequestTest extends TestCase
 
     private function createRequest(array $data = []): EngineRequest
     {
-        $response = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', array_merge([
-            'workflow_version_id' => $this->version->id,
-            'merchant_id' => $this->merchant->id,
-            'data' => ['amount' => 50000, 'currency' => 'USD', 'invoice_number' => 'INV-001'],
-        ], $data));
+        $response = $this->actingAs($this->executor)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', array_merge([
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $this->merchant->id,
+                'data' => ['amount' => 50000, 'currency' => 'USD', 'invoice_number' => 'INV-001'],
+            ], $data));
 
         $response->assertCreated();
 
@@ -306,11 +309,13 @@ class EngineRequestTest extends TestCase
 
     public function test_create_with_execute_permission(): void
     {
-        $response = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $this->version->id,
-            'merchant_id' => $this->merchant->id,
-            'data' => ['amount' => 50000, 'currency' => 'USD', 'invoice_number' => 'INV-001'],
-        ]);
+        $response = $this->actingAs($this->executor)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $this->merchant->id,
+                'data' => ['amount' => 50000, 'currency' => 'USD', 'invoice_number' => 'INV-001'],
+            ]);
 
         $response->assertCreated()
             ->assertJsonPath('success', true)
@@ -325,25 +330,41 @@ class EngineRequestTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['subject_id' => $id, 'action' => 'REQUEST_CREATED']);
     }
 
-    public function test_create_accepts_empty_data_for_a_blank_draft(): void
+    public function test_create_accepts_empty_data_and_advances_past_initial_stage(): void
     {
-        // The "new request" flow spins up an empty draft, then fills it in the
-        // wizard, so an empty data object must be accepted.
-        $response = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $this->version->id,
-            'data' => [],
-        ]);
+        // store() now creates the request AND atomically executes its initial
+        // submit transition in one call, so an empty data object is only accepted
+        // when no *required* field exists on the initial stage — true here, since
+        // amount/currency/invoice_number are all is_required: false (setUpWorkflow
+        // above). The created request lands on reviewStage, not initialStage: there
+        // is no more "blank draft that stays put" state in this architecture.
+        //
+        // Note: the store() response body does not eager-load `currentStage` (only
+        // show()/executeAction() do), so `data.current_stage` is absent here even
+        // though the DB row has already advanced — asserted via a fresh fetch,
+        // matching the pattern used by EngineRequestDeferredSubmissionTest.
+        $response = $this->actingAs($this->executor)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'data' => [],
+            ]);
 
         $response->assertCreated()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.status', 'ACTIVE');
+
+        $request = EngineRequest::findOrFail($response->json('data.id'));
+        $this->assertEquals($this->reviewStage->id, $request->current_stage_id);
     }
 
     public function test_create_rejects_missing_data_key(): void
     {
-        $response = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $this->version->id,
-        ]);
+        $response = $this->actingAs($this->executor)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+            ]);
 
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['data']);
@@ -353,10 +374,12 @@ class EngineRequestTest extends TestCase
     {
         // Support committee holds VIEW (not EXECUTE) on the initial stage, but WP-1
         // blocks creation earlier for non-banking-sector organizations.
-        $response = $this->actingAs($this->viewer)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $this->version->id,
-            'data' => ['amount' => 100],
-        ]);
+        $response = $this->actingAs($this->viewer)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'data' => ['amount' => 100],
+            ]);
 
         $response->assertStatus(403)
             ->assertJsonPath('error_code', 'CREATION_NOT_ALLOWED_FOR_ORGANIZATION');
@@ -380,11 +403,13 @@ class EngineRequestTest extends TestCase
             'status' => 'ACTIVE',
         ]);
 
-        $response = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $this->version->id,
-            'merchant_id' => $otherMerchant->id,
-            'data' => ['amount' => 100],
-        ]);
+        $response = $this->actingAs($this->executor)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $otherMerchant->id,
+                'data' => ['amount' => 100],
+            ]);
 
         $response->assertStatus(403)
             ->assertJsonPath('error_code', 'MERCHANT_OUT_OF_SCOPE');
@@ -483,26 +508,38 @@ class EngineRequestTest extends TestCase
 
     public function test_queue_returns_execute_only(): void
     {
+        // createRequest() now atomically executes the initial submit transition, so
+        // the request lands on reviewStage, not initialStage. executor only holds
+        // EXECUTE on initialStage (VIEW on reviewStage) — the request has already
+        // left their queue. viewer holds EXECUTE on reviewStage (setUpWorkflow
+        // lines 189-196), so it appears in theirs instead — the inverse of the
+        // pre-atomic-submit assertions, but the same underlying intent: the queue
+        // returns only requests the caller holds EXECUTE on for the CURRENT stage.
         $this->createRequest();
 
         $response = $this->actingAs($this->executor)->getJson('/api/v1/engine-requests/my-queue');
-        $response->assertOk()->assertJsonPath('meta.total', 1);
+        $response->assertOk()->assertJsonPath('meta.total', 0);
 
         $response = $this->actingAs($this->viewer)->getJson('/api/v1/engine-requests/my-queue');
-        $response->assertOk()->assertJsonPath('meta.total', 0);
+        $response->assertOk()->assertJsonPath('meta.total', 1);
     }
 
     public function test_queue_excludes_closed(): void
     {
+        // createRequest() already landed the request on reviewStage via store()'s
+        // atomic initial transition — viewer (EXECUTE on reviewStage) runs the
+        // SECOND, LATER transition (approveTransition, REVIEW -> COMPLETED) to
+        // close it, then its own queue must exclude the now-closed request.
         $request = $this->createRequest();
 
-        $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
-            'transition_id' => $this->submitTransition->id,
+        $this->actingAs($this->viewer)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
+            'transition_id' => $this->approveTransition->id,
+            'comment' => 'Approved',
             'version' => $request->version,
             'data' => [],
         ])->assertOk();
 
-        $response = $this->actingAs($this->executor)->getJson('/api/v1/engine-requests/my-queue');
+        $response = $this->actingAs($this->viewer)->getJson('/api/v1/engine-requests/my-queue');
         $response->assertOk()->assertJsonPath('meta.total', 0);
     }
 
@@ -510,21 +547,29 @@ class EngineRequestTest extends TestCase
 
     public function test_transition_happy_path(): void
     {
-        $request = $this->createRequest();
+        // store() now creates the request AND atomically executes its initial
+        // submit transition (initialStage -> reviewStage) in one call — this is
+        // the transition this test exercises, so it now asserts directly against
+        // createRequest()'s response instead of running a second, redundant
+        // actions call for the same transition. The store() response body does not
+        // eager-load currentStage (only show()/executeAction() do), so the landed
+        // stage is asserted via a fresh fetch rather than `data.current_stage.code`.
+        $response = $this->actingAs($this->executor)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $this->merchant->id,
+                'data' => ['amount' => 50000, 'currency' => 'USD', 'invoice_number' => 'INV-001'],
+            ]);
 
-        $response = $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
-            'transition_id' => $this->submitTransition->id,
-            'comment' => 'Submitting for review',
-            'data' => [],
-            'version' => $request->version,
-        ]);
+        $response->assertCreated()->assertJsonPath('success', true);
 
-        $response->assertOk()
-            ->assertJsonPath('success', true)
-            ->assertJsonPath('data.current_stage.code', 'REVIEW');
+        $requestId = $response->json('data.id');
+        $request = EngineRequest::findOrFail($requestId);
+        $this->assertEquals($this->reviewStage->id, $request->current_stage_id);
 
         $this->assertDatabaseHas('workflow_history', [
-            'request_id' => $request->id,
+            'request_id' => $requestId,
             'from_stage_id' => $this->initialStage->id,
             'to_stage_id' => $this->reviewStage->id,
             'action_code' => 'SUBMIT',
@@ -533,9 +578,16 @@ class EngineRequestTest extends TestCase
 
     public function test_transition_stale_version_409(): void
     {
+        // createRequest() already advanced the request to reviewStage. viewer holds
+        // EXECUTE there (setUpWorkflow lines 189-196) — executor only has VIEW, so
+        // the policy gate would reject before the service's version check ever ran.
+        // The version check runs before the transition-availability check in
+        // EngineTransitionService::execute(), so a stale version is still
+        // REQUEST_STALE even though submitTransition no longer matches the
+        // request's current stage.
         $request = $this->createRequest();
 
-        $response = $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
+        $response = $this->actingAs($this->viewer)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
             'transition_id' => $this->submitTransition->id,
             'data' => [],
             'version' => 999,
@@ -547,10 +599,18 @@ class EngineRequestTest extends TestCase
 
     public function test_transition_not_available(): void
     {
+        // createRequest() already advanced the request to reviewStage via store()'s
+        // atomic initial transition, so submitTransition (initialStage -> reviewStage)
+        // is no longer available from the request's current stage — this now proves
+        // the same "transition not available from current stage" intent that
+        // approveTransition (reviewStage -> finalStage) used to prove pre-atomic-submit,
+        // when the request was still sitting on initialStage. viewer (EXECUTE on
+        // reviewStage) is the actor, so the policy gate passes and the service's own
+        // from_stage_id check is what's under test here.
         $request = $this->createRequest();
 
-        $response = $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
-            'transition_id' => $this->approveTransition->id,
+        $response = $this->actingAs($this->viewer)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
+            'transition_id' => $this->submitTransition->id,
             'data' => [],
             'version' => $request->version,
         ]);
@@ -561,13 +621,18 @@ class EngineRequestTest extends TestCase
 
     public function test_transition_non_executor_forbidden(): void
     {
+        // The request is on reviewStage after createRequest(). executor holds only
+        // VIEW there (not EXECUTE — setUpWorkflow lines 207-214), so the policy's
+        // execute gate rejects before the service runs — the API returns the
+        // policy-level forbidden envelope. approveTransition (reviewStage ->
+        // finalStage) is the transition actually available from the current stage,
+        // which is what makes this a genuine non-executor-forbidden case rather
+        // than a transition-not-available case.
         $request = $this->createRequest();
 
-        // The viewer holds only VIEW on the initial stage, so the policy's execute
-        // gate (bank scope + EXECUTE) rejects before the service runs — the API
-        // returns the policy-level forbidden envelope.
-        $response = $this->actingAs($this->viewer)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
-            'transition_id' => $this->submitTransition->id,
+        $response = $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
+            'transition_id' => $this->approveTransition->id,
+            'comment' => 'Approved',
             'data' => [],
             'version' => $request->version,
         ]);
@@ -578,15 +643,11 @@ class EngineRequestTest extends TestCase
 
     public function test_transition_comment_required(): void
     {
+        // The request is already on reviewStage after createRequest(); viewer holds
+        // EXECUTE there and attempts approveTransition (reviewStage -> finalStage),
+        // which requires_comment — no separate initial-submit call is needed since
+        // store() already performed that transition.
         $request = $this->createRequest();
-
-        $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
-            'transition_id' => $this->submitTransition->id,
-            'data' => [],
-            'version' => $request->version,
-        ])->assertOk();
-
-        $request->refresh();
 
         $response = $this->actingAs($this->viewer)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
             'transition_id' => $this->approveTransition->id,
@@ -600,15 +661,10 @@ class EngineRequestTest extends TestCase
 
     public function test_transition_to_final_closes_request(): void
     {
+        // createRequest() already lands the request on reviewStage; only the
+        // SECOND, LATER transition (approveTransition, reviewStage -> finalStage)
+        // needs to run here.
         $request = $this->createRequest();
-
-        $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
-            'transition_id' => $this->submitTransition->id,
-            'data' => [],
-            'version' => $request->version,
-        ])->assertOk();
-
-        $request->refresh();
 
         $this->actingAs($this->viewer)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
             'transition_id' => $this->approveTransition->id,
@@ -624,15 +680,10 @@ class EngineRequestTest extends TestCase
 
     public function test_closed_request_rejects_transition(): void
     {
+        // createRequest() already lands the request on reviewStage; viewer closes
+        // it via the SECOND, LATER transition (approveTransition), then a further
+        // attempt on the now-closed request must be rejected.
         $request = $this->createRequest();
-
-        $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
-            'transition_id' => $this->submitTransition->id,
-            'data' => [],
-            'version' => $request->version,
-        ])->assertOk();
-
-        $request->refresh();
 
         $this->actingAs($this->viewer)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
             'transition_id' => $this->approveTransition->id,
@@ -656,63 +707,20 @@ class EngineRequestTest extends TestCase
             ->assertJsonPath('error_code', 'WORKFLOW_FORBIDDEN');
     }
 
-    // ── 18.5.5: Save Draft ───────────────────────────────────────────────
-
-    public function test_draft_save_persists_data(): void
-    {
-        $request = $this->createRequest();
-
-        $response = $this->actingAs($this->executor)->patchJson("/api/v1/engine-requests/{$request->id}/draft", [
-            'data' => ['amount' => 75000],
-            'version' => $request->version,
-        ]);
-
-        $response->assertOk()
-            ->assertJsonPath('data.data.amount', 75000);
-
-        $request->refresh();
-        $this->assertEquals($this->initialStage->id, $request->current_stage_id);
-        $this->assertEquals('ACTIVE', $request->status);
-    }
-
-    public function test_draft_save_stale_version(): void
-    {
-        $request = $this->createRequest();
-
-        $response = $this->actingAs($this->executor)->patchJson("/api/v1/engine-requests/{$request->id}/draft", [
-            'data' => ['amount' => 75000],
-            'version' => 999,
-        ]);
-
-        $response->assertStatus(409)
-            ->assertJsonPath('error_code', 'REQUEST_STALE');
-    }
-
-    public function test_draft_non_executor_blocked(): void
-    {
-        $request = $this->createRequest();
-
-        // The viewer lacks EXECUTE on the initial stage, so the policy execute gate
-        // forbids the draft before the service runs.
-        $response = $this->actingAs($this->viewer)->patchJson("/api/v1/engine-requests/{$request->id}/draft", [
-            'data' => ['amount' => 75000],
-            'version' => $request->version,
-        ]);
-
-        $response->assertStatus(403)
-            ->assertJsonPath('error_code', 'WORKFLOW_FORBIDDEN');
-    }
-
     // ── 18.5.6: Documents ────────────────────────────────────────────────
 
     public function test_upload_pdf_document(): void
     {
+        // createRequest() already lands the request on reviewStage (store()'s
+        // atomic initial submit transition). Document upload requires EXECUTE on
+        // the request's CURRENT stage — executor only holds VIEW there, so viewer
+        // (EXECUTE on reviewStage per setUpWorkflow lines 189-196) is the actor.
         Storage::fake('private');
         $request = $this->createRequest();
 
         $file = UploadedFile::fake()->create('doc.pdf', 100, 'application/pdf');
 
-        $response = $this->actingAs($this->executor)->postJson(
+        $response = $this->actingAs($this->viewer)->postJson(
             "/api/v1/engine-requests/{$request->id}/documents",
             ['file' => $file],
         );
@@ -733,7 +741,7 @@ class EngineRequestTest extends TestCase
 
         $file = UploadedFile::fake()->create('doc.txt', 100, 'text/plain');
 
-        $response = $this->actingAs($this->executor)->postJson(
+        $response = $this->actingAs($this->viewer)->postJson(
             "/api/v1/engine-requests/{$request->id}/documents",
             ['file' => $file],
         );
@@ -747,11 +755,13 @@ class EngineRequestTest extends TestCase
         $request = $this->createRequest();
 
         $file = UploadedFile::fake()->create('doc.pdf', 100, 'application/pdf');
-        $this->actingAs($this->executor)->postJson(
+        $this->actingAs($this->viewer)->postJson(
             "/api/v1/engine-requests/{$request->id}/documents",
             ['file' => $file],
         )->assertCreated();
 
+        // Listing documents only requires VIEW, which executor retains on
+        // reviewStage (setUpWorkflow lines 207-214).
         $response = $this->actingAs($this->executor)->getJson("/api/v1/engine-requests/{$request->id}/documents");
         $response->assertOk()->assertJsonCount(1, 'data');
     }
@@ -762,14 +772,14 @@ class EngineRequestTest extends TestCase
         $request = $this->createRequest();
 
         $file = UploadedFile::fake()->create('doc.pdf', 100, 'application/pdf');
-        $uploadResponse = $this->actingAs($this->executor)->postJson(
+        $uploadResponse = $this->actingAs($this->viewer)->postJson(
             "/api/v1/engine-requests/{$request->id}/documents",
             ['file' => $file],
         )->assertCreated();
 
         $docId = $uploadResponse->json('data.id');
 
-        $response = $this->actingAs($this->executor)->deleteJson(
+        $response = $this->actingAs($this->viewer)->deleteJson(
             "/api/v1/engine-requests/{$request->id}/documents/{$docId}",
         );
         $response->assertOk();
@@ -781,13 +791,10 @@ class EngineRequestTest extends TestCase
 
     public function test_history_returns_ordered_movements(): void
     {
+        // createRequest() already executes the initial submit transition atomically
+        // (DATA_ENTRY -> REVIEW), so both CREATE and SUBMIT history rows exist right
+        // after creation — no separate actions call needed.
         $request = $this->createRequest();
-
-        $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
-            'transition_id' => $this->submitTransition->id,
-            'data' => [],
-            'version' => $request->version,
-        ])->assertOk();
 
         $response = $this->actingAs($this->executor)->getJson("/api/v1/engine-requests/{$request->id}/history");
         $response->assertOk()
@@ -801,12 +808,6 @@ class EngineRequestTest extends TestCase
     public function test_history_hides_entry_for_user_without_stage_access_and_not_actor(): void
     {
         $request = $this->createRequest();
-
-        $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
-            'transition_id' => $this->submitTransition->id,
-            'data' => [],
-            'version' => $request->version,
-        ])->assertOk();
 
         // A same-bank-org user with a user-scoped VIEW grant on the CURRENT stage
         // only (reviewStage) — this satisfies EngineRequestPolicy::view()'s
@@ -846,16 +847,9 @@ class EngineRequestTest extends TestCase
 
     public function test_history_sanitizes_own_entry_when_actor_lacks_stage_access(): void
     {
+        // createRequest() already performs SUBMIT (DATA_ENTRY -> REVIEW, to_stage =
+        // REVIEW, actor = executor) atomically as part of store().
         $request = $this->createRequest();
-
-        // executor performs SUBMIT (DATA_ENTRY -> REVIEW, to_stage = REVIEW).
-        $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
-            'transition_id' => $this->submitTransition->id,
-            'data' => [],
-            'version' => $request->version,
-        ])->assertOk();
-
-        $request->refresh();
 
         // viewer (support role, cby org, EXECUTE on REVIEW per setUpWorkflow lines
         // 189-196) approves REVIEW -> COMPLETED, closing the request. Current stage
@@ -908,13 +902,8 @@ class EngineRequestTest extends TestCase
 
     public function test_history_shows_full_entry_when_viewer_has_stage_access(): void
     {
+        // createRequest() already performs SUBMIT (DATA_ENTRY -> REVIEW) atomically.
         $request = $this->createRequest();
-
-        $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
-            'transition_id' => $this->submitTransition->id,
-            'data' => [],
-            'version' => $request->version,
-        ])->assertOk();
 
         // viewer holds EXECUTE on REVIEW (support role, cby org) per setUpWorkflow
         // lines 189-196 — full stage access on the SUBMIT entry's to_stage (REVIEW),
@@ -935,13 +924,8 @@ class EngineRequestTest extends TestCase
 
     public function test_system_admin_sees_full_unredacted_history(): void
     {
+        // createRequest() already performs SUBMIT (DATA_ENTRY -> REVIEW) atomically.
         $request = $this->createRequest();
-
-        $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
-            'transition_id' => $this->submitTransition->id,
-            'data' => [],
-            'version' => $request->version,
-        ])->assertOk();
 
         $admin = User::create([
             'name' => 'System Admin',
@@ -962,13 +946,8 @@ class EngineRequestTest extends TestCase
 
     public function test_graph_marks_executed_current_possible(): void
     {
+        // createRequest() already performs SUBMIT (DATA_ENTRY -> REVIEW) atomically.
         $request = $this->createRequest();
-
-        $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
-            'transition_id' => $this->submitTransition->id,
-            'data' => [],
-            'version' => $request->version,
-        ])->assertOk();
 
         // This test asserts state annotation (executed/current/possible) across all
         // three stages, including COMPLETED — which `executor` has no StagePermission
@@ -1016,13 +995,8 @@ class EngineRequestTest extends TestCase
 
     public function test_graph_only_returns_stages_viewer_can_access(): void
     {
+        // createRequest() already performs SUBMIT (DATA_ENTRY -> REVIEW) atomically.
         $request = $this->createRequest();
-
-        $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
-            'transition_id' => $this->submitTransition->id,
-            'data' => [],
-            'version' => $request->version,
-        ])->assertOk();
 
         // executor holds EXECUTE on DATA_ENTRY and VIEW on REVIEW (see setUpWorkflow
         // lines 180-214), but has no StagePermission row at all on COMPLETED.
@@ -1038,13 +1012,8 @@ class EngineRequestTest extends TestCase
 
     public function test_graph_drops_edges_with_a_filtered_out_endpoint(): void
     {
+        // createRequest() already performs SUBMIT (DATA_ENTRY -> REVIEW) atomically.
         $request = $this->createRequest();
-
-        $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
-            'transition_id' => $this->submitTransition->id,
-            'data' => [],
-            'version' => $request->version,
-        ])->assertOk();
 
         // approveTransition goes REVIEW -> COMPLETED. executor cannot see COMPLETED,
         // so this edge must be dropped even though its from_stage (REVIEW) is visible.
@@ -1079,11 +1048,13 @@ class EngineRequestTest extends TestCase
     {
         $this->createRequest();
 
-        $response = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $this->version->id,
-            'merchant_id' => $this->merchant->id,
-            'data' => ['amount' => 200, 'currency' => 'USD', 'invoice_number' => 'INV-001'],
-        ]);
+        $response = $this->actingAs($this->executor)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $this->merchant->id,
+                'data' => ['amount' => 200, 'currency' => 'USD', 'invoice_number' => 'INV-001'],
+            ]);
 
         $response->assertCreated()
             ->assertJsonPath('warnings.0.code', 'DUPLICATE_INVOICE');
@@ -1091,11 +1062,13 @@ class EngineRequestTest extends TestCase
 
     public function test_unique_invoice_no_warning(): void
     {
-        $response = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $this->version->id,
-            'merchant_id' => $this->merchant->id,
-            'data' => ['amount' => 200, 'currency' => 'USD', 'invoice_number' => 'UNIQUE-001'],
-        ]);
+        $response = $this->actingAs($this->executor)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $this->merchant->id,
+                'data' => ['amount' => 200, 'currency' => 'USD', 'invoice_number' => 'UNIQUE-001'],
+            ]);
 
         $response->assertCreated();
         $this->assertArrayNotHasKey('warnings', $response->json());
@@ -1105,6 +1078,10 @@ class EngineRequestTest extends TestCase
 
     public function test_stage_hook_fires_on_transition(): void
     {
+        // store() now executes the initial submit transition (DATA_ENTRY -> REVIEW)
+        // atomically as part of request creation, so a REVIEW stage-entry hook fires
+        // during the create call itself — there is no separate later transition to
+        // trigger it.
         $hookFired = false;
         $registry = new StageHookRegistry;
         $registry->onStageEntry('REVIEW', function () use (&$hookFired) {
@@ -1112,39 +1089,37 @@ class EngineRequestTest extends TestCase
         });
         $this->app->instance(StageHookRegistry::class, $registry);
 
-        $request = $this->createRequest();
-
-        $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
-            'transition_id' => $this->submitTransition->id,
-            'data' => [],
-            'version' => $request->version,
-        ])->assertOk();
+        $this->createRequest();
 
         $this->assertTrue($hookFired);
     }
 
     public function test_failing_hook_rolls_back_transition(): void
     {
+        // A REVIEW stage-entry hook now fires inside store()'s atomic create+submit
+        // transition, so a failing hook must roll back the ENTIRE create call — no
+        // EngineRequest row should be persisted at all, not merely reverted to the
+        // initial stage (there is no separate later transition to roll back to).
         $registry = new StageHookRegistry;
         $registry->onStageEntry('REVIEW', function () {
             throw new \RuntimeException('Hook failure');
         });
         $this->app->instance(StageHookRegistry::class, $registry);
 
-        $request = $this->createRequest();
+        $countBefore = EngineRequest::count();
 
-        $response = $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
-            'transition_id' => $this->submitTransition->id,
-            'data' => [],
-            'version' => $request->version,
-        ]);
+        $response = $this->actingAs($this->executor)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $this->merchant->id,
+                'data' => ['amount' => 50000, 'currency' => 'USD', 'invoice_number' => 'INV-001'],
+            ]);
 
         $response->assertStatus(422)
             ->assertJsonPath('error_code', 'STAGE_HOOK_FAILED');
 
-        $request->refresh();
-        $this->assertEquals($this->initialStage->id, $request->current_stage_id);
-        $this->assertEquals('ACTIVE', $request->status);
+        $this->assertSame($countBefore, EngineRequest::count());
     }
 
     public function test_available_workflows_lists_published_versions_the_user_can_start(): void

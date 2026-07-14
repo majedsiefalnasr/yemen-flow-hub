@@ -3,7 +3,6 @@
 namespace Tests\Feature\Engine;
 
 use App\Enums\StageAccessLevel;
-use App\Enums\UserRole;
 use App\Models\Bank;
 use App\Models\EngineRequest;
 use App\Models\Organization;
@@ -19,6 +18,7 @@ use App\Models\WorkflowVersion;
 use Database\Seeders\GovernanceSeeder;
 use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class EngineAuditTest extends TestCase
@@ -171,10 +171,12 @@ class EngineAuditTest extends TestCase
 
     private function makeRequest(): EngineRequest
     {
-        $response = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $this->version->id,
-            'data' => ['amount' => 5000, 'currency' => 'USD'],
-        ]);
+        $response = $this->actingAs($this->executor)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'data' => ['amount' => 5000, 'currency' => 'USD'],
+            ]);
         $response->assertCreated();
 
         return EngineRequest::findOrFail($response->json('data.id'));
@@ -192,12 +194,10 @@ class EngineAuditTest extends TestCase
 
     public function test_audit_log_entry_created_on_workflow_transition(): void
     {
+        // makeRequest() already executes submitTransition atomically as part of
+        // store(), and EngineTransitionService::execute() logs STATUS_TRANSITION
+        // regardless of caller — no separate actions call is needed to produce it.
         $request = $this->makeRequest();
-
-        $this->actingAs($this->executor)->postJson(
-            "/api/v1/engine-requests/{$request->id}/actions",
-            ['transition_id' => $this->submitTransition->id, 'data' => [], 'version' => $request->version]
-        )->assertOk();
 
         $this->assertDatabaseHas('audit_logs', [
             'subject_id' => $request->id,
@@ -217,13 +217,10 @@ class EngineAuditTest extends TestCase
 
     public function test_audit_log_filtered_by_request(): void
     {
+        // makeRequest() already executes submitTransition atomically as part of
+        // store(), producing an audit_logs row with workflow_instance_id =
+        // request->id — no separate actions call is needed.
         $request = $this->makeRequest();
-
-        // Execute a transition so that an audit log entry with workflow_instance_id = request->id is created.
-        $this->actingAs($this->executor)->postJson(
-            "/api/v1/engine-requests/{$request->id}/actions",
-            ['transition_id' => $this->submitTransition->id, 'data' => [], 'version' => $request->version]
-        )->assertOk();
 
         $this->actingAs($this->auditor)
             ->getJson("/api/v1/audit-logs?request={$request->id}")
@@ -243,12 +240,10 @@ class EngineAuditTest extends TestCase
 
     public function test_history_endpoint_returns_ordered_transitions(): void
     {
+        // makeRequest() already executes submitTransition atomically as part of
+        // store(), so both CREATE and SUBMIT history rows exist right after
+        // creation — no separate actions call is needed.
         $request = $this->makeRequest();
-
-        $this->actingAs($this->executor)->postJson(
-            "/api/v1/engine-requests/{$request->id}/actions",
-            ['transition_id' => $this->submitTransition->id, 'data' => [], 'version' => $request->version]
-        )->assertOk();
 
         $response = $this->actingAs($this->executor)
             ->getJson("/api/v1/engine-requests/{$request->id}/history");

@@ -8,6 +8,7 @@ use App\Enums\StageAccessLevel;
 use App\Models\Organization;
 use App\Models\WorkflowAction;
 use App\Models\WorkflowVersion;
+use App\Support\SubmitTransitionResolver;
 
 /**
  * Validate-before-publish (FR-WD9). Returns a list of displayable, field-tagged
@@ -40,6 +41,29 @@ class WorkflowVersionValidator
             $errors[] = $this->error('NO_INITIAL_STAGE', 'stages', 'The workflow must have exactly one initial stage.');
         } elseif ($initialCount > 1) {
             $errors[] = $this->error('MULTIPLE_INITIAL_STAGES', 'stages', 'The workflow must have exactly one initial stage.');
+        } elseif ($initialCount === 1) {
+            $initialStage = $stages->firstWhere('is_initial', true);
+
+            // A request is created and submitted atomically now — nothing
+            // exists yet for anyone to claim, so an initial stage requiring a
+            // claim could never be satisfied at submission time.
+            if ($initialStage->requires_claim) {
+                $errors[] = $this->error(
+                    'INITIAL_STAGE_REQUIRES_CLAIM',
+                    "stage:{$initialStage->code}",
+                    "Initial stage '{$initialStage->code}' cannot require a claim — no request exists yet for anyone to claim before submission.",
+                );
+            }
+
+            // The atomic create+submit invariant requires the resolved
+            // default-submit transition to actually leave the initial stage.
+            if (SubmitTransitionResolver::resolve($transitions, $initialStage->id) === null) {
+                $errors[] = $this->error(
+                    'INITIAL_STAGE_NO_ADVANCING_SUBMIT',
+                    "stage:{$initialStage->code}",
+                    "Initial stage '{$initialStage->code}' has no unambiguous transition that leaves the stage — mark one outgoing transition is_default_submit, or ensure exactly one non-self-loop outgoing transition exists.",
+                );
+            }
         }
 
         if ($stages->where('is_final', true)->count() === 0) {

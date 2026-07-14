@@ -27,6 +27,7 @@ use Database\Seeders\GovernanceSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
@@ -139,52 +140,63 @@ class EngineDomainHooksTest extends TestCase
 
     private function createRequest(float $percent, string $invoice = 'INV-HOOK-1'): EngineRequest
     {
-        $res = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $this->version->id,
-            'merchant_id' => $this->merchant->id,
-            'data' => [
-                'invoice_number' => $invoice,
-                'request_percentage' => $percent,
-                'amount' => 100000,
-                'currency' => 'USD',
-            ],
-        ])->assertCreated();
+        // store() now consumes the initial submit transition (START -> EXEC)
+        // atomically, so a successful creation already lands the request on
+        // execStage — there is no separate first "submit" call anymore.
+        $res = $this->actingAs($this->executor)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $this->merchant->id,
+                'data' => [
+                    'invoice_number' => $invoice,
+                    'request_percentage' => $percent,
+                    'amount' => 100000,
+                    'currency' => 'USD',
+                ],
+            ])->assertCreated();
 
         return EngineRequest::findOrFail($res->json('data.id'));
     }
 
-    private function submit(EngineRequest $request): TestResponse
+    private function attemptCreateRequest(float $percent, string $invoice = 'INV-HOOK-1'): TestResponse
     {
-        return $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
-            'transition_id' => $this->toExec->id, 'data' => [], 'version' => $request->version,
-        ]);
+        return $this->actingAs($this->executor)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $this->merchant->id,
+                'data' => [
+                    'invoice_number' => $invoice,
+                    'request_percentage' => $percent,
+                    'amount' => 100000,
+                    'currency' => 'USD',
+                ],
+            ]);
     }
 
     public function test_financing_reserve_succeeds_under_cap(): void
     {
         $request = $this->createRequest(40.0);
 
-        $this->submit($request)->assertOk();
-
-        $request->refresh();
         $this->assertEquals($this->execStage->id, $request->current_stage_id);
     }
 
     public function test_financing_breach_rolls_back_transition(): void
     {
         // Existing in-flight request consuming 70% on the same (tax, invoice).
-        $existing = $this->createRequest(70.0);
-        $this->submit($existing)->assertOk();
+        $this->createRequest(70.0);
 
-        // New request for 40% would push the cap to 110% → breach.
-        $request = $this->createRequest(40.0);
-        $response = $this->submit($request);
+        // New request for 40% would push the cap to 110% → breach. Since
+        // store() now runs the initial transition atomically, the breach is
+        // detected during creation itself — no separate request is left
+        // behind on startStage to roll back.
+        $countBefore = EngineRequest::query()->count();
+        $response = $this->attemptCreateRequest(40.0);
 
         $response->assertStatus(422)->assertJsonPath('error_code', 'FINANCING_LIMIT_EXCEEDED');
 
-        $request->refresh();
-        $this->assertEquals($this->startStage->id, $request->current_stage_id, 'transition must roll back on breach');
-        $this->assertEquals('ACTIVE', $request->status);
+        $this->assertSame($countBefore, EngineRequest::query()->count(), 'no request must be persisted on breach');
     }
 
     public function test_rejected_request_frees_capacity(): void
@@ -194,17 +206,13 @@ class EngineDomainHooksTest extends TestCase
 
         // 80% is held by a REJECTED row → it frees its allocation, so 40% fits.
         $request = $this->createRequest(40.0);
-        $this->submit($request)->assertOk();
 
-        $request->refresh();
         $this->assertEquals($this->execStage->id, $request->current_stage_id);
     }
 
     public function test_customs_pdf_generated_on_fx_stage_entry(): void
     {
         $request = $this->createRequest(30.0);
-        $this->submit($request)->assertOk();
-        $request->refresh();
 
         $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
             'transition_id' => $this->toFx->id, 'data' => [], 'version' => $request->version,
@@ -244,8 +252,6 @@ class EngineDomainHooksTest extends TestCase
         });
 
         $request = $this->createRequest(30.0);
-        $this->submit($request)->assertOk();
-        $request->refresh();
 
         $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
             'transition_id' => $this->toFx->id, 'data' => [], 'version' => $request->version,
@@ -263,8 +269,6 @@ class EngineDomainHooksTest extends TestCase
     public function test_unresolvable_semantic_mapping_still_rolls_back_the_transition(): void
     {
         $request = $this->createRequest(30.0);
-        $this->submit($request)->assertOk();
-        $request->refresh();
 
         // AMOUNT has no field-definition override in this fixture, so
         // resolveFieldValue() falls back to the EngineRequest.amount column,

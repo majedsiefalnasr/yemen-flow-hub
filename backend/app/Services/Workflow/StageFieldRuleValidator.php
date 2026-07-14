@@ -9,6 +9,7 @@ use App\Models\FieldDefinition;
 use App\Models\StageFieldRule;
 use App\Models\User;
 use App\Models\WorkflowStage;
+use App\Support\FileFieldConstraint;
 use App\Support\TypedFieldValueValidator;
 use Illuminate\Support\Collection;
 
@@ -214,8 +215,8 @@ class StageFieldRuleValidator
 
         foreach ($documents as $document) {
             if (
-                $this->mimeAllowedForField((string) $document->mime, $field)
-                && $this->sizeAllowedForField((int) $document->size, $field)
+                FileFieldConstraint::mimeAllowed((string) $document->mime, $field)
+                && FileFieldConstraint::sizeAllowed((int) $document->size, $field)
             ) {
                 return true;
             }
@@ -256,13 +257,13 @@ class StageFieldRuleValidator
                 return 'The referenced document is not linked to this field.';
             }
 
-            if (! $this->mimeAllowedForField((string) $document->mime, $field)) {
+            if (! FileFieldConstraint::mimeAllowed((string) $document->mime, $field)) {
                 $exts = implode(', ', $field->allowed_file_types ?? []);
 
                 return "Only the following file types are allowed: {$exts}.";
             }
 
-            if (! $this->sizeAllowedForField((int) $document->size, $field)) {
+            if (! FileFieldConstraint::sizeAllowed((int) $document->size, $field)) {
                 return "The file must not exceed {$field->max_file_size} KB.";
             }
         }
@@ -299,45 +300,6 @@ class StageFieldRuleValidator
         }
 
         return $ids;
-    }
-
-    private function mimeAllowedForField(string $mime, FieldDefinition $field): bool
-    {
-        if (empty($field->allowed_file_types)) {
-            return true;
-        }
-
-        $allowedMimes = array_map(
-            fn (string $ext) => $this->extensionToMime($ext),
-            $field->allowed_file_types,
-        );
-
-        return in_array($mime, $allowedMimes, true);
-    }
-
-    private function sizeAllowedForField(int $sizeBytes, FieldDefinition $field): bool
-    {
-        if ($field->max_file_size === null) {
-            return true;
-        }
-
-        $sizeKb = (int) ceil($sizeBytes / 1024);
-
-        return $sizeKb <= $field->max_file_size;
-    }
-
-    private function extensionToMime(string $ext): string
-    {
-        return match ($ext) {
-            'pdf' => 'application/pdf',
-            'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'xls' => 'application/vnd.ms-excel',
-            'doc' => 'application/msword',
-            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'png' => 'image/png',
-            'jpg', 'jpeg' => 'image/jpeg',
-            default => $ext,
-        };
     }
 
     private function validateSelectMembership(

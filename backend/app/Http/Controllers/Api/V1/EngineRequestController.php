@@ -15,8 +15,8 @@ use App\Services\Authorization\DataScope;
 use App\Services\Notifications\EngineNotificationDispatcher;
 use App\Services\Workflow\DuplicateInvoiceChecker;
 use App\Services\Workflow\DynamicFieldOptionsResolver;
-use App\Services\Workflow\EngineRequestService;
 use App\Services\Workflow\EngineRequestStatsService;
+use App\Services\Workflow\EngineRequestSubmissionService;
 use App\Services\Workflow\EngineTransitionService;
 use App\Services\Workflow\StageFieldOutputFilter;
 use App\Services\Workflow\StageHistoryVisibilityResolver;
@@ -35,7 +35,7 @@ use Illuminate\Http\Request;
 class EngineRequestController extends Controller
 {
     public function __construct(
-        private EngineRequestService $requestService,
+        private EngineRequestSubmissionService $submissionService,
         private EngineTransitionService $transitionService,
         private StagePermissionResolver $permissionResolver,
         private DuplicateInvoiceChecker $duplicateChecker,
@@ -51,50 +51,13 @@ class EngineRequestController extends Controller
 
     public function store(StoreEngineRequestRequest $request): JsonResponse
     {
-        $version = WorkflowVersion::findOrFail($request->validated('workflow_version_id'));
-
-        $incomingInvoiceNumber = $request->validated('data')['invoice_number'] ?? null;
-        if ($incomingInvoiceNumber !== null) {
-            $precheck = $this->duplicateChecker->check($incomingInvoiceNumber);
-            if ($precheck !== null && $precheck['severity'] === 'block') {
-                return ApiResponse::error(
-                    'This invoice number matches an existing active request and cannot be submitted.',
-                    [],
-                    422,
-                    'DUPLICATE_INVOICE_BLOCKED',
-                );
-            }
-        }
-
-        $engineRequest = $this->requestService->create(
-            $version,
+        $result = $this->submissionService->submit(
             $request->validated(),
+            $request->header('Idempotency-Key'),
             $request->user(),
         );
 
-        $response = [
-            'success' => true,
-            'message' => 'Request created successfully.',
-            'data' => new EngineRequestResource($engineRequest),
-        ];
-
-        $invoiceNumber = $engineRequest->invoice_number;
-        if ($invoiceNumber !== null) {
-            $warning = $this->duplicateChecker->check($invoiceNumber, $engineRequest->id);
-            if ($warning !== null) {
-                $originalDuplicates = $warning['duplicates'];
-                $warning = $this->maskDuplicates($warning, $request->user());
-                $response['warnings'] = [$warning];
-                $this->notificationDispatcher->afterDuplicateInvoice(
-                    $engineRequest->id,
-                    (string) $engineRequest->reference,
-                    $invoiceNumber,
-                    $originalDuplicates,
-                );
-            }
-        }
-
-        return response()->json($response, 201);
+        return response()->json($result->toResponseArray(), $result->httpStatus);
     }
 
     public function availableWorkflows(Request $request): JsonResponse
@@ -356,52 +319,6 @@ class EngineRequestController extends Controller
         }
 
         return response()->json($response);
-    }
-
-    // ── 18.5.5: Save Draft ───────────────────────────────────────────────
-
-    public function draft(Request $request, EngineRequest $engineRequest): JsonResponse
-    {
-        $this->authorize('execute', $engineRequest);
-
-        $validated = $request->validate([
-            'data' => ['required', 'array'],
-            'version' => ['required', 'integer'],
-        ]);
-
-        $result = $this->transitionService->saveDraft(
-            $engineRequest,
-            $validated['data'],
-            $validated['version'],
-            $request->user(),
-        );
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Draft saved successfully.',
-            'data' => new EngineRequestResource($result),
-        ]);
-    }
-
-    public function abandon(Request $request, EngineRequest $engineRequest): JsonResponse
-    {
-        $this->authorize('abandon', $engineRequest);
-
-        $validated = $request->validate([
-            'version' => ['required', 'integer'],
-        ]);
-
-        $result = $this->transitionService->abandonDraft(
-            $engineRequest,
-            $validated['version'],
-            $request->user(),
-        );
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Draft abandoned successfully.',
-            'data' => new EngineRequestResource($result),
-        ]);
     }
 
     // ── 18.5.7: History & Graph ──────────────────────────────────────────

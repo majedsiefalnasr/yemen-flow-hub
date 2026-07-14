@@ -3,17 +3,16 @@
 namespace Tests\Feature\Engine;
 
 use App\Enums\FieldType;
-use App\Enums\OrganizationClassification;
 use App\Enums\StageAccessLevel;
-use App\Enums\UserRole;
 use App\Enums\WorkflowVersionState;
 use App\Models\Bank;
-use App\Models\EngineRequest;
+use App\Models\EngineNotification;
 use App\Models\FieldDefinition;
 use App\Models\FieldGroup;
 use App\Models\Merchant;
 use App\Models\Organization;
 use App\Models\Role;
+use App\Models\Screen;
 use App\Models\StagePermission;
 use App\Models\Team;
 use App\Models\User;
@@ -22,12 +21,11 @@ use App\Models\WorkflowDefinition;
 use App\Models\WorkflowStage;
 use App\Models\WorkflowTransition;
 use App\Models\WorkflowVersion;
-use App\Models\EngineNotification;
-use App\Models\Screen;
 use Database\Seeders\GovernanceSeeder;
 use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class EngineDuplicateMaskingTest extends TestCase
@@ -35,10 +33,15 @@ class EngineDuplicateMaskingTest extends TestCase
     use RefreshDatabase;
 
     private User $bankAUser;
+
     private User $bankBUser;
+
     private User $ncUser;
+
     private WorkflowVersion $version;
+
     private Bank $bankA;
+
     private Bank $bankB;
 
     protected function setUp(): void
@@ -48,10 +51,10 @@ class EngineDuplicateMaskingTest extends TestCase
 
         $bankOrg = Organization::where('code', 'commercial_banks')->firstOrFail();
         $ncOrg = Organization::where('code', 'national_committee')->firstOrFail();
-        
+
         $entryRole = Role::where('organization_id', $bankOrg->id)->where('code', 'intake')->firstOrFail();
         $entryTeam = Team::where('organization_id', $bankOrg->id)->where('code', 'entry')->firstOrFail();
-        
+
         $ncRole = Role::where('organization_id', $ncOrg->id)->where('code', 'support')->firstOrFail();
         $ncTeam = Team::where('organization_id', $ncOrg->id)->where('code', 'support')->firstOrFail();
 
@@ -128,6 +131,51 @@ class EngineDuplicateMaskingTest extends TestCase
             'version' => 1,
         ]);
 
+        $reviewStage = WorkflowStage::create([
+            'workflow_version_id' => $this->version->id,
+            'code' => 'REVIEW',
+            'name' => 'Review',
+            'sort_order' => 2,
+            'is_initial' => false,
+            'is_final' => false,
+            'version' => 1,
+        ]);
+
+        StagePermission::create([
+            'stage_id' => $reviewStage->id,
+            'organization_id' => $bankOrg->id,
+            'role_id' => $entryRole->id,
+            'access_level' => StageAccessLevel::VIEW,
+            'display_label' => 'Review',
+            'version' => 1,
+        ]);
+
+        StagePermission::create([
+            'stage_id' => $reviewStage->id,
+            'organization_id' => $ncOrg->id,
+            'role_id' => $ncRole->id,
+            'access_level' => StageAccessLevel::VIEW,
+            'display_label' => 'Review',
+            'version' => 1,
+        ]);
+
+        $submitAction = WorkflowAction::create([
+            'code' => 'SUBMIT',
+            'name' => 'Submit',
+            'kind' => 'DRAFT',
+            'is_active' => true,
+            'version' => 1,
+        ]);
+
+        WorkflowTransition::create([
+            'workflow_version_id' => $this->version->id,
+            'from_stage_id' => $stage->id,
+            'to_stage_id' => $reviewStage->id,
+            'action_id' => $submitAction->id,
+            'requires_comment' => false,
+            'version' => 1,
+        ]);
+
         $group = FieldGroup::create([
             'workflow_version_id' => $this->version->id,
             'name' => 'general',
@@ -152,18 +200,22 @@ class EngineDuplicateMaskingTest extends TestCase
     {
         // Create request in Bank A
         $merchantA = Merchant::create(['bank_id' => $this->bankA->id, 'name' => 'M A', 'tax_number' => 'T-A', 'status' => 'ACTIVE']);
-        $first = $this->actingAs($this->bankAUser)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $this->version->id,
-            'merchant_id' => $merchantA->id,
-            'data' => ['invoice_number' => 'INV-OWN-001'],
-        ])->assertCreated();
+        $first = $this->actingAs($this->bankAUser)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $merchantA->id,
+                'data' => ['invoice_number' => 'INV-OWN-001'],
+            ])->assertCreated();
 
         // Create second request in Bank A with same invoice
-        $response = $this->actingAs($this->bankAUser)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $this->version->id,
-            'merchant_id' => $merchantA->id,
-            'data' => ['invoice_number' => 'INV-OWN-001'],
-        ]);
+        $response = $this->actingAs($this->bankAUser)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $merchantA->id,
+                'data' => ['invoice_number' => 'INV-OWN-001'],
+            ]);
 
         $response->assertCreated();
         $duplicates = $response->json('warnings.0.duplicates');
@@ -176,19 +228,23 @@ class EngineDuplicateMaskingTest extends TestCase
     {
         // Create request in Bank B
         $merchantB = Merchant::create(['bank_id' => $this->bankB->id, 'name' => 'M B', 'tax_number' => 'T-B', 'status' => 'ACTIVE']);
-        $first = $this->actingAs($this->bankBUser)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $this->version->id,
-            'merchant_id' => $merchantB->id,
-            'data' => ['invoice_number' => 'INV-OTHER-001'],
-        ])->assertCreated();
+        $first = $this->actingAs($this->bankBUser)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $merchantB->id,
+                'data' => ['invoice_number' => 'INV-OTHER-001'],
+            ])->assertCreated();
 
         // Create request in Bank A with same invoice
         $merchantA = Merchant::create(['bank_id' => $this->bankA->id, 'name' => 'M A', 'tax_number' => 'T-A', 'status' => 'ACTIVE']);
-        $response = $this->actingAs($this->bankAUser)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $this->version->id,
-            'merchant_id' => $merchantA->id,
-            'data' => ['invoice_number' => 'INV-OTHER-001'],
-        ]);
+        $response = $this->actingAs($this->bankAUser)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $merchantA->id,
+                'data' => ['invoice_number' => 'INV-OTHER-001'],
+            ]);
 
         $response->assertCreated();
         $duplicates = $response->json('warnings.0.duplicates');
@@ -201,19 +257,23 @@ class EngineDuplicateMaskingTest extends TestCase
     {
         // Create request in Bank A
         $merchantA = Merchant::create(['bank_id' => $this->bankA->id, 'name' => 'M A', 'tax_number' => 'T-A', 'status' => 'ACTIVE']);
-        $firstA = $this->actingAs($this->bankAUser)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $this->version->id,
-            'merchant_id' => $merchantA->id,
-            'data' => ['invoice_number' => 'INV-NC-001'],
-        ])->assertCreated();
+        $firstA = $this->actingAs($this->bankAUser)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $merchantA->id,
+                'data' => ['invoice_number' => 'INV-NC-001'],
+            ])->assertCreated();
 
         // Create request in Bank B
         $merchantB = Merchant::create(['bank_id' => $this->bankB->id, 'name' => 'M B', 'tax_number' => 'T-B', 'status' => 'ACTIVE']);
-        $firstB = $this->actingAs($this->bankBUser)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $this->version->id,
-            'merchant_id' => $merchantB->id,
-            'data' => ['invoice_number' => 'INV-NC-001'],
-        ])->assertCreated();
+        $firstB = $this->actingAs($this->bankBUser)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $merchantB->id,
+                'data' => ['invoice_number' => 'INV-NC-001'],
+            ])->assertCreated();
 
         // NC user views one of them
         $response = $this->actingAs($this->ncUser)->getJson("/api/v1/engine-requests/{$firstA->json('data.id')}");
@@ -239,27 +299,31 @@ class EngineDuplicateMaskingTest extends TestCase
 
         // Create request in Bank B
         $merchantB = Merchant::create(['bank_id' => $this->bankB->id, 'name' => 'M B', 'tax_number' => 'T-B', 'status' => 'ACTIVE']);
-        $this->actingAs($this->bankBUser)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $this->version->id,
-            'merchant_id' => $merchantB->id,
-            'data' => ['invoice_number' => 'INV-NOTIF-001'],
-        ])->assertCreated();
+        $this->actingAs($this->bankBUser)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $merchantB->id,
+                'data' => ['invoice_number' => 'INV-NOTIF-001'],
+            ])->assertCreated();
 
         // Create request in Bank A with same invoice
         $merchantA = Merchant::create(['bank_id' => $this->bankA->id, 'name' => 'M A', 'tax_number' => 'T-A', 'status' => 'ACTIVE']);
-        $this->actingAs($this->bankAUser)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $this->version->id,
-            'merchant_id' => $merchantA->id,
-            'data' => ['invoice_number' => 'INV-NOTIF-001'],
-        ])->assertCreated();
+        $this->actingAs($this->bankAUser)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $merchantA->id,
+                'data' => ['invoice_number' => 'INV-NOTIF-001'],
+            ])->assertCreated();
 
         // Check notifications
         // We expect two notifications (one for NC, one for Bank A user)
         $notifications = EngineNotification::where('type', 'compliance.duplicate_invoice')->get();
         $this->assertCount(2, $notifications);
 
-        $ncNotif = $notifications->first(fn($n) => str_contains($n->body, 'INV-NOTIF-001') && !str_contains($n->body, 'طلب مكرر'));
-        $bankNotif = $notifications->first(fn($n) => str_contains($n->body, 'طلب مكرر'));
+        $ncNotif = $notifications->first(fn ($n) => str_contains($n->body, 'INV-NOTIF-001') && ! str_contains($n->body, 'طلب مكرر'));
+        $bankNotif = $notifications->first(fn ($n) => str_contains($n->body, 'طلب مكرر'));
 
         $this->assertNotNull($ncNotif, 'NC should receive full detail notification');
         $this->assertNotNull($bankNotif, 'Bank user should receive masked notification');

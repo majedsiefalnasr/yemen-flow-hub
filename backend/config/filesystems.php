@@ -38,6 +38,17 @@ return [
             'throw' => false,
         ],
 
+        // Isolated from 'private': holds pre-submission temporary uploads only.
+        // Never shares a root with engine-requests/ so a stray sweep of one
+        // can't touch the other. Same non-throwing behavior as 'private' so
+        // both disks are handled identically by promotion/compensation code.
+        'private-tmp' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private-tmp'),
+            'visibility' => 'private',
+            'throw' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

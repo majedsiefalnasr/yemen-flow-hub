@@ -4,11 +4,11 @@ namespace App\Jobs;
 
 use App\Enums\DocumentScanStatus;
 use App\Models\EngineRequestDocument;
+use App\Services\Documents\DocumentScanner;
 use App\Services\Operations\OperationalAlertLogger;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * Async malware scan placeholder (F-8). When enforcement is enabled, uploads
@@ -49,7 +49,7 @@ class ScanEngineRequestDocument implements ShouldQueue
         return [10, 30, 60];
     }
 
-    public function handle(): void
+    public function handle(DocumentScanner $scanner): void
     {
         if (! config('workflow.document_scan_enforced')) {
             return;
@@ -64,14 +64,12 @@ class ScanEngineRequestDocument implements ShouldQueue
             return;
         }
 
-        $infected = str_contains(strtoupper($document->original_name), 'EICAR');
+        $status = $scanner->scan($document->original_name);
 
-        $document->forceFill([
-            'scan_status' => $infected ? DocumentScanStatus::Infected : DocumentScanStatus::Clean,
-        ])->save();
+        $document->forceFill(['scan_status' => $status])->save();
 
-        if ($infected) {
-            Storage::disk('private')->delete($document->path);
+        if ($status === DocumentScanStatus::Infected) {
+            $scanner->quarantine('private', $document->path);
         }
     }
 

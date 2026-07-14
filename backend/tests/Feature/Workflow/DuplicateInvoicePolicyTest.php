@@ -4,7 +4,6 @@ namespace Tests\Feature\Workflow;
 
 use App\Enums\FieldType;
 use App\Enums\StageAccessLevel;
-use App\Enums\UserRole;
 use App\Enums\WorkflowVersionState;
 use App\Models\Bank;
 use App\Models\EngineRequest;
@@ -16,15 +15,18 @@ use App\Models\Role;
 use App\Models\StagePermission;
 use App\Models\SystemSetting;
 use App\Models\Team;
-use App\Services\Settings\SettingResolver;
 use App\Models\User;
+use App\Models\WorkflowAction;
 use App\Models\WorkflowDefinition;
 use App\Models\WorkflowStage;
+use App\Models\WorkflowTransition;
 use App\Models\WorkflowVersion;
+use App\Services\Settings\SettingResolver;
 use App\Services\Workflow\DuplicateInvoiceChecker;
 use Database\Seeders\GovernanceSeeder;
 use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class DuplicateInvoicePolicyTest extends TestCase
@@ -143,6 +145,33 @@ class DuplicateInvoicePolicyTest extends TestCase
             'version' => 1,
         ]);
 
+        $reviewStage = WorkflowStage::create([
+            'workflow_version_id' => $version->id,
+            'code' => 'REVIEW',
+            'name' => 'Review',
+            'sort_order' => 2,
+            'is_initial' => false,
+            'is_final' => false,
+            'version' => 1,
+        ]);
+
+        $submitAction = WorkflowAction::create([
+            'code' => 'SUBMIT',
+            'name' => 'Submit',
+            'kind' => 'DRAFT',
+            'is_active' => true,
+            'version' => 1,
+        ]);
+
+        WorkflowTransition::create([
+            'workflow_version_id' => $version->id,
+            'from_stage_id' => $stage->id,
+            'to_stage_id' => $reviewStage->id,
+            'action_id' => $submitAction->id,
+            'requires_comment' => false,
+            'version' => 1,
+        ]);
+
         $group = FieldGroup::create([
             'workflow_version_id' => $version->id,
             'name' => 'general',
@@ -163,11 +192,13 @@ class DuplicateInvoicePolicyTest extends TestCase
         ]);
 
         // First request holds the invoice number.
-        $this->actingAs($executor)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $version->id,
-            'merchant_id' => $merchant->id,
-            'data' => ['invoice_number' => 'INV-BLOCK-001'],
-        ])->assertCreated();
+        $this->actingAs($executor)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $version->id,
+                'merchant_id' => $merchant->id,
+                'data' => ['invoice_number' => 'INV-BLOCK-001'],
+            ])->assertCreated();
 
         SystemSetting::findByKey('duplicate_invoice_policy')?->update(['value' => 'block']);
         app(SettingResolver::class)->forget('duplicate_invoice_policy');
@@ -175,11 +206,13 @@ class DuplicateInvoicePolicyTest extends TestCase
         $countBefore = EngineRequest::count();
 
         // Second request re-uses the invoice number under a block policy.
-        $response = $this->actingAs($executor)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $version->id,
-            'merchant_id' => $merchant->id,
-            'data' => ['invoice_number' => 'INV-BLOCK-001'],
-        ]);
+        $response = $this->actingAs($executor)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $version->id,
+                'merchant_id' => $merchant->id,
+                'data' => ['invoice_number' => 'INV-BLOCK-001'],
+            ]);
 
         $response->assertStatus(422)
             ->assertJsonPath('success', false)

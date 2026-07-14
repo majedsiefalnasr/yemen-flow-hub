@@ -12,13 +12,16 @@ use App\Models\Role;
 use App\Models\StagePermission;
 use App\Models\Team;
 use App\Models\User;
+use App\Models\WorkflowAction;
 use App\Models\WorkflowDefinition;
 use App\Models\WorkflowStage;
+use App\Models\WorkflowTransition;
 use App\Models\WorkflowVersion;
 use Database\Seeders\GovernanceSeeder;
 use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
@@ -121,15 +124,44 @@ class EngineRequestReferenceAllocatorTest extends TestCase
             'display_label' => 'Intake',
             'version' => 1,
         ]);
+
+        $reviewStage = WorkflowStage::create([
+            'workflow_version_id' => $this->version->id,
+            'code' => 'REVIEW',
+            'name' => 'Review',
+            'sort_order' => 2,
+            'is_initial' => false,
+            'is_final' => true,
+            'version' => 1,
+        ]);
+
+        $submitAction = WorkflowAction::create([
+            'code' => 'SUBMIT',
+            'name' => 'Submit',
+            'kind' => 'DRAFT',
+            'is_active' => true,
+            'version' => 1,
+        ]);
+
+        WorkflowTransition::create([
+            'workflow_version_id' => $this->version->id,
+            'from_stage_id' => $this->initialStage->id,
+            'to_stage_id' => $reviewStage->id,
+            'action_id' => $submitAction->id,
+            'requires_comment' => false,
+            'version' => 1,
+        ]);
     }
 
     private function createRequest(array $data = []): TestResponse
     {
-        return $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', array_merge([
-            'workflow_version_id' => $this->version->id,
-            'merchant_id' => $this->merchant->id,
-            'data' => ['amount' => 100, 'currency' => 'USD'],
-        ], $data));
+        return $this->actingAs($this->executor)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', array_merge([
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $this->merchant->id,
+                'data' => ['amount' => 100, 'currency' => 'USD'],
+            ], $data));
     }
 
     public function test_allocates_sequential_reference_past_six_digit_boundary(): void

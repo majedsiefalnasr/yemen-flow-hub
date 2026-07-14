@@ -34,6 +34,7 @@ use App\Http\Controllers\Api\V1\ScreenController;
 use App\Http\Controllers\Api\V1\StageFieldRuleController;
 use App\Http\Controllers\Api\V1\StagePermissionController;
 use App\Http\Controllers\Api\V1\TeamController;
+use App\Http\Controllers\Api\V1\TemporaryUploadController;
 use App\Http\Controllers\Api\V1\UserController as V1UserController;
 use App\Http\Controllers\Api\V1\WorkflowActionController;
 use App\Http\Controllers\Api\V1\WorkflowDefinitionController;
@@ -183,8 +184,6 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'active', 'throttle:api-default
     Route::get('engine-requests/{engineRequest}', [EngineRequestController::class, 'show']);
     Route::get('engine-requests/{engineRequest}/form-schema', [EngineRequestController::class, 'formSchema']);
     Route::post('engine-requests/{engineRequest}/actions', [EngineRequestController::class, 'executeAction']);
-    Route::patch('engine-requests/{engineRequest}/draft', [EngineRequestController::class, 'draft']);
-    Route::post('engine-requests/{engineRequest}/abandon', [EngineRequestController::class, 'abandon']);
     Route::get('engine-requests/{engineRequest}/history', [EngineRequestController::class, 'history']);
     Route::get('engine-requests/{engineRequest}/graph', [EngineRequestController::class, 'graph']);
     Route::get('engine-requests/{engineRequest}/documents', [EngineRequestDocumentController::class, 'listDocuments']);
@@ -198,6 +197,12 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'active', 'throttle:api-default
     Route::post('engine-requests/{engineRequest}/claim', [EngineRequestClaimController::class, 'claim']);
     Route::post('engine-requests/{engineRequest}/claim/heartbeat', [EngineRequestClaimController::class, 'heartbeatClaim']);
     Route::delete('engine-requests/{engineRequest}/claim', [EngineRequestClaimController::class, 'releaseClaim']);
+
+    // ─── Temporary Uploads (pre-submission wizard file evidence) ────────
+    Route::post('temporary-uploads', [TemporaryUploadController::class, 'store'])->middleware('throttle:10,1');
+    Route::get('temporary-uploads', [TemporaryUploadController::class, 'index']);
+    Route::get('temporary-uploads/{token}', [TemporaryUploadController::class, 'show']);
+    Route::delete('temporary-uploads/{token}', [TemporaryUploadController::class, 'destroy']);
 
     // ─── Audit Logs (Epic 18.6) ─────────────────────────────────────────
     Route::get('audit-logs', [AuditLogController::class, 'index']);

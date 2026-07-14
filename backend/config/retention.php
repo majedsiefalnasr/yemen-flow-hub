@@ -24,6 +24,24 @@ return [
     'superseded_document_file_days' => (int) env('RETENTION_SUPERSEDED_DOC_DAYS', 90),
     'orphan_file_grace_hours' => (int) env('RETENTION_ORPHAN_GRACE_HOURS', 24),
 
+    // Pre-submission temporary uploads (request-draft removal): unconsumed
+    // uploads and their files expire after this horizon; consumed rows whose
+    // afterCommit() cleanup callback was missed are swept by the same command
+    // after the same horizon (see PurgeExpiredTemporaryUploadsCommand).
+    'temporary_upload_ttl_hours' => (int) env('RETENTION_TEMPORARY_UPLOAD_TTL_HOURS', 24),
+
+    // Single lease duration governing both an idempotency claim
+    // (idempotency_keys.locked_until) and every upload reservation it owns
+    // (temporary_uploads.reservation_expires_at) for one submission attempt.
+    'submission_lease_seconds' => (int) env('RETENTION_SUBMISSION_LEASE_SECONDS', 120),
+
+    // Idempotency keys: completed records kept for this many days; a
+    // PROCESSING record whose lease expired this many minutes ago, with no
+    // active reservation and no attached request, is purged separately (see
+    // PurgeOldIdempotencyKeysCommand).
+    'idempotency_key_retention_days' => (int) env('RETENTION_IDEMPOTENCY_KEY_DAYS', 90),
+    'abandoned_processing_margin_minutes' => (int) env('RETENTION_ABANDONED_PROCESSING_MARGIN_MINUTES', 30),
+
     // OM-2 — scheduler staleness thresholds (minutes)
     'scheduler_stale_minutes' => [
         'workflow:expire-engine-claims' => 5,
@@ -34,5 +52,7 @@ return [
         'documents:archive-superseded' => 1500,
         'audit:archive-old' => 1500,
         'workflow-history:archive-old' => 1500,
+        'workflow:purge-expired-temporary-uploads' => 1500,
+        'workflow:purge-old-idempotency-keys' => 1500,
     ],
 ];

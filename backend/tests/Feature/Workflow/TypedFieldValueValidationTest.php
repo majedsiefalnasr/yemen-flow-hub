@@ -4,7 +4,6 @@ namespace Tests\Feature\Workflow;
 
 use App\Enums\FieldType;
 use App\Enums\StageAccessLevel;
-use App\Enums\UserRole;
 use App\Enums\WorkflowVersionState;
 use App\Models\Bank;
 use App\Models\EngineRequest;
@@ -24,6 +23,7 @@ use App\Models\WorkflowVersion;
 use Database\Seeders\GovernanceSeeder;
 use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class TypedFieldValueValidationTest extends TestCase
@@ -43,6 +43,8 @@ class TypedFieldValueValidationTest extends TestCase
     private WorkflowStage $reviewStage;
 
     private WorkflowTransition $submitTransition;
+
+    private WorkflowTransition $reviewTransition;
 
     protected function setUp(): void
     {
@@ -125,6 +127,29 @@ class TypedFieldValueValidationTest extends TestCase
             'version' => 1,
         ]);
 
+        // The executor also needs EXECUTE on REVIEW: store() now consumes the
+        // initial submit transition atomically, so the typed-field validation
+        // checks below run on a SECOND, LATER transition (REVIEW -> FINAL), not
+        // the one store() already executed.
+        $finalStage = WorkflowStage::create([
+            'workflow_version_id' => $this->version->id,
+            'code' => 'FINAL',
+            'name' => 'Final',
+            'sort_order' => 3,
+            'is_initial' => false,
+            'is_final' => true,
+            'version' => 1,
+        ]);
+
+        StagePermission::create([
+            'stage_id' => $this->reviewStage->id,
+            'organization_id' => $bankOrg->id,
+            'role_id' => $entryRole->id,
+            'access_level' => StageAccessLevel::EXECUTE,
+            'display_label' => 'Review',
+            'version' => 1,
+        ]);
+
         $group = FieldGroup::create([
             'workflow_version_id' => $this->version->id,
             'name' => 'typed',
@@ -163,6 +188,14 @@ class TypedFieldValueValidationTest extends TestCase
             'version' => 1,
         ]);
 
+        $reviewAction = WorkflowAction::create([
+            'code' => 'REVIEW_APPROVE',
+            'name' => 'Review Approve',
+            'kind' => 'APPROVE',
+            'is_active' => true,
+            'version' => 1,
+        ]);
+
         $this->submitTransition = WorkflowTransition::create([
             'workflow_version_id' => $this->version->id,
             'from_stage_id' => $this->initialStage->id,
@@ -171,15 +204,26 @@ class TypedFieldValueValidationTest extends TestCase
             'requires_comment' => false,
             'version' => 1,
         ]);
+
+        $this->reviewTransition = WorkflowTransition::create([
+            'workflow_version_id' => $this->version->id,
+            'from_stage_id' => $this->reviewStage->id,
+            'to_stage_id' => $finalStage->id,
+            'action_id' => $reviewAction->id,
+            'requires_comment' => false,
+            'version' => 1,
+        ]);
     }
 
     private function createRequest(array $data = []): EngineRequest
     {
-        $response = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', array_merge([
-            'workflow_version_id' => $this->version->id,
-            'merchant_id' => $this->merchant->id,
-            'data' => $data,
-        ], []));
+        $response = $this->actingAs($this->executor)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', array_merge([
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $this->merchant->id,
+                'data' => $data,
+            ], []));
 
         $response->assertCreated();
 
@@ -188,25 +232,13 @@ class TypedFieldValueValidationTest extends TestCase
 
     public function test_create_rejects_invalid_date_value(): void
     {
-        $response = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', [
-            'workflow_version_id' => $this->version->id,
-            'merchant_id' => $this->merchant->id,
-            'data' => ['invoice_date' => '06/25/2026'],
-        ]);
-
-        $response->assertStatus(422)
-            ->assertJsonPath('error_code', 'STAGE_FIELDS_INVALID')
-            ->assertJsonPath('errors.invoice_date', 'The date must be a valid ISO-8601 date (YYYY-MM-DD).');
-    }
-
-    public function test_draft_save_rejects_invalid_date_value(): void
-    {
-        $request = $this->createRequest();
-
-        $response = $this->actingAs($this->executor)->patchJson("/api/v1/engine-requests/{$request->id}/draft", [
-            'data' => ['invoice_date' => '2026-13-40'],
-            'version' => $request->version,
-        ]);
+        $response = $this->actingAs($this->executor)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $this->merchant->id,
+                'data' => ['invoice_date' => '06/25/2026'],
+            ]);
 
         $response->assertStatus(422)
             ->assertJsonPath('error_code', 'STAGE_FIELDS_INVALID')
@@ -215,10 +247,13 @@ class TypedFieldValueValidationTest extends TestCase
 
     public function test_transition_rejects_invalid_date_value(): void
     {
+        // createRequest() already executes the initial submit transition, landing
+        // the request on reviewStage — this is the SECOND, LATER transition
+        // (reviewStage -> finalStage) under test here.
         $request = $this->createRequest();
 
         $response = $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
-            'transition_id' => $this->submitTransition->id,
+            'transition_id' => $this->reviewTransition->id,
             'data' => ['invoice_date' => 'not-a-date'],
             'version' => $request->version,
         ]);
@@ -228,11 +263,12 @@ class TypedFieldValueValidationTest extends TestCase
             ->assertJsonPath('errors.invoice_date', 'The date must be a valid ISO-8601 date (YYYY-MM-DD).');
     }
 
-    public function test_draft_save_rejects_non_boolean_checkbox_value(): void
+    public function test_transition_rejects_non_boolean_checkbox_value(): void
     {
         $request = $this->createRequest();
 
-        $response = $this->actingAs($this->executor)->patchJson("/api/v1/engine-requests/{$request->id}/draft", [
+        $response = $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
+            'transition_id' => $this->reviewTransition->id,
             'data' => ['agree_terms' => 'yes'],
             'version' => $request->version,
         ]);
@@ -242,11 +278,12 @@ class TypedFieldValueValidationTest extends TestCase
             ->assertJsonPath('errors.agree_terms', 'The checkbox value must be true or false.');
     }
 
-    public function test_draft_save_accepts_valid_typed_values(): void
+    public function test_transition_accepts_valid_typed_values(): void
     {
         $request = $this->createRequest();
 
-        $response = $this->actingAs($this->executor)->patchJson("/api/v1/engine-requests/{$request->id}/draft", [
+        $response = $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
+            'transition_id' => $this->reviewTransition->id,
             'data' => [
                 'invoice_date' => '2026-06-25',
                 'agree_terms' => true,

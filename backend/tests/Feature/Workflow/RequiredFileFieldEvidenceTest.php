@@ -4,7 +4,6 @@ namespace Tests\Feature\Workflow;
 
 use App\Enums\FieldType;
 use App\Enums\StageAccessLevel;
-use App\Enums\UserRole;
 use App\Enums\WorkflowVersionState;
 use App\Models\Bank;
 use App\Models\EngineRequest;
@@ -27,6 +26,7 @@ use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
@@ -46,7 +46,11 @@ class RequiredFileFieldEvidenceTest extends TestCase
 
     private WorkflowStage $reviewStage;
 
+    private WorkflowStage $finalStage;
+
     private WorkflowTransition $submitTransition;
+
+    private WorkflowTransition $reviewTransition;
 
     private FieldDefinition $docField;
 
@@ -54,6 +58,7 @@ class RequiredFileFieldEvidenceTest extends TestCase
     {
         parent::setUp();
         Storage::fake('private');
+        Storage::fake('private-tmp');
         $this->seed([GovernanceSeeder::class, ScreenPermissionSeeder::class]);
         $this->setUpWorkflow();
     }
@@ -132,6 +137,31 @@ class RequiredFileFieldEvidenceTest extends TestCase
             'version' => 1,
         ]);
 
+        // The executor also needs EXECUTE on REVIEW: store() now consumes the
+        // initial submit transition atomically, and EngineTransitionService's
+        // own field-rule validation (Pass 2) already enforces is_required for
+        // FILE fields on that very first transition — so createRequest() must
+        // supply real upload evidence just to get past store(). The checks
+        // below exercise the SECOND, LATER transition (REVIEW -> FINAL).
+        $this->finalStage = WorkflowStage::create([
+            'workflow_version_id' => $this->version->id,
+            'code' => 'FINAL',
+            'name' => 'Final',
+            'sort_order' => 3,
+            'is_initial' => false,
+            'is_final' => true,
+            'version' => 1,
+        ]);
+
+        StagePermission::create([
+            'stage_id' => $this->reviewStage->id,
+            'organization_id' => $bankOrg->id,
+            'role_id' => $entryRole->id,
+            'access_level' => StageAccessLevel::EXECUTE,
+            'display_label' => 'Review',
+            'version' => 1,
+        ]);
+
         $group = FieldGroup::create([
             'workflow_version_id' => $this->version->id,
             'name' => 'docs',
@@ -161,6 +191,14 @@ class RequiredFileFieldEvidenceTest extends TestCase
             'version' => 1,
         ]);
 
+        $reviewAction = WorkflowAction::create([
+            'code' => 'REVIEW_APPROVE',
+            'name' => 'Review Approve',
+            'kind' => 'APPROVE',
+            'is_active' => true,
+            'version' => 1,
+        ]);
+
         $this->submitTransition = WorkflowTransition::create([
             'workflow_version_id' => $this->version->id,
             'from_stage_id' => $this->initialStage->id,
@@ -169,15 +207,45 @@ class RequiredFileFieldEvidenceTest extends TestCase
             'requires_comment' => false,
             'version' => 1,
         ]);
+
+        $this->reviewTransition = WorkflowTransition::create([
+            'workflow_version_id' => $this->version->id,
+            'from_stage_id' => $this->reviewStage->id,
+            'to_stage_id' => $this->finalStage->id,
+            'action_id' => $reviewAction->id,
+            'requires_comment' => false,
+            'version' => 1,
+        ]);
     }
 
-    private function createRequest(array $data = []): EngineRequest
+    private function uploadTempFile(string $filename = 'evidence.pdf'): string
     {
-        $response = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', [
+        $file = UploadedFile::fake()->create($filename, 50, 'application/pdf');
+
+        $response = $this->actingAs($this->executor)->postJson('/api/v1/temporary-uploads', [
+            'file' => $file,
+            'upload_session_token' => Str::random(48),
             'workflow_version_id' => $this->version->id,
-            'merchant_id' => $this->merchant->id,
-            'data' => $data,
+            'field_id' => $this->docField->id,
         ]);
+
+        $response->assertCreated();
+
+        return $response->json('data.token');
+    }
+
+    private function createRequest(): EngineRequest
+    {
+        $token = $this->uploadTempFile();
+
+        $response = $this->actingAs($this->executor)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $this->merchant->id,
+                'data' => ['supporting_doc' => [$token]],
+                'upload_tokens' => [$token],
+            ]);
 
         $response->assertCreated();
 
@@ -203,40 +271,51 @@ class RequiredFileFieldEvidenceTest extends TestCase
 
     private function submit(EngineRequest $request, array $data = []): TestResponse
     {
+        // createRequest() already executes the initial submit transition
+        // (DATA_ENTRY -> REVIEW) atomically inside store(); this targets the
+        // SECOND, LATER transition (REVIEW -> FINAL) under test here.
         return $this->actingAs($this->executor)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
-            'transition_id' => $this->submitTransition->id,
+            'transition_id' => $this->reviewTransition->id,
             'data' => $data,
             'version' => $request->version,
         ]);
     }
 
-    public function test_draft_save_allows_missing_required_file_evidence(): void
+    public function test_submission_rejects_required_file_field_without_linked_document(): void
     {
-        $request = $this->createRequest();
-
-        $response = $this->actingAs($this->executor)->patchJson("/api/v1/engine-requests/{$request->id}/draft", [
-            'data' => ['supporting_doc' => []],
-            'version' => $request->version,
-        ]);
-
-        $response->assertOk();
-    }
-
-    public function test_transition_rejects_required_file_field_without_linked_document(): void
-    {
-        $request = $this->createRequest();
-
-        $response = $this->submit($request);
+        // Under deferred creation, store() itself runs the initial submit
+        // transition atomically — so "no linked document for a required FILE
+        // field" is rejected right there, before any EngineRequest exists,
+        // rather than on a later transition.
+        $response = $this->actingAs($this->executor)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson('/api/v1/engine-requests', [
+                'workflow_version_id' => $this->version->id,
+                'merchant_id' => $this->merchant->id,
+                'data' => [],
+            ]);
 
         $response->assertStatus(422)
             ->assertJsonPath('error_code', 'STAGE_FIELDS_INVALID')
             ->assertJsonPath('errors.supporting_doc', 'This field is required.');
+
+        $this->assertSame(0, EngineRequest::query()->count());
     }
 
     public function test_transition_rejects_when_document_is_not_linked_to_field(): void
     {
         $request = $this->createRequest();
         $docId = $this->uploadDocument($request);
+
+        // hasLinkedFileEvidence() checks for ANY active, field-linked document
+        // on the request — not just the one referenced in this transition's
+        // payload. createRequest() already attached a genuinely-linked
+        // document, so it must be removed here for the unlinked replacement
+        // to actually exercise the "not linked" rejection.
+        EngineRequestDocument::query()
+            ->where('request_id', $request->id)
+            ->where('field_id', $this->docField->id)
+            ->delete();
 
         $response = $this->submit($request, ['supporting_doc' => [$docId]]);
 
@@ -283,7 +362,7 @@ class RequiredFileFieldEvidenceTest extends TestCase
         $response = $this->submit($request, ['supporting_doc' => [$docId]]);
 
         $response->assertOk()
-            ->assertJsonPath('data.current_stage.id', $this->reviewStage->id)
+            ->assertJsonPath('data.current_stage.id', $this->finalStage->id)
             ->assertJsonPath('data.data.supporting_doc', [$docId]);
     }
 }
