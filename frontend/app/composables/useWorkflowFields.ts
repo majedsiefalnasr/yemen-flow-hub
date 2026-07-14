@@ -1,5 +1,11 @@
 import { ref } from 'vue'
-import type { DynamicFieldSource, FieldDefinition, FieldGroup, FieldType } from '@/types/models'
+import type {
+  DynamicFieldSource,
+  FieldDefinition,
+  FieldGroup,
+  FieldSemanticTag,
+  FieldType,
+} from '@/types/models'
 import { useApi } from '@/composables/useApi'
 
 export type FieldGroupPayload = {
@@ -13,6 +19,7 @@ export type FieldDefinitionPayload = {
   key: string
   label: string
   type: FieldType
+  semantic_tag?: FieldSemanticTag | null
   placeholder?: string | null
   help_text?: string | null
   default_value?: string | null

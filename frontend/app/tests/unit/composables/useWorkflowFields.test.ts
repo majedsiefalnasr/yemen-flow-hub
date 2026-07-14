@@ -21,6 +21,7 @@ function makeField(overrides: Partial<FieldDefinition> = {}): FieldDefinition {
     key: 'amount',
     label: 'Amount',
     type: 'CURRENCY',
+    semantic_tag: null,
     placeholder: null,
     help_text: null,
     default_value: null,
@@ -118,5 +119,21 @@ describe('useWorkflowFields', () => {
 
     expect(error.value).toBeTruthy()
     expect(groups.value).toHaveLength(0)
+  })
+
+  it('createField accepts a semantic_tag in the payload and forwards it verbatim', async () => {
+    mockPost.mockResolvedValueOnce({ data: makeField({ semantic_tag: 'INVOICE_NUMBER' }) })
+    const { createField } = useWorkflowFields()
+
+    await createField(7, {
+      field_group_id: 100,
+      key: 'invoice_number',
+      label: 'رقم الفاتورة',
+      type: 'TEXT',
+      semantic_tag: 'INVOICE_NUMBER',
+    })
+
+    const [, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>]
+    expect(body.semantic_tag).toBe('INVOICE_NUMBER')
   })
 })
