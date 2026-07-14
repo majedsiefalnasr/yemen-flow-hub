@@ -15,6 +15,7 @@ import type {
   DynamicFieldSource,
   FieldDefinition,
   FieldGroup,
+  FieldSemanticTag,
   FieldType,
   WorkflowVersion,
 } from '@/types/models'
@@ -54,7 +55,9 @@ import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
@@ -71,6 +74,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useReferenceData } from '@/composables/useReferenceData'
 import { useWorkflowFields } from '@/composables/useWorkflowFields'
+import { SEMANTIC_TAG_GROUPS } from '@/constants/semanticTags'
 
 const props = defineProps<{ version: WorkflowVersion }>()
 
@@ -107,6 +111,7 @@ const fieldMinValue = ref('')
 const fieldMaxValue = ref('')
 const fieldDynamicSource = ref<DynamicFieldSource | ''>('')
 const fieldReferenceTableId = ref<string>('')
+const fieldSemanticTag = ref<FieldSemanticTag | ''>('')
 const fieldRequired = ref(false)
 const formError = ref<string | null>(null)
 
@@ -154,6 +159,27 @@ const flatFields = computed(() =>
 const fieldCount = (groupId: number) =>
   flatFields.value.filter((row) => row.group.id === groupId).length
 
+// Which field in this version already owns each semantic tag, so the picker
+// can warn before the admin picks a tag that would collide at publish time
+// (SemanticResolver::publishErrors() → SEMANTIC_MAPPING_AMBIGUOUS). Derived
+// from data already loaded via useWorkflowFields() — no extra API call.
+const tagOwners = computed(() => {
+  const owners = new Map<FieldSemanticTag, FieldDefinition>()
+  for (const { field } of flatFields.value) {
+    if (field.semantic_tag !== null) owners.set(field.semantic_tag, field)
+  }
+  return owners
+})
+
+function isTagTakenByAnotherField(tag: FieldSemanticTag): boolean {
+  const owner = tagOwners.value.get(tag)
+  return owner !== undefined && owner.id !== editingField.value?.id
+}
+
+function tagOwnerLabel(tag: FieldSemanticTag): string | null {
+  return tagOwners.value.get(tag)?.label ?? null
+}
+
 function openGroupDialog() {
   groupName.value = ''
   groupLabel.value = ''
@@ -170,6 +196,7 @@ function openFieldDialog(groupId: number | null) {
   fieldMaxValue.value = ''
   fieldDynamicSource.value = ''
   fieldReferenceTableId.value = ''
+  fieldSemanticTag.value = ''
   fieldRequired.value = false
   formError.value = null
   fieldDialogOpen.value = true
@@ -187,6 +214,7 @@ function openEditFieldDialog(field: FieldDefinition) {
     field.max_value !== null && field.max_value !== undefined ? String(field.max_value) : ''
   fieldDynamicSource.value = field.dynamic_source ?? ''
   fieldReferenceTableId.value = field.reference_table_id ? String(field.reference_table_id) : ''
+  fieldSemanticTag.value = field.semantic_tag ?? ''
   fieldRequired.value = field.is_required
   formError.value = null
   fieldDialogOpen.value = true
@@ -217,6 +245,7 @@ async function submitField() {
     key: fieldKey.value,
     label: fieldLabel.value,
     type: fieldType.value,
+    semantic_tag: fieldSemanticTag.value || null,
     min_value: isNumeric.value && fieldMinValue.value ? Number(fieldMinValue.value) : null,
     max_value: isNumeric.value && fieldMaxValue.value ? Number(fieldMaxValue.value) : null,
     dynamic_source: isDynamic.value && fieldDynamicSource.value ? fieldDynamicSource.value : null,
@@ -630,6 +659,38 @@ watch(
                 <SelectItem v-for="t in FIELD_TYPES" :key="t" :value="t">
                   {{ typeLabels[t] }}
                 </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div class="flex flex-col gap-1.5">
+            <Label>العلامة الدلالية</Label>
+            <Select
+              :model-value="fieldSemanticTag || 'NONE'"
+              @update:model-value="
+                (v) => (fieldSemanticTag = v === 'NONE' ? '' : (v as FieldSemanticTag))
+              "
+            >
+              <SelectTrigger class="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="NONE">بدون</SelectItem>
+                <SelectGroup v-for="tagGroup in SEMANTIC_TAG_GROUPS" :key="tagGroup.label">
+                  <SelectLabel>{{ tagGroup.label }}</SelectLabel>
+                  <SelectItem
+                    v-for="tag in tagGroup.tags"
+                    :key="tag.value"
+                    :value="tag.value"
+                    :disabled="isTagTakenByAnotherField(tag.value)"
+                  >
+                    {{ tag.label }}
+                    <span
+                      v-if="isTagTakenByAnotherField(tag.value)"
+                      class="text-muted-foreground text-xs"
+                    >
+                      (مستخدم في: {{ tagOwnerLabel(tag.value) }})
+                    </span>
+                  </SelectItem>
+                </SelectGroup>
               </SelectContent>
             </Select>
           </div>

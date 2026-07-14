@@ -70,6 +70,7 @@ function makeField(overrides: Partial<FieldDefinition> = {}): FieldDefinition {
     workflow_version_id: 7,
     field_group_id: 100,
     key: 'amount',
+    semantic_tag: null,
     label: 'المبلغ',
     type: 'CURRENCY',
     placeholder: null,
@@ -247,5 +248,140 @@ describe('WorkflowFieldDesigner', () => {
     expect(mockPut).toHaveBeenCalledTimes(1)
     const [, body] = mockPut.mock.calls[0] as [string, Record<string, unknown>]
     expect(body).toMatchObject({ version: field.version })
+  })
+
+  it('shows the semantic-tag picker in the field dialog', async () => {
+    const wrapper = await mountDesigner(['VIEW', 'MANAGE'])
+    await buttonByText(wrapper, 'إضافة حقل')?.trigger('click')
+
+    expect(wrapper.text()).toContain('العلامة الدلالية')
+  })
+
+  // The grouped options (التاجر/التمويل/أخرى) render inside reka-ui's
+  // SelectContent, which mounts only once its SelectTrigger is opened.
+  // reka-ui's SelectTrigger opens on a real PointerEvent via
+  // element.hasPointerCapture/setPointerCapture — APIs JSDOM does not
+  // implement (confirmed: `'PointerEvent' in window` is false in this
+  // project's jsdom, and Vue Test Utils' synthetic `trigger('pointerdown')`
+  // throws `target.hasPointerCapture is not a function` when dispatched at
+  // the real SelectTrigger). There is no reasonable selector fix — the
+  // dropdown genuinely cannot open in this harness. Per AGENTS.md ("skip or
+  // ignore that test" for shadcn components a Vitest test can't introspect,
+  // same class as teleported Dialog content / non-native Select options),
+  // this is skipped rather than downgrading Select to raw HTML.
+  it.skip('shows the semantic-tag picker grouped by category in the field dialog (requires opening reka-ui Select, unsupported by jsdom)', async () => {
+    const wrapper = await mountDesigner(['VIEW', 'MANAGE'])
+    await buttonByText(wrapper, 'إضافة حقل')?.trigger('click')
+
+    const selects = wrapper.findAll('button[role="combobox"]')
+    // Order in the DOM: the always-rendered per-row group-change Select in
+    // the fields table (index 0), then the dialog's المجموعة, النوع,
+    // العلامة الدلالية (indices 1-3).
+    const tagSelectTrigger = selects[3]
+    await tagSelectTrigger?.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('التاجر')
+    expect(wrapper.text()).toContain('التمويل')
+    expect(wrapper.text()).toContain('أخرى')
+    expect(wrapper.text()).toContain('رقم الفاتورة')
+  })
+
+  // Selecting an option requires opening the Select first — same jsdom
+  // Pointer Events gap documented above (no hasPointerCapture/PointerEvent).
+  // The option's click handler never fires, so semantic_tag stays null and
+  // this assertion cannot pass without opening the real dropdown.
+  it.skip('includes the selected semantic_tag in the create payload (requires opening reka-ui Select, unsupported by jsdom)', async () => {
+    mockPost.mockResolvedValueOnce({ data: makeField({ semantic_tag: 'INVOICE_NUMBER' }) })
+    const wrapper = await mountDesigner(['VIEW', 'MANAGE'])
+    await buttonByText(wrapper, 'إضافة حقل')?.trigger('click')
+
+    const selects = wrapper.findAll('button[role="combobox"]')
+    const tagSelectTrigger = selects[3]
+    await tagSelectTrigger?.trigger('click')
+    await flushPromises()
+    const invoiceOption = wrapper
+      .findAll('[role="option"]')
+      .find((o) => o.text().includes('رقم الفاتورة'))
+    await invoiceOption?.trigger('click')
+    await flushPromises()
+
+    await wrapper.find('input[dir="ltr"]').setValue('invoice_number')
+    const labelInputs = wrapper
+      .findAll('input')
+      .filter((i) => i.attributes('placeholder') === 'المبلغ')
+    await labelInputs[0]?.setValue('رقم الفاتورة')
+
+    await buttonByText(wrapper, 'حفظ')?.trigger('click')
+    await flushPromises()
+
+    expect(mockPost).toHaveBeenCalledTimes(1)
+    const [, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>]
+    expect(body.semantic_tag).toBe('INVOICE_NUMBER')
+  })
+
+  it('sends semantic_tag: null when no tag is selected', async () => {
+    mockPost.mockResolvedValueOnce({ data: makeField() })
+    const wrapper = await mountDesigner(['VIEW', 'MANAGE'])
+    await buttonByText(wrapper, 'إضافة حقل')?.trigger('click')
+
+    await wrapper.find('input[dir="ltr"]').setValue('notes')
+    const labelInputs = wrapper
+      .findAll('input')
+      .filter((i) => i.attributes('placeholder') === 'المبلغ')
+    await labelInputs[0]?.setValue('ملاحظات')
+
+    await buttonByText(wrapper, 'حفظ')?.trigger('click')
+    await flushPromises()
+
+    expect(mockPost).toHaveBeenCalledTimes(1)
+    const [, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>]
+    expect(body).toHaveProperty('semantic_tag', null)
+  })
+
+  // Pre-selection also cannot be verified without opening the Select: reka-ui's
+  // SelectValue only knows a value's display label once the matching
+  // SelectItem has mounted at least once (inside SelectContent, which needs
+  // the trigger opened) — with model-value set but the dropdown never
+  // opened, the trigger's displayed text stays empty even though
+  // fieldSemanticTag.value is correctly populated. Verified directly against
+  // this component: same jsdom Pointer Events gap as above.
+  it.skip('pre-selects the current tag when editing an already-tagged field (requires opening reka-ui Select, unsupported by jsdom)', async () => {
+    const field = makeField({ semantic_tag: 'INVOICE_NUMBER', label: 'رقم الفاتورة' })
+    const wrapper = await mountDesigner(['VIEW', 'MANAGE'], 'DRAFT', [
+      makeGroup({ fields: [field] }),
+    ])
+    await buttonByLabel(wrapper, 'تعديل الحقل')?.trigger('click')
+    await flushPromises()
+
+    const selects = wrapper.findAll('button[role="combobox"]')
+    const tagSelectTrigger = selects[3]
+    expect(tagSelectTrigger?.text()).toContain('رقم الفاتورة')
+  })
+
+  it.skip('disables a tag already used by a different field, with the owner shown (requires opening reka-ui Select, unsupported by jsdom)', async () => {
+    const taggedField = makeField({
+      id: 1,
+      semantic_tag: 'INVOICE_NUMBER',
+      label: 'رقم الفاتورة القديم',
+    })
+    const otherField = makeField({ id: 2, key: 'notes', label: 'ملاحظات', semantic_tag: null })
+    const wrapper = await mountDesigner(['VIEW', 'MANAGE'], 'DRAFT', [
+      makeGroup({ fields: [taggedField, otherField] }),
+    ])
+    const editButtons = wrapper.findAll('button[aria-label="تعديل الحقل"]')
+    await editButtons[1]?.trigger('click') // otherField's edit dialog
+    await flushPromises()
+
+    const selects = wrapper.findAll('button[role="combobox"]')
+    const tagSelectTrigger = selects[3]
+    await tagSelectTrigger?.trigger('click')
+    await flushPromises()
+
+    const invoiceOption = wrapper
+      .findAll('[role="option"]')
+      .find((o) => o.text().includes('رقم الفاتورة القديم'))
+    expect(invoiceOption?.text()).toContain('مستخدم في: رقم الفاتورة القديم')
+    expect(invoiceOption?.attributes('data-disabled')).toBeDefined()
   })
 })
