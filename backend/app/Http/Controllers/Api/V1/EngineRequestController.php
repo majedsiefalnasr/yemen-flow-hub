@@ -4,12 +4,15 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\StageAccessLevel;
 use App\Enums\StageHistoryVisibility;
+use App\Enums\WorkflowVersionState;
+use App\Exceptions\EngineException;
 use App\Http\Controllers\Api\Controller;
 use App\Http\Requests\StoreEngineRequestRequest;
 use App\Http\Resources\EngineRequestResource;
 use App\Models\EngineRequest;
 use App\Models\FieldGroup;
 use App\Models\User;
+use App\Models\WorkflowStage;
 use App\Models\WorkflowVersion;
 use App\Services\Authorization\DataScope;
 use App\Services\Notifications\EngineNotificationDispatcher;
@@ -123,21 +126,69 @@ class EngineRequestController extends Controller
         $this->authorize('view', $engineRequest);
 
         $stage = $engineRequest->currentStage;
-        $fields = $this->outputFilter->visibleFieldsForStage($engineRequest->workflow_version_id, $stage);
+        $data = $this->buildFieldGroupSchema(
+            $engineRequest->workflow_version_id,
+            $stage,
+            $request->user(),
+            $engineRequest,
+        );
+
+        return response()->json(['data' => ['field_groups' => $data]]);
+    }
+
+    /**
+     * Version-scoped counterpart to formSchema(): the initial stage's field
+     * schema for a workflow a user is about to submit — no EngineRequest
+     * exists yet under the deferred-creation architecture, so this cannot be
+     * request-scoped. Same authorization gate as availableWorkflows()/store().
+     */
+    public function initialFormSchema(Request $request, WorkflowVersion $workflowVersion): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! RequestCreationGate::userCanCreateRequests($user)) {
+            throw EngineException::creationNotAllowedForOrganization();
+        }
+
+        if ($workflowVersion->state !== WorkflowVersionState::PUBLISHED) {
+            throw EngineException::versionNotPublished();
+        }
+
+        $initialStage = $workflowVersion->stages()->where('is_initial', true)->first();
+        if ($initialStage === null) {
+            throw EngineException::noInitialStage();
+        }
+
+        if (! $this->permissionResolver->userCanAccessStage($user, $initialStage, StageAccessLevel::EXECUTE)) {
+            throw EngineException::stageExecutionForbidden();
+        }
+
+        $data = $this->buildFieldGroupSchema($workflowVersion->id, $initialStage, $user, null);
+
+        return response()->json(['data' => ['field_groups' => $data]]);
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    private function buildFieldGroupSchema(
+        int $workflowVersionId,
+        WorkflowStage $stage,
+        User $user,
+        ?EngineRequest $engineRequest,
+    ): array {
+        $fields = $this->outputFilter->visibleFieldsForStage($workflowVersionId, $stage);
         $rulesByFieldId = $stage->stageFieldRules()->get()->keyBy('field_id');
         $groups = FieldGroup::query()
-            ->where('workflow_version_id', $engineRequest->workflow_version_id)
+            ->where('workflow_version_id', $workflowVersionId)
             ->orderBy('sort_order')
             ->orderBy('id')
             ->get();
 
         $optionsResolver = app(DynamicFieldOptionsResolver::class);
-
         $fieldsByGroup = $fields->groupBy('field_group_id');
 
-        $data = $groups->map(function ($group) use ($fieldsByGroup, $rulesByFieldId, $optionsResolver, $request, $engineRequest): array {
+        return $groups->map(function ($group) use ($fieldsByGroup, $rulesByFieldId, $optionsResolver, $user, $engineRequest): array {
             $groupFields = ($fieldsByGroup->get($group->id) ?? collect())
-                ->map(function ($field) use ($rulesByFieldId, $optionsResolver, $request, $engineRequest): array {
+                ->map(function ($field) use ($rulesByFieldId, $optionsResolver, $user, $engineRequest): array {
                     $rule = $rulesByFieldId->get($field->id);
 
                     return [
@@ -165,9 +216,9 @@ class EngineRequestController extends Controller
                         'dynamic_options' => $field->dynamic_source !== null
                             ? $optionsResolver->resolve(
                                 $field,
-                                $request->user(),
+                                $user,
                                 $engineRequest,
-                                $engineRequest->data[$field->key] ?? null,
+                                $engineRequest?->data[$field->key] ?? null,
                             )
                             : null,
                     ];
@@ -181,9 +232,7 @@ class EngineRequestController extends Controller
                 'sort_order' => $group->sort_order,
                 'fields' => $groupFields,
             ];
-        })->values();
-
-        return response()->json(['data' => ['field_groups' => $data]]);
+        })->values()->all();
     }
 
     // ── 18.5.2: List (scoped & filtered) ─────────────────────────────────

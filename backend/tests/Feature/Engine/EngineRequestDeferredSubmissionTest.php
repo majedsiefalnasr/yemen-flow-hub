@@ -237,6 +237,83 @@ class EngineRequestDeferredSubmissionTest extends TestCase
         ], $overrides);
     }
 
+    // ── Phase B: version-scoped initial-stage schema (no request required) ──
+
+    public function test_initial_form_schema_returns_field_groups_for_a_published_version(): void
+    {
+        $response = $this->actingAs($this->executor)->getJson(
+            "/api/v1/engine-requests/initial-form-schema/{$this->version->id}",
+        );
+
+        $response->assertOk();
+        $groups = $response->json('data.field_groups');
+        $this->assertIsArray($groups);
+        $keys = collect($groups)->flatMap(fn (array $g) => collect($g['fields'])->pluck('key'))->all();
+        $this->assertContains('supporting_doc', $keys);
+        $this->assertContains('amount', $keys);
+    }
+
+    public function test_initial_form_schema_rejects_unpublished_version(): void
+    {
+        $def = WorkflowDefinition::create(['code' => 'DRAFT_SCHEMA_WF', 'name' => 'Draft', 'is_active' => true]);
+        $draftVersion = WorkflowVersion::create([
+            'workflow_definition_id' => $def->id,
+            'version_number' => 1,
+            'state' => WorkflowVersionState::DRAFT,
+            'version' => 1,
+        ]);
+
+        $response = $this->actingAs($this->executor)->getJson(
+            "/api/v1/engine-requests/initial-form-schema/{$draftVersion->id}",
+        );
+
+        $response->assertStatus(422)->assertJsonPath('error_code', 'VERSION_NOT_PUBLISHED');
+    }
+
+    public function test_initial_form_schema_rejects_a_user_without_execute_on_the_initial_stage(): void
+    {
+        // RequestCreationGate::userCanCreateRequests() only checks the user's
+        // organization classification, not their role — a bank-scoped user
+        // with no role attached passes that gate, then correctly fails the
+        // StagePermission check since no rule matches an unassigned role.
+        $viewer = User::create([
+            'name' => 'No Execute',
+            'email' => 'no-execute@deferred.test',
+            'password' => bcrypt('password'),
+            'bank_id' => $this->bank->id,
+            'organization_id' => $this->bank->organization_id,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($viewer)->getJson(
+            "/api/v1/engine-requests/initial-form-schema/{$this->version->id}",
+        );
+
+        $response->assertStatus(403)->assertJsonPath('error_code', 'STAGE_EXECUTION_FORBIDDEN');
+    }
+
+    public function test_initial_form_schema_rejects_a_non_banking_organization_user(): void
+    {
+        $ncOrg = Organization::where('code', 'national_committee')->first();
+        $ncRole = Role::where('code', 'support')->where('organization_id', $ncOrg->id)->first();
+        $ncTeam = Team::where('code', 'support')->where('organization_id', $ncOrg->id)->first();
+        $ncUser = User::create([
+            'name' => 'NC User',
+            'email' => 'nc-schema@deferred.test',
+            'password' => bcrypt('password'),
+            'organization_id' => $ncOrg->id,
+            'is_active' => true,
+        ]);
+        $ncUser->teams()->attach($ncTeam);
+        $ncUser->roles()->attach($ncRole);
+
+        $response = $this->actingAs($ncUser)->getJson(
+            "/api/v1/engine-requests/initial-form-schema/{$this->version->id}",
+        );
+
+        $response->assertStatus(403)->assertJsonPath('error_code', 'CREATION_NOT_ALLOWED_FOR_ORGANIZATION');
+    }
+
     // ── 10.17 / 11.2: no request exists before/after failed submission ────
 
     public function test_no_request_exists_before_any_submission(): void

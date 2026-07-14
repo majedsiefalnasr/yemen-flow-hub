@@ -181,6 +181,7 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'active', 'throttle:api-default
     Route::get('engine-requests/my-queue', [EngineRequestController::class, 'myQueue']);
     Route::post('engine-requests', [EngineRequestController::class, 'store']);
     Route::get('engine-requests/available-workflows', [EngineRequestController::class, 'availableWorkflows']);
+    Route::get('engine-requests/initial-form-schema/{workflowVersion}', [EngineRequestController::class, 'initialFormSchema']);
     Route::get('engine-requests/{engineRequest}', [EngineRequestController::class, 'show']);
     Route::get('engine-requests/{engineRequest}/form-schema', [EngineRequestController::class, 'formSchema']);
     Route::post('engine-requests/{engineRequest}/actions', [EngineRequestController::class, 'executeAction']);
