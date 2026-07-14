@@ -1,6 +1,6 @@
 <!-- app/pages/workflows/instances/[id].vue -->
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, toRef } from 'vue'
+import { computed, onMounted, ref, toRef } from 'vue'
 import { toast } from 'vue-sonner'
 import { extractApiErrorCode, extractApiErrorMessage, extractHttpStatus } from '@/utils/apiErrors'
 import { useEngineRequestsStore } from '@/stores/engineRequests.store'
@@ -15,7 +15,6 @@ import EngineOrgProcessRail from '@/components/workflow/EngineOrgProcessRail.vue
 import EngineQuickInfo from '@/components/workflow/EngineQuickInfo.vue'
 import EngineTimeline from '@/components/workflow/EngineTimeline.vue'
 import EngineActionsRail from '@/components/workflow/EngineActionsRail.vue'
-import EngineRequestWizard from '@/components/workflow/EngineRequestWizard.vue'
 import EngineFxConfirmationPanel from '@/components/workflow/EngineFxConfirmationPanel.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { useEngineProgress } from '@/composables/useEngineProgress'
@@ -23,16 +22,6 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
-import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogCancel,
-  AlertDialogAction,
-} from '@/components/ui/alert-dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import ErrorState from '@/components/shared/ErrorState.vue'
 import { AlertTriangle } from 'lucide-vue-next'
@@ -74,29 +63,7 @@ async function load() {
   }
 }
 
-// Native browser guard: warns on hard refresh or tab close when the wizard has
-// unsaved changes, complementing the in-app onBeforeRouteLeave guard below
-// (which only covers in-SPA navigation).
-function handleBeforeUnload(event: BeforeUnloadEvent) {
-  if (!hasUnsavedWizardChanges()) return
-  event.preventDefault()
-}
-
-onMounted(() => {
-  load()
-  window.addEventListener('beforeunload', handleBeforeUnload)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('beforeunload', handleBeforeUnload)
-})
-
-const wizardMode = computed(
-  () =>
-    route.query.mode === 'wizard' &&
-    store.current?.current_stage?.is_initial === true &&
-    canExecute.value,
-)
+onMounted(load)
 
 // Whether the signed-in user may execute the current stage (server-derived from
 // stage permissions). Drives the action panel and edit mode; a viewer who only
@@ -158,9 +125,9 @@ async function runAction(transitionId: number, requiresComment: boolean) {
   if (requiresComment && !comment.value.trim()) {
     return
   }
-  // The view page shows the request data read-only; acting on a stage submits the
-  // existing data unchanged with an optional comment. Field edits happen in the
-  // creator wizard, not here.
+  // The view page shows the request data read-only; acting on a stage submits
+  // the existing data unchanged with an optional comment. Field edits happen
+  // during creation (see /workflows/new-request/[versionId]), not here.
   actionBusy.value = true
   try {
     await executeAction(
@@ -196,61 +163,6 @@ async function runAction(transitionId: number, requiresComment: boolean) {
     }
   } finally {
     actionBusy.value = false
-  }
-}
-
-async function onWizardSubmitted() {
-  // Drop wizard mode and reload into the view/act layout.
-  await router.replace({ path: route.path })
-  await load()
-}
-
-// Leave-guard: warn before navigating away from an in-progress wizard step
-// with unsaved field data (see EngineRequestWizard's exposed hasUnsavedChanges).
-const wizardRef = ref<InstanceType<typeof EngineRequestWizard> | null>(null)
-const leaveDialogOpen = ref(false)
-const abandonDialogOpen = ref(false)
-const abandonBusy = ref(false)
-let pendingLeave: (() => void) | null = null
-
-function hasUnsavedWizardChanges(): boolean {
-  return wizardMode.value && wizardRef.value?.hasUnsavedChanges === true
-}
-
-onBeforeRouteLeave((_to, _from, next) => {
-  if (!hasUnsavedWizardChanges()) {
-    next()
-    return
-  }
-  leaveDialogOpen.value = true
-  pendingLeave = () => next()
-})
-
-function confirmLeave() {
-  leaveDialogOpen.value = false
-  pendingLeave?.()
-  pendingLeave = null
-}
-
-function cancelLeave() {
-  leaveDialogOpen.value = false
-  pendingLeave = null
-}
-
-async function confirmAbandonDraft() {
-  if (!store.current) return
-  abandonBusy.value = true
-  try {
-    await store.abandonDraft(requestId.value, store.current.version)
-    abandonDialogOpen.value = false
-    leaveDialogOpen.value = false
-    pendingLeave = null
-    toast.success('تم إلغاء المسودة')
-    await router.push('/workflows')
-  } catch {
-    toast.error('تعذّر إلغاء المسودة')
-  } finally {
-    abandonBusy.value = false
   }
 }
 </script>
@@ -299,7 +211,6 @@ async function confirmAbandonDraft() {
       </p>
 
       <EngineStageBanner
-        v-if="!wizardMode"
         :request="store.current"
         :percent="percent"
         :current-index="currentIndex"
@@ -341,33 +252,8 @@ async function confirmAbandonDraft() {
         </div>
       </Alert>
 
-      <!-- Wizard mode: any executor on the initial stage continues the draft step by step. -->
-      <template v-if="wizardMode && !claimLost">
-        <Card v-if="claimRequiredButNotHeld && !heldByOther" class="border-0 shadow">
-          <CardContent class="flex flex-col items-start gap-3">
-            <p class="text-muted-foreground text-sm">
-              يجب متابعة هذا الطلب قبل تعديله لضمان عدم تحرير مستخدمين اثنين للطلب نفسه في الوقت
-              نفسه.
-            </p>
-            <Button :disabled="actionBusy" @click="startReview">المتابعة على هذا الطلب</Button>
-          </CardContent>
-        </Card>
-        <EngineRequestWizard
-          v-else-if="!heldByOther"
-          ref="wizardRef"
-          :request-id="requestId"
-          :field-groups="fieldGroups"
-          :version="store.current.version"
-          :initial-data="formData"
-          :documents="store.documents"
-          @submitted="onWizardSubmitted"
-          @abandon="abandonDialogOpen = true"
-          @claim-lost="onClaimLost"
-        />
-      </template>
-
       <!-- View / act mode: two-column detail. -->
-      <div v-else class="grid gap-6 lg:grid-cols-[1fr_320px]">
+      <div class="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div class="flex min-w-0 flex-col gap-4">
           <Tabs default-value="data" dir="rtl">
             <TabsList>
@@ -429,43 +315,5 @@ async function confirmAbandonDraft() {
         </aside>
       </div>
     </template>
-
-    <AlertDialog v-model:open="leaveDialogOpen">
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>مغادرة الصفحة دون حفظ</AlertDialogTitle>
-          <AlertDialogDescription>
-            لديك بيانات لم تُحفظ في هذه الخطوة. سيتم فقدانها إذا غادرت الصفحة الآن دون المتابعة أو
-            الإرسال.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter class="gap-2 sm:justify-start">
-          <AlertDialogCancel @click="cancelLeave">البقاء في الصفحة</AlertDialogCancel>
-          <Button variant="destructive" @click="abandonDialogOpen = true">إلغاء المسودة</Button>
-          <AlertDialogAction @click="confirmLeave">مغادرة دون حفظ</AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-
-    <AlertDialog v-model:open="abandonDialogOpen">
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>إلغاء المسودة</AlertDialogTitle>
-          <AlertDialogDescription>
-            سيتم إنهاء هذا الطلب وإزالته من طابور العمل. لا يمكن التراجع عن هذا الإجراء.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel :disabled="abandonBusy">البقاء في الصفحة</AlertDialogCancel>
-          <AlertDialogAction
-            class="bg-[var(--severity-red)] hover:bg-[var(--severity-red)]/90"
-            :disabled="abandonBusy"
-            @click="confirmAbandonDraft"
-          >
-            تأكيد الإلغاء
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
   </div>
 </template>

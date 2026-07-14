@@ -945,3 +945,21 @@ export interface ResolvedFieldGroup {
 export interface EngineFormSchema {
   field_groups: ResolvedFieldGroup[]
 }
+
+// Pre-submission upload: POST /api/v1/temporary-uploads returns a token, not
+// a document id — the file only becomes a real EngineRequestDocument once
+// the wizard's final atomic submit promotes it (see useTemporaryUploads).
+export interface TemporaryUploadResult {
+  token: string
+  expires_at: string
+}
+
+export type TemporaryUploadScanStatus = 'pending' | 'clean' | 'infected' | 'failed'
+
+export interface TemporaryUploadStatus {
+  token: string
+  scan_status: TemporaryUploadScanStatus | null
+  original_name: string
+  size: number
+  expires_at: string
+}

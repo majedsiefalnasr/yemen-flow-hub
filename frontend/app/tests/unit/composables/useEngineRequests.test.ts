@@ -72,17 +72,23 @@ describe('useEngineRequests', () => {
     expect(availableWorkflows.value).toHaveLength(1)
   })
 
-  it('create posts payload and returns the created instance', async () => {
-    mockPost.mockResolvedValue({ success: true, data: { id: 5, reference: 'ENG-2026-000005' } })
-    const { create } = useEngineRequests()
-
-    const result = await create({ workflow_version_id: 10, data: {} })
-
-    expect(mockPost).toHaveBeenCalledWith('/api/v1/engine-requests', {
-      workflow_version_id: 10,
-      data: {},
+  it('submit posts payload with the idempotency key header and returns the created instance', async () => {
+    mockPost.mockResolvedValue({
+      success: true,
+      data: { id: 5, reference: 'ENG-2026-000005' },
+      warnings: [],
     })
-    expect(result.id).toBe(5)
+    const { submit } = useEngineRequests()
+
+    const result = await submit('idem-key-1', { workflow_version_id: 10, data: {} })
+
+    expect(mockPost).toHaveBeenCalledWith(
+      '/api/v1/engine-requests',
+      { workflow_version_id: 10, data: {} },
+      { headers: { 'Idempotency-Key': 'idem-key-1' } },
+    )
+    expect(result.data.id).toBe(5)
+    expect(result.warnings).toEqual([])
   })
 
   it('show fetches a single instance by id', async () => {
@@ -94,18 +100,5 @@ describe('useEngineRequests', () => {
     expect(mockGet).toHaveBeenCalledWith('/api/v1/engine-requests/5')
     expect(result.id).toBe(5)
     expect(current.value?.id).toBe(5)
-  })
-
-  it('saveDraft patches data and version', async () => {
-    mockPatch.mockResolvedValue({ success: true, data: { id: 5, version: 2 } })
-    const { saveDraft } = useEngineRequests()
-
-    const result = await saveDraft(5, { invoice_amount: 100 }, 1)
-
-    expect(mockPatch).toHaveBeenCalledWith('/api/v1/engine-requests/5/draft', {
-      data: { invoice_amount: 100 },
-      version: 1,
-    })
-    expect(result.version).toBe(2)
   })
 })

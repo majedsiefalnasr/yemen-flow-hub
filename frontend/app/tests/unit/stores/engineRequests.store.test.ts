@@ -4,8 +4,7 @@ import { useEngineRequestsStore } from '@/stores/engineRequests.store'
 
 const mockFetchList = vi.fn()
 const mockShow = vi.fn()
-const mockCreate = vi.fn()
-const mockSaveDraft = vi.fn()
+const mockSubmit = vi.fn()
 const mockExecuteAction = vi.fn()
 const mockFetchHistory = vi.fn()
 const mockFetchGraph = vi.fn()
@@ -27,10 +26,8 @@ vi.mock('@/composables/useEngineRequests', () => ({
     fetchList: mockFetchList,
     fetchQueue: vi.fn(),
     fetchAvailableWorkflows: vi.fn(),
-    create: mockCreate,
+    submit: mockSubmit,
     show: mockShow,
-    saveDraft: mockSaveDraft,
-    abandonDraft: vi.fn(),
   }),
 }))
 
@@ -78,8 +75,7 @@ describe('useEngineRequestsStore', () => {
     setActivePinia(createPinia())
     mockFetchList.mockReset()
     mockShow.mockReset()
-    mockCreate.mockReset()
-    mockSaveDraft.mockReset()
+    mockSubmit.mockReset()
     mockExecuteAction.mockReset()
     mockFetchHistory.mockReset()
     mockFetchGraph.mockReset()
@@ -94,14 +90,19 @@ describe('useEngineRequestsStore', () => {
     expect(mockFetchList).toHaveBeenCalled()
   })
 
-  it('createInstance delegates to the composable and returns the result', async () => {
-    mockCreate.mockResolvedValue({ id: 9 })
+  it('submitInstance delegates to the composable and returns the created instance', async () => {
+    mockSubmit.mockResolvedValue({ data: { id: 9 }, warnings: [] })
     const store = useEngineRequestsStore()
 
-    const result = await store.createInstance({ workflow_version_id: 1, data: {} })
+    const result = await store.submitInstance('idem-key-1', {
+      workflow_version_id: 1,
+      data: {},
+    })
 
-    expect(mockCreate).toHaveBeenCalledWith({ workflow_version_id: 1, data: {} })
+    expect(mockSubmit).toHaveBeenCalledWith('idem-key-1', { workflow_version_id: 1, data: {} })
     expect(result.id).toBe(9)
+    expect(store.current?.id).toBe(9)
+    expect(store.duplicateWarnings).toEqual([])
   })
 
   it('loadInstance loads the instance plus its history and graph', async () => {

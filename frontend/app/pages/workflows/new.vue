@@ -32,8 +32,13 @@ onMounted(async () => {
 })
 
 async function startWorkflow(versionId: number) {
-  const instance = await store.createInstance({ workflow_version_id: versionId, data: {} })
-  await navigateTo(`/workflows/instances/${instance.id}?mode=wizard`)
+  // No blank draft row is created here — the deferred-creation backend only
+  // ever creates an EngineRequest atomically, on the wizard's final submit.
+  // Routed to new-request/ (not new/) because Nuxt treats a page.vue file
+  // alongside a same-named directory as a parent+child NESTED route pair —
+  // new/[versionId].vue would only render inside new.vue's <NuxtPage>, which
+  // doesn't exist here.
+  await navigateTo(`/workflows/new-request/${versionId}`)
 }
 
 function onDialogOpenChange(open: boolean) {

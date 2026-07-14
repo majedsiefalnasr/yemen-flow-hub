@@ -27,8 +27,6 @@ vi.mock('@/composables/useEngineRequests', () => ({
     fetchAvailableWorkflows: vi.fn(),
     create: vi.fn(),
     show: vi.fn(),
-    saveDraft: vi.fn(),
-    abandonDraft: vi.fn(),
   }),
 }))
 

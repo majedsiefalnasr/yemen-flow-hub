@@ -5,6 +5,7 @@ import { toTypedSchema } from '@vee-validate/zod'
 import type { ResolvedFieldGroup, ResolvedFieldDefinition } from '@/types/models'
 import { buildDynamicSchema } from '@/composables/useDynamicFormSchema'
 import { useEngineRequestDocuments } from '@/composables/useEngineRequestDocuments'
+import { useTemporaryUploads } from '@/composables/useTemporaryUploads'
 import { useMerchantAutofill } from '@/composables/useMerchantAutofill'
 import { findFieldKeyBySemanticTag } from '@/utils/findFieldKeyBySemanticTag'
 import DynamicFormField from '@/components/workflow/DynamicFormField.vue'
@@ -15,19 +16,59 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
 import { AlertTriangle } from 'lucide-vue-next'
 
+/**
+ * FILE fields upload against one of two targets:
+ * - 'request': an existing EngineRequest (view/act page) — POSTs to
+ *   /engine-requests/{id}/documents, stores real document ids in the field.
+ * - 'temporary': the pre-submission wizard, where no EngineRequest exists
+ *   yet — POSTs to /temporary-uploads, stores opaque tokens in the field.
+ *   The wizard's final atomic submit sends those tokens as upload_tokens and
+ *   they never appear in engine_requests.data itself.
+ */
+export type UploadTarget =
+  | { type: 'request'; requestId: number }
+  | { type: 'temporary'; workflowVersionId: number; uploadSessionToken: string }
+
 const props = defineProps<{
   fieldGroups: ResolvedFieldGroup[]
   modelValue: Record<string, unknown>
   mode: 'edit' | 'readonly'
   requestId?: number
+  uploadTarget?: UploadTarget
 }>()
 
-const emit = defineEmits<{ 'update:modelValue': [value: Record<string, unknown>] }>()
+const emit = defineEmits<{
+  'update:modelValue': [value: Record<string, unknown>]
+  'upload-tokens-change': [tokens: string[]]
+}>()
 
 const schema = computed(() => toTypedSchema(buildDynamicSchema(props.fieldGroups)))
-const form = useForm({ validationSchema: schema, initialValues: props.modelValue })
+// validateOnMount resolves errors against the schema immediately so the
+// wizard can read `meta.valid` live to pre-disable Next (see currentStepValid
+// below). Error *text* is still suppressed until a field is touched or the
+// user attempts to advance (see fieldError).
+const form = useForm({
+  validationSchema: schema,
+  initialValues: props.modelValue,
+  validateOnMount: true,
+})
+
+// Reactive pass/fail for the current step. vee-validate keeps `meta.valid`
+// up to date as values change once validateOnMount has primed it. The
+// merchant-autofill guard mirrors `validate()` — a pending/required merchant
+// match blocks advancing regardless of field values.
+const currentStepValid = computed(
+  () =>
+    form.meta.value.valid === true &&
+    (!hasMerchantAutofill.value || !merchantAutofill.blocksContinue.value),
+)
 
 const { upload } = useEngineRequestDocuments()
+const { upload: uploadTemporary } = useTemporaryUploads()
+// Every temp-upload token this form instance has produced across its
+// mounted lifetime — read by the wizard (see uploadTokens below) to build
+// the final submit payload's upload_tokens list.
+const uploadedTokens = reactive(new Set<string>())
 
 // Errors from the Zod schema populate form.errors as soon as the form is
 // built, before the user touches anything. Only surface an error once its
@@ -61,6 +102,20 @@ function onCompanyFieldChange(value: unknown) {
 }
 
 async function uploadFile(field: ResolvedFieldDefinition, file: File) {
+  const target = props.uploadTarget
+  if (target?.type === 'temporary') {
+    const result = await uploadTemporary(
+      file,
+      target.workflowVersionId,
+      field.id,
+      target.uploadSessionToken,
+    )
+    uploadedTokens.add(result.token)
+    emit('upload-tokens-change', [...uploadedTokens])
+    const current = (fieldValue(field.key) as string[]) ?? []
+    setFieldValue(field.key, [...current, result.token])
+    return
+  }
   if (props.requestId === undefined) return
   const doc = await upload(props.requestId, file, field.id)
   const current = (fieldValue(field.key) as number[]) ?? []
@@ -181,7 +236,7 @@ async function validate(): Promise<{ valid: boolean; values: Record<string, unkn
   return { valid: result.valid, values: form.values as Record<string, unknown> }
 }
 
-defineExpose({ validate })
+defineExpose({ validate, currentStepValid })
 </script>
 
 <template>

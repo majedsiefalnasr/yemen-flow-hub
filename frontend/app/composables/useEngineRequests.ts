@@ -89,17 +89,31 @@ export function useEngineRequests() {
     }
   }
 
-  const create = async (payload: {
-    workflow_version_id: number
-    bank_id?: number | null
-    merchant_id?: number | null
-    data: Record<string, unknown>
-  }): Promise<EngineRequest> => {
-    const response = await api.post<{ success: boolean; data: EngineRequest }>(
-      '/api/v1/engine-requests',
-      payload,
-    )
-    return response.data
+  /**
+   * Deferred-creation submission: one atomic call that creates the request,
+   * promotes any upload_tokens into real documents, and executes the initial
+   * transition together — there is no separate "create a blank draft" step.
+   * idempotencyKey must be a client-generated UUID kept stable across
+   * retries of the same attempt (see useEngineWizard's key lifecycle); the
+   * backend requires it and uses it to make a retried submit safe to repeat.
+   */
+  const submit = async (
+    idempotencyKey: string,
+    payload: {
+      workflow_version_id: number
+      merchant_id?: number | null
+      data: Record<string, unknown>
+      upload_tokens?: string[]
+    },
+  ): Promise<{ data: EngineRequest; warnings: EngineDuplicateWarning[] }> => {
+    const response = await api.post<{
+      success: boolean
+      data: EngineRequest
+      warnings?: EngineDuplicateWarning[]
+    }>('/api/v1/engine-requests', payload, {
+      headers: { 'Idempotency-Key': idempotencyKey },
+    })
+    return { data: response.data, warnings: response.warnings ?? [] }
   }
 
   const show = async (id: number): Promise<EngineRequest> => {
@@ -110,28 +124,6 @@ export function useEngineRequests() {
     }>(`/api/v1/engine-requests/${id}`)
     current.value = response.data
     currentWarnings.value = response.warnings ?? []
-    return response.data
-  }
-
-  const saveDraft = async (
-    id: number,
-    data: Record<string, unknown>,
-    version: number,
-  ): Promise<EngineRequest> => {
-    const response = await api.patch<{ success: boolean; data: EngineRequest }>(
-      `/api/v1/engine-requests/${id}/draft`,
-      { data, version },
-    )
-    current.value = response.data
-    return response.data
-  }
-
-  const abandonDraft = async (id: number, version: number): Promise<EngineRequest> => {
-    const response = await api.post<{ success: boolean; data: EngineRequest }>(
-      `/api/v1/engine-requests/${id}/abandon`,
-      { version },
-    )
-    current.value = response.data
     return response.data
   }
 
@@ -148,9 +140,7 @@ export function useEngineRequests() {
     fetchList,
     fetchQueue,
     fetchAvailableWorkflows,
-    create,
+    submit,
     show,
-    saveDraft,
-    abandonDraft,
   }
 }

@@ -4,17 +4,12 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 import WorkflowInstanceDetailPage from '@/pages/workflows/instances/[id].vue'
 import { useEngineRequestsStore } from '@/stores/engineRequests.store'
-import { useAuthStore } from '@/stores/auth.store'
 
 const routerReplace = vi.fn().mockResolvedValue(undefined)
 
-// Mutable so individual tests can opt into `?mode=wizard` without affecting
-// the rest of the suite, which relies on the default empty query.
-let routeQuery: Record<string, string> = {}
-
 vi.stubGlobal('useRoute', () => ({
   params: { id: '5' },
-  query: routeQuery,
+  query: {},
   path: '/workflows/instances/5',
 }))
 vi.stubGlobal('useRouter', () => ({ replace: routerReplace }))
@@ -50,9 +45,8 @@ vi.mock('@/composables/useEngineRequests', () => ({
     fetchList: vi.fn(),
     fetchQueue: vi.fn(),
     fetchAvailableWorkflows: vi.fn(),
-    create: vi.fn(),
+    submit: vi.fn(),
     show: mockShow,
-    saveDraft: vi.fn(),
   }),
 }))
 
@@ -130,12 +124,10 @@ vi.mock('@/composables/useEngineFormSchema', () => ({
     loading: { value: false },
     error: { value: null },
     fetchSchema: vi.fn(),
+    fetchInitialSchema: vi.fn(),
   }),
 }))
 
-// `useEngineClaim` (used directly by the page, not stubbed) calls `useApi().post`
-// for `claim()`. Mock the api layer so the wizard-mode claim-prompt test can
-// assert the claim handler was invoked without hitting a real network call.
 const mockApiPost = vi.fn().mockResolvedValue({ success: true, data: { id: 5, claimed_by: 2 } })
 
 vi.mock('@/composables/useApi', () => ({
@@ -160,7 +152,6 @@ const stubs = {
   EngineRequestDataTabs: { template: '<div data-stub="data-tabs" />' },
   EngineOrgProcessRail: { template: '<div data-stub="org-rail" />' },
   EngineQuickInfo: { template: '<div data-stub="quick-info" />' },
-  EngineRequestWizard: { template: '<div data-stub="wizard" />' },
 }
 
 function makeInstance(overrides: Record<string, unknown> = {}) {
@@ -205,7 +196,6 @@ function makeInstance(overrides: Record<string, unknown> = {}) {
 describe('workflows/instances/[id].vue', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    routeQuery = {}
     mockConflictError.value = false
     mockFieldErrors.value = {}
     mockApiPost.mockClear()
@@ -444,250 +434,6 @@ describe('workflows/instances/[id].vue', () => {
 
     expect(wrapper.text()).toContain('يجب مطالبة هذه المرحلة قبل تنفيذ الإجراء')
     expect(wrapper.find('button:disabled').exists()).toBe(true)
-  })
-
-  it('renders the wizard for a non-creator user with execute access on the initial stage', async () => {
-    const auth = useAuthStore()
-    auth.user = { id: 2 } as ReturnType<typeof useAuthStore>['user']
-    routeQuery = { mode: 'wizard' }
-
-    const store = useEngineRequestsStore()
-    // created_by (1) intentionally differs from the signed-in user (2): a
-    // teammate other than the original creator, but still an executor.
-    store.current = makeInstance({ created_by: 1, can_execute: true })
-
-    const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.find('[data-stub="wizard"]').exists()).toBe(true)
-    expect(wrapper.find('[data-stub="data-tabs"]').exists()).toBe(false)
-  })
-
-  it('shows the claim banner and blocks wizard editing when another user holds the claim', async () => {
-    const auth = useAuthStore()
-    auth.user = { id: 2 } as ReturnType<typeof useAuthStore>['user']
-    routeQuery = { mode: 'wizard' }
-
-    mockShow.mockResolvedValue(
-      makeInstance({
-        created_by: 1,
-        can_execute: true,
-        current_stage: {
-          id: 1,
-          code: 'INTAKE',
-          name: 'استلام',
-          is_initial: true,
-          is_final: false,
-          sla_duration_minutes: null,
-          requires_claim: true,
-        },
-        claimed_by: 99,
-        claimed_by_user: { id: 99, name: 'سارة أحمد' },
-      }),
-    )
-
-    const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
-    await flushPromises()
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.text()).toContain('سارة أحمد يعمل على هذا الطلب الآن')
-    expect(wrapper.find('[data-stub="wizard"]').exists()).toBe(false)
-
-    // The claim-prompt card/button must not render alongside the banner: it
-    // would be a dead action since someone else already holds the claim.
-    const claimButton = wrapper
-      .findAll('button')
-      .find((btn) => btn.text().includes('المتابعة على هذا الطلب'))
-    expect(claimButton).toBeUndefined()
-  })
-
-  it('requires an explicit claim before the wizard becomes editable when the stage requires a claim', async () => {
-    const auth = useAuthStore()
-    auth.user = { id: 2 } as ReturnType<typeof useAuthStore>['user']
-    routeQuery = { mode: 'wizard' }
-
-    mockShow.mockResolvedValue(
-      makeInstance({
-        created_by: 1,
-        can_execute: true,
-        current_stage: {
-          id: 1,
-          code: 'INTAKE',
-          name: 'استلام',
-          is_initial: true,
-          is_final: false,
-          sla_duration_minutes: null,
-          requires_claim: true,
-        },
-        claimed_by: null,
-        claimed_by_user: null,
-      }),
-    )
-
-    const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
-    await flushPromises()
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.find('[data-stub="wizard"]').exists()).toBe(false)
-    expect(wrapper.text()).toContain('المتابعة على هذا الطلب')
-
-    const claimButton = wrapper
-      .findAll('button')
-      .find((btn) => btn.text().includes('المتابعة على هذا الطلب'))
-    expect(claimButton).toBeTruthy()
-    await claimButton!.trigger('click')
-
-    expect(mockApiPost).toHaveBeenCalledWith('/api/v1/engine-requests/5/claim')
-  })
-
-  // NOTE: these two tests deliberately do NOT exercise real router navigation.
-  // This Vitest harness never installs a real Vue Router instance (see
-  // `vi.stubGlobal('useRoute'/'useRouter', ...)` above), so `onBeforeRouteLeave`
-  // never registers with a router and cannot be triggered by a simulated
-  // `router.push`/link click in this environment (confirmed by reading
-  // vue-router's own source: without a `<router-view>` ancestor, `inject`
-  // resolves the injected match key to `undefined` and the guard silently
-  // no-ops). These tests instead drive the confirmation dialog directly —
-  // calling the page's exposed `confirmLeave`/`cancelLeave` and asserting
-  // `leaveDialogOpen` — to prove the dialog wiring and handlers are correct.
-  // The actual `onBeforeRouteLeave` interception of real browser navigation is
-  // verified separately via a live playwright-cli browser pass, not here.
-  describe('unsaved-changes leave confirmation (dialog wiring only, not real navigation)', () => {
-    it('opens the confirmation dialog and invokes the pending leave callback on confirm', async () => {
-      const auth = useAuthStore()
-      auth.user = { id: 2 } as ReturnType<typeof useAuthStore>['user']
-      routeQuery = { mode: 'wizard' }
-
-      const store = useEngineRequestsStore()
-      store.current = makeInstance({ created_by: 1, can_execute: true })
-
-      const wrapper = mount(WorkflowInstanceDetailPage, {
-        global: {
-          stubs: {
-            ...stubs,
-            EngineRequestWizard: {
-              template: '<div data-stub="wizard" />',
-              data: () => ({ hasUnsavedChanges: true }),
-            },
-          },
-        },
-      })
-      await wrapper.vm.$nextTick()
-
-      // Directly exercise the guard's decision logic + dialog open state,
-      // bypassing real router navigation (see NOTE above).
-      const vm = wrapper.vm as unknown as {
-        leaveDialogOpen: boolean
-        confirmLeave: () => void
-      }
-      expect(vm.leaveDialogOpen).toBe(false)
-
-      vm.leaveDialogOpen = true
-      await wrapper.vm.$nextTick()
-      expect(vm.leaveDialogOpen).toBe(true)
-
-      const next = vi.fn()
-      // Simulate what onBeforeRouteLeave stashes before opening the dialog.
-      ;(wrapper.vm as unknown as { pendingLeave: (() => void) | null }).pendingLeave = next
-      vm.confirmLeave()
-      await wrapper.vm.$nextTick()
-
-      expect(vm.leaveDialogOpen).toBe(false)
-      expect(next).toHaveBeenCalledTimes(1)
-    })
-
-    it('closes the dialog without invoking the pending leave callback on cancel', async () => {
-      const auth = useAuthStore()
-      auth.user = { id: 2 } as ReturnType<typeof useAuthStore>['user']
-      routeQuery = { mode: 'wizard' }
-
-      const store = useEngineRequestsStore()
-      store.current = makeInstance({ created_by: 1, can_execute: true })
-
-      const wrapper = mount(WorkflowInstanceDetailPage, {
-        global: {
-          stubs: {
-            ...stubs,
-            EngineRequestWizard: {
-              template: '<div data-stub="wizard" />',
-              data: () => ({ hasUnsavedChanges: true }),
-            },
-          },
-        },
-      })
-      await wrapper.vm.$nextTick()
-
-      const vm = wrapper.vm as unknown as {
-        leaveDialogOpen: boolean
-        cancelLeave: () => void
-      }
-      const next = vi.fn()
-      ;(wrapper.vm as unknown as { pendingLeave: (() => void) | null }).pendingLeave = next
-
-      vm.leaveDialogOpen = true
-      await wrapper.vm.$nextTick()
-
-      vm.cancelLeave()
-      await wrapper.vm.$nextTick()
-
-      expect(vm.leaveDialogOpen).toBe(false)
-      expect(next).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('beforeunload guard for browser refresh/close', () => {
-    it('sets preventDefault on beforeunload when the wizard has unsaved changes', async () => {
-      const auth = useAuthStore()
-      auth.user = { id: 2 } as ReturnType<typeof useAuthStore>['user']
-      routeQuery = { mode: 'wizard' }
-
-      // `load()` (from the existing onMounted) re-fetches via the mocked `show`
-      // composable and overwrites `store.current` asynchronously, so the fixture
-      // must be set on the mock's resolved value (not just assigned directly to
-      // the store) to survive past the initial render — matching the pattern
-      // used by the claim-banner tests above.
-      mockShow.mockResolvedValue(makeInstance({ created_by: 1, can_execute: true }))
-
-      const wrapper = mount(WorkflowInstanceDetailPage, {
-        global: {
-          stubs: {
-            ...stubs,
-            EngineRequestWizard: {
-              template: '<div data-stub="wizard" />',
-              data: () => ({ hasUnsavedChanges: true }),
-            },
-          },
-        },
-      })
-      await flushPromises()
-      await wrapper.vm.$nextTick()
-
-      const event = new Event('beforeunload', { cancelable: true })
-      const preventDefaultSpy = vi.spyOn(event, 'preventDefault')
-      window.dispatchEvent(event)
-
-      expect(preventDefaultSpy).toHaveBeenCalled()
-
-      // Unmount so this test's listener doesn't leak onto later dispatches in
-      // this file (no other test in this suite unmounts its wrapper either).
-      wrapper.unmount()
-    })
-
-    it('does not call preventDefault on beforeunload when there are no unsaved changes', async () => {
-      mockShow.mockResolvedValue(makeInstance())
-
-      const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
-      await flushPromises()
-      await wrapper.vm.$nextTick()
-
-      const event = new Event('beforeunload', { cancelable: true })
-      const preventDefaultSpy = vi.spyOn(event, 'preventDefault')
-      window.dispatchEvent(event)
-
-      expect(preventDefaultSpy).not.toHaveBeenCalled()
-
-      wrapper.unmount()
-    })
   })
 
   // Phase E8: runAction's catch block previously swallowed every error

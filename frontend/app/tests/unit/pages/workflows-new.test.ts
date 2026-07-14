@@ -68,9 +68,8 @@ vi.mock('@/composables/useEngineRequests', () => ({
     fetchList: vi.fn(),
     fetchQueue: vi.fn(),
     fetchAvailableWorkflows: vi.fn(),
-    create: vi.fn().mockResolvedValue({ id: 99 }),
+    submit: vi.fn(),
     show: vi.fn(),
-    saveDraft: vi.fn(),
   }),
 }))
 
@@ -148,41 +147,39 @@ describe('workflows/new.vue', () => {
     expect(spy).toHaveBeenCalled()
   })
 
-  it('renders a single-workflow picker without auto-creating on mount', async () => {
+  it('renders a single-workflow picker without auto-navigating on mount', async () => {
     const store = useEngineRequestsStore()
     vi.spyOn(store, 'loadAvailableWorkflows').mockImplementation(async () => {
       store.availableWorkflows = [WF_IMPORT]
     })
-    vi.spyOn(store, 'createInstance').mockResolvedValue({ id: 99 } as never)
 
     const wrapper = mount(WorkflowsNewPage)
     await flushPromises()
 
-    expect(store.createInstance).not.toHaveBeenCalled()
     expect(mockNavigateTo).not.toHaveBeenCalled()
     expect(wrapper.find('[data-testid="create-instance-1"]').exists()).toBe(true)
   })
 
-  it('renders a picker and creates on click when multiple workflows exist', async () => {
+  it('renders a picker and navigates to the deferred-creation wizard page on click', async () => {
     const store = useEngineRequestsStore()
     vi.spyOn(store, 'loadAvailableWorkflows').mockImplementation(async () => {
       store.availableWorkflows = [WF_IMPORT, WF_EXPORT]
     })
-    vi.spyOn(store, 'createInstance').mockResolvedValue({ id: 99 } as never)
 
     const wrapper = mount(WorkflowsNewPage)
     await flushPromises()
 
     // A genuine choice exists, so no auto-start; both options are listed.
-    expect(store.createInstance).not.toHaveBeenCalled()
+    expect(mockNavigateTo).not.toHaveBeenCalled()
     expect(wrapper.text()).toContain('تمويل الواردات')
     expect(wrapper.text()).toContain('تمويل الصادرات')
 
     await wrapper.find('[data-testid="create-instance-2"]').trigger('click')
     await flushPromises()
 
-    expect(store.createInstance).toHaveBeenCalledWith({ workflow_version_id: 20, data: {} })
-    expect(mockNavigateTo).toHaveBeenCalledWith('/workflows/instances/99?mode=wizard')
+    // No blank instance is created here — the deferred-creation backend only
+    // ever creates an EngineRequest atomically, on the wizard's final submit.
+    expect(mockNavigateTo).toHaveBeenCalledWith('/workflows/new-request/20')
   })
 
   it('renders the picker inside a dialog and cancel navigates back to the queue', async () => {

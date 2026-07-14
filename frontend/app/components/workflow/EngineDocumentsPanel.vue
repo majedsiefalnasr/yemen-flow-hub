@@ -10,7 +10,7 @@ import { FileText, Download, Trash2 } from 'lucide-vue-next'
 
 defineProps<{
   documents: EngineRequestDocument[]
-  requestId: number
+  requestId?: number | null
   canManage: boolean
 }>()
 
@@ -48,7 +48,12 @@ function onFileChange(event: Event) {
             {{ uploaderName(doc) }} · {{ formatDate(doc.created_at) }}
           </p>
         </div>
-        <a :href="downloadUrl(requestId, doc.id)" target="_blank" rel="noopener">
+        <a
+          v-if="requestId != null"
+          :href="downloadUrl(requestId, doc.id)"
+          target="_blank"
+          rel="noopener"
+        >
           <Button variant="ghost" size="icon" aria-label="تنزيل"
             ><Download class="h-4 w-4"
           /></Button>

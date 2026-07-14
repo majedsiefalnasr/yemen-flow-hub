@@ -25,5 +25,26 @@ export function useEngineFormSchema() {
     }
   }
 
-  return { fieldGroups, loading, error, fetchSchema }
+  /**
+   * Version-scoped counterpart for the pre-submission wizard: no
+   * EngineRequest exists yet under the deferred-creation architecture, so
+   * the initial stage's schema is fetched by workflow_version_id alone.
+   */
+  const fetchInitialSchema = async (workflowVersionId: number) => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.get<{ data: { field_groups: ResolvedFieldGroup[] } }>(
+        `/api/v1/engine-requests/initial-form-schema/${workflowVersionId}`,
+      )
+      fieldGroups.value = response.data.field_groups
+    } catch (cause: unknown) {
+      fieldGroups.value = []
+      error.value = extractApiErrorMessage(cause, 'تعذر تحميل نموذج الطلب.')
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return { fieldGroups, loading, error, fetchSchema, fetchInitialSchema }
 }

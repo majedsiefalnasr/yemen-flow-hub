@@ -2,7 +2,6 @@ import { computed, ref, type ComputedRef, type Ref } from 'vue'
 import type { ResolvedFieldGroup } from '@/types/models'
 
 export interface WizardCallbacks {
-  saveDraft: (data: Record<string, unknown>) => Promise<void>
   submit: (data: Record<string, unknown>) => Promise<void>
   /**
    * Extra non-group steps that follow the field-group steps (e.g. a review step).
@@ -38,10 +37,11 @@ export function useEngineWizard(
   const isFirst = computed(() => stepIndex.value === 0)
   const isLast = computed(() => stepIndex.value >= lastIndex.value)
 
-  async function next(data: Record<string, unknown>) {
+  async function next(_data: Record<string, unknown>) {
     busy.value = true
     try {
-      await cb.saveDraft(data)
+      // No server-side draft persistence between steps: data is accumulated
+      // client-side and submitted in one transition on the final step.
       if (stepIndex.value < lastIndex.value) stepIndex.value += 1
     } finally {
       busy.value = false

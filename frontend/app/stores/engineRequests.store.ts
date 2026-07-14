@@ -158,16 +158,25 @@ export const useEngineRequestsStore = defineStore('engineRequests', {
       this.error = error.value
     },
 
-    async createInstance(payload: {
-      workflow_version_id: number
-      bank_id?: number | null
-      merchant_id?: number | null
-      data: Record<string, unknown>
-    }): Promise<EngineRequest> {
-      const { create } = useEngineRequests()
-      const result = await create(payload)
-      this.current = result
-      return result
+    /**
+     * Deferred-creation submission: one atomic call, no pre-existing draft
+     * row. idempotencyKey must be a stable, caller-generated UUID reused
+     * across retries of the same wizard submission attempt.
+     */
+    async submitInstance(
+      idempotencyKey: string,
+      payload: {
+        workflow_version_id: number
+        merchant_id?: number | null
+        data: Record<string, unknown>
+        upload_tokens?: string[]
+      },
+    ): Promise<EngineRequest> {
+      const { submit } = useEngineRequests()
+      const result = await submit(idempotencyKey, payload)
+      this.current = result.data
+      this.duplicateWarnings = result.warnings
+      return result.data
     },
 
     async loadInstance(id: number) {
@@ -203,16 +212,6 @@ export const useEngineRequestsStore = defineStore('engineRequests', {
         this.fieldErrors = fieldErrors.value
         throw cause
       }
-    },
-
-    async saveDraftData(id: number, data: Record<string, unknown>, version: number) {
-      const { saveDraft } = useEngineRequests()
-      this.current = await saveDraft(id, data, version)
-    },
-
-    async abandonDraft(id: number, version: number) {
-      const { abandonDraft } = useEngineRequests()
-      this.current = await abandonDraft(id, version)
     },
 
     async loadHistory(id: number) {
