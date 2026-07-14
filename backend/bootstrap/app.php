@@ -185,7 +185,10 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $exceptions->render(function (ThrottleRequestsException $e, Request $request) {
             if ($request->is('api/*')) {
-                return ApiResponse::error('Too many requests. Please try again later.', [], 429);
+                // Keep Retry-After / X-RateLimit-* from the limiter so clients
+                // can back off for the exact remaining window instead of guessing.
+                return ApiResponse::error('Too many requests. Please try again later.', [], 429, 'RATE_LIMITED')
+                    ->withHeaders($e->getHeaders());
             }
         });
 

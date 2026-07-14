@@ -65,10 +65,13 @@ class ApiDefaultThrottleTest extends TestCase
                 ->assertOk();
         }
 
-        // The next one crosses the cap → 429 via the API throttle exception handler.
+        // The next one crosses the cap → 429 via the API throttle exception handler,
+        // carrying the machine-readable code and the limiter's backoff headers.
         $this->actingAs($user)
             ->getJson('/api/v1/engine-requests')
-            ->assertStatus(429);
+            ->assertStatus(429)
+            ->assertJsonPath('error_code', 'RATE_LIMITED')
+            ->assertHeader('Retry-After');
     }
 
     public function test_throttle_bucket_is_per_user_not_shared(): void
