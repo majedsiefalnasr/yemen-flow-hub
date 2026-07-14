@@ -169,6 +169,13 @@ useHead(() => ({
 }))
 
 const showShell = computed(() => route.path !== '/login' && Boolean(user.value))
+
+// Dev-only: loads the impeccable live-mode picker/variant script. Never present in production builds.
+if (import.meta.dev) {
+  useHead({
+    script: [{ key: 'impeccable-live', src: 'http://localhost:8400/live.js' }],
+  })
+}
 </script>
 
 <template>
