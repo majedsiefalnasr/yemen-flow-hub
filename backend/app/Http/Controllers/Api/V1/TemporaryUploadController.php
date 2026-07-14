@@ -2,13 +2,19 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\FieldType;
 use App\Enums\StageAccessLevel;
+use App\Enums\WorkflowVersionState;
+use App\Exceptions\EngineException;
 use App\Http\Controllers\Api\Controller;
 use App\Jobs\ScanTemporaryUpload;
+use App\Models\FieldDefinition;
 use App\Models\TemporaryUpload;
 use App\Models\WorkflowVersion;
 use App\Services\Documents\EngineRequestDocumentIntegrityService;
+use App\Services\Operations\OperationalAlertLogger;
 use App\Services\Workflow\StagePermissionResolver;
+use App\Support\RequestCreationGate;
 use App\Support\UploadSizeLimit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -32,14 +38,28 @@ class TemporaryUploadController extends Controller
             'upload_session_token' => ['required', 'string', 'max:64'],
             'workflow_version_id' => ['required', 'integer', 'exists:workflow_versions,id'],
             'field_id' => [
-                'nullable',
+                'required',
                 'integer',
                 Rule::exists('field_definitions', 'id')
                     ->where('workflow_version_id', $request->input('workflow_version_id')),
             ],
         ]);
 
+        if (! RequestCreationGate::userCanCreateRequests($request->user())) {
+            throw EngineException::creationNotAllowedForOrganization();
+        }
+
         $version = WorkflowVersion::findOrFail($validated['workflow_version_id']);
+
+        if ($version->state !== WorkflowVersionState::PUBLISHED) {
+            throw EngineException::versionNotPublished();
+        }
+
+        $field = FieldDefinition::query()->find($validated['field_id']);
+        if ($field === null || $field->type !== FieldType::FILE) {
+            throw EngineException::uploadFieldInvalid();
+        }
+
         $initialStage = $version->stages()->where('is_initial', true)->first();
 
         if ($initialStage === null
@@ -63,6 +83,17 @@ class TemporaryUploadController extends Controller
             ], 422);
         }
 
+        $checksum = hash_file('sha256', $file->getRealPath());
+        if ($checksum === false) {
+            Storage::disk('private-tmp')->delete($path);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Could not verify the uploaded file. Please try again.',
+                'error_code' => 'FILE_STORAGE_FAILED',
+            ], 422);
+        }
+
         try {
             $upload = TemporaryUpload::create([
                 'token' => $token,
@@ -71,12 +102,12 @@ class TemporaryUploadController extends Controller
                 'organization_id' => $request->user()->organization_id,
                 'bank_id' => $request->user()->bank_id,
                 'workflow_version_id' => $version->id,
-                'field_id' => $validated['field_id'] ?? null,
+                'field_id' => $validated['field_id'],
                 'original_name' => $file->getClientOriginalName(),
                 'path' => $path,
                 'mime' => $file->getMimeType(),
                 'size' => $file->getSize(),
-                'checksum' => hash_file('sha256', $file->getRealPath()),
+                'checksum' => $checksum,
                 'scan_status' => $this->documentIntegrity->scanStatusForNewUpload(),
                 'expires_at' => now()->addHours((int) config('retention.temporary_upload_ttl_hours')),
             ]);
@@ -113,7 +144,14 @@ class TemporaryUploadController extends Controller
         }
 
         if ($upload->consumed_at === null) {
-            Storage::disk('private-tmp')->delete($upload->path);
+            $disk = Storage::disk('private-tmp');
+            if ($disk->exists($upload->path) && ! $disk->delete($upload->path)) {
+                OperationalAlertLogger::failure(
+                    'temporary_upload_release',
+                    new \RuntimeException("Failed to delete released temporary upload file: {$upload->path}"),
+                    ['path' => $upload->path, 'temporary_upload_id' => $upload->id],
+                );
+            }
             $upload->delete();
         }
 
@@ -132,7 +170,11 @@ class TemporaryUploadController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $tokens = (array) $request->input('tokens', []);
+        $validated = $request->validate([
+            'tokens' => ['sometimes', 'array', 'max:50'],
+            'tokens.*' => ['string', 'max:64'],
+        ]);
+        $tokens = $validated['tokens'] ?? [];
 
         $uploads = TemporaryUpload::query()
             ->whereIn('token', $tokens)

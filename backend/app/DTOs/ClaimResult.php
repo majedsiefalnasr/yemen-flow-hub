@@ -10,6 +10,7 @@ class ClaimResult
         public string $status,
         public ?IdempotencyKey $key = null,
         public ?string $claimToken = null,
+        public ?int $retryAfterSeconds = null,
     ) {}
 
     public static function claimed(IdempotencyKey $key, string $claimToken): self
@@ -22,9 +23,9 @@ class ClaimResult
         return new self('replay', $key);
     }
 
-    public static function inProgress(): self
+    public static function inProgress(int $retryAfterSeconds): self
     {
-        return new self('in_progress');
+        return new self('in_progress', retryAfterSeconds: max(1, $retryAfterSeconds));
     }
 
     public function isClaimed(): bool

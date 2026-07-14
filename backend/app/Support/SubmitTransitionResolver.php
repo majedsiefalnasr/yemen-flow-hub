@@ -31,9 +31,14 @@ class SubmitTransitionResolver
             fn (WorkflowTransition $t) => (int) $t->to_stage_id !== $fromStageId,
         );
 
-        $flagged = $advancing->first(fn (WorkflowTransition $t) => (bool) $t->is_default_submit);
-        if ($flagged !== null) {
-            return $flagged;
+        $flagged = $advancing->filter(fn (WorkflowTransition $t) => (bool) $t->is_default_submit);
+        if ($flagged->count() === 1) {
+            return $flagged->first();
+        }
+        if ($flagged->count() > 1) {
+            // Multiple transitions marked is_default_submit is ambiguous by
+            // construction — never silently pick the first one.
+            return null;
         }
 
         if ($advancing->count() === 1) {

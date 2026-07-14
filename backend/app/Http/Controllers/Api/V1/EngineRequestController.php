@@ -57,7 +57,7 @@ class EngineRequestController extends Controller
             $request->user(),
         );
 
-        return response()->json($result->toResponseArray(), $result->httpStatus);
+        return response()->json($result->toResponseArray(), $result->httpStatus, $result->headers);
     }
 
     public function availableWorkflows(Request $request): JsonResponse

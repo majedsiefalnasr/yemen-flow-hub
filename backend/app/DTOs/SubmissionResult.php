@@ -10,6 +10,7 @@ class SubmissionResult
         public string $status,
         public int $httpStatus,
         public array $body,
+        public array $headers = [],
     ) {}
 
     public static function created(array $body): self
@@ -22,9 +23,9 @@ class SubmissionResult
         return new self('replay', (int) $key->response_status, (array) $key->response_body);
     }
 
-    public static function inProgress(): self
+    public static function inProgress(int $retryAfterSeconds): self
     {
-        return new self('in_progress', 202, ['status' => 'processing']);
+        return new self('in_progress', 202, ['status' => 'processing'], ['Retry-After' => (string) $retryAfterSeconds]);
     }
 
     public function toResponseArray(): array

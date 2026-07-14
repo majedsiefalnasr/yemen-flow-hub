@@ -85,7 +85,7 @@ class IdempotencyCoordinator
             }
 
             if (! $row->locked_until->isPast()) {
-                return ClaimResult::inProgress();
+                return ClaimResult::inProgress((int) now()->diffInSeconds($row->locked_until, true));
             }
 
             // Lease expired — atomic compare-and-set reclaim on the old
@@ -100,8 +100,11 @@ class IdempotencyCoordinator
                 ]);
 
             if ($affected !== 1) {
-                // Reclaimed by someone else in the gap — caller should retry once.
-                return ClaimResult::inProgress();
+                // Reclaimed by someone else in the gap — caller should retry
+                // shortly; the row's lease was already expired so a short,
+                // fixed backoff is appropriate here (no fresh locked_until to
+                // read: the winner's new lease value isn't visible to us).
+                return ClaimResult::inProgress(1);
             }
 
             return ClaimResult::claimed($row->fresh(), $claimToken);

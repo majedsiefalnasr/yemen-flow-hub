@@ -15,6 +15,7 @@ use App\Models\IdempotencyKey;
 use App\Models\Merchant;
 use App\Models\Organization;
 use App\Models\Role;
+use App\Models\Screen;
 use App\Models\StagePermission;
 use App\Models\Team;
 use App\Models\TemporaryUpload;
@@ -24,12 +25,19 @@ use App\Models\WorkflowDefinition;
 use App\Models\WorkflowStage;
 use App\Models\WorkflowTransition;
 use App\Models\WorkflowVersion;
+use App\Services\Notifications\NotificationPreferenceGate;
+use App\Services\Settings\SettingResolver;
+use App\Services\Workflow\EngineRequestSubmissionService;
+use App\Services\Workflow\EngineTransitionService;
+use App\Services\Workflow\IdempotencyCoordinator;
+use App\Services\Workflow\TemporaryUploadReservationService;
 use App\Services\Workflow\WorkflowVersionValidator;
 use Database\Seeders\GovernanceSeeder;
 use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -299,6 +307,74 @@ class EngineRequestDeferredSubmissionTest extends TestCase
         $this->assertDatabaseHas('engine_request_documents', ['id' => $docId, 'request_id' => $request->id]);
     }
 
+    public function test_renewal_loss_after_promotion_compensates_files_and_releases_reservation(): void
+    {
+        $token = $this->uploadFile();
+        $upload = TemporaryUpload::query()->where('token', $token)->firstOrFail();
+
+        // Let the FIRST lease renewal (before promotion) succeed normally,
+        // but fail the SECOND one (after promotion, before the transaction)
+        // — this is the exact window where a lost lease must still leave no
+        // promoted file behind and no stale reservation. partialMock() lets
+        // every other method (claim, deleteClaim, ...) fall through to the
+        // real implementation unchanged.
+        $this->partialMock(IdempotencyCoordinator::class, function ($mock) {
+            $mock->shouldReceive('renewLease')
+                ->once()->andReturn(true)
+                ->ordered();
+            $mock->shouldReceive('renewLease')
+                ->once()->andReturn(false)
+                ->ordered();
+        });
+
+        $response = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', $this->submitPayload([
+            'data' => ['supporting_doc' => [$token]],
+            'upload_tokens' => [$token],
+        ]), ['Idempotency-Key' => $this->uploadKey()]);
+
+        $response->assertStatus(409)->assertJsonPath('error_code', 'SUBMISSION_LEASE_LOST');
+        $this->assertSame(0, EngineRequest::query()->count());
+        $this->assertSame(0, EngineRequestDocument::query()->count());
+
+        $upload->refresh();
+        $this->assertNull($upload->reserved_by_idempotency_key_id, 'reservation must be released on renewal loss');
+        $this->assertNull($upload->consumed_at);
+
+        // The promoted permanent file must have been compensated (deleted),
+        // not left orphaned on the destination disk.
+        $promotedFiles = collect(Storage::disk('private')->allFiles('engine-requests'));
+        $this->assertCount(0, $promotedFiles, 'a promoted file must be deleted when the second lease renewal fails');
+    }
+
+    public function test_non_engine_exception_transaction_failure_compensates_consistently(): void
+    {
+        $token = $this->uploadFile();
+        $upload = TemporaryUpload::query()->where('token', $token)->firstOrFail();
+
+        $this->partialMock(EngineTransitionService::class, function ($mock) {
+            $mock->shouldReceive('execute')->once()->andThrow(new \RuntimeException('simulated non-EngineException failure'));
+        });
+
+        $response = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', $this->submitPayload([
+            'data' => ['supporting_doc' => [$token]],
+            'upload_tokens' => [$token],
+        ]), ['Idempotency-Key' => $this->uploadKey()]);
+
+        $response->assertStatus(500);
+
+        $this->assertSame(0, EngineRequest::query()->count());
+        $this->assertSame(0, EngineRequestDocument::query()->count());
+
+        $upload->refresh();
+        $this->assertNull($upload->reserved_by_idempotency_key_id, 'reservation must be released even on a non-EngineException failure');
+        $this->assertNull($upload->consumed_at);
+
+        $promotedFiles = collect(Storage::disk('private')->allFiles('engine-requests'));
+        $this->assertCount(0, $promotedFiles, 'a promoted file must be compensated even on a non-EngineException failure');
+
+        $this->assertSame(0, IdempotencyKey::query()->count(), 'the claim must be deleted for a clean retry');
+    }
+
     public function test_no_intermediate_token_shaped_write_to_engine_requests_data(): void
     {
         $token = $this->uploadFile();
@@ -320,7 +396,14 @@ class EngineRequestDeferredSubmissionTest extends TestCase
         foreach ($captured as $bindings) {
             foreach ($bindings as $binding) {
                 if (is_string($binding)) {
-                    $this->assertNotSame($token, $binding, 'A raw upload token must never be bound to an engine_requests statement.');
+                    // The 'data' column binds as one JSON-encoded string, not
+                    // a raw scalar — assertNotSame() alone would never catch
+                    // a token embedded inside that JSON. Search inside it.
+                    $this->assertStringNotContainsString(
+                        $token,
+                        $binding,
+                        'A raw upload token must never be bound to an engine_requests statement, including inside a JSON-encoded column value.',
+                    );
                 }
             }
         }
@@ -514,6 +597,79 @@ class EngineRequestDeferredSubmissionTest extends TestCase
         $this->assertSame(1, EngineRequest::query()->count());
     }
 
+    // ── Correction 7: recursive fingerprint canonicalization ───────────────
+
+    public function test_nested_object_key_order_does_not_cause_idempotency_key_reused(): void
+    {
+        // A client that re-encodes the identical logical payload with a
+        // different nested key order must fingerprint identically. The
+        // fingerprinted structure is only ever built server-side from the
+        // full validated request array (workflow_version_id, merchant_id,
+        // data, upload_tokens, ...), so this constructs two payloads that
+        // differ only in the ORDER of an associative sub-array's keys.
+        $keyOrderA = [
+            'workflow_version_id' => $this->version->id,
+            'merchant_id' => $this->merchant->id,
+            'data' => ['amount' => 1000],
+            'extra' => ['a' => 1, 'b' => 2, 'c' => 3],
+        ];
+        $keyOrderB = [
+            'extra' => ['c' => 3, 'a' => 1, 'b' => 2],
+            'data' => ['amount' => 1000],
+            'merchant_id' => $this->merchant->id,
+            'workflow_version_id' => $this->version->id,
+        ];
+
+        $service = app(EngineRequestSubmissionService::class);
+        $fingerprint = fn (array $payload) => (new \ReflectionMethod($service, 'fingerprint'))
+            ->invoke($service, $payload);
+
+        $this->assertSame(
+            $fingerprint($keyOrderA),
+            $fingerprint($keyOrderB),
+            'two payloads differing only in nested associative key order must fingerprint identically',
+        );
+    }
+
+    public function test_list_element_order_still_produces_a_different_fingerprint(): void
+    {
+        // The flip side of the guarantee above: list (sequential) order is
+        // genuine data and must NOT be canonicalized away.
+        $service = app(EngineRequestSubmissionService::class);
+        $fingerprint = fn (array $payload) => (new \ReflectionMethod($service, 'fingerprint'))
+            ->invoke($service, $payload);
+
+        $this->assertNotSame(
+            $fingerprint(['upload_tokens' => ['a', 'b']]),
+            $fingerprint(['upload_tokens' => ['b', 'a']]),
+        );
+    }
+
+    public function test_active_processing_claim_returns_202_with_retry_after(): void
+    {
+        $key = $this->uploadKey();
+        $payload = $this->submitPayload();
+        $fingerprint = hash('sha256', json_encode($this->canonicalFingerprintInput($payload)));
+
+        IdempotencyKey::create([
+            'key' => $key,
+            'user_id' => $this->executor->id,
+            'organization_id' => $this->executor->organization_id,
+            'operation' => 'engine_request.create',
+            'request_fingerprint' => $fingerprint,
+            'state' => 'PROCESSING',
+            'claim_token' => (string) Str::uuid(),
+            'locked_until' => now()->addSeconds(30),
+        ]);
+
+        $response = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', $payload, ['Idempotency-Key' => $key]);
+
+        $response->assertStatus(202);
+        $this->assertTrue($response->headers->has('Retry-After'));
+        $this->assertGreaterThan(0, (int) $response->headers->get('Retry-After'));
+        $this->assertSame(0, EngineRequest::query()->count());
+    }
+
     public function test_missing_idempotency_key_is_rejected(): void
     {
         $response = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', $this->submitPayload());
@@ -564,11 +720,64 @@ class EngineRequestDeferredSubmissionTest extends TestCase
         $this->assertSame('COMPLETED', $state instanceof IdempotencyKeyState ? $state->value : $state);
     }
 
-    private function canonicalFingerprintInput(array $data): array
+    public function test_stale_claim_token_cannot_affect_a_reclaiming_attempts_reservation(): void
     {
-        ksort($data);
+        $token = $this->uploadFile();
+        $upload = TemporaryUpload::query()->where('token', $token)->firstOrFail();
 
-        return $data;
+        $key = IdempotencyKey::create([
+            'key' => $this->uploadKey(),
+            'user_id' => $this->executor->id,
+            'organization_id' => $this->executor->organization_id,
+            'operation' => 'engine_request.create',
+            'request_fingerprint' => 'irrelevant-for-this-test',
+            'state' => 'PROCESSING',
+            'claim_token' => 'stale-token',
+            'locked_until' => now()->subMinutes(5),
+        ]);
+
+        $reservations = app(TemporaryUploadReservationService::class);
+
+        // The superseded (stale) attempt reserved this upload with a lease
+        // that has since expired — the reservation lease is a separate clock
+        // from the idempotency key's own lease, but both time out together
+        // under the same submission_lease_seconds policy, which is exactly
+        // why an abandoned reservation is reclaimable at all.
+        $reservations->reserve([$upload->id], $key->id, 'stale-token', -60);
+
+        // ...then a newer attempt reclaims the SAME idempotency row id with a
+        // FRESH claim_token (simulating IdempotencyCoordinator's compare-
+        // and-set reclaim) and re-reserves the now-abandoned upload under
+        // its own token.
+        $reservations->reserve([$upload->id], $key->id, 'fresh-token', 120);
+
+        // The stale attempt's release/consume calls must be no-ops now —
+        // they carry the old claim_token, which no longer matches the row.
+        $reservations->release([$upload->id], $key->id, 'stale-token');
+        $consumed = $reservations->consume([$upload->id], $key->id, 'stale-token');
+
+        $upload->refresh();
+        $this->assertFalse($consumed, 'a stale claim_token must not be able to consume a reservation it no longer owns');
+        $this->assertSame($key->id, $upload->reserved_by_idempotency_key_id, 'the reclaiming attempt must still hold the reservation');
+        $this->assertSame('fresh-token', $upload->reservation_claim_token);
+        $this->assertNull($upload->consumed_at);
+    }
+
+    /** Mirrors EngineRequestSubmissionService::canonicalize() exactly. */
+    private function canonicalFingerprintInput(mixed $data): mixed
+    {
+        if (! is_array($data)) {
+            return $data;
+        }
+
+        $isList = array_is_list($data);
+        $canonicalized = array_map($this->canonicalFingerprintInput(...), $data);
+
+        if (! $isList) {
+            ksort($canonicalized);
+        }
+
+        return $canonicalized;
     }
 
     // ── Server-only transition resolution (10.33–10.34, 11.7 equivalents) ──
@@ -643,25 +852,131 @@ class EngineRequestDeferredSubmissionTest extends TestCase
         $response->assertStatus(422)->assertJsonPath('error_code', 'INITIAL_STAGE_NO_ADVANCING_SUBMIT');
     }
 
+    // ── Correction 2: multiple is_default_submit transitions is ambiguous ──
+
+    public function test_ambiguous_default_submit_is_rejected_at_publish_and_submission(): void
+    {
+        $def = WorkflowDefinition::create(['code' => 'AMBIGUOUS_DEFAULT_WF', 'name' => 'Ambiguous Default', 'is_active' => true]);
+        $version = WorkflowVersion::create([
+            'workflow_definition_id' => $def->id,
+            'version_number' => 1,
+            'state' => WorkflowVersionState::PUBLISHED,
+            'published_at' => now(),
+            'version' => 1,
+        ]);
+        $initial = WorkflowStage::create([
+            'workflow_version_id' => $version->id,
+            'code' => 'START',
+            'name' => 'Start',
+            'sort_order' => 1,
+            'is_initial' => true,
+            'is_final' => false,
+            'version' => 1,
+        ]);
+        $branchA = WorkflowStage::create([
+            'workflow_version_id' => $version->id,
+            'code' => 'BRANCH_A',
+            'name' => 'Branch A',
+            'sort_order' => 2,
+            'is_initial' => false,
+            'is_final' => true,
+            'final_outcome' => 'COMPLETED',
+            'version' => 1,
+        ]);
+        $branchB = WorkflowStage::create([
+            'workflow_version_id' => $version->id,
+            'code' => 'BRANCH_B',
+            'name' => 'Branch B',
+            'sort_order' => 3,
+            'is_initial' => false,
+            'is_final' => true,
+            'final_outcome' => 'COMPLETED',
+            'version' => 1,
+        ]);
+        StagePermission::create([
+            'stage_id' => $initial->id,
+            'organization_id' => $this->bank->organization_id,
+            'role_id' => Role::where('code', 'intake')->first()->id,
+            'access_level' => StageAccessLevel::EXECUTE,
+            'display_label' => 'Start',
+            'version' => 1,
+        ]);
+
+        $actionA = WorkflowAction::create(['code' => 'TO_A', 'name' => 'To A', 'kind' => 'DRAFT', 'is_active' => true, 'version' => 1]);
+        $actionB = WorkflowAction::create(['code' => 'TO_B', 'name' => 'To B', 'kind' => 'DRAFT', 'is_active' => true, 'version' => 1]);
+
+        // Both outgoing transitions marked is_default_submit — the resolver
+        // must refuse to silently pick the first one it encounters.
+        WorkflowTransition::create([
+            'workflow_version_id' => $version->id,
+            'from_stage_id' => $initial->id,
+            'to_stage_id' => $branchA->id,
+            'action_id' => $actionA->id,
+            'requires_comment' => false,
+            'is_default_submit' => true,
+            'version' => 1,
+        ]);
+        WorkflowTransition::create([
+            'workflow_version_id' => $version->id,
+            'from_stage_id' => $initial->id,
+            'to_stage_id' => $branchB->id,
+            'action_id' => $actionB->id,
+            'requires_comment' => false,
+            'is_default_submit' => true,
+            'version' => 1,
+        ]);
+
+        $errors = app(WorkflowVersionValidator::class)->validate($version->fresh());
+        $this->assertContains('INITIAL_STAGE_NO_ADVANCING_SUBMIT', array_column($errors, 'code'));
+
+        $response = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', [
+            'workflow_version_id' => $version->id,
+            'merchant_id' => $this->merchant->id,
+            'data' => [],
+        ], ['Idempotency-Key' => $this->uploadKey()]);
+        $response->assertStatus(422)->assertJsonPath('error_code', 'INITIAL_STAGE_NO_ADVANCING_SUBMIT');
+        $this->assertSame(0, EngineRequest::query()->count());
+    }
+
     // ── Post-transition invariant, no assert() (10.36/11.8 equivalent) ─────
 
-    public function test_submission_invariant_violation_throws_and_rolls_back_without_zend_assertions(): void
+    public function test_resolver_guard_fires_before_reaching_the_in_transaction_invariant(): void
     {
         // Force the resolved transition to be a self-loop by pointing it back
         // at the initial stage directly in the DB, bypassing the resolver's
         // own guard — simulates "the guard above this point somehow didn't
-        // catch it" so the in-transaction invariant check is exercised on
-        // its own, independent of zend.assertions.
+        // catch it". SubmitTransitionResolver itself already filters
+        // self-loops out, so with no other outgoing transition this
+        // correctly reports "no advancing submit" without ever reaching the
+        // in-transaction invariant check — see the sibling test below for
+        // that check exercised directly.
         $this->submitTransition->update(['to_stage_id' => $this->initialStage->id]);
 
         $response = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', $this->submitPayload(), ['Idempotency-Key' => $this->uploadKey()]);
 
-        // SubmitTransitionResolver itself already filters self-loops out, so
-        // with no other outgoing transition this now correctly reports
-        // "no advancing submit" rather than reaching the invariant check —
-        // proving the resolver guard fires first, as designed.
         $response->assertStatus(422)->assertJsonPath('error_code', 'INITIAL_STAGE_NO_ADVANCING_SUBMIT');
         $this->assertSame(0, EngineRequest::query()->count());
+    }
+
+    public function test_submission_invariant_violation_throws_and_rolls_back_without_zend_assertions(): void
+    {
+        // Genuinely reach the in-transaction invariant, independent of the
+        // resolver guard above: EngineTransitionService::execute() is
+        // mocked as a no-op that never actually moves current_stage_id off
+        // the initial stage, simulating "the transition service somehow
+        // returned without advancing the request" — the exact condition
+        // EngineException::submissionDidNotAdvanceInitialStage() exists to
+        // catch via a real thrown exception, not a disable-able assert().
+        $this->partialMock(EngineTransitionService::class, function ($mock) {
+            $mock->shouldReceive('execute')
+                ->once()
+                ->andReturnUsing(fn ($request) => $request);
+        });
+
+        $response = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', $this->submitPayload(), ['Idempotency-Key' => $this->uploadKey()]);
+
+        $response->assertStatus(500)->assertJsonPath('error_code', 'SUBMISSION_INVARIANT_VIOLATED');
+        $this->assertSame(0, EngineRequest::query()->count(), 'the transaction must roll back, leaving no committed request');
     }
 
     // ── Audit ordering (10.35/11.9 equivalent) ─────────────────────────────
@@ -703,7 +1018,12 @@ class EngineRequestDeferredSubmissionTest extends TestCase
             'sort_order' => 4,
             'version' => 1,
         ]);
-        DB::table('system_settings')->updateOrInsert(['key' => 'duplicate_invoice_policy'], ['value' => 'block']);
+        // SystemSetting::value casts to 'array' (json_decode on read) — the
+        // raw column must hold JSON-encoded content, not a bare string, or
+        // the cast silently yields null and SettingResolver falls back to
+        // its default ('warn'), masking this test's whole premise.
+        DB::table('system_settings')->updateOrInsert(['key' => 'duplicate_invoice_policy'], ['value' => json_encode('block')]);
+        app(SettingResolver::class)->forget('duplicate_invoice_policy');
 
         $first = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', $this->submitPayload([
             'data' => ['amount' => 1, 'invoice_number' => 'INV-BLOCK-1'],
@@ -714,10 +1034,64 @@ class EngineRequestDeferredSubmissionTest extends TestCase
             'data' => ['amount' => 2, 'invoice_number' => 'INV-BLOCK-1'],
         ]), ['Idempotency-Key' => $this->uploadKey()]);
 
-        if ($second->status() === 422) {
-            $second->assertJsonPath('error_code', 'DUPLICATE_INVOICE_BLOCKED');
-            $this->assertSame(1, EngineRequest::query()->count());
-        }
+        $second->assertStatus(422)->assertJsonPath('error_code', 'DUPLICATE_INVOICE_BLOCKED');
+        $this->assertSame(1, EngineRequest::query()->count());
+    }
+
+    // ── Correction 3: notification dispatch failure never affects the ──────
+    // ── already-committed response ──────────────────────────────────────
+
+    public function test_notification_dispatch_failure_after_commit_does_not_affect_the_201_response(): void
+    {
+        // Grant the executor's own role audit VIEW so resolveAuditViewers()
+        // actually finds a recipient — otherwise afterDuplicateInvoice()
+        // returns before ever reaching the dispatch this test exercises.
+        $auditScreen = Screen::where('key', 'audit')->firstOrFail();
+        $entryRole = Role::where('code', 'intake')->where('organization_id', $this->bank->organization_id)->firstOrFail();
+        DB::table('screen_permissions')->insert([
+            'role_id' => $entryRole->id,
+            'screen_id' => $auditScreen->id,
+            'capability' => 'VIEW',
+        ]);
+
+        FieldDefinition::create([
+            'workflow_version_id' => $this->version->id,
+            'field_group_id' => $this->docField->field_group_id,
+            'key' => 'invoice_number',
+            'label' => 'Invoice Number',
+            'type' => 'TEXT',
+            'is_required' => false,
+            'sort_order' => 4,
+            'version' => 1,
+        ]);
+
+        $first = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', $this->submitPayload([
+            'data' => ['amount' => 1, 'invoice_number' => 'INV-NOTIFY-FAIL'],
+        ]), ['Idempotency-Key' => $this->uploadKey()]);
+        $first->assertCreated();
+
+        // Force the deferred notification dispatch (which runs inside
+        // afterDuplicateInvoice()'s own DB::afterCommit() callback, AFTER
+        // this request's transaction has already committed) to throw.
+        $this->partialMock(NotificationPreferenceGate::class, function ($mock) {
+            $mock->shouldReceive('shouldDeliver')->andThrow(new \RuntimeException('simulated notification failure'));
+        });
+
+        Log::shouldReceive('error')
+            ->atLeast()->once()
+            ->with('ops.notification_dispatch.failed', \Mockery::on(fn ($context) => ($context['type'] ?? null) === 'compliance.duplicate_invoice'));
+
+        $second = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', $this->submitPayload([
+            'data' => ['amount' => 2, 'invoice_number' => 'INV-NOTIFY-FAIL'],
+        ]), ['Idempotency-Key' => $this->uploadKey()]);
+
+        // The request is still created successfully — the warn-severity
+        // duplicate-invoice check (not block) never rejects the submission,
+        // and a post-commit notification failure must never turn this into
+        // an apparent failed submission.
+        $second->assertCreated();
+        $this->assertArrayHasKey('warnings', $second->json());
+        $this->assertSame(2, EngineRequest::query()->count());
     }
 
     // ── Correction 2: stored response (incl. warnings) is byte-identical
@@ -792,6 +1166,86 @@ class EngineRequestDeferredSubmissionTest extends TestCase
 
         $notMine = $this->actingAs($other)->getJson("/api/v1/temporary-uploads/{$token}");
         $notMine->assertStatus(404);
+    }
+
+    // ── Correction 6: temporary-upload creation hardening ───────────────────
+
+    public function test_upload_requires_field_id(): void
+    {
+        $file = UploadedFile::fake()->create('evidence.pdf', 50, 'application/pdf');
+
+        $response = $this->actingAs($this->executor)->postJson('/api/v1/temporary-uploads', [
+            'file' => $file,
+            'upload_session_token' => Str::random(48),
+            'workflow_version_id' => $this->version->id,
+        ]);
+
+        $response->assertStatus(422)->assertJsonValidationErrors(['field_id']);
+    }
+
+    public function test_upload_rejects_field_id_that_is_not_a_file_field(): void
+    {
+        $nonFileField = FieldDefinition::create([
+            'workflow_version_id' => $this->version->id,
+            'field_group_id' => $this->docField->field_group_id,
+            'key' => 'not_a_file',
+            'label' => 'Not A File',
+            'type' => 'TEXT',
+            'is_required' => false,
+            'sort_order' => 5,
+            'version' => 1,
+        ]);
+        $file = UploadedFile::fake()->create('evidence.pdf', 50, 'application/pdf');
+
+        $response = $this->actingAs($this->executor)->postJson('/api/v1/temporary-uploads', [
+            'file' => $file,
+            'upload_session_token' => Str::random(48),
+            'workflow_version_id' => $this->version->id,
+            'field_id' => $nonFileField->id,
+        ]);
+
+        $response->assertStatus(422)->assertJsonPath('error_code', 'UPLOAD_FIELD_INVALID');
+    }
+
+    public function test_upload_rejects_unpublished_workflow_version(): void
+    {
+        $def = WorkflowDefinition::create(['code' => 'DRAFT_WF', 'name' => 'Draft', 'is_active' => true]);
+        $draftVersion = WorkflowVersion::create([
+            'workflow_definition_id' => $def->id,
+            'version_number' => 1,
+            'state' => WorkflowVersionState::DRAFT,
+            'version' => 1,
+        ]);
+        $group = FieldGroup::create(['workflow_version_id' => $draftVersion->id, 'name' => 'g', 'label' => 'G', 'sort_order' => 1, 'version' => 1]);
+        $field = FieldDefinition::create([
+            'workflow_version_id' => $draftVersion->id,
+            'field_group_id' => $group->id,
+            'key' => 'doc',
+            'label' => 'Doc',
+            'type' => 'FILE',
+            'is_required' => false,
+            'sort_order' => 1,
+            'version' => 1,
+        ]);
+        $file = UploadedFile::fake()->create('evidence.pdf', 50, 'application/pdf');
+
+        $response = $this->actingAs($this->executor)->postJson('/api/v1/temporary-uploads', [
+            'file' => $file,
+            'upload_session_token' => Str::random(48),
+            'workflow_version_id' => $draftVersion->id,
+            'field_id' => $field->id,
+        ]);
+
+        $response->assertStatus(422)->assertJsonPath('error_code', 'VERSION_NOT_PUBLISHED');
+    }
+
+    public function test_upload_index_rejects_oversized_tokens_list(): void
+    {
+        $tokens = array_fill(0, 51, 'x');
+
+        $response = $this->actingAs($this->executor)->getJson('/api/v1/temporary-uploads?'.http_build_query(['tokens' => $tokens]));
+
+        $response->assertStatus(422);
     }
 
     // ── Temporary-upload cleanup (10.30/11 equivalents) ────────────────────
@@ -872,6 +1326,63 @@ class EngineRequestDeferredSubmissionTest extends TestCase
             'claim_token' => (string) Str::uuid(),
             'locked_until' => now()->subMinutes(2),
         ]);
+
+        $this->artisan('workflow:purge-old-idempotency-keys')->assertSuccessful();
+
+        $this->assertDatabaseHas('idempotency_keys', ['id' => $row->id]);
+    }
+
+    // ── Correction 5: purge commands re-check eligibility at delete time ───
+
+    public function test_purge_expired_uploads_skips_a_row_with_an_active_reservation(): void
+    {
+        $token = $this->uploadFile();
+        $upload = TemporaryUpload::query()->where('token', $token)->firstOrFail();
+
+        $key = IdempotencyKey::create([
+            'key' => $this->uploadKey(),
+            'user_id' => $this->executor->id,
+            'organization_id' => $this->executor->organization_id,
+            'operation' => 'engine_request.create',
+            'request_fingerprint' => 'holding-reservation',
+            'state' => 'PROCESSING',
+            'claim_token' => (string) Str::uuid(),
+            'locked_until' => now()->addMinutes(2),
+        ]);
+
+        // Past its own TTL, but a live submission is holding it right now —
+        // the reservation lease is the deciding factor, not expires_at alone.
+        $upload->update([
+            'expires_at' => now()->subDay(),
+            'reserved_by_idempotency_key_id' => $key->id,
+            'reservation_claim_token' => $key->claim_token,
+            'reservation_expires_at' => now()->addMinutes(2),
+        ]);
+
+        $this->artisan('workflow:purge-expired-temporary-uploads')->assertSuccessful();
+
+        $this->assertDatabaseHas('temporary_uploads', ['id' => $upload->id]);
+    }
+
+    public function test_purge_idempotency_keys_skips_a_row_reclaimed_after_the_candidate_scan(): void
+    {
+        $row = IdempotencyKey::create([
+            'key' => $this->uploadKey(),
+            'user_id' => $this->executor->id,
+            'organization_id' => $this->executor->organization_id,
+            'operation' => 'engine_request.create',
+            'request_fingerprint' => 'raced',
+            'state' => 'PROCESSING',
+            'claim_token' => 'original-token',
+            'locked_until' => now()->subHours(2),
+        ]);
+
+        // Simulate a genuine reclaim happening between the command's
+        // candidate scan and its per-row lock: by the time this test's
+        // "purge" runs, the row already carries a fresh claim_token and an
+        // extended, still-future lease — exactly what IdempotencyCoordinator
+        // ::claim()'s compare-and-set reclaim produces for a live retry.
+        $row->update(['claim_token' => 'reclaimed-token', 'locked_until' => now()->addMinutes(2)]);
 
         $this->artisan('workflow:purge-old-idempotency-keys')->assertSuccessful();
 

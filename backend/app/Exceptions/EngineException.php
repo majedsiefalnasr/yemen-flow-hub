@@ -132,6 +132,11 @@ class EngineException extends RuntimeException
         return new self('One of the referenced uploads does not belong to this workflow version.', 'UPLOAD_TOKEN_WRONG_WORKFLOW', 422);
     }
 
+    public static function uploadFieldInvalid(): self
+    {
+        return new self('field_id must identify a FILE field on this workflow version.', 'UPLOAD_FIELD_INVALID', 422);
+    }
+
     public static function uploadTokenAlreadyConsumed(): self
     {
         return new self('One of the referenced uploads has already been used.', 'UPLOAD_TOKEN_ALREADY_CONSUMED', 422);

@@ -6,6 +6,7 @@ use App\Enums\OrganizationClassification;
 use App\Jobs\DispatchNotification;
 use App\Models\User;
 use App\Models\WorkflowStage;
+use App\Services\Operations\OperationalAlertLogger;
 use App\Services\Workflow\StagePermissionAudience;
 use Illuminate\Support\Facades\DB;
 
@@ -59,7 +60,7 @@ class EngineNotificationDispatcher
             ->whereIn('id', $recipientIds)
             ->with('organization')
             ->get()
-            ->groupBy(fn(User $u) => $u->organization->classification->value);
+            ->groupBy(fn (User $u) => $u->organization->classification->value);
 
         // 1. NATIONAL_COMMITTEE: platform-wide oversight (full detail)
         if ($ncIds = $recipients->get(OrganizationClassification::NATIONAL_COMMITTEE->value)?->pluck('id')->toArray()) {
@@ -272,11 +273,22 @@ class EngineNotificationDispatcher
         }
 
         DB::afterCommit(function () use ($type, $severity, $title, $body, $entityType, $entityId, $actionUrl, $recipientUserIds) {
-            DispatchNotification::dispatch(
-                $type, $severity, $title, $body,
-                $entityType, $entityId, $actionUrl,
-                $recipientUserIds
-            );
+            // The triggering write already committed by the time this runs —
+            // a dispatch failure here must never surface as if the original
+            // request had failed. Log and swallow.
+            try {
+                DispatchNotification::dispatch(
+                    $type, $severity, $title, $body,
+                    $entityType, $entityId, $actionUrl,
+                    $recipientUserIds
+                );
+            } catch (\Throwable $e) {
+                OperationalAlertLogger::failure('notification_dispatch', $e, [
+                    'type' => $type,
+                    'entity_type' => $entityType,
+                    'entity_id' => $entityId,
+                ]);
+            }
         });
     }
 }

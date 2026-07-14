@@ -71,7 +71,7 @@ class EngineRequestSubmissionService
             return SubmissionResult::fromStored($claim->key);
         }
         if ($claim->isInProgress()) {
-            return SubmissionResult::inProgress();
+            return SubmissionResult::inProgress($claim->retryAfterSeconds ?? 1);
         }
 
         // isClaimed(): a fresh attempt now owns this key. Everything below
@@ -82,9 +82,12 @@ class EngineRequestSubmissionService
 
         try {
             return $this->submitClaimed($data, $actor, $keyId, $claimToken, $leaseSeconds);
-        } catch (EngineException $e) {
-            // Deterministic pre-creation rejection: release reservations (if
-            // any were made) before deleting the claim, both claim-token
+        } catch (\Throwable $e) {
+            // Deterministic pre-creation rejection (or any other pre-commit
+            // failure — submitClaimed()'s own inner catches already released
+            // reservations/compensated files before rethrowing): delete the
+            // claim so a clean retry can reclaim it immediately rather than
+            // waiting out the abandoned-PROCESSING purge margin. Claim-token
             // guarded so a since-superseded attempt's cleanup can't affect a
             // reclaiming attempt.
             $this->idempotency->deleteClaim($keyId, $claimToken);
@@ -197,7 +200,10 @@ class EngineRequestSubmissionService
                     $promotedDocuments[$fieldKey][] = ['upload' => $upload, 'path' => $path];
                 }
             }
-        } catch (EngineException $e) {
+        } catch (\Throwable $e) {
+            // Correction 4: compensate on ANY pre-commit failure, not only
+            // EngineException — a driver error, OOM, or other unexpected
+            // throwable must not leak a promoted file or a stale reservation.
             $this->promotion->compensate($promotedPaths);
             $this->reservations->release($tokenIds, $keyId, $claimToken);
             throw $e;
@@ -332,19 +338,36 @@ class EngineRequestSubmissionService
                 }
 
                 if ($unmaskedWarning !== null) {
-                    DB::afterCommit(function () use ($request, $invoiceNumber, $unmaskedWarning) {
-                        $this->notificationDispatcher->afterDuplicateInvoice(
-                            $request->id,
-                            (string) $request->reference,
-                            $invoiceNumber,
-                            $unmaskedWarning['duplicates'],
-                        );
-                    });
+                    // Correction 3: recipient/audience resolution (reads) runs
+                    // now, before commit — only the actual notification
+                    // dispatch is deferred, inside afterDuplicateInvoice()'s
+                    // own dispatchAfterCommit() call. Do not wrap this whole
+                    // method in an outer afterCommit(): that would defer its
+                    // DB reads too, and a read-only failure here has nothing
+                    // to do with whether the request was created.
+                    $this->notificationDispatcher->afterDuplicateInvoice(
+                        $request->id,
+                        (string) $request->reference,
+                        $invoiceNumber,
+                        $unmaskedWarning['duplicates'],
+                    );
                 }
 
                 return [$request, $responseBody];
             }, 5);
-        } catch (EngineException $e) {
+        } catch (\Throwable $e) {
+            // Correction 4: DB::transaction() already rolled back the DB side
+            // of a failed attempt regardless of exception type — but the
+            // filesystem promotion and the reservation rows are NOT part of
+            // that DB transaction (deliberately: cross-disk file writes are
+            // compensated explicitly, never claimed as atomic with the DB).
+            // Compensate on any pre-commit throwable here too, not only
+            // EngineException. This catch can only see a pre-commit failure:
+            // the one post-commit callback registered inside the closure
+            // (the duplicate-invoice notification dispatch) already catches
+            // and logs its own throwables internally and never rethrows, so
+            // it can never reach this catch and trigger a delete of files
+            // that were already committed.
             $this->promotion->compensate($promotedPaths);
             $this->reservations->release($tokenIds, $keyId, $claimToken);
             throw $e;
@@ -365,9 +388,30 @@ class EngineRequestSubmissionService
 
     private function fingerprint(array $data): string
     {
-        ksort($data);
+        return hash('sha256', json_encode($this->canonicalize($data), JSON_THROW_ON_ERROR));
+    }
 
-        return hash('sha256', json_encode($data, JSON_THROW_ON_ERROR));
+    /**
+     * Recursively sort associative-array keys so two payloads that differ
+     * only in nested object key order fingerprint identically — a client
+     * re-encoding the same logical request must never trip
+     * IDEMPOTENCY_KEY_REUSED. Sequential-integer-keyed (list) arrays keep
+     * their element order: [1, 2] and [2, 1] are genuinely different data.
+     */
+    private function canonicalize(mixed $value): mixed
+    {
+        if (! is_array($value)) {
+            return $value;
+        }
+
+        $isList = array_is_list($value);
+        $canonicalized = array_map($this->canonicalize(...), $value);
+
+        if (! $isList) {
+            ksort($canonicalized);
+        }
+
+        return $canonicalized;
     }
 
     /** Same masking rule the controller used before this logic moved here. */
