@@ -103,6 +103,85 @@ describe('useApi', () => {
   })
 })
 
+// 429 backoff: reads throttled by the shared api-default limiter retry once
+// after the server's Retry-After when it fits the transparent-retry budget;
+// long waits and writes surface the error to the caller instead.
+describe('useApi — 429 Retry-After backoff', () => {
+  beforeEach(() => {
+    cookieJar = ''
+    mockFetch.mockReset()
+    setClientFlag(true)
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    setClientFlag(undefined)
+  })
+
+  function rateLimitError(retryAfterSeconds?: number) {
+    return {
+      response: {
+        status: 429,
+        headers: new Headers(
+          retryAfterSeconds === undefined ? {} : { 'Retry-After': String(retryAfterSeconds) },
+        ),
+      },
+    }
+  }
+
+  it('retries a GET once after the Retry-After delay and resolves', async () => {
+    mockFetch.mockRejectedValueOnce(rateLimitError(2)).mockResolvedValueOnce({ data: [] })
+
+    const { useApi } = await import('../../../composables/useApi')
+    const { get } = useApi()
+
+    const promise = get<{ data: unknown[] }>('/api/v1/engine-requests')
+    await vi.advanceTimersByTimeAsync(2000)
+
+    await expect(promise).resolves.toEqual({ data: [] })
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not retry when Retry-After exceeds the transparent-retry budget', async () => {
+    mockFetch.mockRejectedValueOnce(rateLimitError(30))
+
+    const { useApi } = await import('../../../composables/useApi')
+    const { get } = useApi()
+
+    await expect(get('/api/v1/engine-requests')).rejects.toMatchObject({
+      response: { status: 429 },
+    })
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('retries after 1s when the Retry-After header is missing', async () => {
+    mockFetch.mockRejectedValueOnce(rateLimitError()).mockResolvedValueOnce({ data: [] })
+
+    const { useApi } = await import('../../../composables/useApi')
+    const { get } = useApi()
+
+    const promise = get<{ data: unknown[] }>('/api/v1/engine-requests')
+    await vi.advanceTimersByTimeAsync(1000)
+
+    await expect(promise).resolves.toEqual({ data: [] })
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('never auto-retries a throttled mutation', async () => {
+    cookieJar = 'XSRF-TOKEN=token'
+    mockFetch.mockRejectedValueOnce(rateLimitError(1))
+
+    const { useApi } = await import('../../../composables/useApi')
+    const { post } = useApi()
+
+    await expect(post('/api/v1/notifications/read-all')).rejects.toMatchObject({
+      response: { status: 429 },
+    })
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+  })
+})
+
 // FE-001: getAbortable() threads an AbortController signal through GET so a
 // caller (or the composable itself, on component unmount) can cancel an
 // in-flight read instead of letting it complete for nobody.

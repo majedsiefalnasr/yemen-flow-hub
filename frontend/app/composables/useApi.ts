@@ -20,6 +20,30 @@ export function isAbortError(err: unknown): boolean {
   )
 }
 
+/**
+ * Longest Retry-After (seconds) worth absorbing transparently. A short window
+ * means a page-load burst tripped the limiter and one delayed retry will
+ * succeed; anything longer is a real rate-limit and must surface to the
+ * caller's error state instead of hanging the UI on a silent wait.
+ */
+const MAX_RATE_LIMIT_RETRY_SECONDS = 3
+
+/**
+ * Milliseconds to wait before retrying a 429'd read, or null when the error is
+ * not a 429 / the server's Retry-After exceeds the transparent-retry budget.
+ * Falls back to 1s when the header is missing or unparsable.
+ */
+function rateLimitRetryDelayMs(err: unknown): number | null {
+  if (typeof err !== 'object' || err === null) return null
+  const response = (err as { response?: { status?: number; headers?: Headers } }).response
+  if (response?.status !== 429) return null
+
+  const header = response.headers?.get?.('Retry-After')
+  const parsed = Number(header)
+  const seconds = Number.isFinite(parsed) && parsed > 0 ? parsed : 1
+  return seconds <= MAX_RATE_LIMIT_RETRY_SECONDS ? seconds * 1000 : null
+}
+
 export function useApi() {
   const config = useRuntimeConfig()
   const baseURL = config.public.apiBase as string
@@ -138,6 +162,16 @@ export function useApi() {
       if (import.meta.client && isUnsafeMethod(method) && isCsrfMismatch(err)) {
         await ensureCsrfCookie()
         return request()
+      }
+      // Reads burst-throttled by the shared api-default limiter retry once
+      // after the server's Retry-After. Writes never auto-retry: the caller
+      // must stay in control of re-submitting a mutation.
+      if (!isUnsafeMethod(method)) {
+        const delayMs = rateLimitRetryDelayMs(err)
+        if (delayMs !== null) {
+          await new Promise((resolve) => setTimeout(resolve, delayMs))
+          return request()
+        }
       }
       throw err
     }
