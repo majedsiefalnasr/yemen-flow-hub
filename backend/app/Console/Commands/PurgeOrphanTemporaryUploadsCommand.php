@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Console\Concerns\RecordsSchedulerHeartbeat;
 use App\Models\TemporaryUpload;
+use App\Services\Operations\OperationalAlertLogger;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
 
@@ -46,7 +47,16 @@ class PurgeOrphanTemporaryUploadsCommand extends Command
                     continue;
                 }
 
-                $disk->delete($path);
+                if (! $disk->delete($path)) {
+                    OperationalAlertLogger::failure(
+                        'temporary_upload_orphan_purge',
+                        new \RuntimeException("Failed to delete orphaned temporary upload file: {$path}"),
+                        ['path' => $path],
+                    );
+
+                    continue;
+                }
+
                 $purged++;
             }
 

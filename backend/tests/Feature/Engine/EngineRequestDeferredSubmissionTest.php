@@ -1350,6 +1350,27 @@ class EngineRequestDeferredSubmissionTest extends TestCase
         $this->assertFalse($disk->exists('orphaned-file.pdf'));
     }
 
+    public function test_orphan_sweep_keeps_the_file_and_does_not_count_it_when_delete_fails(): void
+    {
+        $disk = Storage::disk('private-tmp');
+        $disk->put('undeletable-orphan.pdf', 'contents');
+        touch($disk->path('undeletable-orphan.pdf'), now()->subHours(48)->getTimestamp());
+
+        $mockDisk = \Mockery::mock(FilesystemAdapter::class);
+        $mockDisk->shouldReceive('allFiles')->andReturn(['undeletable-orphan.pdf']);
+        $mockDisk->shouldReceive('lastModified')->with('undeletable-orphan.pdf')->andReturn($disk->lastModified('undeletable-orphan.pdf'));
+        $mockDisk->shouldReceive('delete')->with('undeletable-orphan.pdf')->andReturn(false);
+        Storage::set('private-tmp', $mockDisk);
+
+        Log::shouldReceive('error')
+            ->once()
+            ->with('ops.temporary_upload_orphan_purge.failed', \Mockery::on(fn ($context) => ($context['path'] ?? null) === 'undeletable-orphan.pdf'));
+
+        $exitCode = Artisan::call('workflow:purge-orphan-temporary-uploads');
+
+        $this->assertSame(0, $exitCode);
+    }
+
     public function test_orphan_sweep_leaves_a_referenced_file_alone(): void
     {
         $token = $this->uploadFile();
@@ -1487,6 +1508,12 @@ class EngineRequestDeferredSubmissionTest extends TestCase
         // recheck didn't exist, the candidate list alone would still doom
         // this row.
         //
+        // The seam receives the PRODUCTION query's actual $candidateIds —
+        // asserting against that directly (not a separately-constructed
+        // query here) means this test can't silently drift from what
+        // handle() really selects, and the reclaim only happens once that
+        // real observation is made, not before.
+        //
         // Instantiated and invoked directly (not via Artisan::call()/
         // $this->artisan()): Laravel's console kernel resolves and caches
         // each auto-discovered command instance once at boot, so a later
@@ -1496,8 +1523,12 @@ class EngineRequestDeferredSubmissionTest extends TestCase
         {
             public int $reclaimedRowId;
 
+            public ?Collection $observedCandidateIds = null;
+
             protected function afterCandidateScan(Collection $candidateIds): void
             {
+                $this->observedCandidateIds = $candidateIds;
+
                 IdempotencyKey::query()
                     ->whereKey($this->reclaimedRowId)
                     ->update(['claim_token' => 'reclaimed-token', 'locked_until' => now()->addMinutes(2)]);
@@ -1506,14 +1537,13 @@ class EngineRequestDeferredSubmissionTest extends TestCase
         $command->reclaimedRowId = $row->id;
         $command->setLaravel($this->app);
 
-        $candidateIdsBeforeReclaim = IdempotencyKey::query()
-            ->where('state', 'PROCESSING')
-            ->where('locked_until', '<', now()->subMinutes((int) config('retention.abandoned_processing_margin_minutes')))
-            ->whereNull('engine_request_id')
-            ->pluck('id');
-        $this->assertTrue($candidateIdsBeforeReclaim->contains($row->id), 'the row must genuinely be selected as a stale candidate before the reclaim');
-
         $exitCode = $command->handle();
+
+        $this->assertNotNull($command->observedCandidateIds, 'afterCandidateScan() must have been called');
+        $this->assertTrue(
+            $command->observedCandidateIds->contains($row->id),
+            'the row must genuinely be selected as a stale candidate by the production query before the reclaim',
+        );
 
         $this->assertSame(0, $exitCode);
         $this->assertDatabaseHas('idempotency_keys', [
