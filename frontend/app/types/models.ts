@@ -617,6 +617,12 @@ export type FieldSemanticTag =
   | 'PORT_OF_ENTRY'
   | 'AMOUNT'
   | 'CURRENCY'
+  | 'MERCHANT_ID'
+  | 'MERCHANT_COMPANY_ID'
+  | 'MERCHANT_TAX_CARD_EXPIRY'
+  | 'MERCHANT_COMMERCIAL_REGISTRATION_NUMBER'
+  | 'MERCHANT_COMMERCIAL_REGISTRATION_EXPIRY'
+  | 'MERCHANT_OWNERS'
 
 export interface WorkflowStage {
   id: number
