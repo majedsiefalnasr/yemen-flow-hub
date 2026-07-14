@@ -9,6 +9,7 @@ import {
   Lock,
   Pencil,
   Plus,
+  Tag,
   Trash2,
 } from 'lucide-vue-next'
 import type {
@@ -74,7 +75,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useReferenceData } from '@/composables/useReferenceData'
 import { useWorkflowFields } from '@/composables/useWorkflowFields'
-import { SEMANTIC_TAG_GROUPS } from '@/constants/semanticTags'
+import { SEMANTIC_TAG_GROUPS, SEMANTIC_TAG_LABELS } from '@/constants/semanticTags'
 
 const props = defineProps<{ version: WorkflowVersion }>()
 
@@ -488,6 +489,18 @@ watch(
                 <TableCell>
                   <div class="flex flex-wrap items-center gap-1.5">
                     <span class="font-medium">{{ field.label }}</span>
+                    <Tooltip v-if="field.semantic_tag">
+                      <TooltipTrigger as-child>
+                        <Badge
+                          variant="outline"
+                          class="gap-1"
+                          :aria-label="`علامة دلالية: ${SEMANTIC_TAG_LABELS[field.semantic_tag]}`"
+                        >
+                          <Tag class="h-3 w-3" aria-hidden="true" />
+                        </Badge>
+                      </TooltipTrigger>
+                      <TooltipContent>{{ SEMANTIC_TAG_LABELS[field.semantic_tag] }}</TooltipContent>
+                    </Tooltip>
                     <Badge
                       v-if="field.is_required"
                       variant="outline"

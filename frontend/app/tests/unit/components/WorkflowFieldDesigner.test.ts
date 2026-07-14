@@ -384,4 +384,26 @@ describe('WorkflowFieldDesigner', () => {
     expect(invoiceOption?.text()).toContain('مستخدم في: رقم الفاتورة القديم')
     expect(invoiceOption?.attributes('data-disabled')).toBeDefined()
   })
+
+  it('shows a tag badge in the fields table only for tagged fields', async () => {
+    const tagged = makeField({
+      id: 1,
+      key: 'invoice_number',
+      label: 'رقم الفاتورة',
+      semantic_tag: 'INVOICE_NUMBER',
+    })
+    const untagged = makeField({ id: 2, key: 'notes', label: 'ملاحظات', semantic_tag: null })
+    const wrapper = await mountDesigner(['VIEW'], 'DRAFT', [
+      makeGroup({ fields: [tagged, untagged] }),
+    ])
+
+    const rows = wrapper
+      .findAll('tr')
+      .filter((r) => r.text().includes('رقم الفاتورة') || r.text().includes('ملاحظات'))
+    const taggedRow = rows.find((r) => r.text().includes('رقم الفاتورة'))
+    const untaggedRow = rows.find((r) => r.text().includes('ملاحظات'))
+
+    expect(taggedRow?.find('[aria-label="علامة دلالية: رقم الفاتورة"]').exists()).toBe(true)
+    expect(untaggedRow?.find('[aria-label^="علامة دلالية"]').exists()).toBe(false)
+  })
 })
