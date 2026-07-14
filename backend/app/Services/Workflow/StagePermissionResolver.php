@@ -144,6 +144,31 @@ class StagePermissionResolver
     }
 
     /**
+     * The `display_label` (التسمية) of the first VIEW-satisfying row matching the
+     * user's identity, in the given row order. Used to resolve a stage's viewer-facing
+     * label from the Designer's per-role/team/org overrides rather than a single
+     * stage-wide value. Returns null when no row matches or none set a label.
+     *
+     * @param  iterable<StagePermission>  $rows
+     */
+    public function matchingDisplayLabel(User $user, iterable $rows): ?string
+    {
+        $identity = $this->identityFor($user);
+
+        if ($identity['organization_id'] === null) {
+            return null;
+        }
+
+        foreach ($rows as $row) {
+            if ($this->rowMatches($identity, $row, StageAccessLevel::VIEW) && trim((string) $row->display_label) !== '') {
+                return $row->display_label;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * @param  array{organization_id: int|null, team_ids: array<int>, role_ids: array<int>, user_id: int}  $identity
      */
     private function rowMatches(array $identity, StagePermission $row, StageAccessLevel $required): bool

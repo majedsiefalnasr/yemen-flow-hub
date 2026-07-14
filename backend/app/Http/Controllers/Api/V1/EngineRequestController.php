@@ -462,9 +462,8 @@ class EngineRequestController extends Controller
         $this->authorize('view', $engineRequest);
 
         $engineRequest->load(['workflowVersion', 'history']);
-        $graphData = $this->graphService->build($engineRequest->workflowVersion);
-
         $user = $request->user();
+        $graphData = $this->graphService->build($engineRequest->workflowVersion, $user);
         $versionStageIds = array_column($graphData['nodes'], 'id');
 
         $viewableStageIds = $user->hasRoleCode(RoleCodes::SYSTEM_ADMIN)
