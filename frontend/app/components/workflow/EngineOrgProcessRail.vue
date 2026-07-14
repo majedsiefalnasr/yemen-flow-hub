@@ -26,7 +26,7 @@ const steps = computed(() => buildStagePath(props.graph, props.currentStageId, p
         >سير العملية التنظيمية</CardTitle
       >
     </CardHeader>
-    <CardContent class="p-4 pt-0">
+    <CardContent class="pt-0">
       <ol v-if="steps.length" class="flex flex-col">
         <li
           v-for="(step, index) in steps"

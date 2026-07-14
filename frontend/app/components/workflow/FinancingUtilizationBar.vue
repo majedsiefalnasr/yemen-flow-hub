@@ -36,7 +36,7 @@ const isLowRemaining = computed(
     <Skeleton v-if="loading" class="h-16 w-full rounded-xl" />
 
     <Card v-else-if="hasData" class="border-0 shadow">
-      <CardContent class="flex flex-col gap-2 p-4">
+      <CardContent class="flex flex-col gap-2">
         <div class="flex items-center justify-between gap-2 text-xs">
           <span class="text-muted-foreground">المستخدم {{ usedPercent }}%</span>
           <span class="text-muted-foreground">المتبقي {{ remainingPercent }}%</span>

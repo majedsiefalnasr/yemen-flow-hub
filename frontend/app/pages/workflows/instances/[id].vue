@@ -344,7 +344,7 @@ async function confirmAbandonDraft() {
       <!-- Wizard mode: any executor on the initial stage continues the draft step by step. -->
       <template v-if="wizardMode && !claimLost">
         <Card v-if="claimRequiredButNotHeld && !heldByOther" class="border-0 shadow">
-          <CardContent class="flex flex-col items-start gap-3 p-4">
+          <CardContent class="flex flex-col items-start gap-3">
             <p class="text-muted-foreground text-sm">
               يجب متابعة هذا الطلب قبل تعديله لضمان عدم تحرير مستخدمين اثنين للطلب نفسه في الوقت
               نفسه.
@@ -377,7 +377,7 @@ async function confirmAbandonDraft() {
 
             <TabsContent value="data" class="mt-4">
               <Card class="border-0 shadow">
-                <CardContent class="p-4">
+                <CardContent>
                   <EngineRequestDataTabs
                     :field-groups="fieldGroups"
                     :data="store.current.data"
@@ -390,7 +390,7 @@ async function confirmAbandonDraft() {
 
             <TabsContent value="history" class="mt-4">
               <Card class="border-0 shadow">
-                <CardContent class="p-4">
+                <CardContent>
                   <EngineTimeline :entries="store.history" />
                 </CardContent>
               </Card>

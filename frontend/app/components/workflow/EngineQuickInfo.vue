@@ -40,7 +40,7 @@ const rows = computed(() => [
     <CardHeader class="pb-2">
       <CardTitle id="quick-info-heading" class="text-sm font-semibold">معلومات سريعة</CardTitle>
     </CardHeader>
-    <CardContent class="flex flex-col gap-3 p-4 pt-0">
+    <CardContent class="flex flex-col gap-3 pt-0">
       <div v-for="row in rows" :key="row.label" class="flex items-center gap-2.5">
         <component
           :is="row.icon"

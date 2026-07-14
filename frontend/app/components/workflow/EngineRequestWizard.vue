@@ -49,8 +49,7 @@ const wizard = useEngineWizard(groupsRef, {
   submit: async (data) => {
     const edges = store.graph?.edges ?? []
     const stageId = store.current?.current_stage?.id
-    const initial =
-      stageId != null ? resolveSubmitTransition(edges, stageId) : null
+    const initial = stageId != null ? resolveSubmitTransition(edges, stageId) : null
     if (!initial) {
       submitError.value = 'لا يوجد إجراء بدء متاح لهذا الطلب.'
       throw new Error('no initial transition')
@@ -231,7 +230,7 @@ defineExpose({ hasUnsavedChanges })
       <CardHeader class="pb-2">
         <CardTitle class="text-sm font-semibold">مراجعة الطلب قبل الإرسال</CardTitle>
       </CardHeader>
-      <CardContent class="p-4 pt-0">
+      <CardContent class="pt-0">
         <EngineRequestDataTabs
           :field-groups="fieldGroups"
           :data="formData"
@@ -256,7 +255,7 @@ defineExpose({ hasUnsavedChanges })
       />
 
       <Card class="border-0 shadow">
-        <CardContent class="p-4">
+        <CardContent>
           <DynamicForm
             ref="formRef"
             v-model="formData"
@@ -275,7 +274,7 @@ defineExpose({ hasUnsavedChanges })
 
     <!-- Bottom actions panel. -->
     <Card class="border-0 shadow">
-      <CardContent class="flex items-center justify-between gap-2 p-4">
+      <CardContent class="flex items-center justify-between gap-2">
         <div class="flex items-center gap-2">
           <Button
             variant="outline"

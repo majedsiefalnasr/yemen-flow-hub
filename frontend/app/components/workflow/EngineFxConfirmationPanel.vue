@@ -85,7 +85,7 @@ function downloadSignedFx() {
       </CardTitle>
     </CardHeader>
 
-    <CardContent class="flex flex-col gap-3 p-4 pt-0">
+    <CardContent class="flex flex-col gap-3 pt-0">
       <!-- Declaration info -->
       <template v-if="declaration">
         <div class="flex items-center gap-2.5">

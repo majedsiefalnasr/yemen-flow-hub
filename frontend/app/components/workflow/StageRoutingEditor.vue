@@ -58,7 +58,7 @@ watch(() => props.version.id, load)
 
     <div v-else class="space-y-4">
       <Card v-for="stage in orderedStages" :key="stage.id" class="border-0 shadow">
-        <CardContent class="space-y-3 p-4">
+        <CardContent class="space-y-3">
           <div class="flex items-center justify-between gap-2">
             <div class="flex items-center gap-2">
               <Badge

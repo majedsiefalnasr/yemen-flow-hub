@@ -318,7 +318,7 @@ watch(
   <div class="space-y-4">
     <!-- Groups manager -->
     <Card class="border-0 shadow">
-      <CardContent class="space-y-3 p-4">
+      <CardContent class="space-y-3">
         <div class="flex items-center justify-between gap-2">
           <div class="flex items-center gap-2">
             <FolderTree class="text-primary h-4 w-4" aria-hidden="true" />
@@ -401,7 +401,7 @@ watch(
 
     <!-- Fields -->
     <Card class="border-0 shadow">
-      <CardContent class="space-y-3 p-4">
+      <CardContent class="space-y-3">
         <div class="flex items-center justify-between gap-2">
           <h3 class="font-section text-sm font-semibold">الحقول</h3>
           <ScreenGuard

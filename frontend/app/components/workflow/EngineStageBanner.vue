@@ -41,7 +41,7 @@ const stageName = computed(() => props.request.current_stage?.name ?? '—')
 
 <template>
   <Card class="border-0 shadow" aria-labelledby="stage-banner-heading">
-    <CardContent class="flex flex-col gap-4 p-4">
+    <CardContent class="flex flex-col gap-4">
       <div class="flex flex-wrap items-center gap-3">
         <span
           class="bg-primary/10 text-primary flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
