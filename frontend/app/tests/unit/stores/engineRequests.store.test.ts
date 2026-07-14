@@ -90,8 +90,8 @@ describe('useEngineRequestsStore', () => {
     expect(mockFetchList).toHaveBeenCalled()
   })
 
-  it('submitInstance delegates to the composable and returns the created instance', async () => {
-    mockSubmit.mockResolvedValue({ data: { id: 9 }, warnings: [] })
+  it('submitInstance delegates to the composable and stores the result on completion', async () => {
+    mockSubmit.mockResolvedValue({ kind: 'completed', data: { id: 9 }, warnings: [] })
     const store = useEngineRequestsStore()
 
     const result = await store.submitInstance('idem-key-1', {
@@ -100,9 +100,23 @@ describe('useEngineRequestsStore', () => {
     })
 
     expect(mockSubmit).toHaveBeenCalledWith('idem-key-1', { workflow_version_id: 1, data: {} })
-    expect(result.id).toBe(9)
+    expect(result.kind).toBe('completed')
+    if (result.kind === 'completed') expect(result.data.id).toBe(9)
     expect(store.current?.id).toBe(9)
     expect(store.duplicateWarnings).toEqual([])
+  })
+
+  it('submitInstance passes through an in_progress result without touching store.current', async () => {
+    mockSubmit.mockResolvedValue({ kind: 'in_progress', retryAfterSeconds: 2 })
+    const store = useEngineRequestsStore()
+
+    const result = await store.submitInstance('idem-key-1', {
+      workflow_version_id: 1,
+      data: {},
+    })
+
+    expect(result).toEqual({ kind: 'in_progress', retryAfterSeconds: 2 })
+    expect(store.current).toBeNull()
   })
 
   it('loadInstance loads the instance plus its history and graph', async () => {

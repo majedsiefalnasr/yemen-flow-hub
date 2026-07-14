@@ -24,6 +24,17 @@ export type ListOptions = {
   created_to?: string
 }
 
+/**
+ * A 202 means the backend's idempotency coordinator found another in-flight
+ * attempt with the same key (concurrent retry, double-click) and has not yet
+ * produced a stored result — not a scan-pending state. The caller must wait
+ * retryAfterSeconds and resubmit the identical payload under the same key;
+ * the backend replays or completes it once the other attempt finishes.
+ */
+export type EngineSubmitResult =
+  | { kind: 'completed'; data: EngineRequest; warnings: EngineDuplicateWarning[] }
+  | { kind: 'in_progress'; retryAfterSeconds: number }
+
 export function useEngineRequests() {
   const api = useApi()
 
@@ -105,15 +116,28 @@ export function useEngineRequests() {
       data: Record<string, unknown>
       upload_tokens?: string[]
     },
-  ): Promise<{ data: EngineRequest; warnings: EngineDuplicateWarning[] }> => {
-    const response = await api.post<{
-      success: boolean
-      data: EngineRequest
+  ): Promise<EngineSubmitResult> => {
+    const response = await api.postWithMeta<{
+      status?: string
+      success?: boolean
+      data?: EngineRequest
       warnings?: EngineDuplicateWarning[]
     }>('/api/v1/engine-requests', payload, {
       headers: { 'Idempotency-Key': idempotencyKey },
     })
-    return { data: response.data, warnings: response.warnings ?? [] }
+
+    if (response.status === 202) {
+      const parsed = Number(response.headers.get('Retry-After'))
+      const retryAfterSeconds = Number.isFinite(parsed) && parsed > 0 ? parsed : 1
+      return { kind: 'in_progress', retryAfterSeconds }
+    }
+
+    // 201 (created) or a replayed completed response — both carry the full
+    // EngineRequest under `data`.
+    if (!response.data.data) {
+      throw new Error('Engine request submission response is missing request data.')
+    }
+    return { kind: 'completed', data: response.data.data, warnings: response.data.warnings ?? [] }
   }
 
   const show = async (id: number): Promise<EngineRequest> => {

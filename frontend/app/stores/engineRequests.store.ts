@@ -8,7 +8,7 @@ import type {
   EngineRequestStats,
   WorkflowGraph,
 } from '@/types/models'
-import type { ListOptions } from '@/composables/useEngineRequests'
+import type { EngineSubmitResult, ListOptions } from '@/composables/useEngineRequests'
 import { useEngineRequests } from '@/composables/useEngineRequests'
 import { useEngineRequestStats } from '@/composables/useEngineRequestStats'
 import { isAbortError } from '@/composables/useApi'
@@ -161,7 +161,10 @@ export const useEngineRequestsStore = defineStore('engineRequests', {
     /**
      * Deferred-creation submission: one atomic call, no pre-existing draft
      * row. idempotencyKey must be a stable, caller-generated UUID reused
-     * across retries of the same wizard submission attempt.
+     * across retries of the same wizard submission attempt. May return
+     * `in_progress` (202) when another attempt with the same key is still
+     * mid-flight server-side — the caller is responsible for retrying, this
+     * action does not retry on its own.
      */
     async submitInstance(
       idempotencyKey: string,
@@ -171,12 +174,14 @@ export const useEngineRequestsStore = defineStore('engineRequests', {
         data: Record<string, unknown>
         upload_tokens?: string[]
       },
-    ): Promise<EngineRequest> {
+    ): Promise<EngineSubmitResult> {
       const { submit } = useEngineRequests()
       const result = await submit(idempotencyKey, payload)
-      this.current = result.data
-      this.duplicateWarnings = result.warnings
-      return result.data
+      if (result.kind === 'completed') {
+        this.current = result.data
+        this.duplicateWarnings = result.warnings
+      }
+      return result
     },
 
     async loadInstance(id: number) {

@@ -34,10 +34,9 @@ async function load() {
   try {
     await fetchInitialSchema(workflowVersionId.value)
     if (fieldGroups.value.length === 0) {
-      // fetchInitialSchema swallows its own errors into a message string,
-      // not a rethrow — an empty result with no groups at all after a
-      // genuine failure still needs to surface as an error, not a blank
-      // wizard with nothing to fill in.
+      // A successful fetch with zero field groups (misconfigured workflow
+      // version) is still unusable — surface it the same as a load failure
+      // rather than rendering a blank wizard with nothing to fill in.
       loadErrorCode.value = 500
     }
   } catch (cause: unknown) {
@@ -64,7 +63,12 @@ const wizardRef = ref<InstanceType<typeof EngineRequestWizard> | null>(null)
 const leaveDialogOpen = ref(false)
 let pendingLeave: (() => void) | null = null
 
+// wizardRef.hasUnsavedChanges already factors in submissionCompleted (see
+// EngineRequestWizard), but both guards below check submissionCompleted
+// directly too — explicit and race-proof against the moment right after a
+// successful submit, before router.replace()'s own navigation has settled.
 function hasUnsavedWizardChanges(): boolean {
+  if (wizardRef.value?.submissionCompleted === true) return false
   return wizardRef.value?.hasUnsavedChanges === true
 }
 

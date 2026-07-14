@@ -29,6 +29,9 @@ export function useEngineFormSchema() {
    * Version-scoped counterpart for the pre-submission wizard: no
    * EngineRequest exists yet under the deferred-creation architecture, so
    * the initial stage's schema is fetched by workflow_version_id alone.
+   * Unlike fetchSchema(), this rethrows after recording the error — the
+   * calling page needs the real HTTP status (403/404/etc.) to render the
+   * correct ErrorState, which a swallowed error can't provide.
    */
   const fetchInitialSchema = async (workflowVersionId: number) => {
     loading.value = true
@@ -41,6 +44,7 @@ export function useEngineFormSchema() {
     } catch (cause: unknown) {
       fieldGroups.value = []
       error.value = extractApiErrorMessage(cause, 'تعذر تحميل نموذج الطلب.')
+      throw cause
     } finally {
       loading.value = false
     }

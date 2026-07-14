@@ -3,16 +3,25 @@ import { useEngineRequests } from '@/composables/useEngineRequests'
 
 const mockGet = vi.fn()
 const mockPost = vi.fn()
+const mockPostWithMeta = vi.fn()
 const mockPatch = vi.fn()
 
 vi.mock('@/composables/useApi', () => ({
-  useApi: () => ({ get: mockGet, post: mockPost, patch: mockPatch, put: vi.fn(), del: vi.fn() }),
+  useApi: () => ({
+    get: mockGet,
+    post: mockPost,
+    postWithMeta: mockPostWithMeta,
+    patch: mockPatch,
+    put: vi.fn(),
+    del: vi.fn(),
+  }),
 }))
 
 describe('useEngineRequests', () => {
   beforeEach(() => {
     mockGet.mockReset()
     mockPost.mockReset()
+    mockPostWithMeta.mockReset()
     mockPatch.mockReset()
   })
 
@@ -72,23 +81,43 @@ describe('useEngineRequests', () => {
     expect(availableWorkflows.value).toHaveLength(1)
   })
 
-  it('submit posts payload with the idempotency key header and returns the created instance', async () => {
-    mockPost.mockResolvedValue({
-      success: true,
-      data: { id: 5, reference: 'ENG-2026-000005' },
-      warnings: [],
+  it('submit posts payload with the idempotency key header and returns the created instance on 201', async () => {
+    mockPostWithMeta.mockResolvedValue({
+      status: 201,
+      headers: new Headers(),
+      data: {
+        success: true,
+        data: { id: 5, reference: 'ENG-2026-000005' },
+        warnings: [],
+      },
     })
     const { submit } = useEngineRequests()
 
     const result = await submit('idem-key-1', { workflow_version_id: 10, data: {} })
 
-    expect(mockPost).toHaveBeenCalledWith(
+    expect(mockPostWithMeta).toHaveBeenCalledWith(
       '/api/v1/engine-requests',
       { workflow_version_id: 10, data: {} },
       { headers: { 'Idempotency-Key': 'idem-key-1' } },
     )
-    expect(result.data.id).toBe(5)
-    expect(result.warnings).toEqual([])
+    expect(result.kind).toBe('completed')
+    if (result.kind === 'completed') {
+      expect(result.data.id).toBe(5)
+      expect(result.warnings).toEqual([])
+    }
+  })
+
+  it('submit returns an in_progress result with retryAfterSeconds on a 202', async () => {
+    mockPostWithMeta.mockResolvedValue({
+      status: 202,
+      headers: new Headers({ 'Retry-After': '3' }),
+      data: { status: 'processing' },
+    })
+    const { submit } = useEngineRequests()
+
+    const result = await submit('idem-key-1', { workflow_version_id: 10, data: {} })
+
+    expect(result).toEqual({ kind: 'in_progress', retryAfterSeconds: 3 })
   })
 
   it('show fetches a single instance by id', async () => {

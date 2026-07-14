@@ -162,6 +162,17 @@ describe('buildDynamicSchema', () => {
       group([baseField({ key: 'docs', type: 'FILE', is_required: false })]),
     )
     expect(optional.safeParse({ docs: [] }).success).toBe(true)
+    // No upload attempted yet: DynamicForm never pre-seeds a FILE field's
+    // value, so an optional field must also accept a plain missing key.
+    expect(optional.safeParse({}).success).toBe(true)
+  })
+
+  it('FILE field also accepts temporary-upload string tokens (pre-submission wizard)', () => {
+    const schema = buildDynamicSchema(
+      group([baseField({ key: 'docs', type: 'FILE', is_required: true })]),
+    )
+    expect(schema.safeParse({ docs: ['a1b2c3-token'] }).success).toBe(true)
+    expect(schema.safeParse({ docs: [''] }).success).toBe(false)
   })
 
   it('TEXTAREA field behaves like TEXT for required/length', () => {

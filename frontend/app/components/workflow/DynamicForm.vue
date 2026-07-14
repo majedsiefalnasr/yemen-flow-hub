@@ -2,10 +2,14 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
-import type { ResolvedFieldGroup, ResolvedFieldDefinition } from '@/types/models'
+import type {
+  ResolvedFieldGroup,
+  ResolvedFieldDefinition,
+  UploadLifecycleState,
+} from '@/types/models'
 import { buildDynamicSchema } from '@/composables/useDynamicFormSchema'
 import { useEngineRequestDocuments } from '@/composables/useEngineRequestDocuments'
-import { useTemporaryUploads } from '@/composables/useTemporaryUploads'
+import { useTemporaryUploadLifecycle } from '@/composables/useTemporaryUploadLifecycle'
 import { useMerchantAutofill } from '@/composables/useMerchantAutofill'
 import { findFieldKeyBySemanticTag } from '@/utils/findFieldKeyBySemanticTag'
 import DynamicFormField from '@/components/workflow/DynamicFormField.vue'
@@ -14,7 +18,8 @@ import { Field, FieldLabel, FieldError } from '@/components/ui/field'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
-import { AlertTriangle } from 'lucide-vue-next'
+import { AlertTriangle, CheckCircle2, X } from 'lucide-vue-next'
+import { Button } from '@/components/ui/button'
 
 /**
  * FILE fields upload against one of two targets:
@@ -40,6 +45,12 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:modelValue': [value: Record<string, unknown>]
   'upload-tokens-change': [tokens: string[]]
+  /**
+   * True while any temporary upload in this form is not yet 'clean' —
+   * uploading, scanning, or stuck in a terminal error (infected/failed/
+   * upload_error) that the user hasn't removed yet.
+   */
+  'upload-pending-change': [pending: boolean]
 }>()
 
 const schema = computed(() => toTypedSchema(buildDynamicSchema(props.fieldGroups)))
@@ -53,22 +64,36 @@ const form = useForm({
   validateOnMount: true,
 })
 
+const { upload } = useEngineRequestDocuments()
+const uploadLifecycle = useTemporaryUploadLifecycle()
+
 // Reactive pass/fail for the current step. vee-validate keeps `meta.valid`
 // up to date as values change once validateOnMount has primed it. The
 // merchant-autofill guard mirrors `validate()` — a pending/required merchant
-// match blocks advancing regardless of field values.
+// match blocks advancing regardless of field values. A non-clean upload also
+// blocks advancing even on an OPTIONAL field: its token only enters the
+// field value once clean (see the watcher below), so an infected/failed
+// upload on an optional field would otherwise leave the field value empty —
+// which validates fine on its own — and silently let the user skip past a
+// rejected file instead of forcing them to remove or retry it.
 const currentStepValid = computed(
   () =>
     form.meta.value.valid === true &&
-    (!hasMerchantAutofill.value || !merchantAutofill.blocksContinue.value),
+    (!hasMerchantAutofill.value || !merchantAutofill.blocksContinue.value) &&
+    !uploadLifecycle.hasBlockingUpload(),
 )
 
-const { upload } = useEngineRequestDocuments()
-const { upload: uploadTemporary } = useTemporaryUploads()
-// Every temp-upload token this form instance has produced across its
-// mounted lifetime — read by the wizard (see uploadTokens below) to build
-// the final submit payload's upload_tokens list.
-const uploadedTokens = reactive(new Set<string>())
+// Recompute and emit whenever any tracked upload's lifecycle state changes —
+// the wizard needs both the current clean-token list (for the final submit
+// payload) and whether anything is still unresolved (to gate Next/Submit).
+watch(
+  () => [...uploadLifecycle.entries.values()].map((e) => e.state),
+  () => {
+    emit('upload-tokens-change', uploadLifecycle.cleanTokens())
+    emit('upload-pending-change', uploadLifecycle.hasBlockingUpload())
+  },
+  { deep: true },
+)
 
 // Errors from the Zod schema populate form.errors as soon as the form is
 // built, before the user touches anything. Only surface an error once its
@@ -104,16 +129,19 @@ function onCompanyFieldChange(value: unknown) {
 async function uploadFile(field: ResolvedFieldDefinition, file: File) {
   const target = props.uploadTarget
   if (target?.type === 'temporary') {
-    const result = await uploadTemporary(
+    // The field's own form value is intentionally NOT set here: the backend
+    // bijection-checks upload_tokens against every token referenced inside
+    // data[fieldKey], so a token must never enter the submitted field value
+    // before its scan resolves to 'clean' (see the watcher below). Upload
+    // progress/errors render from uploadLifecycle.entryFor(), not the form
+    // value, in the meantime.
+    await uploadLifecycle.uploadAndTrack(
+      field.key,
       file,
       target.workflowVersionId,
       field.id,
       target.uploadSessionToken,
     )
-    uploadedTokens.add(result.token)
-    emit('upload-tokens-change', [...uploadedTokens])
-    const current = (fieldValue(field.key) as string[]) ?? []
-    setFieldValue(field.key, [...current, result.token])
     return
   }
   if (props.requestId === undefined) return
@@ -121,6 +149,49 @@ async function uploadFile(field: ResolvedFieldDefinition, file: File) {
   const current = (fieldValue(field.key) as number[]) ?? []
   setFieldValue(field.key, [...current, doc.id])
 }
+
+function removeTemporaryUpload(field: ResolvedFieldDefinition) {
+  uploadLifecycle.removeEntry(field.key)
+  setFieldValue(field.key, [])
+}
+
+function uploadEntry(fieldKey: string) {
+  return uploadLifecycle.entryFor(fieldKey)
+}
+
+const UPLOAD_STATUS_TEXT: Record<UploadLifecycleState, (fileName: string) => string> = {
+  uploading: (name) => `جارٍ رفع ${name}…`,
+  scan_pending: (name) => `جارٍ فحص ${name}…`,
+  clean: (name) => `${name} — تم الفحص بنجاح`,
+  infected: (name) => `${name} — مرفوض`,
+  failed: (name) => `${name} — تعذّر الفحص`,
+  upload_error: (name) => `${name} — تعذّر الرفع`,
+}
+
+function uploadStatusText(entry: { state: UploadLifecycleState; fileName: string }): string {
+  return UPLOAD_STATUS_TEXT[entry.state](entry.fileName)
+}
+
+// Once a temporary upload resolves to 'clean', its token becomes the actual
+// submitted field value — never sooner (see uploadFile above), and it's
+// cleared again if the entry moves away from 'clean' (defensive; the
+// composable never regresses a terminal state, but keeps the field value
+// honest if it ever did).
+watch(
+  () => [...uploadLifecycle.entries.values()].map((e) => `${e.fieldKey}:${e.state}:${e.token}`),
+  () => {
+    for (const entry of uploadLifecycle.entries.values()) {
+      const current = (fieldValue(entry.fieldKey) as string[]) ?? []
+      if (entry.state === 'clean' && entry.token !== null) {
+        if (!current.includes(entry.token)) {
+          setFieldValue(entry.fieldKey, [...current, entry.token])
+        }
+      } else if (current.length > 0) {
+        setFieldValue(entry.fieldKey, [])
+      }
+    }
+  },
+)
 
 // Merchant tax-number lookup + autofill (tax-number search / merchant
 // autofill feature). Resolved purely by semantic tag, same pattern as the
@@ -233,6 +304,9 @@ async function validate(): Promise<{ valid: boolean; values: Record<string, unkn
   if (hasMerchantAutofill.value && merchantAutofill.blocksContinue.value) {
     return { valid: false, values: form.values as Record<string, unknown> }
   }
+  if (uploadLifecycle.hasBlockingUpload()) {
+    return { valid: false, values: form.values as Record<string, unknown> }
+  }
   return { valid: result.valid, values: form.values as Record<string, unknown> }
 }
 
@@ -301,6 +375,7 @@ defineExpose({ validate, currentStepValid })
             <span v-if="field.is_required" aria-hidden="true"> *</span>
           </FieldLabel>
           <Input
+            v-if="!uploadEntry(field.key) || uploadEntry(field.key)?.state === 'upload_error'"
             :id="field.key"
             type="file"
             accept="application/pdf"
@@ -312,7 +387,35 @@ defineExpose({ validate, currentStepValid })
               }
             "
           />
-          <FieldError v-if="fieldError(field.key)">
+          <div v-if="uploadEntry(field.key)" class="flex items-center gap-2 text-sm" role="status">
+            <Spinner
+              v-if="['uploading', 'scan_pending'].includes(uploadEntry(field.key)!.state)"
+              class="h-3.5 w-3.5"
+            />
+            <CheckCircle2
+              v-else-if="uploadEntry(field.key)!.state === 'clean'"
+              class="h-4 w-4 text-[var(--severity-green)]"
+              aria-hidden="true"
+            />
+            <AlertTriangle v-else class="h-4 w-4 text-[var(--severity-red)]" aria-hidden="true" />
+            <span class="text-muted-foreground min-w-0 flex-1 truncate">
+              {{ uploadStatusText(uploadEntry(field.key)!) }}
+            </span>
+            <Button
+              v-if="mode === 'edit' && field.is_editable"
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="إزالة الملف"
+              @click="removeTemporaryUpload(field)"
+            >
+              <X class="h-3.5 w-3.5" />
+            </Button>
+          </div>
+          <FieldError v-if="uploadEntry(field.key)?.errorMessage">
+            {{ uploadEntry(field.key)?.errorMessage }}
+          </FieldError>
+          <FieldError v-else-if="fieldError(field.key)">
             {{ fieldError(field.key) }}
           </FieldError>
         </Field>

@@ -40,8 +40,16 @@ function buildFieldSchema(field: ResolvedFieldDefinition): z.ZodTypeAny {
       return field.is_required ? z.boolean() : z.boolean().optional()
     }
     case 'FILE': {
-      const a = z.array(z.number().int().positive())
-      return field.is_required ? a.min(1, 'يجب إرفاق ملف واحد على الأقل.') : a
+      // Numeric document ids (post-submission 'request' upload target) or
+      // string temporary-upload tokens (pre-submission wizard 'temporary'
+      // target, see DynamicForm's UploadTarget) — both are valid depending
+      // on which page mounted this form.
+      const a = z.array(z.union([z.number().int().positive(), z.string().min(1)]))
+      // An optional FILE field with nothing attached yet has an undefined
+      // (not []) value in form state — DynamicForm never pre-seeds it — so
+      // the schema must accept undefined here, same as every other
+      // optional field type above.
+      return field.is_required ? a.min(1, 'يجب إرفاق ملف واحد على الأقل.') : a.optional()
     }
     default:
       return z.unknown()

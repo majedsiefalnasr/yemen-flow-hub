@@ -121,10 +121,18 @@ export function useApi() {
   function buildHeaders(
     method: string,
     extraHeaders?: ApiFetchOptions['headers'],
+    isFormDataBody?: boolean,
   ): Record<string, string> {
     const headers = new Headers(extraHeaders as HeadersInit | undefined)
     if (!headers.has('Accept')) headers.set('Accept', 'application/json')
-    if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
+    // A FormData body (file uploads) must NOT get an explicit Content-Type:
+    // the browser sets multipart/form-data with its own boundary when it
+    // sees the body is a FormData instance, and a forced application/json
+    // here silently breaks that, emptying the request as far as the server
+    // is concerned (every field, including the file, reads as "missing").
+    if (!isFormDataBody && !headers.has('Content-Type')) {
+      headers.set('Content-Type', 'application/json')
+    }
 
     const xsrfToken = getXsrfToken()
     if (xsrfToken && isUnsafeMethod(method) && !headers.has('X-XSRF-TOKEN')) {
@@ -145,6 +153,7 @@ export function useApi() {
     // Drop empty/null/undefined query params so they aren't serialized as bare
     // keys (e.g. `?search`) which Laravel rejects on `string`-typed rules.
     const cleanQuery = stripEmptyQueryParams(query)
+    const isFormDataBody = restOptions.body instanceof FormData
 
     const request = () =>
       $fetch<T>(path, {
@@ -153,7 +162,7 @@ export function useApi() {
         ...restOptions,
         query: cleanQuery,
         method: method as ApiFetchMethod,
-        headers: buildHeaders(method, extraHeaders),
+        headers: buildHeaders(method, extraHeaders, isFormDataBody),
       })
 
     try {
@@ -209,6 +218,50 @@ export function useApi() {
     return apiFetch<T>(path, { ...options, method: 'POST', body })
   }
 
+  /**
+   * Like post(), but returns the HTTP status and response headers alongside
+   * the parsed body. Needed for endpoints that use the status code itself as
+   * a signal (e.g. 201 created vs 202 idempotency-in-progress with a
+   * Retry-After header) — a case `post()`'s body-only return can't express.
+   */
+  async function postWithMeta<T>(
+    path: string,
+    body?: ApiFetchBody,
+    options: Omit<ApiFetchOptions, 'method' | 'body'> = {},
+  ): Promise<{ data: T; status: number; headers: Headers }> {
+    const { headers: extraHeaders, query, ...restOptions } = options
+    const method = 'POST'
+
+    if (import.meta.client && !getXsrfToken()) {
+      await ensureCsrfCookie()
+    }
+
+    const cleanQuery = stripEmptyQueryParams(query)
+
+    const request = () =>
+      $fetch.raw<T>(path, {
+        baseURL,
+        credentials: 'include',
+        ...restOptions,
+        query: cleanQuery,
+        method,
+        body,
+        headers: buildHeaders(method, extraHeaders),
+      })
+
+    try {
+      const response = await request()
+      return { data: response._data as T, status: response.status, headers: response.headers }
+    } catch (err) {
+      if (import.meta.client && isCsrfMismatch(err)) {
+        await ensureCsrfCookie()
+        const response = await request()
+        return { data: response._data as T, status: response.status, headers: response.headers }
+      }
+      throw err
+    }
+  }
+
   async function put<T>(
     path: string,
     body?: ApiFetchBody,
@@ -242,6 +295,7 @@ export function useApi() {
     get,
     getAbortable,
     post,
+    postWithMeta,
     put,
     patch,
     del,

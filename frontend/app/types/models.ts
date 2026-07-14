@@ -963,3 +963,28 @@ export interface TemporaryUploadStatus {
   size: number
   expires_at: string
 }
+
+/**
+ * Client-side lifecycle of one pre-submission file upload, tracked per
+ * field key by DynamicForm and surfaced to EngineRequestWizard so it can
+ * gate Next/Review/Submit until every upload resolves to 'clean' (or is
+ * removed). 'pending' covers both the in-flight POST and the post-upload
+ * async scan; DynamicForm distinguishes them internally via `uploading` vs
+ * `status.scan_status === 'pending'` but the wizard only needs to know
+ * whether a token is still unresolved.
+ */
+export type UploadLifecycleState =
+  | 'uploading'
+  | 'scan_pending'
+  | 'clean'
+  | 'infected'
+  | 'failed'
+  | 'upload_error'
+
+export interface UploadLifecycleEntry {
+  fieldKey: string
+  token: string | null
+  fileName: string
+  state: UploadLifecycleState
+  errorMessage: string | null
+}

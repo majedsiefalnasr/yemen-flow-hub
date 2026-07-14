@@ -17,6 +17,14 @@ export interface EngineWizard {
   isFirst: ComputedRef<boolean>
   isLast: ComputedRef<boolean>
   busy: Ref<boolean>
+  /**
+   * True once cb.submit() has resolved without throwing — i.e. the backend
+   * confirmed the request now exists (201 or a replayed completed response).
+   * A 202 in-progress retry, or a thrown error, must never set this. Route
+   * leave-guards read this to stop treating a just-completed submission as
+   * unsaved data the user is about to lose.
+   */
+  submissionCompleted: Ref<boolean>
   next: (data: Record<string, unknown>) => Promise<void>
   back: () => void
   finish: (data: Record<string, unknown>) => Promise<void>
@@ -28,6 +36,7 @@ export function useEngineWizard(
 ): EngineWizard {
   const stepIndex = ref(0)
   const busy = ref(false)
+  const submissionCompleted = ref(false)
   const extraSteps = cb.extraSteps ?? 0
 
   const ordered = computed(() => [...groups.value].sort((a, b) => a.sort_order - b.sort_order))
@@ -56,10 +65,22 @@ export function useEngineWizard(
     busy.value = true
     try {
       await cb.submit(data)
+      submissionCompleted.value = true
     } finally {
       busy.value = false
     }
   }
 
-  return { stepIndex, totalSteps, currentGroup, isFirst, isLast, busy, next, back, finish }
+  return {
+    stepIndex,
+    totalSteps,
+    currentGroup,
+    isFirst,
+    isLast,
+    busy,
+    submissionCompleted,
+    next,
+    back,
+    finish,
+  }
 }
