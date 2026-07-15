@@ -181,6 +181,46 @@ function onClaimLost(code: string) {
   toast.error('فُقدت مطالبة هذا الطلب أو انتهت صلاحيتها')
 }
 
+// Document mutations run independently of workflow actions — a document can
+// be added/removed at any time while in edit mode, not just when submitting
+// a transition. Both reuse the store's existing uploadDocument/removeDocument
+// actions, which already call the composable, refetch, and reassign
+// store.documents.
+async function onDocumentUpload(fieldId: number, file: File) {
+  try {
+    await store.uploadDocument(requestId.value, file, fieldId)
+    const field = fieldGroups.value.flatMap((g) => g.fields).find((f) => f.id === fieldId)
+    const uploaded = store.documents.find((d) => d.field_id === fieldId)
+    if (field && uploaded) {
+      const current = (formData.value[field.key] as number[] | undefined) ?? []
+      if (!current.includes(uploaded.id)) {
+        formData.value = { ...formData.value, [field.key]: [...current, uploaded.id] }
+      }
+    }
+  } catch (err) {
+    toast.error(extractApiErrorMessage(err, 'تعذّر رفع المستند.'))
+  }
+}
+
+async function onDocumentRemove(documentId: number) {
+  const removedDoc = store.documents.find((d) => d.id === documentId)
+  try {
+    await store.removeDocument(requestId.value, documentId)
+    if (removedDoc?.field_id !== null && removedDoc?.field_id !== undefined) {
+      const field = fieldGroups.value.flatMap((g) => g.fields).find((f) => f.id === removedDoc.field_id)
+      if (field) {
+        const current = (formData.value[field.key] as number[] | undefined) ?? []
+        formData.value = {
+          ...formData.value,
+          [field.key]: current.filter((id) => id !== documentId),
+        }
+      }
+    }
+  } catch (err) {
+    toast.error(extractApiErrorMessage(err, 'تعذّر حذف المستند.'))
+  }
+}
+
 async function runAction(transitionId: number, requiresComment: boolean) {
   if (requiresComment && !comment.value.trim()) {
     return
@@ -340,11 +380,53 @@ async function runAction(transitionId: number, requiresComment: boolean) {
               <Card class="border-0 shadow">
                 <CardContent>
                   <EngineRequestDataTabs
+                    v-if="!isEditMode"
                     :field-groups="fieldGroups"
                     :data="store.current.data"
                     :documents="store.documents"
                     :request-id="requestId"
                   />
+                  <Tabs v-else :default-value="orderedFieldGroups[0]?.name" dir="rtl">
+                    <TabsList class="flex-wrap">
+                      <TabsTrigger
+                        v-for="group in orderedFieldGroups"
+                        :key="group.id"
+                        :value="group.name"
+                      >
+                        {{ group.label }}
+                      </TabsTrigger>
+                    </TabsList>
+                    <TabsContent
+                      v-for="(group, index) in nonFileGroups"
+                      :key="group.id"
+                      :value="group.name"
+                      class="mt-4"
+                    >
+                      <DynamicForm
+                        :ref="(el) => setDynamicFormRef(el, index)"
+                        v-model="formData"
+                        :field-groups="[group]"
+                        mode="edit"
+                        :request-id="requestId"
+                        :upload-target="{ type: 'request', requestId }"
+                      />
+                    </TabsContent>
+                    <TabsContent
+                      v-for="group in fileGroups"
+                      :key="group.id"
+                      :value="group.name"
+                      class="mt-4"
+                    >
+                      <EngineFieldDocumentsGroup
+                        :group="group"
+                        :documents="store.documents"
+                        :request-id="requestId"
+                        :can-manage="canAct"
+                        @upload="onDocumentUpload"
+                        @remove="onDocumentRemove"
+                      />
+                    </TabsContent>
+                  </Tabs>
                 </CardContent>
               </Card>
             </TabsContent>
