@@ -89,15 +89,32 @@ vi.mock('@/composables/useEngineRequestHistory', () => ({
   }),
 }))
 
+const mockUploadDocument = vi.fn().mockResolvedValue({ id: 500, field_id: 2 })
+const mockRemoveDocument = vi.fn().mockResolvedValue(undefined)
+const mockFetchDocuments = vi.fn().mockResolvedValue(undefined)
+const mockDocumentsRef = ref<
+  Array<{
+    id: number
+    request_id: number
+    field_id: number | null
+    stage_id: number
+    original_name: string
+    mime: string
+    size: number
+    uploaded_by: { id: number; name: string } | number
+    created_at: string | null
+  }>
+>([])
+
 vi.mock('@/composables/useEngineRequestDocuments', () => ({
   useEngineRequestDocuments: () => ({
-    documents: { value: [] },
+    documents: mockDocumentsRef,
     loading: { value: false },
     error: { value: null },
-    fetchDocuments: vi.fn(),
-    upload: vi.fn(),
-    remove: vi.fn(),
-    downloadUrl: vi.fn(),
+    fetchDocuments: mockFetchDocuments,
+    upload: mockUploadDocument,
+    remove: mockRemoveDocument,
+    downloadUrl: () => '#',
   }),
 }))
 
@@ -120,9 +137,28 @@ vi.mock('@/composables/useEngineRequestActions', () => ({
   }),
 }))
 
+const mockFieldGroups = ref<
+  Array<{
+    id: number
+    name: string
+    label: string
+    sort_order: number
+    fields: Array<{
+      id: number
+      key: string
+      type: string
+      is_visible: boolean
+      is_editable: boolean
+      is_required: boolean
+      multiple: boolean
+      label: string
+    }>
+  }>
+>([])
+
 vi.mock('@/composables/useEngineFormSchema', () => ({
   useEngineFormSchema: () => ({
-    fieldGroups: { value: [] },
+    fieldGroups: mockFieldGroups,
     loading: { value: false },
     error: { value: null },
     fetchSchema: vi.fn(),
@@ -143,11 +179,21 @@ vi.mock('@/composables/useApi', () => ({
   }),
 }))
 
+const mockFormValidate = vi.fn().mockResolvedValue({ valid: true, values: {} })
+
 const stubs = {
   NuxtLink: true,
   DynamicForm: {
+    name: 'DynamicForm',
     template: '<div data-stub="dynamic-form" />',
-    methods: { validate: () => ({ valid: true, values: {} }) },
+    props: ['fieldGroups', 'modelValue', 'mode', 'requestId', 'uploadTarget'],
+    methods: { validate: mockFormValidate },
+  },
+  EngineFieldDocumentsGroup: {
+    name: 'EngineFieldDocumentsGroup',
+    template: '<div data-stub="field-documents-group" />',
+    props: ['group', 'documents', 'requestId', 'canManage'],
+    emits: ['upload', 'remove'],
   },
   // The read-only data/rail/info components render their own children from the
   // schema/graph; stub them so these page-level tests stay focused on the page.
@@ -202,25 +248,16 @@ describe('workflows/instances/[id].vue', () => {
     mockFieldErrors.value = {}
     mockApiPost.mockClear()
     mockExecuteAction.mockReset().mockResolvedValue({ id: 5, version: 2 })
+    mockFormValidate.mockReset().mockResolvedValue({ valid: true, values: {} })
+    mockUploadDocument.mockReset().mockResolvedValue({ id: 500, field_id: 2 })
+    mockRemoveDocument.mockReset().mockResolvedValue(undefined)
+    mockFetchDocuments.mockReset().mockResolvedValue(undefined)
+    mockDocumentsRef.value = []
+    mockFieldGroups.value = []
     mockToastError.mockClear()
     mockToastSuccess.mockClear()
     routerPush.mockClear()
-    mockShow.mockResolvedValue({
-      id: 5,
-      reference: 'ENG-2026-000005',
-      status: 'ACTIVE',
-      version: 1,
-      current_stage: {
-        id: 1,
-        code: 'INTAKE',
-        name: 'استلام',
-        is_initial: true,
-        is_final: false,
-        sla_duration_minutes: null,
-        requires_claim: false,
-      },
-      data: {},
-    })
+    mockShow.mockReset().mockResolvedValue(makeInstance())
   })
 
   it('loads the instance on mount', () => {
@@ -564,6 +601,286 @@ describe('workflows/instances/[id].vue', () => {
       expect(mockToastError).not.toHaveBeenCalled()
       expect(mockToastSuccess).toHaveBeenCalledWith('تم تنفيذ الإجراء بنجاح.')
       expect(routerPush).toHaveBeenCalledWith('/workflows')
+    })
+  })
+
+  describe('edit mode', () => {
+    function editableFieldGroupFixture() {
+      return [
+        {
+          id: 10,
+          name: 'basic_info',
+          label: 'المعلومات الأساسية',
+          sort_order: 1,
+          fields: [
+            {
+              id: 1,
+              key: 'supplier_name',
+              type: 'TEXT',
+              is_visible: true,
+              is_editable: true,
+              is_required: false,
+              multiple: false,
+              label: 'اسم المورد',
+            },
+          ],
+        },
+        {
+          id: 11,
+          name: 'documents',
+          label: 'المستندات',
+          sort_order: 2,
+          fields: [
+            {
+              id: 2,
+              key: 'invoice_doc',
+              type: 'FILE',
+              is_visible: true,
+              is_editable: true,
+              is_required: false,
+              multiple: true,
+              label: 'فاتورة',
+            },
+          ],
+        },
+      ]
+    }
+
+    function findActionButton(wrapper: ReturnType<typeof mount>) {
+      return wrapper.findAll('button').find((button) => button.text().includes('إرسال'))
+    }
+
+    async function selectTab(wrapper: ReturnType<typeof mount>, label: string) {
+      const trigger = wrapper.findAll('button').find((button) => button.text().includes(label))
+      expect(trigger).toBeTruthy()
+      await trigger!.trigger('mousedown', { button: 0, ctrlKey: false })
+      await flushPromises()
+    }
+
+    it('a VIEW-only user always sees the read-only data tabs despite editable field rules', async () => {
+      mockFieldGroups.value = editableFieldGroupFixture()
+      mockShow.mockResolvedValue(makeInstance({ can_execute: false }))
+
+      const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
+      await flushPromises()
+
+      expect(wrapper.find('[data-stub="data-tabs"]').exists()).toBe(true)
+      expect(wrapper.find('[data-stub="dynamic-form"]').exists()).toBe(false)
+    })
+
+    it('an executor without a required held claim sees the read-only view', async () => {
+      mockFieldGroups.value = editableFieldGroupFixture()
+      mockShow.mockResolvedValue(
+        makeInstance({
+          can_execute: true,
+          current_stage: {
+            id: 1,
+            code: 'INTAKE',
+            name: 'استلام',
+            is_initial: true,
+            is_final: false,
+            sla_duration_minutes: null,
+            requires_claim: true,
+          },
+          claimed_by: null,
+        }),
+      )
+
+      const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
+      await flushPromises()
+
+      expect(wrapper.find('[data-stub="data-tabs"]').exists()).toBe(true)
+      expect(wrapper.find('[data-stub="dynamic-form"]').exists()).toBe(false)
+      expect(wrapper.find('[data-stub="field-documents-group"]').exists()).toBe(false)
+    })
+
+    it('renders editable forms and FILE groups when the executor can act', async () => {
+      mockFieldGroups.value = editableFieldGroupFixture()
+      mockShow.mockResolvedValue(makeInstance({ can_execute: true }))
+
+      const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
+      await flushPromises()
+
+      expect(wrapper.find('[data-stub="data-tabs"]').exists()).toBe(false)
+      expect(wrapper.find('[data-stub="dynamic-form"]').exists()).toBe(true)
+      await selectTab(wrapper, 'المستندات')
+      expect(wrapper.find('[data-stub="field-documents-group"]').exists()).toBe(true)
+      expect(wrapper.findComponent({ name: 'EngineFieldDocumentsGroup' }).props('canManage')).toBe(
+        true,
+      )
+    })
+
+    it('sends edited formData instead of the frozen request data', async () => {
+      mockFieldGroups.value = editableFieldGroupFixture()
+      mockShow.mockResolvedValue(
+        makeInstance({ can_execute: true, data: { supplier_name: 'Original' } }),
+      )
+
+      const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
+      await flushPromises()
+      wrapper
+        .findComponent({ name: 'DynamicForm' })
+        .vm.$emit('update:modelValue', { supplier_name: 'Edited' })
+      await wrapper.vm.$nextTick()
+
+      await findActionButton(wrapper)!.trigger('click')
+      await flushPromises()
+
+      expect(mockExecuteAction).toHaveBeenCalledWith(
+        5,
+        9,
+        null,
+        expect.objectContaining({ supplier_name: 'Edited' }),
+        1,
+      )
+    })
+
+    it('does not execute the action when a mounted form is invalid', async () => {
+      mockFieldGroups.value = editableFieldGroupFixture()
+      mockFormValidate.mockResolvedValue({ valid: false, values: {} })
+      mockShow.mockResolvedValue(makeInstance({ can_execute: true }))
+
+      const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
+      await flushPromises()
+
+      await findActionButton(wrapper)!.trigger('click')
+      await flushPromises()
+
+      expect(mockExecuteAction).not.toHaveBeenCalled()
+    })
+
+    it("validates each mounted form without merging another form's returned values", async () => {
+      mockFieldGroups.value = [
+        ...editableFieldGroupFixture(),
+        {
+          id: 12,
+          name: 'more_info',
+          label: 'معلومات إضافية',
+          sort_order: 3,
+          fields: [
+            {
+              id: 3,
+              key: 'notes_field',
+              type: 'TEXTAREA',
+              is_visible: true,
+              is_editable: true,
+              is_required: false,
+              multiple: false,
+              label: 'ملاحظات',
+            },
+          ],
+        },
+      ]
+      mockFormValidate.mockResolvedValue({
+        valid: true,
+        values: { unrelated_field: 'should-not-leak' },
+      })
+      mockShow.mockResolvedValue(
+        makeInstance({ can_execute: true, data: { supplier_name: 'Kept' } }),
+      )
+
+      const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
+      await flushPromises()
+
+      await selectTab(wrapper, 'معلومات إضافية')
+
+      await findActionButton(wrapper)!.trigger('click')
+      await flushPromises()
+
+      expect(mockFormValidate).toHaveBeenCalledTimes(2)
+      const payload = mockExecuteAction.mock.calls[0]![3] as Record<string, unknown>
+      expect(payload).toMatchObject({ supplier_name: 'Kept' })
+      expect(payload).not.toHaveProperty('unrelated_field')
+    })
+
+    it('adds an uploaded document id to the eventual transition payload', async () => {
+      mockFieldGroups.value = editableFieldGroupFixture()
+      mockShow.mockResolvedValue(makeInstance({ can_execute: true, data: {} }))
+
+      const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
+      await flushPromises()
+      await selectTab(wrapper, 'المستندات')
+      const file = new File(['x'], 'invoice.pdf', { type: 'application/pdf' })
+      wrapper.findComponent({ name: 'EngineFieldDocumentsGroup' }).vm.$emit('upload', 2, file)
+      await flushPromises()
+
+      await findActionButton(wrapper)!.trigger('click')
+      await flushPromises()
+
+      expect(mockUploadDocument).toHaveBeenCalledWith(5, file, 2)
+      const payload = mockExecuteAction.mock.calls[0]![3] as Record<string, unknown>
+      expect(payload).toMatchObject({ invoice_doc: [500] })
+    })
+
+    it('drops a removed document id from the eventual transition payload', async () => {
+      mockFieldGroups.value = editableFieldGroupFixture()
+      mockShow.mockResolvedValue(
+        makeInstance({
+          can_execute: true,
+          data: { invoice_doc: [500, 501] },
+        }),
+      )
+      mockDocumentsRef.value = [
+        {
+          id: 500,
+          request_id: 5,
+          field_id: 2,
+          stage_id: 1,
+          original_name: 'a.pdf',
+          mime: 'application/pdf',
+          size: 1,
+          uploaded_by: { id: 1, name: 'x' },
+          created_at: null,
+        },
+      ]
+
+      const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
+      await flushPromises()
+      await selectTab(wrapper, 'المستندات')
+      wrapper.findComponent({ name: 'EngineFieldDocumentsGroup' }).vm.$emit('remove', 500)
+      await flushPromises()
+
+      await findActionButton(wrapper)!.trigger('click')
+      await flushPromises()
+
+      expect(mockRemoveDocument).toHaveBeenCalledWith(5, 500)
+      const payload = mockExecuteAction.mock.calls[0]![3] as Record<string, unknown>
+      expect(payload).toMatchObject({ invoice_doc: [501] })
+    })
+
+    it('does not render file management for a VIEW-only user', async () => {
+      mockFieldGroups.value = editableFieldGroupFixture()
+      mockShow.mockResolvedValue(makeInstance({ can_execute: false }))
+
+      const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
+      await flushPromises()
+
+      expect(wrapper.find('[data-stub="field-documents-group"]').exists()).toBe(false)
+    })
+
+    it('resets locally edited formData after a stale-action reload returns a new version', async () => {
+      mockFieldGroups.value = editableFieldGroupFixture()
+      mockShow
+        .mockResolvedValueOnce(makeInstance({ version: 1, data: { supplier_name: 'First' } }))
+        .mockResolvedValueOnce(makeInstance({ version: 2, data: { supplier_name: 'Second' } }))
+      mockExecuteAction.mockRejectedValue({
+        status: 409,
+        data: { error_code: 'REQUEST_STALE', message: 'stale' },
+      })
+
+      const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
+      await flushPromises()
+      wrapper
+        .findComponent({ name: 'DynamicForm' })
+        .vm.$emit('update:modelValue', { supplier_name: 'Locally edited' })
+      await wrapper.vm.$nextTick()
+
+      await findActionButton(wrapper)!.trigger('click')
+      await flushPromises()
+
+      expect(wrapper.findComponent({ name: 'DynamicForm' }).props('modelValue')).toMatchObject({
+        supplier_name: 'Second',
+      })
     })
   })
 })
