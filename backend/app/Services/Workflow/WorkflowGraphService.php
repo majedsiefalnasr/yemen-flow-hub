@@ -25,12 +25,25 @@ class WorkflowGraphService
     ) {}
 
     /**
+     * @param  bool  $excludeInactiveActions  Drop edges whose action is deactivated in the
+     *                                        catalog. Runtime request views pass true so
+     *                                        retired actions stop appearing as available
+     *                                        stage actions; the Designer's own canvas keeps
+     *                                        the default false so an admin editing a version
+     *                                        can still see (and fix) transitions pointing at
+     *                                        a deactivated action.
      * @return array{nodes: array<int, array<string, mixed>>, edges: array<int, array<string, mixed>>}
      */
-    public function build(WorkflowVersion $version, ?User $viewer = null): array
+    public function build(WorkflowVersion $version, ?User $viewer = null, bool $excludeInactiveActions = false): array
     {
         $stages = $version->stages()->orderBy('sort_order')->orderBy('id')->get();
-        $transitions = $version->transitions()->with('action:id,code,name')->get();
+        $transitions = $version->transitions()
+            ->with('action:id,code,name,is_active')
+            ->get()
+            ->when(
+                $excludeInactiveActions,
+                fn ($collection) => $collection->filter(fn ($transition): bool => $transition->action?->is_active !== false),
+            );
 
         $stagesWithPermissions = $version->stages()
             ->with(['stagePermissions' => fn ($q) => $q->orderBy('id')])

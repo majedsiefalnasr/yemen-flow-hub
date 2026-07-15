@@ -1010,19 +1010,23 @@ class EngineRequestTest extends TestCase
         $this->assertFalse($nodeCodes->contains('COMPLETED'), 'executor has no StagePermission on COMPLETED, it must not appear');
     }
 
-    public function test_graph_drops_edges_with_a_filtered_out_endpoint(): void
+    public function test_graph_keeps_edges_to_a_filtered_out_endpoint(): void
     {
         // createRequest() already performs SUBMIT (DATA_ENTRY -> REVIEW) atomically.
         $request = $this->createRequest();
 
-        // approveTransition goes REVIEW -> COMPLETED. executor cannot see COMPLETED,
-        // so this edge must be dropped even though its from_stage (REVIEW) is visible.
+        // approveTransition goes REVIEW -> COMPLETED. executor holds EXECUTE on REVIEW
+        // but cannot VIEW COMPLETED. The edge must still surface: an edge is an action
+        // the user takes FROM a stage they can see, not a claim they may view the
+        // destination too — requiring VIEW on to_stage_id previously hid every
+        // outgoing action whenever the next stage belonged to another org/team,
+        // leaving the request-detail action rail empty despite being executable.
         $response = $this->actingAs($this->executor)->getJson("/api/v1/engine-requests/{$request->id}/graph");
         $response->assertOk();
 
         $edgeActionCodes = collect($response->json('data.edges'))->pluck('action_code');
 
-        $this->assertFalse($edgeActionCodes->contains('APPROVE'), 'edge to the hidden COMPLETED stage must be dropped');
+        $this->assertTrue($edgeActionCodes->contains('APPROVE'), 'edge from the visible REVIEW stage must stay even though COMPLETED is hidden');
     }
 
     public function test_graph_shows_all_stages_for_system_admin(): void

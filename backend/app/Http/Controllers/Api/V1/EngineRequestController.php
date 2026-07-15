@@ -445,7 +445,7 @@ class EngineRequestController extends Controller
 
         $engineRequest->load(['workflowVersion', 'history']);
         $user = $request->user();
-        $graphData = $this->graphService->build($engineRequest->workflowVersion, $user);
+        $graphData = $this->graphService->build($engineRequest->workflowVersion, $user, excludeInactiveActions: true);
         $versionStageIds = array_column($graphData['nodes'], 'id');
 
         $viewableStageIds = $user->hasRoleCode(RoleCodes::SYSTEM_ADMIN)
@@ -460,9 +460,15 @@ class EngineRequestController extends Controller
             $graphData['nodes'],
             fn ($node) => isset($viewableIdSet[$node['id']]),
         ));
+        // Only the origin stage must be viewable: an edge is a possible action the
+        // user takes FROM a stage they can see, not a claim that they may also view
+        // the destination stage. Requiring VIEW on to_stage_id as well previously
+        // hid every outgoing action whenever the next stage belonged to another
+        // org/team (e.g. a bank reviewer approving into CBY's internal queue),
+        // leaving "إجراءات المرحلة" empty despite the transition being executable.
         $graphData['edges'] = array_values(array_filter(
             $graphData['edges'],
-            fn ($edge) => isset($viewableIdSet[$edge['from_stage_id']]) && isset($viewableIdSet[$edge['to_stage_id']]),
+            fn ($edge) => isset($viewableIdSet[$edge['from_stage_id']]),
         ));
 
         $history = $engineRequest->history;
