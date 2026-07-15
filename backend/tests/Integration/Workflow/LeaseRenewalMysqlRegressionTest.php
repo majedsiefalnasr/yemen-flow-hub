@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Unit\Services\Workflow;
+namespace Tests\Integration\Workflow;
 
 use App\Models\IdempotencyKey;
 use App\Models\TemporaryUpload;
@@ -12,92 +12,185 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use PDO;
 use PDOException;
+use PHPUnit\Framework\Attributes\Group;
+use RuntimeException;
 use Tests\TestCase;
 
 /**
- * LeaseRenewalTest.php (the SQLite-backed suite) cannot actually prove the
- * false-negative it documents: SQLite's UPDATE always reports rows matched,
- * never rows changed, so a same-value write there still returns an affected
- * count of 1 and every test there passes even against the unfixed
- * implementation (independently confirmed: SQLite rowCount() === 1 for a
- * same-value UPDATE). MySQL's PDO driver reports rows *changed* by default
- * (no PDO::MYSQL_ATTR_FOUND_ROWS override in config/database.php), so a
- * same-value UPDATE legitimately returns 0 — this is the actual mechanism
- * behind the SUBMISSION_LEASE_LOST false negative, and only a real MySQL
- * connection can exercise it.
+ * tests/Unit/Services/Workflow/LeaseRenewalTest.php (SQLite-backed) cannot
+ * actually prove the false-negative it documents: SQLite's UPDATE always
+ * reports rows matched, never rows changed, so a same-value write there
+ * still returns an affected count of 1 and every test there passes even
+ * against the unfixed implementation (independently confirmed: SQLite
+ * rowCount() === 1 for a same-value UPDATE). MySQL's PDO driver reports
+ * rows *changed* by default (no PDO::MYSQL_ATTR_FOUND_ROWS override in
+ * config/database.php), so a same-value UPDATE legitimately returns 0 —
+ * this is the actual mechanism behind the SUBMISSION_LEASE_LOST false
+ * negative, and only a real MySQL connection can exercise it.
  *
- * This suite talks to a disposable database inside the project's existing
- * MySQL 8.4 dev container (see docker-compose / yfh-mysql), never the real
- * application database (cby_imports). It reuses yfh_migrate_check — a
- * database the app's own DB_USERNAME already has full grants on for
- * exactly this kind of throwaway verification (the app user has no
- * CREATE DATABASE privilege on arbitrary names, only on cby_imports,
- * yfh_audit, and yfh_migrate_check specifically). It creates two minimal,
- * FK-free tables that carry only the columns renewLease()/renew() touch,
- * points IdempotencyKey/TemporaryUpload's default connection at them for
- * the duration of each test, and drops those tables again in tearDown()
- * (never the database itself, which other tooling may also share). If
- * MySQL isn't reachable (CI/sandboxes without Docker), every test here is
- * marked skipped rather than failed.
+ * ISOLATION — read before touching this file:
+ *
+ * - This suite never runs by default. It carries #[Group('mysql-integration')]
+ *   and lives under the separately named "Integration" PHPUnit testsuite
+ *   (see phpunit.xml). `composer test` / `php artisan test` with no flags
+ *   excludes this group entirely (composer.json's "test" script passes
+ *   --exclude-group=mysql-integration). To run it deliberately:
+ *
+ *       composer test:mysql-integration
+ *
+ *   which resolves to:
+ *
+ *       php artisan test --testsuite=Integration --group=mysql-integration
+ *
+ * - Requires five LEASE_MYSQL_TEST_* environment variables (host, port,
+ *   database, username, password) to be set explicitly — see
+ *   requiredEnv() below. There is no fallback to the application's own
+ *   DB_HOST/DB_USERNAME/DB_PASSWORD: this suite must never be able to
+ *   accidentally point at the real app connection just because that
+ *   happens to be configured. Because the group is opt-in, a missing
+ *   variable or an unreachable server FAILS the test (via
+ *   RuntimeException in setUp(), never markTestSkipped()) — once you've
+ *   asked for this gate, an environment problem is a real failure, not a
+ *   quiet no-op.
+ *
+ * - assertSafeDatabaseName() refuses to run against a database whose name
+ *   doesn't contain "test" (case-insensitive) or that matches one of this
+ *   project's real application database names (cby_imports, yfh_audit) —
+ *   even if those names happen to appear in the environment by mistake.
+ *
+ * - No shared table is ever touched. Every table this suite creates is
+ *   named via a random per-process prefix (see uniquePrefix(), regenerated
+ *   in setUp() for every single test method) applied through the
+ *   connection's own `prefix` config — Laravel's query grammar applies
+ *   this transparently, so IdempotencyKey::query()/TemporaryUpload::
+ *   query() (unmodified, exactly as the real services under test call
+ *   them) resolve to e.g. `lrg_f3a1_idempotency_keys` on the wire, never
+ *   the literal `idempotency_keys` / `temporary_uploads` names — even
+ *   under concurrent runs against the same database. tearDown() drops
+ *   only those two prefixed tables it created, in a finally block, so a
+ *   failed assertion or a failure partway through setUp() still cleans up
+ *   and still restores Carbon::setTestNow() and the default connection.
  */
+#[Group('mysql-integration')]
 class LeaseRenewalMysqlRegressionTest extends TestCase
 {
     private const CONNECTION = 'mysql_lease_regression_gate';
 
-    private const DATABASE = 'yfh_migrate_check';
+    private const REQUIRED_ENV_KEYS = [
+        'LEASE_MYSQL_TEST_HOST',
+        'LEASE_MYSQL_TEST_PORT',
+        'LEASE_MYSQL_TEST_DATABASE',
+        'LEASE_MYSQL_TEST_USERNAME',
+        'LEASE_MYSQL_TEST_PASSWORD',
+    ];
 
-    private static bool $mysqlAvailable = false;
-
-    private static ?string $skipReason = null;
+    /** Real application database names this suite must never be pointed at, even by accident. */
+    private const FORBIDDEN_DATABASE_NAMES = ['cby_imports', 'yfh_audit', 'mysql', 'information_schema', 'performance_schema', 'sys'];
 
     private string $originalDefaultConnection;
 
-    public static function setUpBeforeClass(): void
+    private string $tablePrefix;
+
+    private bool $schemaCreated = false;
+
+    /**
+     * @return array{host: string, port: string, database: string, username: string, password: string}
+     */
+    private function requiredEnv(): array
     {
-        parent::setUpBeforeClass();
+        $missing = array_values(array_filter(
+            self::REQUIRED_ENV_KEYS,
+            fn (string $key): bool => env($key) === null || env($key) === '',
+        ));
 
-        $host = env('DB_HOST', '127.0.0.1');
-        $port = (int) env('DB_PORT', 3306);
-        $username = env('DB_USERNAME', 'cby');
-        $password = env('DB_PASSWORD', 'cby_password');
-
-        try {
-            $pdo = new PDO(
-                "mysql:host={$host};port={$port}",
-                $username,
-                $password,
-                [PDO::ATTR_TIMEOUT => 2, PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION],
+        if ($missing !== []) {
+            throw new RuntimeException(
+                'mysql-integration gate requires all of '.implode(', ', self::REQUIRED_ENV_KEYS).
+                ' to be set explicitly. Missing: '.implode(', ', $missing).
+                '. This group was explicitly requested (composer test:mysql-integration) — '.
+                'an incomplete environment is a real failure here, not something to skip.',
             );
-            // IF NOT EXISTS, not DROP-then-CREATE: this database is shared
-            // with other throwaway verification, so this suite only ever
-            // owns and cleans up its own two tables (see tearDown()), never
-            // the database itself.
-            $pdo->exec('CREATE DATABASE IF NOT EXISTS `'.self::DATABASE.'` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
-            self::$mysqlAvailable = true;
-        } catch (PDOException $exception) {
-            self::$mysqlAvailable = false;
-            self::$skipReason = 'MySQL not reachable for the lease-renewal regression gate: '.$exception->getMessage();
         }
+
+        return [
+            'host' => (string) env('LEASE_MYSQL_TEST_HOST'),
+            'port' => (string) env('LEASE_MYSQL_TEST_PORT'),
+            'database' => (string) env('LEASE_MYSQL_TEST_DATABASE'),
+            'username' => (string) env('LEASE_MYSQL_TEST_USERNAME'),
+            'password' => (string) env('LEASE_MYSQL_TEST_PASSWORD'),
+        ];
+    }
+
+    private function assertSafeDatabaseName(string $database): void
+    {
+        $lower = strtolower($database);
+
+        foreach (self::FORBIDDEN_DATABASE_NAMES as $forbidden) {
+            if ($lower === strtolower($forbidden)) {
+                throw new RuntimeException(
+                    "LEASE_MYSQL_TEST_DATABASE ('{$database}') names a real application or system ".
+                    'database. Refusing to run — point this at a dedicated, disposable test database.',
+                );
+            }
+        }
+
+        if (! str_contains($lower, 'test')) {
+            throw new RuntimeException(
+                "LEASE_MYSQL_TEST_DATABASE ('{$database}') does not contain 'test'. Refusing to run — ".
+                'name the target database so its purpose is unambiguous, e.g. cby_lease_regression_test.',
+            );
+        }
+    }
+
+    private function uniquePrefix(): string
+    {
+        // Per-process AND per-test-method: two parallel test runners (or two
+        // methods in the same run, since setUp() regenerates this) can never
+        // collide on table names even inside the same shared test database.
+        return 'lrg_'.getmypid().'_'.bin2hex(random_bytes(4)).'_';
     }
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        if (! self::$mysqlAvailable) {
-            $this->markTestSkipped(self::$skipReason ?? 'MySQL not available.');
+        $env = $this->requiredEnv();
+        $this->assertSafeDatabaseName($env['database']);
+
+        try {
+            $pdo = new PDO(
+                "mysql:host={$env['host']};port={$env['port']}",
+                $env['username'],
+                $env['password'],
+                [PDO::ATTR_TIMEOUT => 3, PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION],
+            );
+            // Confirms both connectivity and that the target database
+            // actually exists and is reachable under these credentials —
+            // this suite never creates or drops the database itself, only
+            // its own uniquely prefixed tables inside it.
+            $pdo->exec('SELECT 1 FROM DUAL WHERE '.$pdo->quote($env['database']).' = '.$pdo->quote($env['database']));
+            $pdo = null;
+        } catch (PDOException $exception) {
+            throw new RuntimeException(
+                'mysql-integration gate could not connect to the configured MySQL server ('.
+                "{$env['host']}:{$env['port']}): {$exception->getMessage()}. This group was explicitly ".
+                'requested — an unreachable server is a real failure here, not something to skip.',
+                previous: $exception,
+            );
         }
+
+        $this->tablePrefix = $this->uniquePrefix();
 
         config(['database.connections.'.self::CONNECTION => [
             'driver' => 'mysql',
-            'host' => env('DB_HOST', '127.0.0.1'),
-            'port' => env('DB_PORT', 3306),
-            'database' => self::DATABASE,
-            'username' => env('DB_USERNAME', 'cby'),
-            'password' => env('DB_PASSWORD', 'cby_password'),
+            'host' => $env['host'],
+            'port' => $env['port'],
+            'database' => $env['database'],
+            'username' => $env['username'],
+            'password' => $env['password'],
             'charset' => 'utf8mb4',
             'collation' => 'utf8mb4_unicode_ci',
-            'prefix' => '',
+            'prefix' => $this->tablePrefix,
             'strict' => true,
             // Deliberately no PDO::MYSQL_ATTR_FOUND_ROWS override — this is
             // exactly the production config/database.php mysql connection's
@@ -108,19 +201,54 @@ class LeaseRenewalMysqlRegressionTest extends TestCase
         config(['database.default' => self::CONNECTION]);
         DB::purge(self::CONNECTION);
 
-        $this->createSchema();
+        try {
+            $this->createSchema();
+            $this->schemaCreated = true;
+        } catch (\Throwable $exception) {
+            // createSchema() partially failed (e.g. first table created,
+            // second failed) — clean up whatever did get created before
+            // rethrowing, since tearDown() will still run for this test but
+            // schemaCreated only flips true after a full success.
+            $this->dropSchemaIfPresent();
+            $this->restoreConnection();
+            throw $exception;
+        }
     }
 
     protected function tearDown(): void
     {
-        if (self::$mysqlAvailable) {
-            Schema::connection(self::CONNECTION)->dropIfExists('temporary_uploads');
-            Schema::connection(self::CONNECTION)->dropIfExists('idempotency_keys');
-            config(['database.default' => $this->originalDefaultConnection]);
-            DB::purge(self::CONNECTION);
+        try {
+            Carbon::setTestNow();
+        } finally {
+            try {
+                if ($this->schemaCreated) {
+                    $this->dropSchemaIfPresent();
+                }
+            } finally {
+                $this->restoreConnection();
+            }
         }
 
         parent::tearDown();
+    }
+
+    private function restoreConnection(): void
+    {
+        if (isset($this->originalDefaultConnection)) {
+            config(['database.default' => $this->originalDefaultConnection]);
+        }
+        config(['database.connections.'.self::CONNECTION => null]);
+        DB::purge(self::CONNECTION);
+    }
+
+    private function dropSchemaIfPresent(): void
+    {
+        // Table names are resolved through the connection's own prefix
+        // config, so these calls only ever reach the uniquely prefixed
+        // tables this exact test method created — never the literal
+        // idempotency_keys / temporary_uploads names, shared or otherwise.
+        Schema::connection(self::CONNECTION)->dropIfExists('temporary_uploads');
+        Schema::connection(self::CONNECTION)->dropIfExists('idempotency_keys');
     }
 
     private function createSchema(): void
@@ -247,8 +375,6 @@ class LeaseRenewalMysqlRegressionTest extends TestCase
             $result,
             'renewLease() must return true against real MySQL for a same-second renewal that matched the row.',
         );
-
-        Carbon::setTestNow();
     }
 
     public function test_reservation_renewal_immediately_after_reserve_in_the_same_second_succeeds_on_real_mysql(): void
@@ -269,8 +395,6 @@ class LeaseRenewalMysqlRegressionTest extends TestCase
             $result,
             'renew() must return true against real MySQL for a same-second renewal that matched the row.',
         );
-
-        Carbon::setTestNow();
     }
 
     public function test_idempotency_renewal_with_the_wrong_claim_token_still_returns_false_on_real_mysql(): void
@@ -287,8 +411,6 @@ class LeaseRenewalMysqlRegressionTest extends TestCase
         $result = $coordinator->renewLease($key->id, (string) Str::uuid(), 120);
 
         $this->assertFalse($result, 'A renewal under the wrong claim_token must still fail on real MySQL.');
-
-        Carbon::setTestNow();
     }
 
     public function test_idempotency_renewal_after_the_lease_was_actually_reclaimed_still_returns_false_on_real_mysql(): void
@@ -310,7 +432,5 @@ class LeaseRenewalMysqlRegressionTest extends TestCase
             $result,
             'A superseded attempt must still fail on real MySQL once the lease has genuinely been reclaimed.',
         );
-
-        Carbon::setTestNow();
     }
 }
