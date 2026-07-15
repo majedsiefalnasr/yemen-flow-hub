@@ -168,4 +168,40 @@ describe('EngineFieldDocumentsGroup', () => {
     expect(orphanPanel).toBeTruthy()
     expect(orphanPanel!.props('canManage')).toBe(false)
   })
+
+  it('does not treat a null field_id document as orphaned — it is a general document outside this group', () => {
+    const field = makeField({ id: 1 })
+    const general = makeDoc({ id: 300, field_id: null, original_name: 'general.pdf' })
+    const wrapper = mount(EngineFieldDocumentsGroup, {
+      props: { group: makeGroup([field]), documents: [general], requestId: 5, canManage: true },
+      global: { stubs },
+    })
+
+    // Only the field panel renders — no orphan section for a null field_id.
+    const panels = wrapper.findAllComponents({ name: 'EngineDocumentsPanel' })
+    expect(panels).toHaveLength(1)
+    expect(panels[0]!.props('documents')).toEqual([])
+  })
+
+  it('does not treat a document tied to a currently-hidden field as orphaned', () => {
+    const visible = makeField({ id: 1 })
+    const hidden = makeField({ id: 2, key: 'hidden_doc', is_visible: false })
+    const hiddenFieldDoc = makeDoc({ id: 400, field_id: 2, original_name: 'hidden-field.pdf' })
+    const wrapper = mount(EngineFieldDocumentsGroup, {
+      props: {
+        group: makeGroup([visible, hidden]),
+        documents: [hiddenFieldDoc],
+        requestId: 5,
+        canManage: true,
+      },
+      global: { stubs },
+    })
+
+    // Only the visible field's panel renders (per the earlier "skips
+    // non-visible fields" test) — the hidden field's document must not
+    // spill into an orphan section just because its field isn't rendered.
+    const panels = wrapper.findAllComponents({ name: 'EngineDocumentsPanel' })
+    expect(panels).toHaveLength(1)
+    expect(panels[0]!.props('documents')).toEqual([])
+  })
 })

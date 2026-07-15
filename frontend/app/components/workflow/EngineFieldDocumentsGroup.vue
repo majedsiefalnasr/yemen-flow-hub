@@ -11,10 +11,17 @@ import EngineDocumentsPanel from '@/components/workflow/EngineDocumentsPanel.vue
 // Renders one EngineDocumentsPanel per FILE field in `group`, so a group with
 // multiple file fields (e.g. "فاتورة" + "عقد") never mixes their documents —
 // each panel is filtered strictly by EngineRequestDocument.field_id. Any
-// request document whose field_id doesn't match a visible field in this
-// group's schema (a deleted/renamed field, or data from an older schema
+// request document whose field_id references a field this group used to have
+// but no longer does (a deleted/renamed field, or data from an older schema
 // version) still renders, read-only, under a separate "orphan" panel instead
 // of silently disappearing.
+//
+// field_id === null is NOT treated as orphaned here: it's a first-class,
+// intentional "general document, not tied to any field" state supported by
+// the upload API (useEngineRequestDocuments.upload's fieldId param is
+// nullable), not stale data — a document like that belongs wherever the app
+// already surfaces general/untagged documents, which is outside this
+// component's scope (it only knows about `group`'s own fields).
 const props = defineProps<{
   group: ResolvedFieldGroup
   documents: EngineRequestDocument[]
@@ -38,8 +45,11 @@ function canManageField(field: ResolvedFieldDefinition): boolean {
 }
 
 const orphanedDocuments = computed(() => {
-  const knownFieldIds = new Set(visibleFields.value.map((f) => f.id))
-  return props.documents.filter((d) => d.field_id === null || !knownFieldIds.has(d.field_id))
+  // All of the group's fields, not just visible ones — a document tied to a
+  // field that's merely hidden (is_visible: false) belongs to that field,
+  // not to "orphaned," even though no panel currently renders it.
+  const knownFieldIds = new Set(props.group.fields.map((f) => f.id))
+  return props.documents.filter((d) => d.field_id !== null && !knownFieldIds.has(d.field_id))
 })
 
 function onUpload(fieldId: number, file: File) {
