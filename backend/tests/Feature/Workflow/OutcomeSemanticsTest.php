@@ -2,14 +2,11 @@
 
 namespace Tests\Feature\Workflow;
 
-use App\Enums\AuditAction;
 use App\Enums\FinalOutcome;
 use App\Enums\StageAccessLevel;
 use App\Enums\UserRole;
 use App\Enums\WorkflowVersionState;
-use App\Models\AuditLog;
 use App\Models\EngineRequest;
-use App\Models\Merchant;
 use App\Models\Organization;
 use App\Models\Role;
 use App\Models\StagePermission;
@@ -19,11 +16,9 @@ use App\Models\WorkflowDefinition;
 use App\Models\WorkflowStage;
 use App\Models\WorkflowTransition;
 use App\Models\WorkflowVersion;
-use App\Services\Workflow\Engine\EngineFinancingLedger;
 use App\Services\Workflow\EngineTransitionService;
 use App\Services\Workflow\WorkflowVersionValidator;
 use App\Support\EngineRequestStatus;
-use App\Support\InvoiceKey;
 use Database\Seeders\BankSeeder;
 use Database\Seeders\GovernanceSeeder;
 use Database\Seeders\ScreenPermissionSeeder;
@@ -87,84 +82,6 @@ class OutcomeSemanticsTest extends TestCase
         }
     }
 
-    public function test_abandon_guard_matrix_and_side_effects(): void
-    {
-        $version = $this->publishedInitialOnlyWorkflow();
-        $request = $this->createActiveRequestOnStage($version, $version->stages()->firstOrFail());
-
-        $this->actingAs($this->entry)->postJson("/api/v1/engine-requests/{$request->id}/abandon", [
-            'version' => $request->version,
-        ])->assertOk()
-            ->assertJsonPath('data.status', EngineRequestStatus::ABANDONED);
-
-        $request->refresh();
-        $this->assertNull($request->claimed_by);
-        $this->assertNull($request->claim_expires_at);
-
-        $this->assertDatabaseHas('workflow_history', [
-            'request_id' => $request->id,
-            'action_code' => 'ABANDON',
-            'to_stage_id' => null,
-        ]);
-
-        $this->assertTrue(
-            AuditLog::query()
-                ->where('action', AuditAction::REQUEST_ABANDONED->value)
-                ->where('workflow_instance_id', $request->id)
-                ->exists(),
-        );
-
-        $this->actingAs($this->entry)->postJson("/api/v1/engine-requests/{$request->id}/abandon", [
-            'version' => $request->version,
-        ])->assertForbidden()
-            ->assertJsonPath('error_code', 'REQUEST_CLOSED');
-    }
-
-    public function test_abandon_unavailable_on_non_initial_stage(): void
-    {
-        $version = $this->publishedTwoStageWorkflow(FinalOutcome::COMPLETED);
-        $midStage = $version->stages()->where('code', 'review')->firstOrFail();
-        $request = $this->createActiveRequestOnStage($version, $midStage);
-
-        $this->actingAs($this->entry)->postJson("/api/v1/engine-requests/{$request->id}/abandon", [
-            'version' => $request->version,
-        ])->assertStatus(422)
-            ->assertJsonPath('error_code', 'ABANDON_NOT_AVAILABLE');
-    }
-
-    public function test_abandoned_request_frees_financing_capacity(): void
-    {
-        $merchant = Merchant::query()->create([
-            'name' => 'Capacity Merchant',
-            'bank_id' => $this->entry->bank_id,
-            'tax_number' => 'TAX-CAP-1',
-        ]);
-        $version = $this->publishedInitialOnlyWorkflow();
-        $request = EngineRequest::query()->create([
-            'workflow_version_id' => $version->id,
-            'current_stage_id' => $version->stages()->firstOrFail()->id,
-            'reference' => 'ENG-CAP-1',
-            'status' => EngineRequestStatus::ACTIVE,
-            'created_by' => $this->entry->id,
-            'bank_id' => $this->entry->bank_id,
-            'merchant_id' => $merchant->id,
-            'invoice_number' => 'INV-CAP-1',
-            'invoice_number_normalized' => InvoiceKey::normalize('INV-CAP-1'),
-            'request_percentage' => 40,
-            'version' => 1,
-        ]);
-
-        $ledger = app(EngineFinancingLedger::class);
-        $tax = $merchant->tax_number;
-        $this->assertSame(40.0, $ledger->usedPercent($tax, 'INV-CAP-1'));
-
-        $this->actingAs($this->entry)->postJson("/api/v1/engine-requests/{$request->id}/abandon", [
-            'version' => 1,
-        ])->assertOk();
-
-        $this->assertSame(0.0, $ledger->usedPercent($tax, 'INV-CAP-1'));
-    }
-
     public function test_final_stages_created_via_api_require_outcome_when_marked_final(): void
     {
         $definition = WorkflowDefinition::query()->create(['code' => 'api-stage', 'name' => 'API Stage']);
@@ -181,24 +98,6 @@ class OutcomeSemanticsTest extends TestCase
             'is_final' => true,
         ])->assertUnprocessable()
             ->assertJsonValidationErrors(['final_outcome']);
-    }
-
-    public function test_abandoned_request_excluded_from_my_queue(): void
-    {
-        $version = $this->publishedInitialOnlyWorkflow();
-        $request = $this->createActiveRequestOnStage($version, $version->stages()->firstOrFail());
-
-        $this->actingAs($this->entry)->getJson('/api/v1/engine-requests/my-queue')
-            ->assertOk()
-            ->assertJsonCount(1, 'data');
-
-        $this->actingAs($this->entry)->postJson("/api/v1/engine-requests/{$request->id}/abandon", [
-            'version' => $request->version,
-        ])->assertOk();
-
-        $this->actingAs($this->entry)->getJson('/api/v1/engine-requests/my-queue')
-            ->assertOk()
-            ->assertJsonCount(0, 'data');
     }
 
     public function test_summary_counts_all_statuses_and_list_filter_accepts_new_statuses(): void

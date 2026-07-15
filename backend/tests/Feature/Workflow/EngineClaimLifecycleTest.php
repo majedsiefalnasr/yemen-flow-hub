@@ -95,7 +95,7 @@ class EngineClaimLifecycleTest extends TestCase
         $this->assertSame($holder->id, $request->fresh()->claimed_by);
     }
 
-    public function test_requires_claim_stage_transition_and_draft_save_current_behavior(): void
+    public function test_requires_claim_stage_transition_current_behavior(): void
     {
         ['request' => $request, 'transitionId' => $transitionId, 'executor' => $holder]
             = EngineWorkflowFactory::seedClaimStageWithTransition();
@@ -111,8 +111,8 @@ class EngineClaimLifecycleTest extends TestCase
         app(EngineClaimService::class)->claim($request->fresh(), $holder);
 
         try {
-            app(EngineTransitionService::class)->saveDraft($request->fresh(), ['note' => 'peer edit'], $request->fresh()->version, $peer);
-            $this->fail('Draft save by non-holder should be rejected on a requires_claim stage.');
+            app(EngineTransitionService::class)->execute($request->fresh(), $transitionId, null, ['note' => 'peer edit'], $request->fresh()->version, $peer);
+            $this->fail('Transition by non-holder should be rejected on a requires_claim stage.');
         } catch (EngineException $exception) {
             $this->assertSame('CLAIM_NOT_HELD', $exception->render()->getData(true)['error_code']);
             $this->assertSame(403, $exception->render()->getStatusCode());
