@@ -229,9 +229,22 @@ async function runAction(transitionId: number, requiresComment: boolean) {
   if (requiresComment && !comment.value.trim()) {
     return
   }
-  // The view page shows the request data read-only; acting on a stage submits
-  // the existing data unchanged with an optional comment. Field edits happen
-  // during creation (see /workflows/new-request/[versionId]), not here.
+  // In edit mode, every mounted DynamicForm must independently validate before
+  // any transition executes. Each form only owns the fields in its own group,
+  // so its returned `values` may hold stale/default data for fields that
+  // belong to a DIFFERENT group's form — never merge `values` across forms
+  // into formData here. formData is already the single source of truth (kept
+  // current by each DynamicForm's v-model + the document handlers in Task 3);
+  // validate() is called purely to surface field-level errors and block
+  // submission, its returned `values` are discarded.
+  if (isEditMode.value) {
+    for (const form of dynamicFormRefs.value) {
+      if (!form) continue
+      const { valid } = await form.validate()
+      if (!valid) return
+    }
+  }
+
   actionBusy.value = true
   try {
     await executeAction(
