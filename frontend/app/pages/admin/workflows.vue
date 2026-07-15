@@ -265,7 +265,7 @@ const designerTabs = [
   { value: 'routing', label: 'سير العملية', icon: Users },
   { value: 'transitions', label: 'الانتقالات', icon: GitBranch },
   { value: 'fields', label: 'الحقول', icon: TextCursorInput },
-  { value: 'actions', label: 'الإجراءات', icon: Tag },
+  { value: 'actions', label: 'كتالوج الإجراءات', icon: Tag },
 ] as const
 
 // ── Create-definition dialog ────────────────────────────────────────────
