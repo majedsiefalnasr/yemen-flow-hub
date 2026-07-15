@@ -666,6 +666,7 @@ describe('workflows/instances/[id].vue', () => {
 
       expect(wrapper.find('[data-stub="data-tabs"]').exists()).toBe(true)
       expect(wrapper.find('[data-stub="dynamic-form"]').exists()).toBe(false)
+      expect(wrapper.find('[data-stub="field-documents-group"]').exists()).toBe(false)
     })
 
     it('an executor without a required held claim sees the read-only view', async () => {
@@ -696,7 +697,20 @@ describe('workflows/instances/[id].vue', () => {
 
     it('renders editable forms and FILE groups when the executor can act', async () => {
       mockFieldGroups.value = editableFieldGroupFixture()
-      mockShow.mockResolvedValue(makeInstance({ can_execute: true }))
+      mockShow.mockResolvedValue(
+        makeInstance({
+          can_execute: true,
+          current_stage: {
+            id: 1,
+            code: 'CORRECTION_REVIEW',
+            name: 'مراجعة التصحيح',
+            is_initial: false,
+            is_final: false,
+            sla_duration_minutes: null,
+            requires_claim: false,
+          },
+        }),
+      )
 
       const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
       await flushPromises()
@@ -846,16 +860,6 @@ describe('workflows/instances/[id].vue', () => {
       expect(mockRemoveDocument).toHaveBeenCalledWith(5, 500)
       const payload = mockExecuteAction.mock.calls[0]![3] as Record<string, unknown>
       expect(payload).toMatchObject({ invoice_doc: [501] })
-    })
-
-    it('does not render file management for a VIEW-only user', async () => {
-      mockFieldGroups.value = editableFieldGroupFixture()
-      mockShow.mockResolvedValue(makeInstance({ can_execute: false }))
-
-      const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
-      await flushPromises()
-
-      expect(wrapper.find('[data-stub="field-documents-group"]').exists()).toBe(false)
     })
 
     it('resets locally edited formData after a stale-action reload returns a new version', async () => {

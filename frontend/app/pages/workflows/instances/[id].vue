@@ -211,7 +211,9 @@ async function onDocumentRemove(documentId: number) {
   try {
     await store.removeDocument(requestId.value, documentId)
     if (removedDoc?.field_id !== null && removedDoc?.field_id !== undefined) {
-      const field = fieldGroups.value.flatMap((g) => g.fields).find((f) => f.id === removedDoc.field_id)
+      const field = fieldGroups.value
+        .flatMap((g) => g.fields)
+        .find((f) => f.id === removedDoc.field_id)
       if (field) {
         const current = (formData.value[field.key] as number[] | undefined) ?? []
         formData.value = {
