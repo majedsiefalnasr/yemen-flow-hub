@@ -52,4 +52,53 @@ describe('workflows/new-request/[versionId].vue — real useEngineFormSchema fai
 
     expect(wrapper.find('[data-stub="wizard"]').exists()).toBe(true)
   })
+
+  it('renders the wizard when a FILE field has multiple: false', async () => {
+    mockApiGet.mockResolvedValue({
+      data: {
+        field_groups: [
+          {
+            id: 1,
+            name: 'g',
+            label: 'مجموعة',
+            sort_order: 0,
+            fields: [{ id: 1, key: 'doc', type: 'FILE', multiple: false }],
+          },
+        ],
+      },
+    })
+
+    const wrapper = mount(WorkflowsNewVersionPage, { global: { stubs } })
+    await flushPromises()
+
+    expect(wrapper.find('[data-stub="wizard"]').exists()).toBe(true)
+  })
+
+  it('renders the coded error state instead of the wizard when a FILE field declares multiple: true', async () => {
+    // useTemporaryUploadLifecycle/DynamicForm track one upload entry per
+    // field key: a second file against a multiple:true field would silently
+    // overwrite the first entry's tracking and orphan its server-side
+    // reservation. Until multi-file tracking is implemented, the wizard must
+    // refuse to render for a schema that declares it rather than risk that
+    // data loss.
+    mockApiGet.mockResolvedValue({
+      data: {
+        field_groups: [
+          {
+            id: 1,
+            name: 'g',
+            label: 'مجموعة',
+            sort_order: 0,
+            fields: [{ id: 1, key: 'docs', type: 'FILE', multiple: true }],
+          },
+        ],
+      },
+    })
+
+    const wrapper = mount(WorkflowsNewVersionPage, { global: { stubs } })
+    await flushPromises()
+
+    expect(wrapper.find('[data-stub="wizard"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('500')
+  })
 })

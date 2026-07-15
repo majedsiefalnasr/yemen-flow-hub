@@ -20,14 +20,22 @@ const ARABIC_MESSAGE: Record<Extract<UploadLifecycleState, 'infected' | 'failed'
 export function useTemporaryUploadLifecycle() {
   const { upload, status } = useTemporaryUploads()
   const entries = reactive(new Map<string, UploadLifecycleEntry>())
-  const pollTimers = new Map<string, ReturnType<typeof setInterval>>()
+  const pollTimers = new Map<string, ReturnType<typeof setTimeout>>()
+  // Bumped every time a field starts a new poll loop (fresh upload) or stops
+  // one (removeEntry/unmount). A poll's in-flight status() request captures
+  // the generation it was issued under; if that number no longer matches
+  // when the request resolves, the loop that issued it has since been
+  // superseded or torn down, so the result is discarded instead of applied
+  // out of order or racing a newer loop's own next tick.
+  const pollGenerations = new Map<string, number>()
 
   function stopPolling(fieldKey: string): void {
     const timer = pollTimers.get(fieldKey)
     if (timer !== undefined) {
-      clearInterval(timer)
+      clearTimeout(timer)
       pollTimers.delete(fieldKey)
     }
+    pollGenerations.set(fieldKey, (pollGenerations.get(fieldKey) ?? 0) + 1)
   }
 
   function stopAllPolling(): void {
@@ -46,11 +54,24 @@ export function useTemporaryUploadLifecycle() {
     })
   }
 
+  /**
+   * Single-flight: each tick waits for its own status() request to settle
+   * before scheduling the next one, so a slow response can never overlap a
+   * later poll or have a later poll's result overwritten by its own
+   * late-arriving reply. The generation check below additionally guards
+   * against a request that was already in flight when stopPolling() ran
+   * (removeEntry, unmount, or a fresh upload restarting the loop) from
+   * applying its result after the fact.
+   */
   function pollScanStatus(fieldKey: string, token: string): void {
     stopPolling(fieldKey)
-    const timer = setInterval(async () => {
+    const generation = pollGenerations.get(fieldKey) ?? 0
+
+    async function tick(): Promise<void> {
       try {
         const result = await status(token)
+        if (pollGenerations.get(fieldKey) !== generation) return
+
         if (result.scan_status === 'clean') {
           stopPolling(fieldKey)
           setEntry(fieldKey, { state: 'clean', errorMessage: null })
@@ -65,16 +86,19 @@ export function useTemporaryUploadLifecycle() {
           return
         }
         // Still 'pending' (or null while the scan job hasn't started yet):
-        // keep polling.
+        // schedule the next check only now that this one has finished.
+        pollTimers.set(fieldKey, setTimeout(tick, SCAN_POLL_INTERVAL_MS))
       } catch {
+        if (pollGenerations.get(fieldKey) !== generation) return
         stopPolling(fieldKey)
         setEntry(fieldKey, {
           state: 'upload_error',
           errorMessage: 'تعذّر التحقق من حالة فحص الملف. حاول مرة أخرى.',
         })
       }
-    }, SCAN_POLL_INTERVAL_MS)
-    pollTimers.set(fieldKey, timer)
+    }
+
+    pollTimers.set(fieldKey, setTimeout(tick, SCAN_POLL_INTERVAL_MS))
   }
 
   /**

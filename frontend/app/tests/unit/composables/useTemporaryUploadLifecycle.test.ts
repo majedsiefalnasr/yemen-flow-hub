@@ -85,6 +85,99 @@ describe('useTemporaryUploadLifecycle', () => {
     expect(lifecycle.hasBlockingUpload()).toBe(true)
   })
 
+  it('does not start a second status() call while one is still in flight (single-flight polling)', async () => {
+    vi.useFakeTimers()
+    mockUpload.mockResolvedValue({ token: 'tok-slow', expires_at: '2026-01-01T00:00:00Z' })
+
+    // Each status() call hangs until its own resolver is invoked, so any
+    // overlap would show up as a second in-flight call before the first
+    // settles — which the old setInterval loop could produce if a check
+    // took longer than SCAN_POLL_INTERVAL_MS (2s).
+    const resolvers: Array<(value: unknown) => void> = []
+    mockStatus.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvers.push(resolve)
+        }),
+    )
+
+    let lifecycle!: ReturnType<typeof useTemporaryUploadLifecycle>
+    const Host = defineComponent({
+      setup() {
+        lifecycle = useTemporaryUploadLifecycle()
+        return () => null
+      },
+    })
+    mount(Host)
+
+    await lifecycle.uploadAndTrack('field_a', new File(['x'], 'a.pdf'), 10, 1, 'session')
+    await vi.advanceTimersByTimeAsync(2000)
+    expect(mockStatus).toHaveBeenCalledTimes(1)
+
+    // Let far more time pass than the poll interval while the first request
+    // is still unresolved: a second call must never start until the first
+    // one settles.
+    await vi.advanceTimersByTimeAsync(20000)
+    expect(mockStatus).toHaveBeenCalledTimes(1)
+
+    // Resolve the first (stale) call as 'pending' — the loop schedules its
+    // next tick only now.
+    resolvers[0]?.({
+      token: 'tok-slow',
+      scan_status: 'pending',
+      original_name: 'a.pdf',
+      size: 10,
+      expires_at: '2026-01-01T00:00:00Z',
+    })
+    await vi.advanceTimersByTimeAsync(0)
+    await vi.advanceTimersByTimeAsync(2000)
+    expect(mockStatus).toHaveBeenCalledTimes(2)
+  })
+
+  it('discards a stale in-flight result once the field has been removed, never resurrecting the entry', async () => {
+    vi.useFakeTimers()
+    mockUpload.mockResolvedValue({ token: 'tok-y', expires_at: '2026-01-01T00:00:00Z' })
+
+    let resolveStatus!: (value: unknown) => void
+    mockStatus.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveStatus = resolve
+        }),
+    )
+
+    let lifecycle!: ReturnType<typeof useTemporaryUploadLifecycle>
+    const Host = defineComponent({
+      setup() {
+        lifecycle = useTemporaryUploadLifecycle()
+        return () => null
+      },
+    })
+    mount(Host)
+
+    await lifecycle.uploadAndTrack('field_a', new File(['x'], 'y.pdf'), 10, 1, 'session')
+    await vi.advanceTimersByTimeAsync(2000)
+    expect(mockStatus).toHaveBeenCalledTimes(1)
+
+    // The user removes the file while the status() check is still in
+    // flight — the in-flight request has already captured this loop's
+    // generation number and cannot be cancelled, but its result must still
+    // never resurrect the entry once it eventually resolves.
+    lifecycle.removeEntry('field_a')
+    expect(lifecycle.entryFor('field_a')).toBeUndefined()
+
+    resolveStatus({
+      token: 'tok-y',
+      scan_status: 'clean',
+      original_name: 'y.pdf',
+      size: 10,
+      expires_at: '2026-01-01T00:00:00Z',
+    })
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(lifecycle.entryFor('field_a')).toBeUndefined()
+  })
+
   it('removeEntry stops polling and drops the entry, clearing hasBlockingUpload', async () => {
     vi.useFakeTimers()
     mockUpload.mockResolvedValue({ token: 'tok-x', expires_at: '2026-01-01T00:00:00Z' })

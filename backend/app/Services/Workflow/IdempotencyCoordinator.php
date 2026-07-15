@@ -8,6 +8,7 @@ use App\Exceptions\EngineException;
 use App\Models\IdempotencyKey;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -111,16 +112,59 @@ class IdempotencyCoordinator
         });
     }
 
-    /** @param  list<int>  $reservedUploadIds  ids this attempt currently owns, for the renewal's row-count check */
+    /**
+     * `locked_until` is a second-precision column (see migration), while
+     * the value written here is computed from now() at microsecond
+     * precision and truncated to whole seconds by Eloquent's date
+     * formatting before it reaches the query. A renewal issued within the
+     * same wall-clock second as the row's current locked_until can
+     * therefore compute and write the identical value the row already
+     * has. MySQL's PDO driver reports UPDATE's affected-row count as rows
+     * *changed*, not rows *matched* (no PDO::MYSQL_ATTR_FOUND_ROWS override
+     * is set) — so that same-value write legitimately returns 0 affected
+     * rows even though the WHERE predicate matched this exact row. Treating
+     * that as "not owned" is a false negative. When the UPDATE reports 0,
+     * fall back to a direct ownership check on the same predicates (plus
+     * confirming locked_until now reflects — at second precision — the
+     * value we just tried to set) before concluding the lease was lost.
+     */
     public function renewLease(int $idempotencyKeyId, string $claimToken, int $leaseSeconds): bool
     {
+        $newLockedUntil = now()->addSeconds($leaseSeconds);
+
         $affected = IdempotencyKey::query()
             ->whereKey($idempotencyKeyId)
             ->where('claim_token', $claimToken)
             ->where('state', IdempotencyKeyState::Processing->value)
-            ->update(['locked_until' => now()->addSeconds($leaseSeconds)]);
+            ->update(['locked_until' => $newLockedUntil]);
 
-        return $affected === 1;
+        if ($affected === 1) {
+            return true;
+        }
+
+        // 0 affected rows: either genuinely not ours (reclaimed/expired/
+        // wrong token) or a same-second no-op write. Disambiguate by
+        // re-checking ownership directly — this still requires claim_token
+        // and state to match, so a truly superseded attempt still fails.
+        return $this->verifyOwnershipAfterRenewal($idempotencyKeyId, $claimToken, $newLockedUntil);
+    }
+
+    /**
+     * Extracted so the same-second no-op-write fallback can be exercised
+     * directly in tests regardless of a given database driver's UPDATE
+     * affected-row semantics (see renewLease()'s docblock — the false
+     * negative this guards against is specific to MySQL's PDO driver and
+     * does not reproduce on SQLite, which reports rows matched rather than
+     * rows changed).
+     */
+    private function verifyOwnershipAfterRenewal(int $idempotencyKeyId, string $claimToken, Carbon $expectedLockedUntil): bool
+    {
+        return IdempotencyKey::query()
+            ->whereKey($idempotencyKeyId)
+            ->where('claim_token', $claimToken)
+            ->where('state', IdempotencyKeyState::Processing->value)
+            ->where('locked_until', '>=', $expectedLockedUntil->copy()->subSecond())
+            ->exists();
     }
 
     public function verifyStillOwned(int $idempotencyKeyId, string $claimToken): bool

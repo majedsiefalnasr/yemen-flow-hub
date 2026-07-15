@@ -4,6 +4,7 @@ namespace App\Services\Workflow;
 
 use App\Exceptions\EngineException;
 use App\Models\TemporaryUpload;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -65,6 +66,15 @@ class TemporaryUploadReservationService
      * throw) if fewer than the full expected set was actually renewed —
      * the caller decides what "renewal failed" means for its own flow.
      *
+     * reservation_expires_at is a second-precision column, and MySQL's PDO
+     * driver reports UPDATE's affected-row count as rows *changed*, not
+     * rows *matched* (see IdempotencyCoordinator::renewLease() for the
+     * full explanation and empirical confirmation). A renewal issued
+     * within the same wall-clock second as the row's current value can
+     * write an identical (second-truncated) value and be undercounted as
+     * a false negative. When the row count comes up short, re-verify
+     * ownership of the shortfall directly before concluding it was lost.
+     *
      * @param  list<int>  $tokenIds
      */
     public function renew(array $tokenIds, int $idempotencyKeyId, string $claimToken, int $leaseSeconds): bool
@@ -73,13 +83,41 @@ class TemporaryUploadReservationService
             return true;
         }
 
+        $newExpiresAt = now()->addSeconds($leaseSeconds);
+
         $affected = TemporaryUpload::query()
             ->whereIn('id', $tokenIds)
             ->where('reserved_by_idempotency_key_id', $idempotencyKeyId)
             ->where('reservation_claim_token', $claimToken)
-            ->update(['reservation_expires_at' => now()->addSeconds($leaseSeconds)]);
+            ->update(['reservation_expires_at' => $newExpiresAt]);
 
-        return $affected === count($tokenIds);
+        if ($affected === count($tokenIds)) {
+            return true;
+        }
+
+        return $this->verifyOwnershipAfterRenewal($tokenIds, $idempotencyKeyId, $claimToken, $newExpiresAt);
+    }
+
+    /**
+     * Extracted so the same-second no-op-write fallback can be exercised
+     * directly in tests regardless of a given database driver's UPDATE
+     * affected-row semantics (see renew()'s docblock — the false negative
+     * this guards against is specific to MySQL's PDO driver and does not
+     * reproduce on SQLite, which reports rows matched rather than rows
+     * changed).
+     *
+     * @param  list<int>  $tokenIds
+     */
+    private function verifyOwnershipAfterRenewal(array $tokenIds, int $idempotencyKeyId, string $claimToken, Carbon $expectedExpiresAt): bool
+    {
+        $ownedCount = TemporaryUpload::query()
+            ->whereIn('id', $tokenIds)
+            ->where('reserved_by_idempotency_key_id', $idempotencyKeyId)
+            ->where('reservation_claim_token', $claimToken)
+            ->where('reservation_expires_at', '>=', $expectedExpiresAt->copy()->subSecond())
+            ->count();
+
+        return $ownedCount === count($tokenIds);
     }
 
     /**
