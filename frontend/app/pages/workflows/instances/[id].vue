@@ -86,8 +86,8 @@ async function load() {
   loadErrorCode.value = null
   try {
     await store.loadInstance(requestId.value)
-    await fetchSchema(requestId.value)
     resetFormState()
+    await fetchSchema(requestId.value)
     claimedBy.value = store.current?.claimed_by ?? null
   } catch (cause: unknown) {
     loadErrorCode.value = extractHttpStatus(cause) ?? 500

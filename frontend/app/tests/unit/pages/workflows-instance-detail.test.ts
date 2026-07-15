@@ -2,6 +2,8 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
+import { nextTick } from 'vue'
+import type { ResolvedFieldGroup } from '@/types/models'
 import WorkflowInstanceDetailPage from '@/pages/workflows/instances/[id].vue'
 import { useEngineRequestsStore } from '@/stores/engineRequests.store'
 
@@ -155,13 +157,14 @@ const mockFieldGroups = ref<
     }>
   }>
 >([])
+const mockFetchSchema = vi.fn().mockResolvedValue(undefined)
 
 vi.mock('@/composables/useEngineFormSchema', () => ({
   useEngineFormSchema: () => ({
     fieldGroups: mockFieldGroups,
     loading: { value: false },
     error: { value: null },
-    fetchSchema: vi.fn(),
+    fetchSchema: mockFetchSchema,
     fetchInitialSchema: vi.fn(),
   }),
 }))
@@ -254,6 +257,7 @@ describe('workflows/instances/[id].vue', () => {
     mockFetchDocuments.mockReset().mockResolvedValue(undefined)
     mockDocumentsRef.value = []
     mockFieldGroups.value = []
+    mockFetchSchema.mockReset().mockResolvedValue(undefined)
     mockToastError.mockClear()
     mockToastSuccess.mockClear()
     routerPush.mockClear()
@@ -656,6 +660,57 @@ describe('workflows/instances/[id].vue', () => {
       await trigger!.trigger('mousedown', { button: 0, ctrlKey: false })
       await flushPromises()
     }
+
+    it('prefills the real editable form when schema publication yields a render tick', async () => {
+      const populatedTextGroups: ResolvedFieldGroup[] = [
+        {
+          id: 10,
+          name: 'basic_info',
+          label: 'المعلومات الأساسية',
+          sort_order: 1,
+          fields: [
+            {
+              id: 1,
+              key: 'taxNumber',
+              semantic_tag: null,
+              label: 'الرقم الضريبي',
+              type: 'TEXT',
+              placeholder: null,
+              help_text: null,
+              default_value: null,
+              min_value: null,
+              max_value: null,
+              min_length: null,
+              max_length: null,
+              regex_pattern: null,
+              options: null,
+              dynamic_source: null,
+              allowed_file_types: null,
+              max_file_size: null,
+              multiple: false,
+              is_visible: true,
+              is_editable: true,
+              is_required: true,
+              dynamic_options: null,
+            },
+          ],
+        },
+      ]
+      mockShow.mockResolvedValue(
+        makeInstance({ can_execute: true, data: { taxNumber: '4107777' } }),
+      )
+      mockFetchSchema.mockImplementation(async () => {
+        mockFieldGroups.value = populatedTextGroups
+        await nextTick()
+      })
+
+      const wrapper = mount(WorkflowInstanceDetailPage, {
+        global: { stubs: { ...stubs, DynamicForm: false } },
+      })
+      await flushPromises()
+
+      expect((wrapper.find('input#taxNumber').element as HTMLInputElement).value).toBe('4107777')
+    })
 
     it('a VIEW-only user always sees the read-only data tabs despite editable field rules', async () => {
       mockFieldGroups.value = editableFieldGroupFixture()
