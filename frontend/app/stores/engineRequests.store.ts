@@ -239,10 +239,11 @@ export const useEngineRequestsStore = defineStore('engineRequests', {
 
     async uploadDocument(id: number, file: File, fieldId: number | null) {
       const { upload } = useEngineRequestDocuments()
-      await upload(id, file, fieldId)
+      const created = await upload(id, file, fieldId)
       const { documents, fetchDocuments } = useEngineRequestDocuments()
       await fetchDocuments(id)
       this.documents = documents.value
+      return created
     },
 
     async removeDocument(id: number, documentId: number) {

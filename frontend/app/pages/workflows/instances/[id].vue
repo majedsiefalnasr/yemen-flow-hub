@@ -188,10 +188,14 @@ function onClaimLost(code: string) {
 // store.documents.
 async function onDocumentUpload(fieldId: number, file: File) {
   try {
-    await store.uploadDocument(requestId.value, file, fieldId)
+    // Use the created document returned directly by the store action, not a
+    // post-refetch lookup by field_id — a field can hold multiple documents
+    // (EngineFieldDocumentsGroup filters by field_id into a plural list), so
+    // finding "the" document for a field_id after a second/later upload would
+    // pick an arbitrary existing match instead of the one just created.
+    const uploaded = await store.uploadDocument(requestId.value, file, fieldId)
     const field = fieldGroups.value.flatMap((g) => g.fields).find((f) => f.id === fieldId)
-    const uploaded = store.documents.find((d) => d.field_id === fieldId)
-    if (field && uploaded) {
+    if (field) {
       const current = (formData.value[field.key] as number[] | undefined) ?? []
       if (!current.includes(uploaded.id)) {
         formData.value = { ...formData.value, [field.key]: [...current, uploaded.id] }
