@@ -413,7 +413,7 @@ async function runAction(transitionId: number, requiresComment: boolean) {
       <!-- View / act mode: two-column detail. -->
       <div class="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div class="flex min-w-0 flex-col gap-4">
-          <Tabs default-value="data" dir="rtl">
+          <Tabs default-value="data" :unmount-on-hide="false" dir="rtl">
             <TabsList>
               <TabsTrigger value="data">بيانات الطلب</TabsTrigger>
               <TabsTrigger value="history">السجل</TabsTrigger>

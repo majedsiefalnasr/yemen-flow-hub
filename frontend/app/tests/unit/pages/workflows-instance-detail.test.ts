@@ -1010,6 +1010,22 @@ describe('workflows/instances/[id].vue', () => {
       expect(mockExecuteAction).not.toHaveBeenCalled()
     })
 
+    it('keeps form validation active after switching the detail view to history', async () => {
+      mockFieldGroups.value = editableFieldGroupFixture()
+      mockFormValidate.mockResolvedValue({ valid: false, values: {} })
+      mockShow.mockResolvedValue(makeInstance({ can_execute: true }))
+
+      const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
+      await flushPromises()
+      await selectTab(wrapper, 'السجل')
+
+      await findActionButton(wrapper)!.trigger('click')
+      await flushPromises()
+
+      expect(mockFormValidate).toHaveBeenCalledTimes(1)
+      expect(mockExecuteAction).not.toHaveBeenCalled()
+    })
+
     it('removes a stale form ref when its schema group disappears', async () => {
       const groups = [
         ...editableFieldGroupFixture(),
