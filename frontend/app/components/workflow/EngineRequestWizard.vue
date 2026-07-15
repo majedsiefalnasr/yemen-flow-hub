@@ -79,6 +79,20 @@ function delay(seconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, seconds * 1000))
 }
 
+// Set by the submit callback below, read by onSubmit() after wizard.finish()
+// has returned — never emitted from inside the callback itself. Emitting
+// there would fire 'submitted' (and therefore the parent page's
+// router.replace navigation) before useEngineWizard's finish() gets to set
+// submissionCompleted = true, since finish() only does that once its await
+// of this exact callback resolves. onBeforeRouteLeave reads
+// submissionCompleted synchronously, so that ordering let a real, already-
+// successful submission's navigation get intercepted by the "leave without
+// saving" dialog — confirmed live: the first click's 201 was genuine, but
+// the dialog still appeared instead of navigating, and only a second click
+// (replayed via the same idempotency key, no duplicate request created)
+// actually completed the navigation.
+const completedRequestId = ref<number | null>(null)
+
 const wizard = useEngineWizard(groupsRef, {
   extraSteps: 1,
   submit: async (data) => {
@@ -97,7 +111,7 @@ const wizard = useEngineWizard(groupsRef, {
     for (;;) {
       const result = await store.submitInstance(idempotencyKey, payload)
       if (result.kind === 'completed') {
-        emit('submitted', result.data.id)
+        completedRequestId.value = result.data.id
         return
       }
       // 202: another attempt with the same Idempotency-Key is still
@@ -210,6 +224,12 @@ async function onSubmit() {
   submitError.value = null
   try {
     await wizard.finish(formData.value)
+    // wizard.submissionCompleted is now true — safe to emit. Emitting
+    // any earlier (e.g. from inside the submit callback itself, before
+    // finish() has actually returned) can fire the parent page's
+    // router.replace navigation while submissionCompleted is still false,
+    // letting the leave-confirmation dialog intercept it.
+    if (completedRequestId.value !== null) emit('submitted', completedRequestId.value)
   } catch (err) {
     const code = extractApiErrorCode(err)
     if (code === 'IDEMPOTENCY_KEY_REUSED') {

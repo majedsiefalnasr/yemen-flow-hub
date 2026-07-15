@@ -807,6 +807,55 @@ class EngineRequestDeferredSubmissionTest extends TestCase
         $retry->assertCreated();
     }
 
+    /**
+     * Phase C item 1: the deterministic-rejection-deletes-the-claim mechanism
+     * (proven generically above via a 403) covers the specific case that
+     * actually matters for the wizard's retry UX — a genuine field-validation
+     * 422 (STAGE_FIELDS_INVALID) — and, critically, still accepts a CHANGED
+     * payload on retry under the SAME Idempotency-Key. This is what lets the
+     * frontend's single-key-per-mount design (EngineRequestWizard.vue) work
+     * correctly after a validation error without regenerating the key: the
+     * backend has already deleted the stale claim by the time the user edits
+     * the form and resubmits.
+     */
+    public function test_422_field_validation_rejection_deletes_the_claim_so_a_changed_payload_retry_succeeds(): void
+    {
+        $amountField = FieldDefinition::query()
+            ->where('workflow_version_id', $this->version->id)
+            ->where('key', 'amount')
+            ->firstOrFail();
+        StageFieldRule::create([
+            'stage_id' => $this->initialStage->id,
+            'field_id' => $amountField->id,
+            'is_visible' => true,
+            'is_editable' => true,
+            'is_required' => true,
+            'version' => 1,
+        ]);
+
+        $key = $this->uploadKey();
+
+        // First attempt omits the now-required 'amount' field entirely.
+        $first = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', $this->submitPayload([
+            'data' => [],
+        ]), ['Idempotency-Key' => $key]);
+        $first->assertStatus(422)->assertJsonPath('error_code', 'STAGE_FIELDS_INVALID');
+
+        $this->assertSame(0, IdempotencyKey::query()->count(), 'the claim must be deleted after a deterministic 422, not left PROCESSING or COMPLETED');
+        $this->assertSame(0, EngineRequest::query()->count());
+
+        // Retry under the SAME Idempotency-Key with a DIFFERENT (now valid)
+        // payload — this is exactly what EngineRequestWizard.vue produces:
+        // the user edits the form after the error and resubmits without the
+        // component remounting, so idempotencyKey never changes.
+        $retry = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', $this->submitPayload([
+            'data' => ['amount' => 1000],
+        ]), ['Idempotency-Key' => $key]);
+
+        $retry->assertCreated();
+        $this->assertSame(1, EngineRequest::query()->count());
+    }
+
     // ── Reclaimed abandoned lease (10.25 equivalent) ────────────────────────
 
     public function test_reclaimed_expired_processing_row_completes_normally(): void

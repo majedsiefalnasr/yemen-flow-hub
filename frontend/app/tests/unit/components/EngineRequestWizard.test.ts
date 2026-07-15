@@ -310,6 +310,51 @@ describe('EngineRequestWizard', () => {
         false,
       )
     })
+
+    it('submissionCompleted is already true by the time the submitted event listener runs', async () => {
+      // Regression test for a real race: the wizard's submit callback used
+      // to emit 'submitted' from inside itself, before useEngineWizard's
+      // finish() (which awaits that exact callback) got a chance to set
+      // submissionCompleted = true on the line after the await. The parent
+      // page's onBeforeRouteLeave reads submissionCompleted synchronously to
+      // decide whether to show the "leave without saving" dialog, so a
+      // consumer reacting to 'submitted' by navigating (as the real page
+      // does via router.replace) could have that navigation intercepted by
+      // the dialog even though the submission had already genuinely
+      // succeeded. A component-level check of vm.submissionCompleted after
+      // settling (as the test above does) can't catch this — it only proves
+      // the flag becomes true *eventually*, not that it's true *before* any
+      // 'submitted' listener runs. This asserts the ordering directly by
+      // reading the flag from inside the event handler itself.
+      mockPostWithMeta.mockResolvedValue({
+        data: { success: true, data: { id: 123 }, warnings: [] },
+        status: 201,
+        headers: headers(),
+      })
+
+      let submissionCompletedWhenEventFired: boolean | undefined
+      const wrapper = mount(EngineRequestWizard, {
+        props: {
+          workflowVersionId: 10,
+          merchantId: null,
+          fieldGroups: fieldGroups(),
+          onSubmitted: () => {
+            submissionCompletedWhenEventFired = (
+              wrapper.vm as unknown as { submissionCompleted: boolean }
+            ).submissionCompleted
+          },
+        },
+      })
+      await settle()
+      await advanceToReview(wrapper)
+
+      const submitButton = wrapper.findAll('button').find((b) => b.text() === 'إرسال الطلب')
+      await submitButton!.trigger('click')
+      await settle()
+
+      expect(wrapper.emitted('submitted')).toEqual([[123]])
+      expect(submissionCompletedWhenEventFired).toBe(true)
+    })
   })
 
   describe('temporary upload lifecycle', () => {
