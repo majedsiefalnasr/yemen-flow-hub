@@ -156,11 +156,14 @@ describe('EngineFieldDocumentsGroup', () => {
     })
 
     // The orphan panel is present and rendered with canManage=false (read-only),
-    // separate from the field-scoped panel.
+    // separate from the field-scoped panel. Compare by id, not object identity —
+    // Vue Test Utils' global stub does not preserve prop object references for
+    // stubbed children, so `.includes(orphan)` never matches even when the
+    // content is identical.
     const panels = wrapper.findAllComponents({ name: 'EngineDocumentsPanel' })
     expect(panels).toHaveLength(2)
     const orphanPanel = panels.find((p) =>
-      (p.props('documents') as EngineRequestDocument[]).includes(orphan),
+      (p.props('documents') as EngineRequestDocument[]).some((d) => d.id === orphan.id),
     )
     expect(orphanPanel).toBeTruthy()
     expect(orphanPanel!.props('canManage')).toBe(false)
