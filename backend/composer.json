@@ -51,8 +51,8 @@
     "post-create-project-cmd": [
       "@php artisan key:generate --ansi"
     ],
-    "test": "php artisan test --exclude-group=mysql-integration",
-    "test:mysql-integration": "php artisan test --testsuite=Integration --group=mysql-integration"
+    "test": "php artisan test",
+    "test:mysql-integration": "vendor/bin/phpunit -c phpunit.integration.xml"
   },
   "extra": {
     "laravel": {

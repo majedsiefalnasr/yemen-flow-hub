@@ -30,17 +30,25 @@ use Tests\TestCase;
  *
  * ISOLATION — read before touching this file:
  *
- * - This suite never runs by default. It carries #[Group('mysql-integration')]
- *   and lives under the separately named "Integration" PHPUnit testsuite
- *   (see phpunit.xml). `composer test` / `php artisan test` with no flags
- *   excludes this group entirely (composer.json's "test" script passes
- *   --exclude-group=mysql-integration). To run it deliberately:
+ * - This suite never runs as part of a bare `php artisan test` / `phpunit`
+ *   invocation: it lives under tests/Integration, which phpunit.xml (the
+ *   default config both artisan test and composer's "test" script use) does
+ *   not declare as a testsuite at all — PHPUnit only discovers tests inside
+ *   testsuites its active config actually lists. Isolation therefore comes
+ *   from a dedicated phpunit.integration.xml, not from a group exclusion on
+ *   the default config (an --exclude-group flag on phpunit.xml would still
+ *   require phpunit.xml to list this directory in the first place). Run it
+ *   deliberately:
  *
  *       composer test:mysql-integration
  *
  *   which resolves to:
  *
- *       php artisan test --testsuite=Integration --group=mysql-integration
+ *       vendor/bin/phpunit -c phpunit.integration.xml
+ *
+ *   The #[Group('mysql-integration')] attribute below is a secondary,
+ *   independent filter — useful if this directory ever gains a test that
+ *   should run under the default config — not what provides isolation here.
  *
  * - Requires five LEASE_MYSQL_TEST_* environment variables (host, port,
  *   database, username, password) to be set explicitly — see
@@ -158,17 +166,18 @@ class LeaseRenewalMysqlRegressionTest extends TestCase
         $this->assertSafeDatabaseName($env['database']);
 
         try {
+            // dbname in the DSN itself (not a bare host:port connection
+            // followed by a same-value SELECT, which would prove nothing
+            // beyond server reachability): PDO's own connect step fails
+            // immediately if the named database doesn't exist or these
+            // credentials can't reach it, which is exactly what needs
+            // confirming before this suite tries to create tables inside it.
             $pdo = new PDO(
-                "mysql:host={$env['host']};port={$env['port']}",
+                "mysql:host={$env['host']};port={$env['port']};dbname={$env['database']}",
                 $env['username'],
                 $env['password'],
                 [PDO::ATTR_TIMEOUT => 3, PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION],
             );
-            // Confirms both connectivity and that the target database
-            // actually exists and is reachable under these credentials —
-            // this suite never creates or drops the database itself, only
-            // its own uniquely prefixed tables inside it.
-            $pdo->exec('SELECT 1 FROM DUAL WHERE '.$pdo->quote($env['database']).' = '.$pdo->quote($env['database']));
             $pdo = null;
         } catch (PDOException $exception) {
             throw new RuntimeException(

@@ -1,15 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Standalone config for tests/Integration, deliberately separate from
+    phpunit.xml so a bare `php artisan test` / `phpunit` invocation (which
+    runs every testsuite phpunit.xml declares, with no implicit exclusion)
+    can never discover or execute these tests. Run explicitly:
+
+        composer test:mysql-integration
+        (or directly: php artisan test with the configuration flag set to
+        phpunit.integration.xml)
+
+    See tests/Integration/README.md.
+-->
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
          bootstrap="vendor/autoload.php"
          colors="true"
 >
     <testsuites>
-        <testsuite name="Unit">
-            <directory>tests/Unit</directory>
-        </testsuite>
-        <testsuite name="Feature">
-            <directory>tests/Feature</directory>
+        <testsuite name="Integration">
+            <directory>tests/Integration</directory>
         </testsuite>
     </testsuites>
     <source>
@@ -21,24 +30,17 @@
         <ini name="memory_limit" value="512M"/>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_KEY" value="base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="/>
-        <!-- API-006: pinned so raw-SQL epoch expressions (slaDeadlineEpochSql/
-             nowEpochSql) are deterministic under SQLite, whose strftime('now')
-             is always UTC regardless of the developer's local .env
-             APP_TIMEZONE. Without this, SLA breach/nearing/ok classification
-             can be silently wrong by the local/UTC offset in tests only —
-             MySQL (production) uses UNIX_TIMESTAMP() under time_zone=SYSTEM,
-             which stays self-consistent with naive stored timestamps either way. -->
         <env name="APP_TIMEZONE" value="UTC"/>
+        <!-- The default (SQLite) connection this app boots under still needs
+             to exist for createApplication()/service resolution — the
+             integration test itself never touches it, it swaps to its own
+             mysql_lease_regression_gate connection in setUp(). -->
         <env name="DB_CONNECTION" value="sqlite"/>
         <env name="DB_DATABASE" value=":memory:"/>
         <env name="CACHE_STORE" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="MAIL_MAILER" value="array"/>
-        <!-- Pulse is telemetry: its query recorders + ingest writes add
-             non-deterministic queries per request, which breaks exact
-             query-count assertions (OBS-001). Off in tests; recording is
-             verified against real MySQL, not here. -->
         <env name="PULSE_ENABLED" value="false"/>
         <env name="APP_DEMO_ROLE_SWITCH" value="false"/>
         <env name="DEMO_SEED_DATA" value="true"/>
