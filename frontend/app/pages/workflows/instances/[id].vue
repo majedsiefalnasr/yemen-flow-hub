@@ -138,7 +138,6 @@ async function runAction(transitionId: number, requiresComment: boolean) {
       store.current!.version,
     )
     comment.value = ''
-    await load()
   } catch (err) {
     const code = extractApiErrorCode(err)
     if (code === 'CLAIM_NOT_HELD') {
@@ -161,9 +160,25 @@ async function runAction(transitionId: number, requiresComment: boolean) {
       // with no feedback at all.
       toast.error('تعذّر تنفيذ الإجراء. حاول مرة أخرى.')
     }
-  } finally {
     actionBusy.value = false
+    return
   }
+
+  // The transition already succeeded above; this reload only refreshes the
+  // page's graph/history/documents/schema. A stage transition routinely moves
+  // the request into a stage the acting user has no VIEW grant on (e.g. a bank
+  // reviewer approving into CBY's internal queue), so load() legitimately
+  // fails (via loadErrorCode, it never throws) here even though the action
+  // worked — that must never be reported as a failed action. Send the user
+  // back to their queue instead.
+  await load()
+  if (loadErrorCode.value === 403) {
+    toast.success('تم تنفيذ الإجراء بنجاح.')
+    returnToQueue()
+  } else if (loadErrorCode.value !== null) {
+    toast.error('تم تنفيذ الإجراء، لكن تعذّر تحديث الصفحة. أعد التحميل يدوياً.')
+  }
+  actionBusy.value = false
 }
 </script>
 

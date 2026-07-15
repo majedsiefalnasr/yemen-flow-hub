@@ -6,13 +6,14 @@ import WorkflowInstanceDetailPage from '@/pages/workflows/instances/[id].vue'
 import { useEngineRequestsStore } from '@/stores/engineRequests.store'
 
 const routerReplace = vi.fn().mockResolvedValue(undefined)
+const routerPush = vi.fn().mockResolvedValue(undefined)
 
 vi.stubGlobal('useRoute', () => ({
   params: { id: '5' },
   query: {},
   path: '/workflows/instances/5',
 }))
-vi.stubGlobal('useRouter', () => ({ replace: routerReplace }))
+vi.stubGlobal('useRouter', () => ({ replace: routerReplace, push: routerPush }))
 
 const mockShow = vi.fn().mockResolvedValue({
   id: 5,
@@ -105,8 +106,9 @@ const mockConflictError = ref(false)
 const mockFieldErrors = ref({})
 
 const mockToastError = vi.hoisted(() => vi.fn())
+const mockToastSuccess = vi.hoisted(() => vi.fn())
 vi.mock('vue-sonner', () => ({
-  toast: { error: mockToastError, success: vi.fn() },
+  toast: { error: mockToastError, success: mockToastSuccess },
 }))
 
 vi.mock('@/composables/useEngineRequestActions', () => ({
@@ -201,6 +203,8 @@ describe('workflows/instances/[id].vue', () => {
     mockApiPost.mockClear()
     mockExecuteAction.mockReset().mockResolvedValue({ id: 5, version: 2 })
     mockToastError.mockClear()
+    mockToastSuccess.mockClear()
+    routerPush.mockClear()
     mockShow.mockResolvedValue({
       id: 5,
       reference: 'ENG-2026-000005',
@@ -539,6 +543,27 @@ describe('workflows/instances/[id].vue', () => {
       await mountWithActionableStage()
 
       expect(mockToastError).toHaveBeenCalledWith('تعذّر تنفيذ الإجراء. حاول مرة أخرى.')
+    })
+
+    // Regression: a transition can legitimately move the request into a stage
+    // the acting user has no VIEW grant on (e.g. a bank reviewer approving into
+    // CBY's internal queue). executeAction succeeds; the reload-only load()
+    // call that follows then 403s. That must surface as success + a redirect
+    // to the queue, never as "the action failed."
+    it('shows success and returns to the queue when the post-action reload 403s', async () => {
+      // mountWithActionableStage's mount() already triggers one onMounted
+      // load() that must succeed normally; only the *second* show() call
+      // (triggered by runAction's post-transition reload) should 403.
+      mockShow.mockResolvedValueOnce(makeInstance()).mockRejectedValueOnce({
+        status: 403,
+        data: {},
+      })
+
+      await mountWithActionableStage()
+
+      expect(mockToastError).not.toHaveBeenCalled()
+      expect(mockToastSuccess).toHaveBeenCalledWith('تم تنفيذ الإجراء بنجاح.')
+      expect(routerPush).toHaveBeenCalledWith('/workflows')
     })
   })
 })
