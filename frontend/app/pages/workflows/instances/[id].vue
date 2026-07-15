@@ -1,7 +1,8 @@
 <!-- app/pages/workflows/instances/[id].vue -->
 <script setup lang="ts">
-import { computed, onMounted, ref, toRef } from 'vue'
+import { computed, onMounted, ref, toRaw, toRef } from 'vue'
 import { toast } from 'vue-sonner'
+import type { ResolvedFieldGroup } from '@/types/models'
 import { extractApiErrorCode, extractApiErrorMessage, extractHttpStatus } from '@/utils/apiErrors'
 import { useEngineRequestsStore } from '@/stores/engineRequests.store'
 import { useEngineFormSchema } from '@/composables/useEngineFormSchema'
@@ -16,6 +17,8 @@ import EngineQuickInfo from '@/components/workflow/EngineQuickInfo.vue'
 import EngineTimeline from '@/components/workflow/EngineTimeline.vue'
 import EngineActionsRail from '@/components/workflow/EngineActionsRail.vue'
 import EngineFxConfirmationPanel from '@/components/workflow/EngineFxConfirmationPanel.vue'
+import DynamicForm from '@/components/workflow/DynamicForm.vue'
+import EngineFieldDocumentsGroup from '@/components/workflow/EngineFieldDocumentsGroup.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { useEngineProgress } from '@/composables/useEngineProgress'
 import { Card, CardContent } from '@/components/ui/card'
@@ -45,6 +48,34 @@ const formData = ref<Record<string, unknown>>({})
 const comment = ref('')
 const actionBusy = ref(false)
 
+// One DynamicForm instance per non-file group in edit mode (see template in
+// Task 3). Vue's array ref binding (`:ref="(el) => ..."`) populates this in
+// render order, matching nonFileGroups' order — validated in Task 4 by
+// iterating both in lockstep rather than trusting array identity.
+const dynamicFormRefs = ref<InstanceType<typeof DynamicForm>[]>([])
+function setDynamicFormRef(el: unknown, index: number) {
+  if (el) dynamicFormRefs.value[index] = el as InstanceType<typeof DynamicForm>
+}
+
+// Tracks which (request version, stage id) formData currently reflects, so a
+// reload that lands on a different version or stage (another user's edit
+// landed first, or this page's own successful action moved the stage) resets
+// formData from the fresh store.current.data instead of silently keeping
+// stale edited values bound to fields that may no longer exist or be
+// editable. A structuredClone (not a shallow spread) because field values can
+// themselves be arrays (FILE fields hold number[] document ids). store.current
+// is Pinia reactive state, so it (and its nested `data`) is a Vue Proxy —
+// structuredClone throws DataCloneError on a Proxy, hence toRaw() first.
+const loadedFormKey = ref<string | null>(null)
+function resetFormState() {
+  if (!store.current) return
+  const key = `${store.current.version}:${store.current.current_stage?.id ?? 'none'}`
+  if (loadedFormKey.value === key) return
+  formData.value = structuredClone(toRaw(store.current.data ?? {}))
+  loadedFormKey.value = key
+  dynamicFormRefs.value = []
+}
+
 // UI-RBAC-002: a failed loadInstance (403 for an out-of-scope request, 404 for a
 // missing one, 429, or a server error) previously left store.current null with
 // no error branch, so the page rendered a blank shell. Capture the HTTP status
@@ -56,7 +87,7 @@ async function load() {
   try {
     await store.loadInstance(requestId.value)
     await fetchSchema(requestId.value)
-    formData.value = store.current?.data ?? {}
+    resetFormState()
     claimedBy.value = store.current?.claimed_by ?? null
   } catch (cause: unknown) {
     loadErrorCode.value = extractHttpStatus(cause) ?? 500
@@ -89,6 +120,35 @@ const availableActions = computed(() => {
   if (!canExecute.value) return []
   return store.graph.edges.filter((edge) => edge.from_stage_id === store.current!.current_stage!.id)
 })
+
+// Edit mode is derived purely from Designer-configured StageFieldRule data
+// (fieldGroups, already fetched by fetchSchema) plus canAct — never a stage
+// code or is_initial check. Any stage the Designer marks with at least one
+// editable+visible field becomes editable here, whether that's the initial
+// stage, a "needs correction" return stage, or any future stage.
+const hasEditableFields = computed(() =>
+  fieldGroups.value.some((group) =>
+    group.fields.some((field) => field.is_visible && field.is_editable),
+  ),
+)
+
+// canAct already folds in canExecute, claimLost, and claim ownership when the
+// stage requires a claim (see computed above) — document mutations and
+// workflow actions both require EXECUTE + (if applicable) claim ownership,
+// not just a field rule saying "this field is editable in principle".
+const isEditMode = computed(() => canAct.value && hasEditableFields.value)
+
+const orderedFieldGroups = computed(() =>
+  [...fieldGroups.value].sort((a, b) => a.sort_order - b.sort_order),
+)
+
+function isFileOnlyGroup(group: ResolvedFieldGroup): boolean {
+  const visible = group.fields.filter((f) => f.is_visible)
+  return visible.length > 0 && visible.every((f) => f.type === 'FILE')
+}
+
+const nonFileGroups = computed(() => orderedFieldGroups.value.filter((g) => !isFileOnlyGroup(g)))
+const fileGroups = computed(() => orderedFieldGroups.value.filter((g) => isFileOnlyGroup(g)))
 
 const stageRequiresClaim = computed(() => store.current?.current_stage?.requires_claim === true)
 const isUnclaimed = computed(() => claimedBy.value === null)
