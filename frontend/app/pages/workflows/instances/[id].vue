@@ -2,7 +2,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, toRaw, toRef } from 'vue'
 import { toast } from 'vue-sonner'
-import type { ResolvedFieldGroup } from '@/types/models'
 import { extractApiErrorCode, extractApiErrorMessage, extractHttpStatus } from '@/utils/apiErrors'
 import { useEngineRequestsStore } from '@/stores/engineRequests.store'
 import { useEngineFormSchema } from '@/composables/useEngineFormSchema'
@@ -19,6 +18,7 @@ import EngineActionsRail from '@/components/workflow/EngineActionsRail.vue'
 import EngineFxConfirmationPanel from '@/components/workflow/EngineFxConfirmationPanel.vue'
 import DynamicForm from '@/components/workflow/DynamicForm.vue'
 import EngineFieldDocumentsGroup from '@/components/workflow/EngineFieldDocumentsGroup.vue'
+import EngineDocumentsPanel from '@/components/workflow/EngineDocumentsPanel.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { useEngineProgress } from '@/composables/useEngineProgress'
 import { Card, CardContent } from '@/components/ui/card'
@@ -48,13 +48,16 @@ const formData = ref<Record<string, unknown>>({})
 const comment = ref('')
 const actionBusy = ref(false)
 
-// One DynamicForm instance per non-file group in edit mode (see template in
-// Task 3). Vue's array ref binding (`:ref="(el) => ..."`) populates this in
-// render order, matching nonFileGroups' order — validated in Task 4 by
-// iterating both in lockstep rather than trusting array identity.
-const dynamicFormRefs = ref<InstanceType<typeof DynamicForm>[]>([])
+// One DynamicForm instance per group that contains non-FILE fields in edit
+// mode. The ref index matches that group's position in editableGroupSections;
+// FILE-only groups leave a sparse slot that runAction safely skips.
+const dynamicFormRefs = ref<Array<InstanceType<typeof DynamicForm> | undefined>>([])
 function setDynamicFormRef(el: unknown, index: number) {
-  if (el) dynamicFormRefs.value[index] = el as InstanceType<typeof DynamicForm>
+  if (el) {
+    dynamicFormRefs.value[index] = el as InstanceType<typeof DynamicForm>
+  } else {
+    dynamicFormRefs.value[index] = undefined
+  }
 }
 
 // Tracks which (request version, stage id) formData currently reflects, so a
@@ -142,13 +145,34 @@ const orderedFieldGroups = computed(() =>
   [...fieldGroups.value].sort((a, b) => a.sort_order - b.sort_order),
 )
 
-function isFileOnlyGroup(group: ResolvedFieldGroup): boolean {
-  const visible = group.fields.filter((f) => f.is_visible)
-  return visible.length > 0 && visible.every((f) => f.type === 'FILE')
-}
+// Designer groups may mix ordinary and FILE fields. Keep one tab per original
+// group, while sending each renderer only the field type it owns: DynamicForm
+// must never receive FILE fields, and the document wrapper must never receive
+// ordinary form controls.
+const editableGroupSections = computed(() =>
+  orderedFieldGroups.value.map((group) => {
+    const nonFileFields = group.fields.filter((field) => field.type !== 'FILE')
+    const fileFields = group.fields.filter((field) => field.type === 'FILE')
+    return {
+      group,
+      nonFileGroup: nonFileFields.length ? { ...group, fields: nonFileFields } : null,
+      fileGroup: fileFields.length ? { ...group, fields: fileFields } : null,
+    }
+  }),
+)
 
-const nonFileGroups = computed(() => orderedFieldGroups.value.filter((g) => !isFileOnlyGroup(g)))
-const fileGroups = computed(() => orderedFieldGroups.value.filter((g) => isFileOnlyGroup(g)))
+// General documents (field_id=null) and documents whose field no longer
+// exists in the complete current schema are rendered once at page level.
+// Including hidden fields in knownFieldIds prevents their documents from being
+// mislabeled as stale simply because their field panel is not visible.
+const otherDocuments = computed(() => {
+  const knownFieldIds = new Set(
+    fieldGroups.value.flatMap((group) => group.fields.map((field) => field.id)),
+  )
+  return store.documents.filter(
+    (document) => document.field_id === null || !knownFieldIds.has(document.field_id),
+  )
+})
 
 const stageRequiresClaim = computed(() => store.current?.current_stage?.requires_claim === true)
 const isUnclaimed = computed(() => claimedBy.value === null)
@@ -405,47 +429,62 @@ async function runAction(transitionId: number, requiresComment: boolean) {
                     :documents="store.documents"
                     :request-id="requestId"
                   />
-                  <Tabs v-else :default-value="orderedFieldGroups[0]?.name" dir="rtl">
-                    <TabsList class="flex-wrap">
-                      <TabsTrigger
-                        v-for="group in orderedFieldGroups"
-                        :key="group.id"
-                        :value="group.name"
+                  <template v-else>
+                    <Tabs
+                      :default-value="orderedFieldGroups[0]?.name"
+                      :unmount-on-hide="false"
+                      dir="rtl"
+                    >
+                      <TabsList class="flex-wrap">
+                        <TabsTrigger
+                          v-for="group in orderedFieldGroups"
+                          :key="group.id"
+                          :value="group.name"
+                        >
+                          {{ group.label }}
+                        </TabsTrigger>
+                      </TabsList>
+                      <TabsContent
+                        v-for="(section, index) in editableGroupSections"
+                        :key="section.group.id"
+                        :value="section.group.name"
+                        class="mt-4"
                       >
-                        {{ group.label }}
-                      </TabsTrigger>
-                    </TabsList>
-                    <TabsContent
-                      v-for="(group, index) in nonFileGroups"
-                      :key="group.id"
-                      :value="group.name"
-                      class="mt-4"
+                        <div class="flex flex-col gap-6">
+                          <DynamicForm
+                            v-if="section.nonFileGroup"
+                            :ref="(el) => setDynamicFormRef(el, index)"
+                            v-model="formData"
+                            :field-groups="[section.nonFileGroup]"
+                            mode="edit"
+                            :request-id="requestId"
+                            :upload-target="{ type: 'request', requestId }"
+                          />
+                          <EngineFieldDocumentsGroup
+                            v-if="section.fileGroup"
+                            :group="section.fileGroup"
+                            :documents="store.documents"
+                            :request-id="requestId"
+                            :can-manage="canAct"
+                            @upload="onDocumentUpload"
+                            @remove="onDocumentRemove"
+                          />
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+
+                    <div
+                      v-if="otherDocuments.length"
+                      class="mt-6 flex flex-col gap-2 border-t pt-4"
                     >
-                      <DynamicForm
-                        :ref="(el) => setDynamicFormRef(el, index)"
-                        v-model="formData"
-                        :field-groups="[group]"
-                        mode="edit"
+                      <h4 class="text-muted-foreground text-sm font-semibold">مرفقات أخرى</h4>
+                      <EngineDocumentsPanel
+                        :documents="otherDocuments"
                         :request-id="requestId"
-                        :upload-target="{ type: 'request', requestId }"
+                        :can-manage="false"
                       />
-                    </TabsContent>
-                    <TabsContent
-                      v-for="group in fileGroups"
-                      :key="group.id"
-                      :value="group.name"
-                      class="mt-4"
-                    >
-                      <EngineFieldDocumentsGroup
-                        :group="group"
-                        :documents="store.documents"
-                        :request-id="requestId"
-                        :can-manage="canAct"
-                        @upload="onDocumentUpload"
-                        @remove="onDocumentRemove"
-                      />
-                    </TabsContent>
-                  </Tabs>
+                    </div>
+                  </template>
                 </CardContent>
               </Card>
             </TabsContent>

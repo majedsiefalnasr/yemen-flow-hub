@@ -142,31 +142,29 @@ describe('EngineFieldDocumentsGroup', () => {
     expect(wrapper.emitted('remove')).toEqual([[999]])
   })
 
-  it('renders a read-only orphaned-documents section for docs whose field_id matches no current field', () => {
+  it('does not render documents for fields outside the supplied group', () => {
     const field = makeField({ id: 1 })
-    const orphan = makeDoc({ id: 200, field_id: 999, original_name: 'legacy.pdf' })
+    const siblingFieldDocument = makeDoc({
+      id: 200,
+      field_id: 999,
+      original_name: 'sibling-group.pdf',
+    })
     const wrapper = mount(EngineFieldDocumentsGroup, {
       props: {
         group: makeGroup([field]),
-        documents: [orphan],
+        documents: [siblingFieldDocument],
         requestId: 5,
         canManage: true,
       },
       global: { stubs: { EngineDocumentsPanel: true } },
     })
 
-    // The orphan panel is present and rendered with canManage=false (read-only),
-    // separate from the field-scoped panel. Compare by id, not object identity —
-    // Vue Test Utils' global stub does not preserve prop object references for
-    // stubbed children, so `.includes(orphan)` never matches even when the
-    // content is identical.
+    // Unknown/stale documents are classified once by the page against the
+    // complete schema. A group-scoped wrapper must only render its own field
+    // panels, otherwise sibling documents repeat as false "orphans."
     const panels = wrapper.findAllComponents({ name: 'EngineDocumentsPanel' })
-    expect(panels).toHaveLength(2)
-    const orphanPanel = panels.find((p) =>
-      (p.props('documents') as EngineRequestDocument[]).some((d) => d.id === orphan.id),
-    )
-    expect(orphanPanel).toBeTruthy()
-    expect(orphanPanel!.props('canManage')).toBe(false)
+    expect(panels).toHaveLength(1)
+    expect(panels[0]!.props('documents')).toEqual([])
   })
 
   it('does not treat a null field_id document as orphaned — it is a general document outside this group', () => {

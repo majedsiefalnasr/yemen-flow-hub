@@ -198,6 +198,11 @@ const stubs = {
     props: ['group', 'documents', 'requestId', 'canManage'],
     emits: ['upload', 'remove'],
   },
+  EngineDocumentsPanel: {
+    name: 'EngineDocumentsPanel',
+    template: '<div data-stub="documents-panel" />',
+    props: ['documents', 'requestId', 'canManage'],
+  },
   // The read-only data/rail/info components render their own children from the
   // schema/graph; stub them so these page-level tests stay focused on the page.
   EngineRequestDataTabs: { template: '<div data-stub="data-tabs" />' },
@@ -779,6 +784,111 @@ describe('workflows/instances/[id].vue', () => {
       )
     })
 
+    it('renders non-FILE and FILE subsets from a mixed group in the same tab', async () => {
+      const [textGroup, fileGroup] = editableFieldGroupFixture()
+      mockFieldGroups.value = [
+        {
+          ...textGroup!,
+          fields: [...textGroup!.fields, ...fileGroup!.fields],
+        },
+      ]
+      mockShow.mockResolvedValue(makeInstance({ can_execute: true }))
+
+      const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
+      await flushPromises()
+
+      const form = wrapper.findComponent({ name: 'DynamicForm' })
+      const documents = wrapper.findComponent({ name: 'EngineFieldDocumentsGroup' })
+      expect(form.exists()).toBe(true)
+      expect(documents.exists()).toBe(true)
+      expect(form.props('fieldGroups')[0].fields.map((field: { id: number }) => field.id)).toEqual([
+        1,
+      ])
+      expect(documents.props('group').fields.map((field: { id: number }) => field.id)).toEqual([2])
+    })
+
+    it('renders general and unknown-field documents once outside field groups', async () => {
+      mockFieldGroups.value = [
+        {
+          id: 10,
+          name: 'basic_info',
+          label: 'المعلومات الأساسية',
+          sort_order: 1,
+          fields: [
+            {
+              id: 1,
+              key: 'supplier_name',
+              type: 'TEXT',
+              is_visible: true,
+              is_editable: true,
+              is_required: false,
+              multiple: false,
+              label: 'اسم المورد',
+            },
+            {
+              id: 2,
+              key: 'hidden_legacy_value',
+              type: 'TEXT',
+              is_visible: false,
+              is_editable: false,
+              is_required: false,
+              multiple: false,
+              label: 'قيمة مخفية',
+            },
+          ],
+        },
+      ]
+      mockDocumentsRef.value = [
+        {
+          id: 100,
+          request_id: 5,
+          field_id: null,
+          stage_id: 1,
+          original_name: 'general.pdf',
+          mime: 'application/pdf',
+          size: 1,
+          uploaded_by: { id: 1, name: 'x' },
+          created_at: null,
+        },
+        {
+          id: 101,
+          request_id: 5,
+          field_id: 999,
+          stage_id: 1,
+          original_name: 'stale.pdf',
+          mime: 'application/pdf',
+          size: 1,
+          uploaded_by: { id: 1, name: 'x' },
+          created_at: null,
+        },
+        {
+          id: 102,
+          request_id: 5,
+          field_id: 2,
+          stage_id: 1,
+          original_name: 'hidden-known-field.pdf',
+          mime: 'application/pdf',
+          size: 1,
+          uploaded_by: { id: 1, name: 'x' },
+          created_at: null,
+        },
+      ]
+      mockShow.mockResolvedValue(makeInstance({ can_execute: true }))
+
+      const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
+      await flushPromises()
+
+      const otherPanels = wrapper.findAllComponents({ name: 'EngineDocumentsPanel' })
+      expect(otherPanels).toHaveLength(1)
+      expect(otherPanels[0]!.props('canManage')).toBe(false)
+      expect(
+        (otherPanels[0]!.props('documents') as Array<{ id: number }>).map(
+          (document) => document.id,
+        ),
+      ).toEqual([100, 101])
+      expect(wrapper.text()).toContain('مرفقات أخرى')
+    })
+
     it('sends edited formData instead of the frozen request data', async () => {
       mockFieldGroups.value = editableFieldGroupFixture()
       mockShow.mockResolvedValue(
@@ -860,6 +970,81 @@ describe('workflows/instances/[id].vue', () => {
       const payload = mockExecuteAction.mock.calls[0]![3] as Record<string, unknown>
       expect(payload).toMatchObject({ supplier_name: 'Kept' })
       expect(payload).not.toHaveProperty('unrelated_field')
+    })
+
+    it('validates an unvisited second group and blocks dispatch when it is invalid', async () => {
+      mockFieldGroups.value = [
+        ...editableFieldGroupFixture(),
+        {
+          id: 12,
+          name: 'more_info',
+          label: 'معلومات إضافية',
+          sort_order: 3,
+          fields: [
+            {
+              id: 3,
+              key: 'required_notes',
+              type: 'TEXTAREA',
+              is_visible: true,
+              is_editable: true,
+              is_required: true,
+              multiple: false,
+              label: 'ملاحظات مطلوبة',
+            },
+          ],
+        },
+      ]
+      mockFormValidate
+        .mockResolvedValueOnce({ valid: true, values: {} })
+        .mockResolvedValueOnce({ valid: false, values: {} })
+      mockShow.mockResolvedValue(makeInstance({ can_execute: true }))
+
+      const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
+      await flushPromises()
+
+      // Do not visit "معلومات إضافية" before clicking the action.
+      await findActionButton(wrapper)!.trigger('click')
+      await flushPromises()
+
+      expect(mockFormValidate).toHaveBeenCalledTimes(2)
+      expect(mockExecuteAction).not.toHaveBeenCalled()
+    })
+
+    it('removes a stale form ref when its schema group disappears', async () => {
+      const groups = [
+        ...editableFieldGroupFixture(),
+        {
+          id: 12,
+          name: 'more_info',
+          label: 'معلومات إضافية',
+          sort_order: 3,
+          fields: [
+            {
+              id: 3,
+              key: 'notes_field',
+              type: 'TEXTAREA',
+              is_visible: true,
+              is_editable: true,
+              is_required: false,
+              multiple: false,
+              label: 'ملاحظات',
+            },
+          ],
+        },
+      ]
+      mockFieldGroups.value = groups
+      mockShow.mockResolvedValue(makeInstance({ can_execute: true }))
+      const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
+      await flushPromises()
+      expect(wrapper.findAllComponents({ name: 'DynamicForm' })).toHaveLength(2)
+
+      mockFieldGroups.value = groups.slice(0, 2)
+      await flushPromises()
+      mockFormValidate.mockClear()
+      await findActionButton(wrapper)!.trigger('click')
+      await flushPromises()
+
+      expect(mockFormValidate).toHaveBeenCalledTimes(1)
     })
 
     it('adds an uploaded document id to the eventual transition payload', async () => {
