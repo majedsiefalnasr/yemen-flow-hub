@@ -178,6 +178,99 @@ describe('useTemporaryUploadLifecycle', () => {
     expect(lifecycle.entryFor('field_a')).toBeUndefined()
   })
 
+  it('removing a field while its upload() call is still in flight never resurrects the entry', async () => {
+    vi.useFakeTimers()
+    let resolveUpload!: (value: unknown) => void
+    mockUpload.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveUpload = resolve
+        }),
+    )
+
+    let lifecycle!: ReturnType<typeof useTemporaryUploadLifecycle>
+    const Host = defineComponent({
+      setup() {
+        lifecycle = useTemporaryUploadLifecycle()
+        return () => null
+      },
+    })
+    mount(Host)
+
+    // Don't await — the upload() call inside is intentionally left in
+    // flight so removeEntry() below races it.
+    const uploadPromise = lifecycle.uploadAndTrack(
+      'field_a',
+      new File(['x'], 'a.pdf'),
+      10,
+      1,
+      'session',
+    )
+    expect(lifecycle.entryFor('field_a')?.state).toBe('uploading')
+
+    lifecycle.removeEntry('field_a')
+    expect(lifecycle.entryFor('field_a')).toBeUndefined()
+
+    // The in-flight upload() now resolves successfully — its continuation
+    // must recognize it was superseded and do nothing, not recreate the
+    // entry or start a polling loop.
+    resolveUpload({ token: 'tok-late', expires_at: '2026-01-01T00:00:00Z' })
+    await uploadPromise
+
+    expect(lifecycle.entryFor('field_a')).toBeUndefined()
+    expect(mockStatus).not.toHaveBeenCalled()
+
+    // Confirm no polling loop was started for the stale token either.
+    await vi.advanceTimersByTimeAsync(10000)
+    expect(mockStatus).not.toHaveBeenCalled()
+  })
+
+  it('unmounting while upload() is still in flight never starts post-unmount polling', async () => {
+    vi.useFakeTimers()
+    let resolveUpload!: (value: unknown) => void
+    mockUpload.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveUpload = resolve
+        }),
+    )
+    mockStatus.mockResolvedValue({
+      token: 'tok-late',
+      scan_status: 'pending',
+      original_name: 'a.pdf',
+      size: 10,
+      expires_at: '2026-01-01T00:00:00Z',
+    })
+
+    let lifecycle!: ReturnType<typeof useTemporaryUploadLifecycle>
+    const Host = defineComponent({
+      setup() {
+        lifecycle = useTemporaryUploadLifecycle()
+        return () => null
+      },
+    })
+    const wrapper = mount(Host)
+
+    const uploadPromise = lifecycle.uploadAndTrack(
+      'field_a',
+      new File(['x'], 'a.pdf'),
+      10,
+      1,
+      'session',
+    )
+    expect(lifecycle.entryFor('field_a')?.state).toBe('uploading')
+
+    wrapper.unmount()
+
+    // The in-flight upload() resolves only after the component is gone.
+    resolveUpload({ token: 'tok-late', expires_at: '2026-01-01T00:00:00Z' })
+    await uploadPromise
+
+    // No polling loop should ever have been started for this stale attempt.
+    await vi.advanceTimersByTimeAsync(10000)
+    expect(mockStatus).not.toHaveBeenCalled()
+  })
+
   it('removeEntry stops polling and drops the entry, clearing hasBlockingUpload', async () => {
     vi.useFakeTimers()
     mockUpload.mockResolvedValue({ token: 'tok-x', expires_at: '2026-01-01T00:00:00Z' })

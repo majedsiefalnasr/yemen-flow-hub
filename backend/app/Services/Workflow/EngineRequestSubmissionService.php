@@ -54,6 +54,7 @@ class EngineRequestSubmissionService
         private EngineTransitionService $transitionService,
         private AuditService $auditService,
         private EngineRequestReferenceAllocator $referenceAllocator,
+        private StageFieldOutputFilter $stageFieldOutputFilter,
     ) {}
 
     public function submit(array $data, ?string $idempotencyKey, User $actor): SubmissionResult
@@ -146,6 +147,21 @@ class EngineRequestSubmissionService
         $resolvedTransition = SubmitTransitionResolver::resolve($transitions, $initialStage->id);
         if ($resolvedTransition === null) {
             throw EngineException::initialStageNoAdvancingSubmit();
+        }
+
+        // Defensive: WorkflowVersionValidator blocks publishing an initial
+        // stage with a multiple:true FILE field (INITIAL_STAGE_UNSUPPORTED_
+        // MULTI_FILE_FIELD), since useTemporaryUploadLifecycle.ts tracks one
+        // upload entry per field key. This still checks at submission time
+        // rather than trusting that guard alone — a version published before
+        // that rule existed, or edited in a way the validator didn't
+        // re-run against, must not silently reach the (single-file) upload
+        // lifecycle and corrupt tracking.
+        $hasUnsupportedMultiFileField = $this->stageFieldOutputFilter
+            ->visibleFieldsForStage($version->id, $initialStage)
+            ->contains(fn (FieldDefinition $field) => $field->type === FieldType::FILE && $field->multiple);
+        if ($hasUnsupportedMultiFileField) {
+            throw EngineException::initialStageUnsupportedMultiFileField();
         }
 
         if (isset($data['diagnostic_transition_id'])

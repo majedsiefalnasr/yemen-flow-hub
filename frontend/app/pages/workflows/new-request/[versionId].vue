@@ -28,33 +28,26 @@ const { fieldGroups, fetchInitialSchema } = useEngineFormSchema()
 const loading = ref(true)
 const loadErrorCode = ref<number | null>(null)
 
-// The wizard's temporary-upload lifecycle (useTemporaryUploadLifecycle) and
-// DynamicForm's file input are both keyed one-entry-per-field-key: a second
-// upload against the same field silently overwrites the first entry's
-// tracking (and orphans its server-side reservation) rather than adding a
-// second tracked file. No FILE field in the current schema set declares
-// multiple: true, so rather than ship that data-loss trap, refuse to render
-// the wizard for a workflow version whose schema does — same as the
-// zero-field-groups case below, this is a misconfiguration to fix in the
-// Designer, not a state the runtime wizard should attempt to handle.
-function hasUnsupportedMultiFileField(): boolean {
-  return fieldGroups.value.some((group) =>
-    group.fields.some((field) => field.type === 'FILE' && field.multiple),
-  )
-}
-
 async function load() {
   loading.value = true
   loadErrorCode.value = null
   try {
     await fetchInitialSchema(workflowVersionId.value)
-    if (fieldGroups.value.length === 0 || hasUnsupportedMultiFileField()) {
+    if (fieldGroups.value.length === 0) {
       // A successful fetch with zero field groups (misconfigured workflow
       // version) is still unusable — surface it the same as a load failure
       // rather than rendering a blank wizard with nothing to fill in.
       loadErrorCode.value = 500
     }
   } catch (cause: unknown) {
+    // A workflow version whose initial stage still has a multiple:true FILE
+    // field (useTemporaryUploadLifecycle.ts tracks one upload entry per
+    // field key, so a second file would silently overwrite the first) is
+    // rejected server-side with a specific 422 — see
+    // WorkflowVersionValidator's INITIAL_STAGE_UNSUPPORTED_MULTI_FILE_FIELD
+    // publish-time check and EngineRequestSubmissionService's matching
+    // runtime guard. extractHttpStatus surfaces that real status here
+    // instead of a generic 500.
     loadErrorCode.value = extractHttpStatus(cause) ?? 500
   } finally {
     loading.value = false

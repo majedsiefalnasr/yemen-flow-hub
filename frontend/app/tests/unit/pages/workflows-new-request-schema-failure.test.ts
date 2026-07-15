@@ -74,24 +74,21 @@ describe('workflows/new-request/[versionId].vue — real useEngineFormSchema fai
     expect(wrapper.find('[data-stub="wizard"]').exists()).toBe(true)
   })
 
-  it('renders the coded error state instead of the wizard when a FILE field declares multiple: true', async () => {
+  it('renders the coded 422 error state instead of the wizard when the backend rejects a multiple:true FILE field', async () => {
     // useTemporaryUploadLifecycle/DynamicForm track one upload entry per
     // field key: a second file against a multiple:true field would silently
     // overwrite the first entry's tracking and orphan its server-side
-    // reservation. Until multi-file tracking is implemented, the wizard must
-    // refuse to render for a schema that declares it rather than risk that
-    // data loss.
-    mockApiGet.mockResolvedValue({
+    // reservation. This is now rejected server-side (see
+    // WorkflowVersionValidator's INITIAL_STAGE_UNSUPPORTED_MULTI_FILE_FIELD
+    // publish-time check and EngineRequestSubmissionService/
+    // initialFormSchema's matching runtime guards) rather than detected
+    // client-side, so the page must surface the real 422 status the backend
+    // returns instead of a generic 500.
+    mockApiGet.mockRejectedValue({
+      status: 422,
       data: {
-        field_groups: [
-          {
-            id: 1,
-            name: 'g',
-            label: 'مجموعة',
-            sort_order: 0,
-            fields: [{ id: 1, key: 'docs', type: 'FILE', multiple: true }],
-          },
-        ],
+        message: 'Unsupported multi-file field',
+        error_code: 'INITIAL_STAGE_UNSUPPORTED_MULTI_FILE_FIELD',
       },
     })
 
@@ -99,6 +96,6 @@ describe('workflows/new-request/[versionId].vue — real useEngineFormSchema fai
     await flushPromises()
 
     expect(wrapper.find('[data-stub="wizard"]').exists()).toBe(false)
-    expect(wrapper.text()).toContain('500')
+    expect(wrapper.text()).toContain('422')
   })
 })

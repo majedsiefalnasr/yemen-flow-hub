@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\FieldType;
 use App\Enums\StageAccessLevel;
 use App\Enums\StageHistoryVisibility;
 use App\Enums\WorkflowVersionState;
@@ -161,6 +162,21 @@ class EngineRequestController extends Controller
 
         if (! $this->permissionResolver->userCanAccessStage($user, $initialStage, StageAccessLevel::EXECUTE)) {
             throw EngineException::stageExecutionForbidden();
+        }
+
+        // Defensive, same rule WorkflowVersionValidator enforces at publish
+        // time (INITIAL_STAGE_UNSUPPORTED_MULTI_FILE_FIELD) and
+        // EngineRequestSubmissionService re-checks at submission: a version
+        // published before that validator rule existed could still declare
+        // a multiple:true FILE field on its initial stage, which the
+        // temporary-upload lifecycle's one-entry-per-field-key tracking
+        // cannot support. Surface a specific, actionable error here instead
+        // of letting the wizard load a schema it cannot safely render.
+        $hasUnsupportedMultiFileField = $this->outputFilter
+            ->visibleFieldsForStage($workflowVersion->id, $initialStage)
+            ->contains(fn ($field) => $field->type === FieldType::FILE && $field->multiple);
+        if ($hasUnsupportedMultiFileField) {
+            throw EngineException::initialStageUnsupportedMultiFileField();
         }
 
         $data = $this->buildFieldGroupSchema($workflowVersion->id, $initialStage, $user, null);

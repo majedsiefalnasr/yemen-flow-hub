@@ -22,6 +22,7 @@ class WorkflowVersionValidator
     public function __construct(
         private readonly WorkflowPublishRulePack $rulePack,
         private readonly SemanticResolver $semanticResolver,
+        private readonly StageFieldOutputFilter $stageFieldOutputFilter,
     ) {}
 
     /**
@@ -63,6 +64,24 @@ class WorkflowVersionValidator
                     "stage:{$initialStage->code}",
                     "Initial stage '{$initialStage->code}' has no unambiguous transition that leaves the stage — mark one outgoing transition is_default_submit, or ensure exactly one non-self-loop outgoing transition exists.",
                 );
+            }
+
+            // The deferred-creation wizard's temporary-upload lifecycle
+            // tracks one upload entry per field key: a second file against a
+            // multiple:true FILE field would silently overwrite the first
+            // entry's tracking and orphan its server-side reservation
+            // (frontend/app/composables/useTemporaryUploadLifecycle.ts).
+            // Catch this at publish time — a specific, actionable error here
+            // beats a generic wizard-load failure discovered later at
+            // runtime by whoever tries to submit against this version.
+            foreach ($this->stageFieldOutputFilter->visibleFieldsForStage($version->id, $initialStage) as $field) {
+                if ($field->type === FieldType::FILE && $field->multiple) {
+                    $errors[] = $this->error(
+                        'INITIAL_STAGE_UNSUPPORTED_MULTI_FILE_FIELD',
+                        "field:{$field->key}",
+                        "FILE field '{$field->key}' on the initial stage declares multiple: true, which the submission wizard does not yet support — set multiple to false or hide the field on the initial stage.",
+                    );
+                }
             }
         }
 

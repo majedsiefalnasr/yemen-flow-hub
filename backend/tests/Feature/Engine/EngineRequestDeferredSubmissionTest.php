@@ -17,6 +17,7 @@ use App\Models\Merchant;
 use App\Models\Organization;
 use App\Models\Role;
 use App\Models\Screen;
+use App\Models\StageFieldRule;
 use App\Models\StagePermission;
 use App\Models\Team;
 use App\Models\TemporaryUpload;
@@ -962,6 +963,46 @@ class EngineRequestDeferredSubmissionTest extends TestCase
             'data' => [],
         ], ['Idempotency-Key' => $this->uploadKey()]);
         $response->assertStatus(422)->assertJsonPath('error_code', 'INITIAL_STAGE_NO_ADVANCING_SUBMIT');
+    }
+
+    // ── Correction 3 (Round 3): multiple:true FILE field on the initial stage
+    // is rejected at publish, at schema fetch, and at submission — the
+    // temporary-upload lifecycle tracks one upload entry per field key, so a
+    // second file would silently overwrite the first entry's tracking. ──
+
+    public function test_initial_stage_multi_file_field_is_rejected_at_publish_schema_fetch_and_submission(): void
+    {
+        $this->docField->update(['multiple' => true]);
+
+        $errors = app(WorkflowVersionValidator::class)->validate($this->version->fresh());
+        $this->assertContains('INITIAL_STAGE_UNSUPPORTED_MULTI_FILE_FIELD', array_column($errors, 'code'));
+
+        $schemaResponse = $this->actingAs($this->executor)
+            ->getJson("/api/v1/engine-requests/initial-form-schema/{$this->version->id}");
+        $schemaResponse->assertStatus(422)->assertJsonPath('error_code', 'INITIAL_STAGE_UNSUPPORTED_MULTI_FILE_FIELD');
+
+        $submitResponse = $this->actingAs($this->executor)->postJson('/api/v1/engine-requests', $this->submitPayload(), ['Idempotency-Key' => $this->uploadKey()]);
+        $submitResponse->assertStatus(422)->assertJsonPath('error_code', 'INITIAL_STAGE_UNSUPPORTED_MULTI_FILE_FIELD');
+    }
+
+    public function test_initial_stage_multi_file_field_hidden_at_the_initial_stage_does_not_block_publish(): void
+    {
+        // A multiple:true FILE field that's explicitly hidden at the initial
+        // stage (via a StageFieldRule) never reaches the wizard there, so it
+        // must not trip the guard — visibleFieldsForStage() is the same
+        // resolution the wizard's schema endpoint uses.
+        $this->docField->update(['multiple' => true]);
+        StageFieldRule::create([
+            'stage_id' => $this->initialStage->id,
+            'field_id' => $this->docField->id,
+            'is_visible' => false,
+            'is_required' => false,
+            'is_editable' => true,
+            'version' => 1,
+        ]);
+
+        $errors = app(WorkflowVersionValidator::class)->validate($this->version->fresh());
+        $this->assertNotContains('INITIAL_STAGE_UNSUPPORTED_MULTI_FILE_FIELD', array_column($errors, 'code'));
     }
 
     // ── Correction 2: multiple is_default_submit transitions is ambiguous ──

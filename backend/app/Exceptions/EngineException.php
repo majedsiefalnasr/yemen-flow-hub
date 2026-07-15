@@ -210,6 +210,15 @@ class EngineException extends RuntimeException
         return new self('This workflow has no unambiguous submit transition from its initial stage.', 'INITIAL_STAGE_NO_ADVANCING_SUBMIT', 422);
     }
 
+    public static function initialStageUnsupportedMultiFileField(): self
+    {
+        return new self(
+            'This workflow cannot accept submissions because its initial stage has a FILE field configured for multiple files, which is not yet supported.',
+            'INITIAL_STAGE_UNSUPPORTED_MULTI_FILE_FIELD',
+            422,
+        );
+    }
+
     public static function duplicateInvoiceBlocked(): self
     {
         return new self(
