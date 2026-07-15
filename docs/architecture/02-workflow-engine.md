@@ -31,7 +31,7 @@ one centralized class:
 | `WorkflowDesignerService`               | Author, validate, clone, publish, archive `WorkflowVersion`s and their stages/transitions/permissions |
 | `WorkflowVersionValidator`              | Orchestrates validate-before-publish (delegates to the rule pack below)                               |
 | `WorkflowPublishRulePack`               | The specific publish rules (reachability, executors, self-loops, field constraints, …)                |
-| `EngineTransitionService`               | Executes transitions, draft saves, and draft abandonment on `EngineRequest`s                          |
+| `EngineTransitionService`               | Executes transitions on `EngineRequest`s                          |
 | `StagePermissionResolver`               | Resolves VIEW/EXECUTE access to a stage from `stage_permissions`                                      |
 | `EngineClaimService`                    | Claim/heartbeat/release lifecycle                                                                     |
 | `StageFieldRuleValidator`               | Per-stage field enforcement (visible/editable/required)                                               |
@@ -311,37 +311,37 @@ splits into two phases with different rollback behavior:
   send — cannot roll back an already-committed transition; the stage
   change, history, and audit rows stay committed regardless.
 
-### `saveDraft()` — not gated by a fixed "editable states" list
+### Request-draft lifecycle — removed, redesign in progress
 
-`saveDraft()` (`PATCH /api/v1/engine-requests/{id}/draft`) uses the
-**same** `isActive()` + EXECUTE-permission gate as `execute()` — **not**
-a hardcoded whitelist of stage names. A claim is required only when the
-current stage has `requires_claim: true`
-(`EngineClaimService::ensureClaimHeld()` no-ops immediately if the stage
-doesn't require one); it is not an unconditional claim-held check. Any
-stage the caller holds EXECUTE (and claim, where required) on is
-"editable" via `saveDraft()`; there is no separate `editable_states`
-concept in code. It calls `StageFieldRuleValidator::validateStage(...,
-enforceRequired: false, ...)` — deliberately lenient on required fields,
-since a draft save is not a transition.
+`saveDraft()` (`PATCH /api/v1/engine-requests/{id}/draft`) and
+`abandonDraft()` (`POST /api/v1/engine-requests/{id}/abandon`) have been
+**removed**. The prior flow created an `EngineRequest` row immediately on
+workflow selection (`EngineRequestService::create()`), before any field
+was filled, then persisted it incrementally via `saveDraft()` (lenient,
+`enforceRequired: false`) as the wizard advanced, with `abandonDraft()`
+available while the request sat on its initial (`is_initial: true`)
+stage.
 
-### `abandonDraft()` — gated specifically by `is_initial`, not "any non-final stage"
+That architecture is being replaced because an eagerly-created,
+incrementally-edited request row can persist indefinitely if a wizard
+session is abandoned without explicit cleanup, and — since
+`workflow_history`/`audit_logs` rows tied to a request are archive-only
+under the project's retention policy (`production-guide.md` § Retention
+& Compliance) — those orphaned rows cannot simply be swept by an
+unconditional "still on its initial stage" predicate without first
+proving no such row ever represents a real, provably-abandoned-only-in-
+appearance request.
 
-`abandonDraft()` (`POST /api/v1/engine-requests/{id}/abandon`) only
-succeeds when the request's current stage has `is_initial: true`:
-
-```php
-if ($stage === null || ! $stage->is_initial) {
-    throw EngineException::abandonNotAvailable();
-}
-```
-
-It sets `status: EngineRequestStatus::ABANDONED` directly — it does
-**not** call `resolveStatusAfterTransition()` or reference `FinalOutcome`
-at all — and clears every claim field (`claimed_by`, `claimed_at`,
-`claim_expires_at`, `claim_stage_id`). It writes a `workflow_history` row
-with `action_code: 'ABANDON'` and `to_stage_id: null`, and logs
-`AuditAction::REQUEST_ABANDONED`.
+The replacement: no `EngineRequest` row exists before final submission.
+File uploads during the wizard attach to a separate temporary-upload
+resource (opaque, user/organization-scoped tokens, not tied to a
+request id). One final-submit endpoint performs strict validation and,
+in a single transaction, creates the request, attaches the validated
+uploads, writes `workflow_history` and `audit_logs` entries, and
+executes the initial transition together — with a mandatory
+`Idempotency-Key` so retries/duplicate submissions cannot create
+duplicate requests. This subsection will be rewritten with the final
+contracts once that work lands.
 
 ---
 

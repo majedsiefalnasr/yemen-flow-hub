@@ -336,32 +336,17 @@ Returns the field groups/fields defined for the request's workflow version, with
 
 ---
 
-# Save Draft
+# Request Creation (Wizard) — Lifecycle Redesign In Progress
 
-## Endpoint
+**`PATCH /api/v1/engine-requests/{id}/draft` and `POST /api/v1/engine-requests/{id}/abandon` have been removed.** The old flow created an `EngineRequest` row immediately on workflow selection and persisted it incrementally via draft-save calls. That row could survive indefinitely if the wizard was abandoned, which conflicted with the project's archive-only retention policy for `workflow_history`/`audit_logs` (see `production-guide.md` § Retention & Compliance) and had no duplicate-click protection.
 
-```http
-PATCH /api/v1/engine-requests/{id}/draft
-```
-
-## Request Body
-
-```json
-{
-  "data": { "...": "..." },
-  "version": 3
-}
-```
-
-`version` is the optimistic-concurrency token; it must match the request's current `version` column or the call fails with `REQUEST_STALE` (409).
+A replacement is being implemented: no `EngineRequest` row is created until one atomic final-submit call, which performs strict validation and creates the request, its documents, `workflow_history`, and `audit_logs` entries, and executes the initial transition together in a single transaction. File uploads during the wizard go through a separate temporary-upload resource (opaque, user/organization-scoped tokens) rather than attaching to a persisted request. This section will be rewritten with the final endpoint contracts once that work lands — do not treat the absence of a documented replacement here as evidence the old draft/abandon endpoints still exist.
 
 ---
 
 # Update / Delete Request
 
-There is no dedicated `PUT`/`DELETE /api/v1/engine-requests/{id}` endpoint. Requests are modified only via `PATCH .../draft` (while in an editable stage) or by executing a transition via `POST .../actions`; there is no request-deletion endpoint in the current API — draft requests are abandoned rather than deleted through this API.
-
-"Editable" is not a fixed status-name whitelist — `PATCH .../draft` uses the same gate as executing a transition (`runtime_status: ACTIVE` + EXECUTE stage permission + claim held, if the stage requires one; see [`architecture/02-workflow-engine.md`](architecture/02-workflow-engine.md#savedraft-not-gated-by-a-fixed-editable-states-list)). The API enforces this by rejecting `draft`/`actions` calls with `REQUEST_CLOSED` (403) once the request is no longer `ACTIVE`, or `STAGE_EXECUTION_FORBIDDEN`/`CLAIM_NOT_HELD` if the caller no longer holds the required permission/claim on the current stage.
+There is no dedicated `PUT`/`DELETE /api/v1/engine-requests/{id}` endpoint. Requests are modified only by executing a transition via `POST .../actions`; there is no request-deletion endpoint in the current API.
 
 ---
 
@@ -1298,31 +1283,6 @@ requests (`RequestCreationGate::userCanCreateRequests()` returns
       "version_number": 2
     }
   ]
-}
-```
-
-## Abandon Draft
-
-```http
-POST /api/v1/engine-requests/{engineRequest}/abandon
-```
-
-Authorized via the `abandon` Policy ability on `EngineRequest`.
-
-**Request body:**
-
-```json
-{ "version": 3 }
-```
-
-`version` is required (optimistic lock). Delegates to
-`EngineTransitionService::abandonDraft()`.
-
-```json
-{
-  "success": true,
-  "message": "Draft abandoned successfully.",
-  "data": { "...": "EngineRequestResource" }
 }
 ```
 

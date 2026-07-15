@@ -156,21 +156,19 @@ field rules — see
 full 16-step `execute()` breakdown, not repeated here.
 
 **`execute()` is not the only place in the engine that writes
-`current_stage_id`/`status`, and that is by design, not a gap.** Two
-other services own explicit, narrower lifecycle operations outside
-`execute()`, verified directly:
+`current_stage_id`/`status`, and that is by design, not a gap.**
+`EngineRequestService` sets `current_stage_id`/`status` (`'ACTIVE'`)
+directly when **creating** a new request — there is no "transition
+into" the initial stage to execute; creation establishes the starting
+state.
 
-- `EngineRequestService` sets `current_stage_id`/`status` (`'ACTIVE'`)
-  directly when **creating** a new request — there is no "transition
-  into" the initial stage to execute; creation establishes the starting
-  state.
-- `EngineTransitionService::abandonDraft()` sets `status:
-EngineRequestStatus::ABANDONED` directly, without calling `execute()`
-  — abandoning a draft is not a `WorkflowTransition`-driven move
-  between stages, it is a distinct, gated lifecycle action (see
-  [`architecture/02-workflow-engine.md`](architecture/02-workflow-engine.md)'s
-  `abandonDraft()` subsection for its own `is_initial` gate and audit
-  trail).
+> **Lifecycle redesign in progress.** The `/draft` and `/abandon`
+> endpoints — and `EngineTransitionService::abandonDraft()` — have been
+> removed. A request is created and submitted as part of one atomic
+> operation instead of being created eagerly and edited in place; see
+> [`architecture/02-workflow-engine.md`](architecture/02-workflow-engine.md)
+> for the current state of that work. Do not cite `abandonDraft()` as a
+> live sanctioned mutation path until this note is removed.
 
 **This rule governs production request-handling paths — controllers,
 services, jobs, and listeners that act on live data — not every line of
@@ -184,23 +182,22 @@ path, and it is not evidence that direct mutation is acceptable in
 production code — do not cite it as a supported mutation pattern.
 Synthetic performance/test/seed fixture generation (this command, and
 similarly `backend/database/seeders/`) is the one carved-out category
-allowed to bypass `execute()`/`EngineRequestService`/`abandonDraft()`,
-precisely because it never runs against live requests.
+allowed to bypass `execute()`/`EngineRequestService`, precisely because
+it never runs against live requests.
 
 The rule this section states, precisely: in production request-handling
 code, no path outside the engine's own service-managed lifecycle
 operations (`execute()` for transitions, `EngineRequestService` for
-creation, `abandonDraft()` for abandonment) may write these columns
-directly. Synthetic fixture/seed generation is a separate, non-production
-category, not an exception that weakens the production rule.
+creation) may write these columns directly. Synthetic fixture/seed
+generation is a separate, non-production category, not an exception
+that weakens the production rule.
 
 ```php
 // ✅ Ordinary transition — the mandatory path
 $engineTransitionService->execute($engineRequest, $transitionId, $comment, $data, $version, $user);
 
-// ✅ Also sanctioned — explicit, narrower service-managed lifecycle operations,
-// not ad hoc mutation: EngineRequestService (creation) and
-// EngineTransitionService::abandonDraft() (draft abandonment) each set
+// ✅ Also sanctioned — explicit, narrower service-managed lifecycle operation,
+// not ad hoc mutation: EngineRequestService (creation) sets
 // current_stage_id/status directly, outside execute(), by design.
 
 // ⚠️ Synthetic fixture generation (PerfLoadScenarioCommand, seeders) also
