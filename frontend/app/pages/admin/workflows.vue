@@ -148,6 +148,14 @@ const designerView = ref<'normal' | 'canvas'>('normal')
 const selectedVersionEditable = computed(
   () => selectedVersion.value?.state === 'DRAFT' && selectedVersion.value.is_editable,
 )
+const canDeleteSelectedVersion = computed(
+  () => selectedVersion.value !== null && selectedVersion.value.state !== 'PUBLISHED',
+)
+const canDeleteSelectedDefinition = computed(
+  () =>
+    selectedDefinition.value !== null &&
+    selectedDefinition.value.versions.every((version) => version.state === 'DRAFT'),
+)
 
 async function clone() {
   if (!selectedVersion.value) return
@@ -314,7 +322,7 @@ onMounted(reload)
 
 <template>
   <ScreenGuard screen="workflow_designer">
-    <div class="mx-auto max-w-[1600px] space-y-6 py-2">
+    <div class="workflow-designer mx-auto max-w-[1600px] space-y-6 py-2">
       <PageHeader
         title="مصمم مسارات العمل"
         subtitle="إنشاء وإدارة تعريفات مسارات العمل ونسخها ضمن تبويبات تصميم متخصصة"
@@ -322,7 +330,7 @@ onMounted(reload)
       >
         <template #actions>
           <ScreenGuard screen="workflow_designer" capability="MANAGE">
-            <Button @click="openCreate">
+            <Button class="min-h-11 md:min-h-9" @click="openCreate">
               <Plus class="h-4 w-4" />
               إنشاء مسار عمل
             </Button>
@@ -429,6 +437,7 @@ onMounted(reload)
                   <Button
                     :variant="designerView === 'normal' ? 'default' : 'outline'"
                     size="sm"
+                    class="min-h-11 md:min-h-7"
                     @click="designerView = 'normal'"
                   >
                     <ListTree class="h-3.5 w-3.5" />
@@ -437,6 +446,7 @@ onMounted(reload)
                   <Button
                     :variant="designerView === 'canvas' ? 'default' : 'outline'"
                     size="sm"
+                    class="min-h-11 md:min-h-7"
                     @click="designerView = 'canvas'"
                   >
                     <GitBranch class="h-3.5 w-3.5" />
@@ -447,6 +457,7 @@ onMounted(reload)
                   <Button
                     variant="outline"
                     size="sm"
+                    class="min-h-11 md:min-h-7"
                     :disabled="!['PUBLISHED', 'ARCHIVED'].includes(selectedVersion.state)"
                     @click="clone"
                   >
@@ -459,20 +470,39 @@ onMounted(reload)
                     v-if="selectedVersion.state === 'PUBLISHED'"
                     variant="outline"
                     size="sm"
+                    class="min-h-11 md:min-h-7"
                     @click="openArchiveVersionDialog"
                   >
                     أرشفة النسخة
                   </Button>
                 </ScreenGuard>
-                <ScreenGuard screen="workflow_designer" capability="MANAGE">
-                  <Button variant="outline" size="sm" @click="openDeleteVersionDialog">
+                <ScreenGuard
+                  v-if="canDeleteSelectedVersion"
+                  screen="workflow_designer"
+                  capability="MANAGE"
+                >
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    class="min-h-11 md:min-h-7"
+                    @click="openDeleteVersionDialog"
+                  >
                     حذف النسخة
                   </Button>
                 </ScreenGuard>
-                <ScreenGuard screen="workflow_designer" capability="MANAGE">
+                <ScreenGuard
+                  v-if="canDeleteSelectedDefinition"
+                  screen="workflow_designer"
+                  capability="MANAGE"
+                >
                   <DropdownMenu>
                     <DropdownMenuTrigger as-child>
-                      <Button variant="ghost" size="icon" aria-label="إجراءات إضافية">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        class="h-11 w-11 md:h-9 md:w-9"
+                        aria-label="إجراءات إضافية"
+                      >
                         <MoreHorizontal class="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
@@ -540,7 +570,7 @@ onMounted(reload)
                   v-for="tab in designerTabs"
                   :key="tab.value"
                   :value="tab.value"
-                  class="text-muted-foreground hover:bg-muted/50 hover:text-foreground data-[state=active]:bg-muted data-[state=active]:text-foreground flex w-auto items-center justify-start gap-2.5 rounded-lg border-0 px-3 py-2.5 text-sm font-medium shadow-none transition-colors data-[state=active]:shadow-none lg:w-full"
+                  class="text-muted-foreground hover:bg-muted/50 hover:text-foreground data-[state=active]:bg-muted data-[state=active]:text-foreground flex min-h-11 w-auto items-center justify-start gap-2.5 rounded-lg border-0 px-3 py-2.5 text-sm font-medium shadow-none transition-colors data-[state=active]:shadow-none md:min-h-10 lg:w-full"
                 >
                   <component :is="tab.icon" class="size-4 shrink-0" />
                   {{ tab.label }}
@@ -690,3 +720,16 @@ onMounted(reload)
     </div>
   </ScreenGuard>
 </template>
+
+<style scoped>
+@media (width < 48rem) {
+  .workflow-designer :deep(button[data-slot='button']),
+  .workflow-designer :deep([role='combobox']) {
+    min-height: 2.75rem;
+  }
+
+  .workflow-designer :deep(button[data-size^='icon']) {
+    min-width: 2.75rem;
+  }
+}
+</style>

@@ -92,7 +92,7 @@ const {
 } = useWorkflowFields()
 const { referenceTables, fetchReferenceTables } = useReferenceData()
 
-const editable = computed(() => props.version.state === 'DRAFT')
+const editable = computed(() => props.version.state === 'DRAFT' && props.version.is_editable)
 
 const groupDialogOpen = ref(false)
 const fieldDialogOpen = ref(false)
@@ -360,9 +360,13 @@ watch(
             </Button>
           </ScreenGuard>
         </div>
-        <p class="text-muted-foreground text-xs leading-relaxed">
+        <p v-if="editable" class="text-muted-foreground text-xs leading-relaxed">
           كل مجموعة تظهر كتبويب في شاشة الطلب. أعد ترتيب المجموعات بالأسهم أو احذفها؛ تُنقل حقول
           المجموعة المحذوفة تلقائياً.
+        </p>
+        <p v-else class="text-muted-foreground text-xs leading-relaxed">
+          كل مجموعة تظهر كتبويب في شاشة الطلب. يمكنك مراجعة المجموعات والحقول فقط؛ أنشئ نسخة مسودة
+          لتعديلها.
         </p>
 
         <p v-if="error" class="text-xs text-[var(--severity-red)]" role="alert">{{ error }}</p>
@@ -373,7 +377,10 @@ watch(
           </EmptyMedia>
           <EmptyHeader>
             <EmptyTitle>لا توجد مجموعات حقول</EmptyTitle>
-            <EmptyDescription>أضف مجموعة (تبويب) لتعريف حقول النموذج.</EmptyDescription>
+            <EmptyDescription v-if="editable">
+              أضف مجموعة (تبويب) لتعريف حقول النموذج.
+            </EmptyDescription>
+            <EmptyDescription v-else>لا تحتوي هذه النسخة على مجموعات حقول.</EmptyDescription>
           </EmptyHeader>
           <EmptyContent v-if="editable">
             <ScreenGuard screen="workflow_designer" capability="MANAGE">
@@ -397,6 +404,7 @@ watch(
             </Badge>
             <span class="text-muted-foreground text-xs">{{ fieldCount(group.id) }} حقل</span>
             <Button
+              v-if="editable"
               size="icon-sm"
               variant="ghost"
               aria-label="تحريك لأعلى"
@@ -406,6 +414,7 @@ watch(
               <ChevronUp class="h-4 w-4" />
             </Button>
             <Button
+              v-if="editable"
               size="icon-sm"
               variant="ghost"
               aria-label="تحريك لأسفل"

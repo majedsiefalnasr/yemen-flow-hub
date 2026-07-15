@@ -247,8 +247,52 @@ describe('workflow designer page', () => {
     expect(wrapper.text()).toContain('0 حقول')
   })
 
-  it('shows the delete-version action and additional-actions menu trigger for MANAGE users', async () => {
+  it('hides impossible deletion actions for a published version', async () => {
     const wrapper = await mountPage(['VIEW', 'MANAGE'])
+
+    expect(buttonByText(wrapper, 'حذف النسخة')).toBeUndefined()
+    expect(wrapper.find('[aria-label="إجراءات إضافية"]').exists()).toBe(false)
+  })
+
+  it('offers version deletion but not definition deletion for an archived-only definition', async () => {
+    const archivedDefinition = makeDefinition({
+      versions: [
+        {
+          id: 10,
+          workflow_definition_id: 1,
+          version_number: 1,
+          state: 'ARCHIVED',
+          is_editable: false,
+          published_at: null,
+          created_at: null,
+          updated_at: null,
+          version: 2,
+        },
+      ],
+    })
+    const wrapper = await mountPage(['VIEW', 'MANAGE'], [archivedDefinition])
+
+    expect(buttonByText(wrapper, 'حذف النسخة')).toBeDefined()
+    expect(wrapper.find('[aria-label="إجراءات إضافية"]').exists()).toBe(false)
+  })
+
+  it('offers version and definition deletion for a draft-only definition', async () => {
+    const draftDefinition = makeDefinition({
+      versions: [
+        {
+          id: 11,
+          workflow_definition_id: 1,
+          version_number: 2,
+          state: 'DRAFT',
+          is_editable: true,
+          published_at: null,
+          created_at: null,
+          updated_at: null,
+          version: 1,
+        },
+      ],
+    })
+    const wrapper = await mountPage(['VIEW', 'MANAGE'], [draftDefinition])
 
     expect(buttonByText(wrapper, 'حذف النسخة')).toBeDefined()
     expect(wrapper.find('[aria-label="إجراءات إضافية"]').exists()).toBe(true)

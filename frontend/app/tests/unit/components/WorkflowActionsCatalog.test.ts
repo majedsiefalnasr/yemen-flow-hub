@@ -114,6 +114,13 @@ describe('WorkflowActionsCatalog', () => {
     expect(wrapper.text()).toContain('نظامي')
   })
 
+  it('explains that the catalog is global and changes can affect other workflows', async () => {
+    const wrapper = await mountCatalog(['VIEW'])
+
+    expect(wrapper.text()).toContain('كتالوج عام مستقل عن النسخة')
+    expect(wrapper.text()).toContain('قد تؤثر في مسارات عمل أخرى')
+  })
+
   it('hides create/edit/delete affordances for VIEW-only users', async () => {
     const wrapper = await mountCatalog(['VIEW'])
 

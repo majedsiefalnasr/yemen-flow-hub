@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import { AlertCircle, CheckCircle2, ShieldCheck } from 'lucide-vue-next'
 import type { WorkflowValidationError, WorkflowVersion } from '@/types/models'
@@ -28,34 +28,59 @@ const errors = ref<WorkflowValidationError[] | null>(null)
 const validating = ref(false)
 const publishing = ref(false)
 const confirmOpen = ref(false)
+const versionEpoch = ref(0)
 
-const isDraft = props.version.state === 'DRAFT'
+const isDraft = computed(() => props.version.state === 'DRAFT' && props.version.is_editable)
+
+watch(
+  () => [props.version.id, props.version.state, props.version.is_editable] as const,
+  () => {
+    versionEpoch.value += 1
+    errors.value = null
+    validating.value = false
+    publishing.value = false
+    confirmOpen.value = false
+  },
+)
 
 async function runValidate() {
+  const epoch = versionEpoch.value
+  const versionId = props.version.id
   validating.value = true
   try {
-    errors.value = await validateVersion(props.version.id)
-    if (errors.value.length === 0) {
+    const validationErrors = await validateVersion(versionId)
+    if (epoch !== versionEpoch.value) return
+    errors.value = validationErrors
+    if (validationErrors.length === 0) {
       toast.success('النسخة صالحة للنشر')
     }
   } catch (cause) {
-    toast.error(extractApiErrorMessage(cause, 'تعذّر التحقق من النسخة'))
+    if (epoch === versionEpoch.value) {
+      toast.error(extractApiErrorMessage(cause, 'تعذّر التحقق من النسخة'))
+    }
   } finally {
-    validating.value = false
+    if (epoch === versionEpoch.value) validating.value = false
   }
 }
 
 async function confirmPublish() {
+  const epoch = versionEpoch.value
+  const version = props.version
   publishing.value = true
   try {
-    await publishVersion(props.version)
+    await publishVersion(version)
+    if (epoch !== versionEpoch.value) return
     toast.success('تم نشر النسخة')
     emit('published')
   } catch (cause) {
-    toast.error(extractApiErrorMessage(cause, 'تعذّر نشر النسخة'))
+    if (epoch === versionEpoch.value) {
+      toast.error(extractApiErrorMessage(cause, 'تعذّر نشر النسخة'))
+    }
   } finally {
-    publishing.value = false
-    confirmOpen.value = false
+    if (epoch === versionEpoch.value) {
+      publishing.value = false
+      confirmOpen.value = false
+    }
   }
 }
 </script>

@@ -112,7 +112,7 @@ function makeGroup(overrides: Partial<FieldGroup> = {}): FieldGroup {
   }
 }
 
-function makeVersion(state: 'DRAFT' | 'PUBLISHED' = 'DRAFT'): WorkflowVersion {
+function makeVersion(state: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' = 'DRAFT'): WorkflowVersion {
   return {
     id: 7,
     workflow_definition_id: 1,
@@ -128,7 +128,7 @@ function makeVersion(state: 'DRAFT' | 'PUBLISHED' = 'DRAFT'): WorkflowVersion {
 
 async function mountDesigner(
   capabilities: Array<'VIEW' | 'MANAGE'>,
-  state: 'DRAFT' | 'PUBLISHED' = 'DRAFT',
+  state: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' = 'DRAFT',
   groups = [makeGroup()],
 ) {
   mockGet.mockImplementation((url: string) => {
@@ -201,6 +201,29 @@ describe('WorkflowFieldDesigner', () => {
 
     expect(buttonByText(wrapper, 'إضافة مجموعة')).toBeUndefined()
     expect(wrapper.text()).toContain('مقفلة')
+  })
+
+  it.each(['PUBLISHED', 'ARCHIVED'] as const)(
+    'hides group ordering and editable instructions on a %s version',
+    async (state) => {
+      const wrapper = await mountDesigner(['VIEW', 'MANAGE'], state)
+
+      expect(buttonByLabel(wrapper, 'تحريك لأعلى')).toBeUndefined()
+      expect(buttonByLabel(wrapper, 'تحريك لأسفل')).toBeUndefined()
+      expect(wrapper.text()).not.toContain('أعد ترتيب المجموعات بالأسهم أو احذفها')
+      expect(wrapper.text()).toContain('يمكنك مراجعة المجموعات والحقول فقط')
+    },
+  )
+
+  it('shows group ordering and editable instructions on an editable DRAFT version', async () => {
+    const wrapper = await mountDesigner(['VIEW', 'MANAGE'], 'DRAFT', [
+      makeGroup(),
+      makeGroup({ id: 101, name: 'bank_data', label: 'بيانات البنك', sort_order: 1 }),
+    ])
+
+    expect(buttonByLabel(wrapper, 'تحريك لأعلى')).toBeDefined()
+    expect(buttonByLabel(wrapper, 'تحريك لأسفل')).toBeDefined()
+    expect(wrapper.text()).toContain('أعد ترتيب المجموعات بالأسهم أو احذفها')
   })
 
   it('shows an empty state when there are no groups', async () => {

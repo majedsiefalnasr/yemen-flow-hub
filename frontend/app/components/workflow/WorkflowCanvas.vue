@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, nextTick, ref, watch } from 'vue'
+import { computed, h, markRaw, nextTick, ref, watch } from 'vue'
 import {
   VueFlow,
   Panel,
@@ -7,6 +7,7 @@ import {
   Position,
   MarkerType,
   type Edge,
+  type EdgeChange,
   type Node,
   type NodeTypesObject,
   type Connection,
@@ -24,14 +25,26 @@ import {
   GitBranch,
   LayoutGrid,
   Lock,
+  Pencil,
   Play,
   Plus,
   Square,
+  Trash2,
   ZoomIn,
   ZoomOut,
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -80,7 +93,8 @@ const STAGE_H = 88
 // Gap between nodes horizontally (within a row)
 const H_GAP = 160
 // Gap between rows (depth levels)
-const V_GAP = 120
+const V_GAP = 32
+const FIT_VIEW_OPTIONS = { padding: 0.06, minZoom: 0.62, maxZoom: 1 } as const
 
 const editable = computed(() => props.version.state === 'DRAFT' && props.version.is_editable)
 
@@ -117,6 +131,7 @@ function computeAutoPositions(
 
   // Assign depth via longest-path BFS (Kahn's topological sort with max-depth tracking)
   const depth = new Map<number, number>()
+  const laidOut = new Set<number>()
   const queue: number[] = []
   const inDegCopy = new Map(inDegree)
   for (const n of graphNodes) {
@@ -131,6 +146,7 @@ function computeAutoPositions(
   })
   while (queue.length) {
     const cur = queue.shift()!
+    laidOut.add(cur)
     for (const next of outEdges.get(cur) ?? []) {
       const nd = (depth.get(cur) ?? 0) + 1
       if (nd > (depth.get(next) ?? 0)) depth.set(next, nd)
@@ -139,10 +155,15 @@ function computeAutoPositions(
       if (remaining === 0) queue.push(next)
     }
   }
-  // Nodes not reached (in a cycle) fall back to sort_order-based depth
-  for (const n of graphNodes) {
-    if (!depth.has(n.id)) depth.set(n.id, n.sort_order)
-  }
+  // A cycle can leave nodes outside Kahn's queue. Preserve a readable sequence
+  // for those nodes instead of collapsing every unresolved stage at depth zero.
+  const unresolved = graphNodes
+    .filter((node) => !laidOut.has(node.id))
+    .sort((a, b) => a.sort_order - b.sort_order)
+  const lastResolvedDepth = laidOut.size
+    ? Math.max(...[...laidOut].map((id) => depth.get(id) ?? 0))
+    : -1
+  unresolved.forEach((node, index) => depth.set(node.id, lastResolvedDepth + index + 1))
 
   // Group nodes by depth (= row)
   const rows = new Map<number, number[]>()
@@ -254,7 +275,11 @@ const StageNode = {
         tgtHandles,
       } = p.data
       const hcBase = isEditable ? 'fh' : 'fh fh-ro'
-      const nodeCls = ['sn', isInitial ? 'node-initial' : isFinal ? 'node-final' : '']
+      const nodeCls = [
+        'sn',
+        isEditable ? '' : 'sn-ro',
+        isInitial ? 'node-initial' : isFinal ? 'node-final' : '',
+      ]
       const icoCls = isInitial
         ? 'sn-icon sn-icon--start'
         : isFinal
@@ -325,7 +350,7 @@ const StageNode = {
   },
 }
 
-const nodeTypes: NodeTypesObject = { stage: StageNode as any }
+const nodeTypes = Object.freeze({ stage: markRaw(StageNode) }) as NodeTypesObject
 
 // ── Nodes: only stage nodes ───────────────────────────────────────────────────
 const nodes = computed<Node[]>(() =>
@@ -344,7 +369,7 @@ const nodes = computed<Node[]>(() =>
       srcHandles: nodeHandles.value.srcHandles.get(n.id) ?? [],
       tgtHandles: nodeHandles.value.tgtHandles.get(n.id) ?? [],
     },
-    draggable: true,
+    draggable: editable.value,
     selectable: true,
     connectable: editable.value,
   })),
@@ -365,6 +390,9 @@ const edges = computed<Edge[]>(() =>
     }
     const marker = { type: MarkerType.Arrow, color, width: 18, height: 18 }
     const label = e.action_name || e.action_code || `#${e.action_id}`
+    const sourceLabel = graph.value?.nodes.find((node) => node.id === e.from_stage_id)
+    const targetLabel = graph.value?.nodes.find((node) => node.id === e.to_stage_id)
+    const transitionLabel = `انتقال ${label} من ${sourceLabel?.display_label || sourceLabel?.name || e.from_stage_id} إلى ${targetLabel?.display_label || targetLabel?.name || e.to_stage_id}`
     return {
       id: edgeId,
       source: `stage-${e.from_stage_id}`,
@@ -378,9 +406,15 @@ const edges = computed<Edge[]>(() =>
       labelBgStyle: { fill: 'var(--nd-bg)', fillOpacity: 0.92 },
       labelBgPadding: [6, 4] as [number, number],
       labelBgBorderRadius: 6,
+      interactionWidth: editable.value ? 32 : 0,
       style,
       markerEnd: marker,
       selectable: editable.value,
+      focusable: editable.value,
+      domAttributes: { tabindex: editable.value ? 0 : -1 },
+      selected: selectedTransitionId.value === e.id,
+      ariaLabel: editable.value ? transitionLabel : `${transitionLabel}، للعرض فقط`,
+      class: editable.value ? 'wf-edge-interactive' : 'wf-edge-readonly',
       data: { transitionId: e.id },
     }
   }),
@@ -394,7 +428,7 @@ function onNodeDragStop({ node }: { node: Node }) {
 // ── Auto-arrange ──────────────────────────────────────────────────────────────
 function autoArrange() {
   nodePositions.value = new Map()
-  void nextTick(() => fitView({ duration: 400, padding: 0.12 }))
+  void nextTick(() => fitView({ duration: 400, ...FIT_VIEW_OPTIONS }))
 }
 
 // ── Stage dialog ──────────────────────────────────────────────────────────────
@@ -457,6 +491,10 @@ const onStageSubmit = stageForm.handleSubmit(async (values) => {
 
 // ── Transition dialog ─────────────────────────────────────────────────────────
 const transDialogOpen = ref(false)
+const transDialogMode = ref<'create' | 'edit'>('create')
+const selectedTransitionId = ref<number | null>(null)
+const deleteTransitionDialogOpen = ref(false)
+const deletingSelectedTransition = ref(false)
 const transFromId = ref('')
 const transToId = ref('')
 const transActionId = ref('')
@@ -464,8 +502,23 @@ const transRequiresComment = ref(false)
 const transError = ref<string | null>(null)
 
 const canSubmitTrans = computed(() => transFromId.value && transToId.value && transActionId.value)
+const selectedTransition = computed(() =>
+  transitions.value.find((transition) => transition.id === selectedTransitionId.value),
+)
+const selectedGraphEdge = computed(() =>
+  graph.value?.edges.find((edge) => edge.id === selectedTransitionId.value),
+)
+const selectedTransitionSummary = computed(() => {
+  const edge = selectedGraphEdge.value
+  if (!edge) return ''
+  const source = graph.value?.nodes.find((node) => node.id === edge.from_stage_id)
+  const target = graph.value?.nodes.find((node) => node.id === edge.to_stage_id)
+  const action = edge.action_name || edge.action_code || `#${edge.action_id}`
+  return `${action}: من ${source?.display_label || source?.name} إلى ${target?.display_label || target?.name}`
+})
 
 function openAddTransition(fromStageId?: number, toStageId?: number) {
+  transDialogMode.value = 'create'
   transFromId.value = fromStageId ? String(fromStageId) : ''
   transToId.value = toStageId ? String(toStageId) : ''
   transActionId.value = ''
@@ -474,17 +527,37 @@ function openAddTransition(fromStageId?: number, toStageId?: number) {
   transDialogOpen.value = true
 }
 
+function openEditTransition() {
+  const transition = selectedTransition.value
+  if (!transition || !editable.value) return
+  transDialogMode.value = 'edit'
+  transFromId.value = String(transition.from_stage_id)
+  transToId.value = String(transition.to_stage_id)
+  transActionId.value = String(transition.action_id)
+  transRequiresComment.value = transition.requires_comment
+  transError.value = null
+  transDialogOpen.value = true
+}
+
 async function submitTransition() {
   if (!canSubmitTrans.value) return
   transError.value = null
   try {
-    await createTransition(props.version.id, {
-      from_stage_id: Number(transFromId.value),
-      action_id: Number(transActionId.value),
-      to_stage_id: Number(transToId.value),
-      requires_comment: transRequiresComment.value,
-    })
-    toast.success('تمت إضافة الانتقال')
+    if (transDialogMode.value === 'edit' && selectedTransition.value) {
+      await updateTransition(selectedTransition.value, {
+        to_stage_id: Number(transToId.value),
+        requires_comment: transRequiresComment.value,
+      })
+      toast.success('تم تحديث الانتقال')
+    } else {
+      await createTransition(props.version.id, {
+        from_stage_id: Number(transFromId.value),
+        action_id: Number(transActionId.value),
+        to_stage_id: Number(transToId.value),
+        requires_comment: transRequiresComment.value,
+      })
+      toast.success('تمت إضافة الانتقال')
+    }
     transDialogOpen.value = false
     await fetchGraph(props.version.id)
   } catch (cause) {
@@ -556,46 +629,56 @@ async function onEdgeUpdate({ edge, connection }: EdgeUpdateEvent) {
   }
 }
 
-// ── Edge double-click → delete transition ────────────────────────────────────
-async function onEdgeDblClick({ edge }: EdgeMouseEvent) {
+function selectEdge({ edge }: EdgeMouseEvent) {
   if (!editable.value) return
   const transitionId = edge.data?.transitionId as number | undefined
   if (!transitionId) return
-  const transition = transitions.value.find((t) => t.id === transitionId)
-  if (!transition) return
-  if (!confirm(`حذف الانتقال "${edge.label}"؟`)) return
+  selectedTransitionId.value = transitionId
+}
+
+function onCanvasEdgeKeydown(event: KeyboardEvent) {
+  if (!editable.value || event.key !== 'Enter' || !(event.target instanceof Element)) return
+  const edgeId = event.target.closest('.vue-flow__edge')?.getAttribute('data-id')
+  const transitionId = edgeId ? Number(edgeId.replace(/^e/, '')) : 0
+  if (!transitionId) return
+  event.preventDefault()
+  selectedTransitionId.value = transitionId
+  openEditTransition()
+}
+
+function onEdgeDblClick(event: EdgeMouseEvent) {
+  selectEdge(event)
+  openEditTransition()
+}
+
+async function confirmDeleteSelectedTransition() {
+  const transition = selectedTransition.value
+  if (!transition || !editable.value) return
+  deletingSelectedTransition.value = true
   try {
     await deleteTransition(transition)
     await fetchGraph(props.version.id)
     await fetchTransitions(props.version.id)
+    selectedTransitionId.value = null
+    deleteTransitionDialogOpen.value = false
     toast.success('تم حذف الانتقال')
   } catch (cause) {
     toast.error(extractApiErrorMessage(cause, 'تعذّر حذف الانتقال'))
+  } finally {
+    deletingSelectedTransition.value = false
   }
 }
 
-// ── Delete key on selected edges ─────────────────────────────────────────────
-// VueFlow fires edges-change with type 'remove' when Delete/Backspace pressed on selected edge.
-// We intercept and call the API instead of letting VueFlow remove it from local state.
-async function onEdgesChange(changes: Array<{ type: string; id?: string }>) {
+function onEdgesChange(changes: EdgeChange[]) {
   if (!editable.value) return
-  const removals = changes.filter((c) => c.type === 'remove')
-  for (const c of removals) {
-    const edgeId = c.id
-    if (!edgeId) continue
-    // edgeId format: "e{transitionId}"
-    const transitionId = Number(edgeId.replace('e', ''))
-    if (!transitionId) continue
-    const transition = transitions.value.find((t) => t.id === transitionId)
-    if (!transition) continue
-    try {
-      await deleteTransition(transition)
-      toast.success('تم حذف الانتقال')
-    } catch (cause) {
-      toast.error(extractApiErrorMessage(cause, 'تعذّر حذف الانتقال'))
+  for (const change of changes) {
+    if (change.type !== 'select') continue
+    const transitionId = Number(change.id.replace('e', ''))
+    if (change.selected) {
+      selectedTransitionId.value = transitionId
+    } else if (selectedTransitionId.value === transitionId) {
+      selectedTransitionId.value = null
     }
-    await fetchGraph(props.version.id)
-    await fetchTransitions(props.version.id)
   }
 }
 
@@ -610,12 +693,15 @@ function onNodeDblClick({ node }: NodeMouseEvent) {
 
 // ── Load / refresh ────────────────────────────────────────────────────────────
 async function load(versionId: number) {
+  selectedTransitionId.value = null
   await Promise.all([
     fetchGraph(versionId),
     fetchStages(versionId),
     fetchActions(),
     fetchTransitions(versionId),
   ])
+  await nextTick()
+  await fitView({ duration: 300, ...FIT_VIEW_OPTIONS })
 }
 
 watch(
@@ -631,7 +717,7 @@ function handleZoomOut() {
   void flowZoomOut({ duration: 180 })
 }
 function handleFit() {
-  void fitView({ duration: 300, padding: 0.12 })
+  void fitView({ duration: 300, ...FIT_VIEW_OPTIONS })
 }
 </script>
 
@@ -649,20 +735,49 @@ function handleFit() {
         </div>
         <p class="ctb-sub">
           <span v-if="editable"
-            >عرض بصري تفاعلي للمراحل وانتقالاتها · اسحب من المقبض لربط المراحل · انقر مرتين
-            للتعديل</span
+            >اسحب من المقبض لربط المراحل. حدّد انتقالاً بالنقر، أو انتقل إليه بمفتاح Tab واضغط
+            Enter.</span
           >
           <span v-else>للعرض فقط — استنسخ نسخة مسودة لإجراء تعديلات</span>
         </p>
       </div>
       <div v-if="editable" class="ctb-r">
-        <Button size="sm" variant="outline" @click="autoArrange">
+        <Button size="sm" variant="outline" class="min-h-11 md:min-h-7" @click="autoArrange">
           <LayoutGrid class="h-3.5 w-3.5" />ترتيب تلقائي
         </Button>
-        <Button size="sm" variant="outline" @click="openAddStage">
+        <Button size="sm" variant="outline" class="min-h-11 md:min-h-7" @click="openAddStage">
           <Plus class="h-3.5 w-3.5" />مرحلة
         </Button>
-        <Button size="sm" @click="openAddTransition()"> <Plus class="h-3.5 w-3.5" />انتقال </Button>
+        <Button size="sm" class="min-h-11 md:min-h-7" @click="openAddTransition()">
+          <Plus class="h-3.5 w-3.5" />انتقال
+        </Button>
+      </div>
+    </div>
+
+    <div
+      v-if="editable"
+      class="border-border bg-muted/30 flex flex-wrap items-center justify-between gap-3 rounded-lg border px-3 py-2"
+      role="region"
+      aria-label="إجراءات الانتقال المحدد"
+    >
+      <div class="min-w-0">
+        <p class="text-xs font-medium">الانتقال المحدد</p>
+        <p class="text-muted-foreground truncate text-xs">
+          {{ selectedTransitionSummary || 'حدّد خط انتقال لعرض إجراءاته.' }}
+        </p>
+      </div>
+      <div v-if="selectedTransition" class="flex flex-wrap items-center gap-2">
+        <Button variant="outline" size="sm" class="min-h-11 md:min-h-7" @click="openEditTransition">
+          <Pencil class="h-3.5 w-3.5" />تعديل الانتقال
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          class="text-destructive min-h-11 md:min-h-7"
+          @click="deleteTransitionDialogOpen = true"
+        >
+          <Trash2 class="h-3.5 w-3.5" />حذف الانتقال
+        </Button>
       </div>
     </div>
 
@@ -673,7 +788,10 @@ function handleFit() {
       <AlertDescription>{{ error }}</AlertDescription>
     </Alert>
 
-    <Skeleton v-else-if="loading" class="h-[600px] w-full rounded-xl" />
+    <Skeleton
+      v-else-if="loading"
+      class="h-[clamp(42rem,calc(100dvh-10rem),52rem)] w-full rounded-xl"
+    />
 
     <Empty v-else-if="!graph || graph.nodes.length === 0">
       <EmptyHeader>
@@ -683,13 +801,13 @@ function handleFit() {
     </Empty>
 
     <!-- Canvas -->
-    <div v-else data-testid="workflow-canvas" class="cf">
+    <div v-else data-testid="workflow-canvas" class="cf" @keydown="onCanvasEdgeKeydown">
       <VueFlow
         class="cv"
         :nodes="nodes"
         :edges="edges"
         :node-types="nodeTypes"
-        :nodes-draggable="true"
+        :nodes-draggable="editable"
         :edges-updatable="editable"
         :connectable="editable"
         :zoom-on-scroll="true"
@@ -698,14 +816,15 @@ function handleFit() {
         :auto-pan-on-node-drag="true"
         :auto-pan-on-connect="true"
         :fit-view-on-init="true"
-        :fit-view-on-init-options="{ padding: 0.12 }"
-        :min-zoom="0.2"
+        :fit-view-on-init-options="FIT_VIEW_OPTIONS"
+        :min-zoom="0.62"
         :max-zoom="3"
-        :delete-key-code="editable ? 'Delete' : null"
+        :delete-key-code="null"
         dir="ltr"
         @node-drag-stop="onNodeDragStop"
         @connect="onConnect"
         @edge-update="onEdgeUpdate"
+        @edge-click="selectEdge"
         @edge-double-click="onEdgeDblClick"
         @edges-change="onEdgesChange"
         @node-double-click="onNodeDblClick"
@@ -713,15 +832,36 @@ function handleFit() {
         <Background :variant="BackgroundVariant.Dots" :size="1.5" :gap="24" />
 
         <Panel position="bottom-left" class="ccp">
-          <button type="button" class="ccb" aria-label="تكبير" @click="handleZoomIn">
+          <Button
+            type="button"
+            size="icon"
+            variant="outline"
+            class="h-11 w-11 md:h-8 md:w-8"
+            aria-label="تكبير"
+            @click="handleZoomIn"
+          >
             <ZoomIn class="h-4 w-4" />
-          </button>
-          <button type="button" class="ccb" aria-label="تصغير" @click="handleZoomOut">
+          </Button>
+          <Button
+            type="button"
+            size="icon"
+            variant="outline"
+            class="h-11 w-11 md:h-8 md:w-8"
+            aria-label="تصغير"
+            @click="handleZoomOut"
+          >
             <ZoomOut class="h-4 w-4" />
-          </button>
-          <button type="button" class="ccb" aria-label="ملاءمة" @click="handleFit">
+          </Button>
+          <Button
+            type="button"
+            size="icon"
+            variant="outline"
+            class="h-11 w-11 md:h-8 md:w-8"
+            aria-label="ملاءمة"
+            @click="handleFit"
+          >
             <Expand class="h-4 w-4" />
-          </button>
+          </Button>
         </Panel>
       </VueFlow>
     </div>
@@ -776,13 +916,21 @@ function handleFit() {
     <Dialog v-model:open="transDialogOpen">
       <DialogContent class="max-w-md">
         <DialogHeader>
-          <DialogTitle>إضافة انتقال</DialogTitle>
-          <DialogDescription>اربط مرحلتين بإجراء.</DialogDescription>
+          <DialogTitle>{{
+            transDialogMode === 'edit' ? 'تعديل الانتقال' : 'إضافة انتقال'
+          }}</DialogTitle>
+          <DialogDescription>
+            {{
+              transDialogMode === 'edit'
+                ? 'عدّل وجهة الانتقال ومتطلبات التعليق ضمن النسخة المسودة.'
+                : 'اربط مرحلتين بإجراء.'
+            }}
+          </DialogDescription>
         </DialogHeader>
         <div class="flex flex-col gap-4">
           <div class="flex flex-col gap-1.5">
             <Label>من المرحلة</Label>
-            <Select v-model="transFromId">
+            <Select v-model="transFromId" :disabled="transDialogMode === 'edit'">
               <SelectTrigger class="w-full"
                 ><SelectValue placeholder="اختر المرحلة"
               /></SelectTrigger>
@@ -795,7 +943,7 @@ function handleFit() {
           </div>
           <div class="flex flex-col gap-1.5">
             <Label>الإجراء</Label>
-            <Select v-model="transActionId">
+            <Select v-model="transActionId" :disabled="transDialogMode === 'edit'">
               <SelectTrigger class="w-full"
                 ><SelectValue placeholder="اختر الإجراء"
               /></SelectTrigger>
@@ -829,45 +977,52 @@ function handleFit() {
         </div>
         <DialogFooter>
           <Button variant="outline" @click="transDialogOpen = false">إلغاء</Button>
-          <Button :disabled="!canSubmitTrans" @click="submitTransition">إضافة</Button>
+          <Button :disabled="!canSubmitTrans" @click="submitTransition">
+            {{ transDialogMode === 'edit' ? 'حفظ التعديل' : 'إضافة' }}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog v-model:open="deleteTransitionDialogOpen">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>حذف الانتقال</AlertDialogTitle>
+          <AlertDialogDescription>
+            سيتم حذف الانتقال «{{ selectedTransitionSummary }}» من النسخة المسودة.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>إلغاء</AlertDialogCancel>
+          <AlertDialogAction
+            :disabled="deletingSelectedTransition"
+            @click="confirmDeleteSelectedTransition"
+          >
+            تأكيد الحذف
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </section>
 </template>
 
 <style>
 /* ── Theme tokens: canvas + nodes ─────────────────────────────────────────── */
 :root {
-  --cv-bg: oklch(0.976 0 0);
-  --cv-dot: oklch(0.84 0 0);
-  --nd-bg: #ffffff;
-  --nd-brd: #e2e5ea;
-  --nd-brd-h: #b8bec9;
-  --nd-shd: 0 1px 3px rgb(0 0 0/0.08), 0 0 0 1px rgb(0 0 0/0.04);
-  --nd-shd-h: 0 4px 14px rgb(0 0 0/0.12), 0 0 0 1px rgb(0 0 0/0.06);
-  --nd-txt: #1c222b;
-  --nd-sub: #6c757d;
-  --nd-ico-bg: #f1f3f6;
-  --color-edge-fwd: #9ba4b1;
+  --cv-bg: color-mix(in srgb, var(--background) 96%, var(--muted));
+  --cv-dot: color-mix(in srgb, var(--muted-foreground) 30%, transparent);
+  --nd-bg: var(--card);
+  --nd-brd: var(--border);
+  --nd-brd-h: color-mix(in srgb, var(--muted-foreground) 45%, var(--border));
+  --nd-shd: 0 1px 3px color-mix(in srgb, var(--foreground) 8%, transparent);
+  --nd-shd-h: 0 4px 8px color-mix(in srgb, var(--foreground) 12%, transparent);
+  --nd-txt: var(--card-foreground);
+  --nd-sub: var(--muted-foreground);
+  --nd-ico-bg: var(--muted);
+  --color-edge-fwd: color-mix(in srgb, var(--muted-foreground) 75%, transparent);
   --color-edge-return: var(--severity-amber);
-  --hd-bg: #9ba4b1;
-  --hd-brd: #ffffff;
-}
-.dark {
-  --cv-bg: oklch(0.145 0.004 265);
-  --cv-dot: oklch(0.25 0.005 265);
-  --nd-bg: oklch(0.205 0.005 265);
-  --nd-brd: oklch(0.3 0.006 265);
-  --nd-brd-h: oklch(0.4 0.006 265);
-  --nd-shd: 0 1px 4px rgb(0 0 0/0.45), 0 0 0 1px rgb(255 255 255/0.05);
-  --nd-shd-h: 0 4px 16px rgb(0 0 0/0.55), 0 0 0 1px rgb(255 255 255/0.08);
-  --nd-txt: oklch(0.92 0 0);
-  --nd-sub: oklch(0.6 0 0);
-  --nd-ico-bg: oklch(0.26 0.005 265);
-  --color-edge-fwd: oklch(0.48 0.005 265);
-  --hd-bg: oklch(0.48 0.005 265);
-  --hd-brd: oklch(0.205 0.005 265);
+  --hd-bg: var(--muted-foreground);
+  --hd-brd: var(--card);
 }
 </style>
 
@@ -933,7 +1088,7 @@ function handleFit() {
 /* ── Canvas frame ─────────────────────────────────────────────────────────── */
 .cf {
   position: relative;
-  height: 600px;
+  height: clamp(42rem, calc(100dvh - 10rem), 52rem);
   border-radius: 12px;
   border: 1px solid var(--border);
   overflow: hidden;
@@ -977,10 +1132,13 @@ function handleFit() {
   border-color: var(--nd-brd-h);
   box-shadow: var(--nd-shd-h);
 }
+:deep(.sn-ro) {
+  cursor: default;
+}
 :deep(.vue-flow__node.selected .sn) {
-  border-color: #0066cc;
+  border-color: var(--primary);
   box-shadow:
-    0 0 0 3px color-mix(in srgb, #0066cc 20%, transparent),
+    0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent),
     var(--nd-shd-h);
 }
 :deep(.node-initial) {
@@ -1084,7 +1242,7 @@ function handleFit() {
 }
 :deep(.fh:hover),
 :deep(.fh.vue-flow__handle-connecting) {
-  background: #0066cc !important;
+  background: var(--primary) !important;
   transform: scale(1.4);
   opacity: 1;
 }
@@ -1108,11 +1266,16 @@ function handleFit() {
 :deep(.vue-flow__edge.selected .vue-flow__edge-path) {
   stroke-width: 2.5 !important;
 }
-:deep(.vue-flow__edge-label) {
+:deep(.wf-edge-interactive) {
   cursor: pointer;
 }
+:deep(.wf-edge-readonly) {
+  cursor: default;
+}
+:deep(.vue-flow__edge-text),
+:deep(.vue-flow__edge-textbg),
 :deep(.vue-flow__edgelabel-renderer) {
-  pointer-events: all;
+  pointer-events: none;
 }
 
 /* ── Controls panel ─────────────────────────────────────────────────────── */
@@ -1121,25 +1284,5 @@ function handleFit() {
   flex-direction: column;
   gap: 4px;
   padding: 6px;
-}
-.ccb {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--card);
-  color: var(--muted-foreground);
-  box-shadow: 0 1px 3px rgb(0 0 0/0.08);
-  cursor: pointer;
-  transition:
-    background 0.12s,
-    color 0.12s;
-}
-.ccb:hover {
-  background: var(--muted);
-  color: var(--foreground);
 }
 </style>

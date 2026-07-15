@@ -4,7 +4,7 @@ import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 import { z } from 'zod'
-import { AlertCircle, Pencil, Plus, Tag, Trash2 } from 'lucide-vue-next'
+import { AlertCircle, Globe2, Pencil, Plus, Tag, Trash2 } from 'lucide-vue-next'
 import type { WorkflowAction, WorkflowActionKind } from '@/types/models'
 import ScreenGuard from '@/components/security/ScreenGuard.vue'
 import {
@@ -180,9 +180,12 @@ onMounted(() => fetchActions())
 </script>
 
 <template>
-  <Card class="border-0 shadow">
+  <Card class="border-border border shadow-none">
     <CardHeader class="pb-3">
-      <CardTitle class="font-section text-sm font-semibold">كتالوج الإجراءات</CardTitle>
+      <CardTitle class="font-section flex items-center gap-2 text-sm font-semibold">
+        كتالوج الإجراءات
+        <Badge variant="secondary">عام</Badge>
+      </CardTitle>
       <CardDescription class="text-xs">
         عرّف الإجراءات التي يستخدمها المنفّذون على الطلبات (اعتماد، رفض، إعادة…). الرمز ثابت بعد
         الإنشاء.
@@ -194,6 +197,15 @@ onMounted(() => fetchActions())
       </CardAction>
     </CardHeader>
     <CardContent class="px-4 pb-4">
+      <Alert class="mb-3">
+        <Globe2 class="h-4 w-4" />
+        <AlertTitle>كتالوج عام مستقل عن النسخة</AlertTitle>
+        <AlertDescription>
+          إعادة تسمية إجراء أو تعديله أو تفعيله أو إلغاء تفعيله قد تؤثر في مسارات عمل أخرى تستخدمه،
+          وليس في النسخة المحددة فقط.
+        </AlertDescription>
+      </Alert>
+
       <Alert v-if="error" variant="destructive" role="alert" class="mb-2">
         <AlertCircle class="h-4 w-4" />
         <AlertTitle>تعذّر التحميل</AlertTitle>
